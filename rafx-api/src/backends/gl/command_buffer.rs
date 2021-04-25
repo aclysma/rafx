@@ -1,7 +1,7 @@
 use crate::gl::{
-    BoundDescriptorSet, CommandPoolGlState, CommandPoolGlStateInner, DescriptorSetArrayData,
-    GlContext, GlPipelineInfo, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl,
-    RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl,
+    BoundDescriptorSet, CommandPoolGles2State, CommandPoolGles2StateInner, DescriptorSetArrayData,
+    GlContext, Gles2PipelineInfo, RafxBufferGles2, RafxCommandPoolGles2, RafxDescriptorSetArrayGles2,
+    RafxDescriptorSetHandleGles2, RafxPipelineGles2, RafxQueueGles2, RafxRootSignatureGles2, RafxTextureGles2,
     NONE_BUFFER, NONE_TEXTURE,
 };
 use crate::{
@@ -16,23 +16,23 @@ use rafx_base::trust_cell::TrustCell;
 use crate::gl::conversions::GlDepthStencilState;
 use crate::gl::gles20;
 
-use crate::backends::gl::RafxRawImageGl;
+use crate::backends::gl::RafxRawImageGles2;
 use crate::gl::gl_type_util;
 use crate::gl::gles20::types::GLenum;
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct RafxCommandBufferGl {
-    queue: RafxQueueGl,
-    command_pool_state: CommandPoolGlState,
+pub struct RafxCommandBufferGles2 {
+    queue: RafxQueueGles2,
+    command_pool_state: CommandPoolGles2State,
 }
 
-impl RafxCommandBufferGl {
+impl RafxCommandBufferGles2 {
     pub fn new(
-        command_pool: &RafxCommandPoolGl,
+        command_pool: &RafxCommandPoolGles2,
         _command_buffer_def: &RafxCommandBufferDef,
-    ) -> RafxResult<RafxCommandBufferGl> {
-        Ok(RafxCommandBufferGl {
+    ) -> RafxResult<RafxCommandBufferGles2> {
+        Ok(RafxCommandBufferGles2 {
             queue: command_pool.queue().clone(),
             command_pool_state: command_pool.command_pool_state().clone(),
         })
@@ -71,7 +71,7 @@ impl RafxCommandBufferGl {
 
     fn bind_framebuffer(
         gl_context: &GlContext,
-        texture: &RafxTextureGl,
+        texture: &RafxTextureGles2,
         attachment: GLenum,
         mip_slice: Option<u8>,
     ) -> RafxResult<()> {
@@ -90,7 +90,7 @@ impl RafxCommandBufferGl {
             //
             //     gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
             // }
-            RafxRawImageGl::Texture(id) => {
+            RafxRawImageGles2::Texture(id) => {
                 //TODO: Handle cubemap
                 let texture_target = gles20::TEXTURE_2D;
                 gl_context.gl_bind_texture(texture_target, *id)?;
@@ -381,7 +381,7 @@ impl RafxCommandBufferGl {
 
     pub fn cmd_bind_pipeline(
         &self,
-        pipeline: &RafxPipelineGl,
+        pipeline: &RafxPipelineGles2,
     ) -> RafxResult<()> {
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
@@ -557,7 +557,7 @@ impl RafxCommandBufferGl {
 
     pub fn cmd_bind_descriptor_set(
         &self,
-        descriptor_set_array: &RafxDescriptorSetArrayGl,
+        descriptor_set_array: &RafxDescriptorSetArrayGles2,
         index: u32,
     ) -> RafxResult<()> {
         let mut state = self.command_pool_state.borrow_mut();
@@ -579,9 +579,9 @@ impl RafxCommandBufferGl {
 
     pub fn cmd_bind_descriptor_set_handle(
         &self,
-        root_signature: &RafxRootSignatureGl,
+        root_signature: &RafxRootSignatureGles2,
         set_index: u32,
-        descriptor_set_handle: &RafxDescriptorSetHandleGl,
+        descriptor_set_handle: &RafxDescriptorSetHandleGles2,
     ) -> RafxResult<()> {
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
@@ -600,9 +600,9 @@ impl RafxCommandBufferGl {
     // program as necessary
     fn set_current_descriptor_set(
         &self,
-        state: &mut CommandPoolGlStateInner,
+        state: &mut CommandPoolGles2StateInner,
         data: &Arc<TrustCell<DescriptorSetArrayData>>,
-        root_signature: &RafxRootSignatureGl,
+        root_signature: &RafxRootSignatureGles2,
         set_index: u32,
         array_index: u32,
     ) {
@@ -628,7 +628,7 @@ impl RafxCommandBufferGl {
     // bound descriptor sets
     fn ensure_pipeline_bindings_up_to_date(
         gl_context: &GlContext,
-        state: &CommandPoolGlStateInner,
+        state: &CommandPoolGles2StateInner,
     ) -> RafxResult<()> {
         let pipeline = state.current_gl_pipeline_info.as_ref().unwrap();
         let mut last_descriptor_updates = pipeline.last_descriptor_updates.borrow_mut();
@@ -677,7 +677,7 @@ impl RafxCommandBufferGl {
     // Does the actual descriptor set binding
     fn do_bind_descriptor_set(
         gl_context: &GlContext,
-        pipeline_info: &Arc<GlPipelineInfo>,
+        pipeline_info: &Arc<Gles2PipelineInfo>,
         data: &DescriptorSetArrayData,
         set_index: u32,
         array_index: u32,
@@ -846,8 +846,8 @@ impl RafxCommandBufferGl {
 
     pub fn cmd_copy_buffer_to_buffer(
         &self,
-        src_buffer: &RafxBufferGl,
-        dst_buffer: &RafxBufferGl,
+        src_buffer: &RafxBufferGles2,
+        dst_buffer: &RafxBufferGles2,
         src_offset: u64,
         dst_offset: u64,
         size: u64,
@@ -872,8 +872,8 @@ impl RafxCommandBufferGl {
 
     pub fn cmd_copy_buffer_to_texture(
         &self,
-        src_buffer: &RafxBufferGl,
-        dst_texture: &RafxTextureGl,
+        src_buffer: &RafxBufferGles2,
+        dst_texture: &RafxTextureGles2,
         params: &RafxCmdCopyBufferToTextureParams,
     ) -> RafxResult<()> {
         let state = self.command_pool_state.borrow();

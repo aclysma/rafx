@@ -1,7 +1,7 @@
 use crate::gl::conversions::{GlBlendState, GlDepthStencilState, GlRasterizerState};
 use crate::gl::gles20::types::GLenum;
 use crate::gl::reflection::FieldIndex;
-use crate::gl::{LocationId, ProgramId, RafxDeviceContextGl, RafxRootSignatureGl, RafxShaderGl};
+use crate::gl::{LocationId, ProgramId, RafxDeviceContextGles2, RafxRootSignatureGles2, RafxShaderGles2};
 use crate::{
     RafxComputePipelineDef, RafxDescriptorIndex, RafxGraphicsPipelineDef, RafxPipelineType,
     RafxResult, RafxRootSignature, MAX_DESCRIPTOR_SET_LAYOUTS,
@@ -10,7 +10,7 @@ use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub(crate) struct GlAttribute {
+pub(crate) struct Gles2Attribute {
     pub(crate) buffer_index: u32,
     pub(crate) location: u32,
     pub(crate) channel_count: u32,
@@ -21,21 +21,21 @@ pub(crate) struct GlAttribute {
 }
 
 #[derive(Debug)]
-pub(crate) struct GlPipelineInfo {
+pub(crate) struct Gles2PipelineInfo {
     pub(crate) gl_rasterizer_state: GlRasterizerState,
     pub(crate) gl_depth_stencil_state: GlDepthStencilState,
     pub(crate) gl_blend_state: GlBlendState,
     pub(crate) gl_topology: GLenum,
-    pub(crate) gl_attributes: Vec<GlAttribute>,
+    pub(crate) gl_attributes: Vec<Gles2Attribute>,
     pub(crate) program_id: ProgramId,
     resource_locations: Vec<Option<LocationId>>,
     uniform_field_locations: Vec<Option<LocationId>>,
-    pub(crate) root_signature: RafxRootSignatureGl,
+    pub(crate) root_signature: RafxRootSignatureGles2,
     pub(crate) last_descriptor_updates: TrustCell<[u64; MAX_DESCRIPTOR_SET_LAYOUTS]>,
     pub(crate) last_bound_by_command_pool: TrustCell<u32>,
 }
 
-impl GlPipelineInfo {
+impl Gles2PipelineInfo {
     pub fn resource_location(
         &self,
         descriptor_index: RafxDescriptorIndex,
@@ -52,15 +52,15 @@ impl GlPipelineInfo {
 }
 
 #[derive(Debug)]
-pub struct RafxPipelineGl {
+pub struct RafxPipelineGles2 {
     pipeline_type: RafxPipelineType,
     // It's a RafxRootSignatureGl, but stored as RafxRootSignature so we can return refs to it
     root_signature: RafxRootSignature,
-    shader: RafxShaderGl,
-    gl_pipeline_info: Arc<GlPipelineInfo>,
+    shader: RafxShaderGles2,
+    gl_pipeline_info: Arc<Gles2PipelineInfo>,
 }
 
-impl Drop for RafxPipelineGl {
+impl Drop for RafxPipelineGles2 {
     fn drop(&mut self) {
         let device_context = self
             .root_signature
@@ -74,7 +74,7 @@ impl Drop for RafxPipelineGl {
     }
 }
 
-impl RafxPipelineGl {
+impl RafxPipelineGles2 {
     pub fn pipeline_type(&self) -> RafxPipelineType {
         self.pipeline_type
     }
@@ -87,12 +87,12 @@ impl RafxPipelineGl {
         self.gl_pipeline_info.program_id
     }
 
-    pub(crate) fn gl_pipeline_info(&self) -> &Arc<GlPipelineInfo> {
+    pub(crate) fn gl_pipeline_info(&self) -> &Arc<Gles2PipelineInfo> {
         &self.gl_pipeline_info
     }
 
     pub fn new_graphics_pipeline(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         pipeline_def: &RafxGraphicsPipelineDef,
     ) -> RafxResult<Self> {
         let gl_context = device_context.gl_context();
@@ -129,7 +129,7 @@ impl RafxPipelineGl {
 
             let buffer = &pipeline_def.vertex_layout.buffers[attribute.buffer_index as usize];
 
-            gl_attributes.push(GlAttribute {
+            gl_attributes.push(Gles2Attribute {
                 buffer_index: attribute.buffer_index,
                 location: attribute.location,
                 channel_count: attribute.format.channel_count(),
@@ -169,7 +169,7 @@ impl RafxPipelineGl {
                 )
             })?;
 
-        let gl_pipeline_info = GlPipelineInfo {
+        let gl_pipeline_info = Gles2PipelineInfo {
             last_bound_by_command_pool: TrustCell::new(0),
             gl_rasterizer_state: pipeline_def.rasterizer_state.into(),
             gl_depth_stencil_state: pipeline_def.depth_state.into(),
@@ -183,7 +183,7 @@ impl RafxPipelineGl {
             last_descriptor_updates: Default::default(),
         };
 
-        Ok(RafxPipelineGl {
+        Ok(RafxPipelineGles2 {
             root_signature: pipeline_def.root_signature.clone(),
             pipeline_type: RafxPipelineType::Graphics,
             shader: shader.clone(),
@@ -192,7 +192,7 @@ impl RafxPipelineGl {
     }
 
     pub fn new_compute_pipeline(
-        _device_context: &RafxDeviceContextGl,
+        _device_context: &RafxDeviceContextGles2,
         _pipeline_def: &RafxComputePipelineDef,
     ) -> RafxResult<Self> {
         unimplemented!("GL ES 2.0 does not support compute pipelines");

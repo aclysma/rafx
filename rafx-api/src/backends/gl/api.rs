@@ -2,36 +2,36 @@ use crate::{RafxApiDef, RafxResult};
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
-use crate::gl::{RafxDeviceContextGl, RafxDeviceContextGlInner};
+use crate::gl::{RafxDeviceContextGles2, RafxDeviceContextGles2Inner};
 
 /// Gl-specific configuration
 #[derive(Default)]
-pub struct RafxApiDefGl {}
+pub struct RafxApiDefGles2 {}
 
-pub struct RafxApiGl {
-    device_context: Option<RafxDeviceContextGl>,
+pub struct RafxApiGles2 {
+    device_context: Option<RafxDeviceContextGles2>,
 }
 
-impl Drop for RafxApiGl {
+impl Drop for RafxApiGles2 {
     fn drop(&mut self) {
         self.destroy().unwrap();
     }
 }
 
-impl RafxApiGl {
-    pub fn device_context(&self) -> &RafxDeviceContextGl {
+impl RafxApiGles2 {
+    pub fn device_context(&self) -> &RafxDeviceContextGles2 {
         self.device_context.as_ref().unwrap()
     }
 
     pub fn new(
         window: &dyn HasRawWindowHandle,
         _api_def: &RafxApiDef,
-        _gl_api_def: &RafxApiDefGl,
+        _gl_api_def: &RafxApiDefGles2,
     ) -> RafxResult<Self> {
-        let inner = Arc::new(RafxDeviceContextGlInner::new(window)?);
-        let device_context = RafxDeviceContextGl::new(inner)?;
+        let inner = Arc::new(RafxDeviceContextGles2Inner::new(window)?);
+        let device_context = RafxDeviceContextGles2::new(inner)?;
 
-        Ok(RafxApiGl {
+        Ok(RafxApiGles2 {
             device_context: Some(device_context),
         })
     }

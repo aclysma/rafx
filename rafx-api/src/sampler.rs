@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxSamplerEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxSamplerGl;
+use crate::gl::RafxSamplerGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSamplerMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -20,7 +20,7 @@ pub enum RafxSampler {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSamplerMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxSamplerGl),
+    Gl(RafxSamplerGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -70,7 +70,7 @@ impl RafxSampler {
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_sampler(&self) -> Option<&RafxSamplerGl> {
+    pub fn gl_sampler(&self) -> Option<&RafxSamplerGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(_) => None,

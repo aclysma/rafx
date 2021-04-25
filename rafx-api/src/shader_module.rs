@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxShaderModuleEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxShaderModuleGl;
+use crate::gl::RafxShaderModuleGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxShaderModuleMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -22,7 +22,7 @@ pub enum RafxShaderModule {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxShaderModuleMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxShaderModuleGl),
+    Gl(RafxShaderModuleGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -72,7 +72,7 @@ impl RafxShaderModule {
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_shader_module(&self) -> Option<&RafxShaderModuleGl> {
+    pub fn gl_shader_module(&self) -> Option<&RafxShaderModuleGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxShaderModule::Vk(_) => None,

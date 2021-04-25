@@ -4,7 +4,7 @@
 ))]
 use crate::empty::{RafxDescriptorSetArrayEmpty, RafxDescriptorSetHandleEmpty};
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::{RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl};
+use crate::gl::{RafxDescriptorSetArrayGles2, RafxDescriptorSetHandleGles2};
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxDescriptorSetArrayMetal, RafxDescriptorSetHandleMetal};
 #[cfg(feature = "rafx-vulkan")]
@@ -30,7 +30,7 @@ pub enum RafxDescriptorSetHandle {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxDescriptorSetHandleMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxDescriptorSetHandleGl),
+    Gl(RafxDescriptorSetHandleGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -74,7 +74,7 @@ impl RafxDescriptorSetHandle {
     }
 
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_descriptor_set_handle(&self) -> Option<&RafxDescriptorSetHandleGl> {
+    pub fn gl_descriptor_set_handle(&self) -> Option<&RafxDescriptorSetHandleGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetHandle::Vk(_) => None,
@@ -139,7 +139,7 @@ pub enum RafxDescriptorSetArray {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxDescriptorSetArrayMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxDescriptorSetArrayGl),
+    Gl(RafxDescriptorSetArrayGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -293,7 +293,7 @@ impl RafxDescriptorSetArray {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_descriptor_set_array(&self) -> Option<&RafxDescriptorSetArrayGl> {
+    pub fn gl_descriptor_set_array(&self) -> Option<&RafxDescriptorSetArrayGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(_) => None,

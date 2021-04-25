@@ -1,19 +1,19 @@
-use crate::gl::{GlCompiledShader, ProgramId, RafxDeviceContextGl};
+use crate::gl::{Gles2CompiledShader, ProgramId, RafxDeviceContextGles2};
 use crate::{RafxPipelineReflection, RafxResult, RafxShaderStageDef, RafxShaderStageFlags};
 use std::sync::Arc;
 
 #[derive(Debug)]
-struct RafxShaderGlInner {
-    device_context: RafxDeviceContextGl,
+struct RafxShaderGles2Inner {
+    device_context: RafxDeviceContextGles2,
     stage_flags: RafxShaderStageFlags,
     stages: Vec<RafxShaderStageDef>,
     pipeline_reflection: RafxPipelineReflection,
-    vertex_shader: GlCompiledShader,
-    fragment_shader: GlCompiledShader,
+    vertex_shader: Gles2CompiledShader,
+    fragment_shader: Gles2CompiledShader,
     program_id: ProgramId,
 }
 
-impl Drop for RafxShaderGlInner {
+impl Drop for RafxShaderGles2Inner {
     fn drop(&mut self) {
         self.device_context
             .gl_context()
@@ -23,11 +23,11 @@ impl Drop for RafxShaderGlInner {
 }
 
 #[derive(Clone, Debug)]
-pub struct RafxShaderGl {
-    inner: Arc<RafxShaderGlInner>,
+pub struct RafxShaderGles2 {
+    inner: Arc<RafxShaderGles2Inner>,
 }
 
-impl RafxShaderGl {
+impl RafxShaderGles2 {
     pub fn stages(&self) -> &[RafxShaderStageDef] {
         &self.inner.stages
     }
@@ -44,16 +44,16 @@ impl RafxShaderGl {
         self.inner.program_id
     }
 
-    pub fn gl_vertex_shader(&self) -> &GlCompiledShader {
+    pub fn gl_vertex_shader(&self) -> &Gles2CompiledShader {
         &self.inner.vertex_shader
     }
 
-    pub fn gl_fragment_shader(&self) -> &GlCompiledShader {
+    pub fn gl_fragment_shader(&self) -> &Gles2CompiledShader {
         &self.inner.fragment_shader
     }
 
     pub fn new(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         stages: Vec<RafxShaderStageDef>,
     ) -> RafxResult<Self> {
         let pipeline_reflection = RafxPipelineReflection::from_stages(&stages)?;
@@ -98,7 +98,7 @@ impl RafxShaderGl {
 
         gl_context.link_shader_program(program_id)?;
 
-        let inner = RafxShaderGlInner {
+        let inner = RafxShaderGles2Inner {
             device_context: device_context.clone(),
             stages,
             pipeline_reflection,
@@ -108,7 +108,7 @@ impl RafxShaderGl {
             program_id,
         };
 
-        Ok(RafxShaderGl {
+        Ok(RafxShaderGles2 {
             inner: Arc::new(inner),
         })
     }

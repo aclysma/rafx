@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxSwapchainEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxSwapchainGl;
+use crate::gl::RafxSwapchainGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSwapchainMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -20,7 +20,7 @@ pub enum RafxSwapchain {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSwapchainMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxSwapchainGl),
+    Gl(RafxSwapchainGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -199,7 +199,7 @@ impl RafxSwapchain {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_swapchain(&self) -> Option<&RafxSwapchainGl> {
+    pub fn gl_swapchain(&self) -> Option<&RafxSwapchainGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxSwapchain::Vk(_) => None,

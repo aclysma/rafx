@@ -1,4 +1,4 @@
-use crate::gl::{gles20, ProgramId, RafxTextureGl, BufferId, GlContext, NONE_PROGRAM, NONE_TEXTURE, NONE_BUFFER};
+use crate::gl::{gles20, ProgramId, RafxTextureGles2, BufferId, GlContext, NONE_PROGRAM, NONE_TEXTURE, NONE_BUFFER};
 use crate::{RafxResult, RafxDeviceInfo};
 use std::ffi::CString;
 
@@ -47,7 +47,7 @@ impl FullscreenQuad {
         })
     }
 
-    pub(crate) fn draw(&self, gl_context: &GlContext, device_info: &RafxDeviceInfo, texture: &RafxTextureGl) -> RafxResult<()> {
+    pub(crate) fn draw(&self, gl_context: &GlContext, device_info: &RafxDeviceInfo, texture: &RafxTextureGles2) -> RafxResult<()> {
         gl_context.gl_disable(gles20::DEPTH_TEST)?;
         gl_context.gl_use_program(self.program_id)?;
 

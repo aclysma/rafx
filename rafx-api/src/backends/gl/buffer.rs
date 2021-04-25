@@ -1,4 +1,4 @@
-use crate::gl::{BufferId, RafxDeviceContextGl, NONE_BUFFER};
+use crate::gl::{BufferId, RafxDeviceContextGles2, NONE_BUFFER};
 use crate::{RafxBufferDef, RafxMemoryUsage, RafxResourceType, RafxResult};
 
 use crate::gl::gles20;
@@ -10,13 +10,13 @@ use std::sync::Arc;
 
 // This struct exists so that descriptor sets can (somewhat) safely point at the contents of a buffer
 #[derive(Debug, Clone)]
-pub(crate) struct GlBufferContents {
+pub(crate) struct Gles2BufferContents {
     data: Arc<TrustCell<Box<[u8]>>>,
 }
 
-impl GlBufferContents {
+impl Gles2BufferContents {
     pub fn new(data: Vec<u8>) -> Self {
-        GlBufferContents {
+        Gles2BufferContents {
             data: Arc::new(TrustCell::new(data.into_boxed_slice())),
         }
     }
@@ -37,16 +37,16 @@ impl GlBufferContents {
 }
 
 #[derive(Debug)]
-pub struct RafxBufferGl {
-    device_context: RafxDeviceContextGl,
+pub struct RafxBufferGles2 {
+    device_context: RafxDeviceContextGles2,
     buffer_def: RafxBufferDef,
     buffer_id: Option<BufferId>,
-    buffer_contents: Option<GlBufferContents>,
+    buffer_contents: Option<Gles2BufferContents>,
     mapped_count: AtomicU32,
     target: GLenum, // may be gles20::NONE
 }
 
-impl Drop for RafxBufferGl {
+impl Drop for RafxBufferGles2 {
     fn drop(&mut self) {
         if let Some(buffer_id) = self.buffer_id {
             self.device_context
@@ -57,7 +57,7 @@ impl Drop for RafxBufferGl {
     }
 }
 
-impl RafxBufferGl {
+impl RafxBufferGles2 {
     pub fn buffer_def(&self) -> &RafxBufferDef {
         &self.buffer_def
     }
@@ -71,7 +71,7 @@ impl RafxBufferGl {
         self.target
     }
 
-    pub(crate) fn buffer_contents(&self) -> &Option<GlBufferContents> {
+    pub(crate) fn buffer_contents(&self) -> &Option<Gles2BufferContents> {
         &self.buffer_contents
     }
 
@@ -137,7 +137,7 @@ impl RafxBufferGl {
     }
 
     pub fn new(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         buffer_def: &RafxBufferDef,
     ) -> RafxResult<Self> {
         buffer_def.verify();
@@ -200,11 +200,11 @@ impl RafxBufferGl {
             target = gles20::NONE;
         }
 
-        Ok(RafxBufferGl {
+        Ok(RafxBufferGles2 {
             device_context: device_context.clone(),
             buffer_def: buffer_def.clone(),
             buffer_id,
-            buffer_contents: buffer_contents.map(|x| GlBufferContents::new(x)),
+            buffer_contents: buffer_contents.map(|x| Gles2BufferContents::new(x)),
             mapped_count: AtomicU32::new(0),
             target,
         })

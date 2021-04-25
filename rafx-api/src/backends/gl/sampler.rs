@@ -1,12 +1,12 @@
 use crate::gl::gles20;
 use crate::gl::gles20::types::GLenum;
-use crate::gl::RafxDeviceContextGl;
+use crate::gl::RafxDeviceContextGles2;
 use crate::{RafxFilterType, RafxMipMapMode, RafxResult, RafxSamplerDef};
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct RafxSamplerGlInner {
-    pub(crate) device_context: RafxDeviceContextGl,
+pub struct RafxSamplerGles2Inner {
+    pub(crate) device_context: RafxDeviceContextGles2,
     pub(crate) gl_mip_map_mode: GLenum,
     pub(crate) gl_min_filter: GLenum,
     pub(crate) gl_mag_filter: GLenum,
@@ -16,15 +16,15 @@ pub struct RafxSamplerGlInner {
 }
 
 #[derive(Debug, Clone)]
-pub struct RafxSamplerGl {
-    pub(crate) inner: Arc<RafxSamplerGlInner>,
+pub struct RafxSamplerGles2 {
+    pub(crate) inner: Arc<RafxSamplerGles2Inner>,
 }
 
-impl RafxSamplerGl {
+impl RafxSamplerGles2 {
     pub fn new(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         sampler_def: &RafxSamplerDef,
-    ) -> RafxResult<RafxSamplerGl> {
+    ) -> RafxResult<RafxSamplerGles2> {
         let gl_mip_map_mode = match sampler_def.min_filter {
             RafxFilterType::Nearest => match sampler_def.mip_map_mode {
                 RafxMipMapMode::Nearest => gles20::NEAREST_MIPMAP_NEAREST,
@@ -62,7 +62,7 @@ impl RafxSamplerGl {
         //TODO: address_mode_w, mip_lod_bias, max_anisotropy, ClampToBorder
         //TODO: sampler objects
 
-        let inner = RafxSamplerGlInner {
+        let inner = RafxSamplerGles2Inner {
             device_context: device_context.clone(),
             gl_mip_map_mode,
             gl_min_filter,
@@ -72,7 +72,7 @@ impl RafxSamplerGl {
             gl_compare_op,
         };
 
-        Ok(RafxSamplerGl {
+        Ok(RafxSamplerGles2 {
             inner: Arc::new(inner),
         })
     }

@@ -1,5 +1,5 @@
 use crate::gl::reflection::{UniformIndex, UniformReflectionData};
-use crate::gl::{ProgramId, RafxDeviceContextGl};
+use crate::gl::{ProgramId, RafxDeviceContextGles2};
 use crate::{
     RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
@@ -67,8 +67,8 @@ pub(crate) struct DescriptorSetLayoutInfo {
 }
 
 #[derive(Debug)]
-pub(crate) struct RafxRootSignatureGlInner {
-    pub(crate) device_context: RafxDeviceContextGl,
+pub(crate) struct RafxRootSignatureGles2Inner {
+    pub(crate) device_context: RafxDeviceContextGles2,
     pub(crate) pipeline_type: RafxPipelineType,
     pub(crate) layouts: [DescriptorSetLayoutInfo; MAX_DESCRIPTOR_SET_LAYOUTS],
     pub(crate) descriptors: Vec<DescriptorInfo>,
@@ -83,11 +83,11 @@ pub(crate) struct RafxRootSignatureGlInner {
 }
 
 #[derive(Clone, Debug)]
-pub struct RafxRootSignatureGl {
-    pub(crate) inner: Arc<RafxRootSignatureGlInner>,
+pub struct RafxRootSignatureGles2 {
+    pub(crate) inner: Arc<RafxRootSignatureGles2Inner>,
 }
 
-impl PartialEq for RafxRootSignatureGl {
+impl PartialEq for RafxRootSignatureGles2 {
     fn eq(
         &self,
         other: &Self,
@@ -96,8 +96,8 @@ impl PartialEq for RafxRootSignatureGl {
     }
 }
 
-impl RafxRootSignatureGl {
-    pub fn device_context(&self) -> &RafxDeviceContextGl {
+impl RafxRootSignatureGles2 {
+    pub fn device_context(&self) -> &RafxDeviceContextGles2 {
         &self.inner.device_context
     }
 
@@ -143,7 +143,7 @@ impl RafxRootSignatureGl {
     }
 
     pub fn new(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         root_signature_def: &RafxRootSignatureDef,
     ) -> RafxResult<Self> {
         log::trace!("Create RafxRootSignatureGl");
@@ -315,7 +315,7 @@ impl RafxRootSignatureGl {
 
         let root_signature_id = NEXT_ROOT_SIGNATURE_ID.fetch_add(1, Ordering::Relaxed);
 
-        let inner = RafxRootSignatureGlInner {
+        let inner = RafxRootSignatureGles2Inner {
             device_context: device_context.clone(),
             pipeline_type,
             layouts,
@@ -325,7 +325,7 @@ impl RafxRootSignatureGl {
             root_signature_id,
         };
 
-        Ok(RafxRootSignatureGl {
+        Ok(RafxRootSignatureGles2 {
             inner: Arc::new(inner),
         })
     }

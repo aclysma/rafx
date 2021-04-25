@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxApiEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::{RafxApiDefGl, RafxApiGl};
+use crate::gl::{RafxApiDefGles2, RafxApiGles2};
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxApiDefMetal, RafxApiMetal};
 #[cfg(feature = "rafx-vulkan")]
@@ -29,7 +29,7 @@ pub enum RafxApi {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxApiMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxApiGl),
+    Gl(RafxApiGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -109,9 +109,9 @@ impl RafxApi {
     pub fn new_gl(
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
-        gl_api_def: &RafxApiDefGl,
+        gl_api_def: &RafxApiDefGles2,
     ) -> RafxResult<Self> {
-        Ok(RafxApi::Gl(RafxApiGl::new(window, api_def, gl_api_def)?))
+        Ok(RafxApi::Gl(RafxApiGles2::new(window, api_def, gl_api_def)?))
     }
 
     /// Create a cloneable handle to the device. Most of the interaction with the graphics backend
@@ -201,7 +201,7 @@ impl RafxApi {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_api(&self) -> Option<&RafxApiGl> {
+    pub fn gl_api(&self) -> Option<&RafxApiGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(_) => None,

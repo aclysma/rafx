@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxTextureEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxTextureGl;
+use crate::gl::RafxTextureGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxTextureMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -21,7 +21,7 @@ pub enum RafxTexture {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxTextureMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxTextureGl),
+    Gl(RafxTextureGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -88,7 +88,7 @@ impl RafxTexture {
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_texture(&self) -> Option<&RafxTextureGl> {
+    pub fn gl_texture(&self) -> Option<&RafxTextureGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(_) => None,

@@ -1,4 +1,4 @@
-use crate::gl::{BufferId, DescriptorSetLayoutInfo, GlBufferContents, RafxDeviceContextGl, DescriptorInfo};
+use crate::gl::{BufferId, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2, DescriptorInfo};
 use crate::{
     RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType,
     RafxResult, RafxRootSignature,
@@ -8,12 +8,12 @@ use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct RafxDescriptorSetHandleGl {
+pub struct RafxDescriptorSetHandleGles2 {
     descriptor_set_array_data: Arc<TrustCell<DescriptorSetArrayData>>,
     array_index: u32,
 }
 
-impl std::fmt::Debug for RafxDescriptorSetHandleGl {
+impl std::fmt::Debug for RafxDescriptorSetHandleGles2 {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
@@ -24,7 +24,7 @@ impl std::fmt::Debug for RafxDescriptorSetHandleGl {
     }
 }
 
-impl RafxDescriptorSetHandleGl {
+impl RafxDescriptorSetHandleGles2 {
     pub fn descriptor_set_array_data(&self) -> &Arc<TrustCell<DescriptorSetArrayData>> {
         &self.descriptor_set_array_data
     }
@@ -37,7 +37,7 @@ impl RafxDescriptorSetHandleGl {
 #[derive(Clone)]
 pub struct BufferDescriptorState {
     pub(crate) buffer_id: Option<BufferId>,
-    pub(crate) buffer_contents: Option<GlBufferContents>,
+    pub(crate) buffer_contents: Option<Gles2BufferContents>,
     pub(crate) offset: u64,
     //range: u32,
 }
@@ -56,14 +56,14 @@ pub struct DescriptorSetArrayData {
     pub(crate) image_states: Vec<Option<ImageDescriptorState>>,
 }
 
-pub struct RafxDescriptorSetArrayGl {
+pub struct RafxDescriptorSetArrayGles2 {
     root_signature: RafxRootSignature,
     set_index: u32,
     data: Arc<TrustCell<DescriptorSetArrayData>>,
     array_length: u32,
 }
 
-impl RafxDescriptorSetArrayGl {
+impl RafxDescriptorSetArrayGles2 {
     pub fn root_signature(&self) -> &RafxRootSignature {
         &self.root_signature
     }
@@ -79,19 +79,19 @@ impl RafxDescriptorSetArrayGl {
     pub fn handle(
         &self,
         array_index: u32,
-    ) -> Option<RafxDescriptorSetHandleGl> {
+    ) -> Option<RafxDescriptorSetHandleGles2> {
         if array_index >= self.array_length {
             return None;
         }
 
-        Some(RafxDescriptorSetHandleGl {
+        Some(RafxDescriptorSetHandleGles2 {
             descriptor_set_array_data: self.data.clone(),
             array_index,
         })
     }
 
     pub(crate) fn new(
-        _device_context: &RafxDeviceContextGl,
+        _device_context: &RafxDeviceContextGles2,
         descriptor_set_array_def: &RafxDescriptorSetArrayDef,
     ) -> RafxResult<Self> {
         let root_signature = descriptor_set_array_def
@@ -110,7 +110,7 @@ impl RafxDescriptorSetArrayGl {
             image_states: vec![None; descriptor_set_array_def.array_length * layout.image_descriptor_state_count as usize],
         };
 
-        Ok(RafxDescriptorSetArrayGl {
+        Ok(RafxDescriptorSetArrayGles2 {
             root_signature: RafxRootSignature::Gl(root_signature),
             set_index: descriptor_set_array_def.set_index,
             data: Arc::new(TrustCell::new(data)),
@@ -376,7 +376,7 @@ impl RafxDescriptorSetArrayGl {
     }
 }
 
-impl std::fmt::Debug for RafxDescriptorSetArrayGl {
+impl std::fmt::Debug for RafxDescriptorSetArrayGles2 {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,

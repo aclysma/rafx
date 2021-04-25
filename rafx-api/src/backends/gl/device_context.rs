@@ -8,9 +8,9 @@ use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
 use crate::gl::{
-    GlContextManager, RafxBufferGl, RafxDescriptorSetArrayGl, RafxFenceGl, RafxPipelineGl,
-    RafxQueueGl, RafxRootSignatureGl, RafxSamplerGl, RafxSemaphoreGl, RafxShaderGl,
-    RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl,
+    GlContextManager, RafxBufferGles2, RafxDescriptorSetArrayGles2, RafxFenceGles2, RafxPipelineGles2,
+    RafxQueueGles2, RafxRootSignatureGles2, RafxSamplerGles2, RafxSemaphoreGles2, RafxShaderGles2,
+    RafxShaderModuleGles2, RafxSwapchainGles2, RafxTextureGles2,
 };
 
 use crate::gl::gles20;
@@ -23,7 +23,7 @@ use crate::gl::fullscreen_quad::FullscreenQuad;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-pub struct RafxDeviceContextGlInner {
+pub struct RafxDeviceContextGles2Inner {
     pub(crate) device_info: RafxDeviceInfo,
 
     gl_context_manager: GlContextManager,
@@ -42,10 +42,10 @@ pub struct RafxDeviceContextGlInner {
 }
 
 // For GlContext
-unsafe impl Send for RafxDeviceContextGlInner {}
-unsafe impl Sync for RafxDeviceContextGlInner {}
+unsafe impl Send for RafxDeviceContextGles2Inner {}
+unsafe impl Sync for RafxDeviceContextGles2Inner {}
 
-impl Drop for RafxDeviceContextGlInner {
+impl Drop for RafxDeviceContextGles2Inner {
     fn drop(&mut self) {
         self.fullscreen_quad.destroy(&self.gl_context).unwrap();
         log::trace!("destroying device");
@@ -53,7 +53,7 @@ impl Drop for RafxDeviceContextGlInner {
     }
 }
 
-impl RafxDeviceContextGlInner {
+impl RafxDeviceContextGles2Inner {
     pub fn new(window: &dyn HasRawWindowHandle) -> RafxResult<Self> {
         log::debug!("Initializing GL backend");
         let gl_context_manager = super::internal::GlContextManager::new(window)?;
@@ -95,7 +95,7 @@ impl RafxDeviceContextGlInner {
             all_contexts
         };
 
-        Ok(RafxDeviceContextGlInner {
+        Ok(RafxDeviceContextGles2Inner {
             device_info,
             gl_context_manager,
             gl_context,
@@ -113,14 +113,14 @@ impl RafxDeviceContextGlInner {
     }
 }
 
-pub struct RafxDeviceContextGl {
-    pub(crate) inner: Arc<RafxDeviceContextGlInner>,
+pub struct RafxDeviceContextGles2 {
+    pub(crate) inner: Arc<RafxDeviceContextGles2Inner>,
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
     pub(crate) create_index: u64,
 }
 
-impl std::fmt::Debug for RafxDeviceContextGl {
+impl std::fmt::Debug for RafxDeviceContextGles2 {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter,
@@ -131,7 +131,7 @@ impl std::fmt::Debug for RafxDeviceContextGl {
     }
 }
 
-impl Clone for RafxDeviceContextGl {
+impl Clone for RafxDeviceContextGles2 {
     fn clone(&self) -> Self {
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
@@ -153,7 +153,7 @@ impl Clone for RafxDeviceContextGl {
             create_index
         };
 
-        RafxDeviceContextGl {
+        RafxDeviceContextGles2 {
             inner: self.inner.clone(),
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
@@ -162,7 +162,7 @@ impl Clone for RafxDeviceContextGl {
     }
 }
 
-impl Drop for RafxDeviceContextGl {
+impl Drop for RafxDeviceContextGles2 {
     fn drop(&mut self) {
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
@@ -176,13 +176,13 @@ impl Drop for RafxDeviceContextGl {
     }
 }
 
-impl Into<RafxDeviceContext> for RafxDeviceContextGl {
+impl Into<RafxDeviceContext> for RafxDeviceContextGles2 {
     fn into(self) -> RafxDeviceContext {
         RafxDeviceContext::Gl(self)
     }
 }
 
-impl RafxDeviceContextGl {
+impl RafxDeviceContextGles2 {
     pub fn device_info(&self) -> &RafxDeviceInfo {
         &self.inner.device_info
     }
@@ -203,8 +203,8 @@ impl RafxDeviceContextGl {
         &self.inner.gl_context_manager
     }
 
-    pub fn new(inner: Arc<RafxDeviceContextGlInner>) -> RafxResult<Self> {
-        Ok(RafxDeviceContextGl {
+    pub fn new(inner: Arc<RafxDeviceContextGles2Inner>) -> RafxResult<Self> {
+        Ok(RafxDeviceContextGles2 {
             inner,
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
@@ -215,94 +215,94 @@ impl RafxDeviceContextGl {
     pub fn create_queue(
         &self,
         queue_type: RafxQueueType,
-    ) -> RafxResult<RafxQueueGl> {
-        RafxQueueGl::new(self, queue_type)
+    ) -> RafxResult<RafxQueueGles2> {
+        RafxQueueGles2::new(self, queue_type)
     }
 
-    pub fn create_fence(&self) -> RafxResult<RafxFenceGl> {
-        RafxFenceGl::new(self)
+    pub fn create_fence(&self) -> RafxResult<RafxFenceGles2> {
+        RafxFenceGles2::new(self)
     }
 
-    pub fn create_semaphore(&self) -> RafxResult<RafxSemaphoreGl> {
-        RafxSemaphoreGl::new(self)
+    pub fn create_semaphore(&self) -> RafxResult<RafxSemaphoreGles2> {
+        RafxSemaphoreGles2::new(self)
     }
 
     pub fn create_swapchain(
         &self,
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
-    ) -> RafxResult<RafxSwapchainGl> {
-        RafxSwapchainGl::new(self, raw_window_handle, swapchain_def)
+    ) -> RafxResult<RafxSwapchainGles2> {
+        RafxSwapchainGles2::new(self, raw_window_handle, swapchain_def)
     }
 
     pub fn wait_for_fences(
         &self,
-        fences: &[&RafxFenceGl],
+        fences: &[&RafxFenceGles2],
     ) -> RafxResult<()> {
-        RafxFenceGl::wait_for_fences(self, fences)
+        RafxFenceGles2::wait_for_fences(self, fences)
     }
 
     pub fn create_sampler(
         &self,
         sampler_def: &RafxSamplerDef,
-    ) -> RafxResult<RafxSamplerGl> {
-        RafxSamplerGl::new(self, sampler_def)
+    ) -> RafxResult<RafxSamplerGles2> {
+        RafxSamplerGles2::new(self, sampler_def)
     }
 
     pub fn create_texture(
         &self,
         texture_def: &RafxTextureDef,
-    ) -> RafxResult<RafxTextureGl> {
-        RafxTextureGl::new(self, texture_def)
+    ) -> RafxResult<RafxTextureGles2> {
+        RafxTextureGles2::new(self, texture_def)
     }
 
     pub fn create_buffer(
         &self,
         buffer_def: &RafxBufferDef,
-    ) -> RafxResult<RafxBufferGl> {
-        RafxBufferGl::new(self, buffer_def)
+    ) -> RafxResult<RafxBufferGles2> {
+        RafxBufferGles2::new(self, buffer_def)
     }
 
     pub fn create_shader(
         &self,
         stages: Vec<RafxShaderStageDef>,
-    ) -> RafxResult<RafxShaderGl> {
-        RafxShaderGl::new(self, stages)
+    ) -> RafxResult<RafxShaderGles2> {
+        RafxShaderGles2::new(self, stages)
     }
 
     pub fn create_root_signature(
         &self,
         root_signature_def: &RafxRootSignatureDef,
-    ) -> RafxResult<RafxRootSignatureGl> {
-        RafxRootSignatureGl::new(self, root_signature_def)
+    ) -> RafxResult<RafxRootSignatureGles2> {
+        RafxRootSignatureGles2::new(self, root_signature_def)
     }
 
     pub fn create_descriptor_set_array(
         &self,
         descriptor_set_array_def: &RafxDescriptorSetArrayDef,
-    ) -> RafxResult<RafxDescriptorSetArrayGl> {
-        RafxDescriptorSetArrayGl::new(self, descriptor_set_array_def)
+    ) -> RafxResult<RafxDescriptorSetArrayGles2> {
+        RafxDescriptorSetArrayGles2::new(self, descriptor_set_array_def)
     }
 
     pub fn create_graphics_pipeline(
         &self,
         graphics_pipeline_def: &RafxGraphicsPipelineDef,
-    ) -> RafxResult<RafxPipelineGl> {
-        RafxPipelineGl::new_graphics_pipeline(self, graphics_pipeline_def)
+    ) -> RafxResult<RafxPipelineGles2> {
+        RafxPipelineGles2::new_graphics_pipeline(self, graphics_pipeline_def)
     }
 
     pub fn create_compute_pipeline(
         &self,
         compute_pipeline_def: &RafxComputePipelineDef,
-    ) -> RafxResult<RafxPipelineGl> {
-        RafxPipelineGl::new_compute_pipeline(self, compute_pipeline_def)
+    ) -> RafxResult<RafxPipelineGles2> {
+        RafxPipelineGles2::new_compute_pipeline(self, compute_pipeline_def)
     }
 
     pub fn create_shader_module(
         &self,
         data: RafxShaderModuleDefGl,
-    ) -> RafxResult<RafxShaderModuleGl> {
-        RafxShaderModuleGl::new(self, data)
+    ) -> RafxResult<RafxShaderModuleGles2> {
+        RafxShaderModuleGles2::new(self, data)
     }
 
     pub fn find_supported_format(

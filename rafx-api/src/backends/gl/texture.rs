@@ -1,21 +1,21 @@
 use crate::gl::gles20::types::GLenum;
-use crate::gl::{gles20, RafxDeviceContextGl, TextureId, NONE_TEXTURE};
+use crate::gl::{gles20, RafxDeviceContextGles2, TextureId, NONE_TEXTURE};
 use crate::{GlTextureFormatInfo, RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions, RafxSampleCount};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
-pub enum RafxRawImageGl {
+pub enum RafxRawImageGles2 {
     //Renderbuffer(RenderbufferId),
     Texture(TextureId),
 }
 
-impl RafxRawImageGl {
+impl RafxRawImageGles2 {
     pub fn gl_texture_id(&self) -> Option<TextureId> {
         match self {
             //RafxRawImageGl::Renderbuffer(_) => None,
-            RafxRawImageGl::Texture(id) => Some(*id),
+            RafxRawImageGles2::Texture(id) => Some(*id),
         }
     }
 
@@ -28,20 +28,20 @@ impl RafxRawImageGl {
 }
 
 #[derive(Debug)]
-pub struct RafxTextureGlInner {
-    device_context: RafxDeviceContextGl,
+pub struct RafxTextureGles2Inner {
+    device_context: RafxDeviceContextGles2,
     texture_def: RafxTextureDef,
-    image: RafxRawImageGl,
+    image: RafxRawImageGles2,
     gl_target: GLenum,
     texture_id: u32,
     format_info: GlTextureFormatInfo,
 }
 
-impl Drop for RafxTextureGlInner {
+impl Drop for RafxTextureGles2Inner {
     fn drop(&mut self) {
         match self.image {
             //RafxRawImageGl::Renderbuffer(_) => {} // do nothing
-            RafxRawImageGl::Texture(texture_id) => self
+            RafxRawImageGles2::Texture(texture_id) => self
                 .device_context
                 .gl_context()
                 .gl_destroy_texture(texture_id)
@@ -53,11 +53,11 @@ impl Drop for RafxTextureGlInner {
 /// Holds the vk::Image and allocation as well as a few vk::ImageViews depending on the
 /// provided RafxResourceType in the texture_def.
 #[derive(Clone, Debug)]
-pub struct RafxTextureGl {
-    inner: Arc<RafxTextureGlInner>,
+pub struct RafxTextureGles2 {
+    inner: Arc<RafxTextureGles2Inner>,
 }
 
-impl PartialEq for RafxTextureGl {
+impl PartialEq for RafxTextureGles2 {
     fn eq(
         &self,
         other: &Self,
@@ -66,9 +66,9 @@ impl PartialEq for RafxTextureGl {
     }
 }
 
-impl Eq for RafxTextureGl {}
+impl Eq for RafxTextureGles2 {}
 
-impl Hash for RafxTextureGl {
+impl Hash for RafxTextureGles2 {
     fn hash<H: Hasher>(
         &self,
         state: &mut H,
@@ -77,12 +77,12 @@ impl Hash for RafxTextureGl {
     }
 }
 
-impl RafxTextureGl {
+impl RafxTextureGles2 {
     pub fn texture_def(&self) -> &RafxTextureDef {
         &self.inner.texture_def
     }
 
-    pub fn gl_raw_image(&self) -> &RafxRawImageGl {
+    pub fn gl_raw_image(&self) -> &RafxRawImageGles2 {
         &self.inner.image
     }
 
@@ -95,18 +95,18 @@ impl RafxTextureGl {
     }
 
     pub fn new(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         texture_def: &RafxTextureDef,
-    ) -> RafxResult<RafxTextureGl> {
+    ) -> RafxResult<RafxTextureGles2> {
         Self::from_existing(device_context, None, texture_def)
     }
 
     // This path is mostly so we can wrap a provided swapchain image
     pub fn from_existing(
-        device_context: &RafxDeviceContextGl,
-        existing_image: Option<RafxRawImageGl>,
+        device_context: &RafxDeviceContextGles2,
+        existing_image: Option<RafxRawImageGles2>,
         texture_def: &RafxTextureDef,
-    ) -> RafxResult<RafxTextureGl> {
+    ) -> RafxResult<RafxTextureGles2> {
         texture_def.verify();
 
         if texture_def.sample_count != RafxSampleCount::SampleCount1 {
@@ -156,12 +156,12 @@ impl RafxTextureGl {
             )?;
             gl_context.gl_bind_texture(gl_target, NONE_TEXTURE)?;
 
-            RafxRawImageGl::Texture(texture_id)
+            RafxRawImageGles2::Texture(texture_id)
         };
 
         let texture_id = crate::internal_shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
 
-        let inner = RafxTextureGlInner {
+        let inner = RafxTextureGles2Inner {
             device_context: device_context.clone(),
             image,
             texture_def: texture_def.clone(),
@@ -170,7 +170,7 @@ impl RafxTextureGl {
             format_info,
         };
 
-        return Ok(RafxTextureGl {
+        return Ok(RafxTextureGles2 {
             inner: Arc::new(inner),
         });
     }

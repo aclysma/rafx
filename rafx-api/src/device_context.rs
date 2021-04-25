@@ -4,7 +4,7 @@
 ))]
 use crate::backends::empty::RafxDeviceContextEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxDeviceContextGl;
+use crate::gl::RafxDeviceContextGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxDeviceContextMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -23,7 +23,7 @@ pub enum RafxDeviceContext {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxDeviceContextMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxDeviceContextGl),
+    Gl(RafxDeviceContextGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -482,7 +482,7 @@ impl RafxDeviceContext {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_device_context(&self) -> Option<&RafxDeviceContextGl> {
+    pub fn gl_device_context(&self) -> Option<&RafxDeviceContextGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxDeviceContext::Vk(_) => None,

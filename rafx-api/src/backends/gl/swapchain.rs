@@ -1,6 +1,6 @@
-use crate::backends::gl::RafxTextureGl;
+use crate::backends::gl::RafxTextureGles2;
 use crate::gl::{
-    GlContext, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl,
+    GlContext, RafxDeviceContextGles2, RafxFenceGles2, RafxSemaphoreGles2,
 };
 use crate::{
     RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
@@ -12,17 +12,17 @@ use std::sync::Arc;
 const SWAPCHAIN_IMAGE_COUNT: u32 = 3;
 const SWAPCHAIN_FORMAT: RafxFormat = RafxFormat::R8G8B8A8_UNORM;
 
-pub struct RafxSwapchainGl {
-    device_context: RafxDeviceContextGl,
+pub struct RafxSwapchainGles2 {
+    device_context: RafxDeviceContextGles2,
     surface_context: Arc<GlContext>,
     swapchain_def: RafxSwapchainDef,
     format: RafxFormat,
     // Just fake this
     next_swapchain_image_index: u32,
-    pub(crate) swapchain_image: RafxTextureGl,
+    pub(crate) swapchain_image: RafxTextureGles2,
 }
 
-impl RafxSwapchainGl {
+impl RafxSwapchainGles2 {
     pub fn swapchain_def(&self) -> &RafxSwapchainDef {
         &self.swapchain_def
     }
@@ -40,10 +40,10 @@ impl RafxSwapchainGl {
     }
 
     pub fn new(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
-    ) -> RafxResult<RafxSwapchainGl> {
+    ) -> RafxResult<RafxSwapchainGles2> {
         let surface_context = device_context
             .gl_context_manager()
             .create_surface_context(raw_window_handle)?;
@@ -52,7 +52,7 @@ impl RafxSwapchainGl {
 
         let swapchain_image = Self::create_swapchain_image(device_context, swapchain_def)?;
 
-        Ok(RafxSwapchainGl {
+        Ok(RafxSwapchainGles2 {
             device_context: device_context.clone(),
             surface_context,
             swapchain_def: swapchain_def.clone(),
@@ -62,8 +62,8 @@ impl RafxSwapchainGl {
         })
     }
 
-    fn create_swapchain_image(device_context: &RafxDeviceContextGl, swapchain_def: &RafxSwapchainDef) -> RafxResult<RafxTextureGl> {
-        RafxTextureGl::new(
+    fn create_swapchain_image(device_context: &RafxDeviceContextGles2, swapchain_def: &RafxSwapchainDef) -> RafxResult<RafxTextureGles2> {
+        RafxTextureGles2::new(
             device_context,
             &RafxTextureDef {
                 extents: RafxExtents3D {
@@ -92,7 +92,7 @@ impl RafxSwapchainGl {
 
     pub fn acquire_next_image_fence(
         &mut self,
-        fence: &RafxFenceGl,
+        fence: &RafxFenceGles2,
     ) -> RafxResult<RafxSwapchainImage> {
         fence.set_submitted(true);
         self.acquire_next_image()
@@ -100,7 +100,7 @@ impl RafxSwapchainGl {
 
     pub fn acquire_next_image_semaphore(
         &mut self,
-        semaphore: &RafxSemaphoreGl,
+        semaphore: &RafxSemaphoreGles2,
     ) -> RafxResult<RafxSwapchainImage> {
         semaphore.set_signal_available(true);
         self.acquire_next_image()

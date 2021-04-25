@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxCommandBufferEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxCommandBufferGl;
+use crate::gl::RafxCommandBufferGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxCommandBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -46,7 +46,7 @@ pub enum RafxCommandBuffer {
     Metal(RafxCommandBufferMetal),
 
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxCommandBufferGl),
+    Gl(RafxCommandBufferGles2),
 
     #[cfg(any(
         feature = "rafx-empty",
@@ -724,7 +724,7 @@ impl RafxCommandBuffer {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_command_buffer(&self) -> Option<&RafxCommandBufferGl> {
+    pub fn gl_command_buffer(&self) -> Option<&RafxCommandBufferGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(_) => None,

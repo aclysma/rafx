@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxQueueEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxQueueGl;
+use crate::gl::RafxQueueGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxQueueMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -33,7 +33,7 @@ pub enum RafxQueue {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxQueueMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxQueueGl),
+    Gl(RafxQueueGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -346,7 +346,7 @@ impl RafxQueue {
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_queue(&self) -> Option<&RafxQueueGl> {
+    pub fn gl_queue(&self) -> Option<&RafxQueueGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(_) => None,

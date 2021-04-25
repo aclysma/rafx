@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxRootSignatureEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxRootSignatureGl;
+use crate::gl::RafxRootSignatureGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxRootSignatureMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -22,7 +22,7 @@ pub enum RafxRootSignature {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxRootSignatureMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxRootSignatureGl),
+    Gl(RafxRootSignatureGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -89,7 +89,7 @@ impl RafxRootSignature {
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_root_signature(&self) -> Option<&RafxRootSignatureGl> {
+    pub fn gl_root_signature(&self) -> Option<&RafxRootSignatureGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(_) => None,

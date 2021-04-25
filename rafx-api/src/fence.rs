@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxFenceEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxFenceGl;
+use crate::gl::RafxFenceGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxFenceMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -29,7 +29,7 @@ pub enum RafxFence {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxFenceMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxFenceGl),
+    Gl(RafxFenceGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -117,7 +117,7 @@ impl RafxFence {
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_fence(&self) -> Option<&RafxFenceGl> {
+    pub fn gl_fence(&self) -> Option<&RafxFenceGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(_) => None,

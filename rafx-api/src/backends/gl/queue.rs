@@ -1,4 +1,4 @@
-use crate::gl::{RafxCommandBufferGl, RafxCommandPoolGl, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl, RafxSwapchainGl, NONE_FRAMEBUFFER, gles20};
+use crate::gl::{RafxCommandBufferGles2, RafxCommandPoolGles2, RafxDeviceContextGles2, RafxFenceGles2, RafxSemaphoreGles2, RafxSwapchainGles2, NONE_FRAMEBUFFER, gles20};
 use crate::{RafxCommandPoolDef, RafxPresentSuccessResult, RafxQueueType, RafxResult};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -6,18 +6,18 @@ use std::sync::Arc;
 static NEXT_QUEUE_ID: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Debug)]
-pub struct RafxQueueGlInner {
-    device_context: RafxDeviceContextGl,
+pub struct RafxQueueGles2Inner {
+    device_context: RafxDeviceContextGles2,
     queue_type: RafxQueueType,
     queue_id: u32,
 }
 
 #[derive(Clone, Debug)]
-pub struct RafxQueueGl {
-    inner: Arc<RafxQueueGlInner>,
+pub struct RafxQueueGles2 {
+    inner: Arc<RafxQueueGles2Inner>,
 }
 
-impl RafxQueueGl {
+impl RafxQueueGles2 {
     pub fn queue_id(&self) -> u32 {
         self.inner.queue_id
     }
@@ -26,29 +26,29 @@ impl RafxQueueGl {
         self.inner.queue_type
     }
 
-    pub fn device_context(&self) -> &RafxDeviceContextGl {
+    pub fn device_context(&self) -> &RafxDeviceContextGles2 {
         &self.inner.device_context
     }
 
     pub fn create_command_pool(
         &self,
         command_pool_def: &RafxCommandPoolDef,
-    ) -> RafxResult<RafxCommandPoolGl> {
-        RafxCommandPoolGl::new(&self, command_pool_def)
+    ) -> RafxResult<RafxCommandPoolGles2> {
+        RafxCommandPoolGles2::new(&self, command_pool_def)
     }
 
     pub fn new(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         queue_type: RafxQueueType,
-    ) -> RafxResult<RafxQueueGl> {
+    ) -> RafxResult<RafxQueueGles2> {
         let queue_id = NEXT_QUEUE_ID.fetch_add(1, Ordering::Relaxed);
-        let inner = RafxQueueGlInner {
+        let inner = RafxQueueGles2Inner {
             device_context: device_context.clone(),
             queue_type,
             queue_id,
         };
 
-        Ok(RafxQueueGl {
+        Ok(RafxQueueGles2 {
             inner: Arc::new(inner),
         })
     }
@@ -60,7 +60,7 @@ impl RafxQueueGl {
 
     fn submit_semaphore_wait(
         &self,
-        wait_semaphores: &[&RafxSemaphoreGl],
+        wait_semaphores: &[&RafxSemaphoreGles2],
     ) -> RafxResult<()> {
         if wait_semaphores.is_empty() {
             return Ok(());
@@ -83,10 +83,10 @@ impl RafxQueueGl {
 
     pub fn submit(
         &self,
-        command_buffers: &[&RafxCommandBufferGl],
-        wait_semaphores: &[&RafxSemaphoreGl],
-        signal_semaphores: &[&RafxSemaphoreGl],
-        signal_fence: Option<&RafxFenceGl>,
+        command_buffers: &[&RafxCommandBufferGles2],
+        wait_semaphores: &[&RafxSemaphoreGles2],
+        signal_semaphores: &[&RafxSemaphoreGles2],
+        signal_fence: Option<&RafxFenceGles2>,
     ) -> RafxResult<()> {
         assert!(!command_buffers.is_empty());
 
@@ -105,8 +105,8 @@ impl RafxQueueGl {
 
     pub fn present(
         &self,
-        swapchain: &RafxSwapchainGl,
-        wait_semaphores: &[&RafxSemaphoreGl],
+        swapchain: &RafxSwapchainGles2,
+        wait_semaphores: &[&RafxSemaphoreGles2],
         _image_index: u32,
     ) -> RafxResult<RafxPresentSuccessResult> {
         self.submit_semaphore_wait(wait_semaphores)?;

@@ -1,19 +1,19 @@
-use crate::gl::RafxDeviceContextGl;
+use crate::gl::RafxDeviceContextGles2;
 use crate::{RafxFenceStatus, RafxResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-pub struct RafxFenceGl {
-    device_context: RafxDeviceContextGl,
+pub struct RafxFenceGles2 {
+    device_context: RafxDeviceContextGles2,
     // Set to true when an operation is scheduled to signal this fence
     // Cleared when an operation is scheduled to consume this fence
     submitted: AtomicBool,
 }
 
-impl RafxFenceGl {
-    pub fn new(device_context: &RafxDeviceContextGl) -> RafxResult<RafxFenceGl> {
+impl RafxFenceGles2 {
+    pub fn new(device_context: &RafxDeviceContextGles2) -> RafxResult<RafxFenceGles2> {
         // Fences are not available on OpenGL ES 2.0
         // use glFlush for Gpu->Cpu sync
-        Ok(RafxFenceGl {
+        Ok(RafxFenceGles2 {
             device_context: device_context.clone(),
             submitted: AtomicBool::new(false),
         })
@@ -33,8 +33,8 @@ impl RafxFenceGl {
     }
 
     pub fn wait_for_fences(
-        _device_context: &RafxDeviceContextGl,
-        fences: &[&RafxFenceGl],
+        _device_context: &RafxDeviceContextGles2,
+        fences: &[&RafxFenceGles2],
     ) -> RafxResult<()> {
         let mut finish_called = false;
         for fence in fences {

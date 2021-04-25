@@ -1,17 +1,17 @@
-use crate::gl::{gles20, RafxDeviceContextGl, ShaderId};
+use crate::gl::{gles20, RafxDeviceContextGles2, ShaderId};
 use crate::{RafxResult, RafxShaderModule, RafxShaderModuleDefGl, RafxShaderStageFlags};
 use rafx_base::trust_cell::TrustCell;
 use std::ffi::{CStr, CString};
 use std::sync::Arc;
 
 #[derive(Debug)]
-struct GlCompiledShaderInner {
-    device_context: RafxDeviceContextGl,
+struct Gles2CompiledShaderInner {
+    device_context: RafxDeviceContextGles2,
     shader_id: ShaderId,
     stage: RafxShaderStageFlags,
 }
 
-impl Drop for GlCompiledShaderInner {
+impl Drop for Gles2CompiledShaderInner {
     fn drop(&mut self) {
         self.device_context
             .gl_context()
@@ -21,11 +21,11 @@ impl Drop for GlCompiledShaderInner {
 }
 
 #[derive(Clone, Debug)]
-pub struct GlCompiledShader {
-    inner: Arc<GlCompiledShaderInner>,
+pub struct Gles2CompiledShader {
+    inner: Arc<Gles2CompiledShaderInner>,
 }
 
-impl GlCompiledShader {
+impl Gles2CompiledShader {
     pub fn stage(&self) -> RafxShaderStageFlags {
         self.inner.stage
     }
@@ -35,13 +35,13 @@ impl GlCompiledShader {
     }
 }
 
-pub struct RafxShaderModuleGlInner {
-    device_context: RafxDeviceContextGl,
+pub struct RafxShaderModuleGles2Inner {
+    device_context: RafxDeviceContextGles2,
     src: CString,
-    compiled_shader: TrustCell<Option<GlCompiledShader>>,
+    compiled_shader: TrustCell<Option<Gles2CompiledShader>>,
 }
 
-impl std::fmt::Debug for RafxShaderModuleGlInner {
+impl std::fmt::Debug for RafxShaderModuleGles2Inner {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
@@ -53,37 +53,37 @@ impl std::fmt::Debug for RafxShaderModuleGlInner {
 }
 
 #[derive(Clone, Debug)]
-pub struct RafxShaderModuleGl {
-    inner: Arc<RafxShaderModuleGlInner>,
+pub struct RafxShaderModuleGles2 {
+    inner: Arc<RafxShaderModuleGles2Inner>,
 }
 
-impl RafxShaderModuleGl {
+impl RafxShaderModuleGles2 {
     pub fn src(&self) -> &CStr {
         &self.inner.src
     }
 
     pub fn new(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         data: RafxShaderModuleDefGl,
     ) -> RafxResult<Self> {
         match data {
             RafxShaderModuleDefGl::GlSrc(src) => {
-                RafxShaderModuleGl::new_from_src(device_context, src)
+                RafxShaderModuleGles2::new_from_src(device_context, src)
             }
         }
     }
 
     pub fn new_from_src(
-        device_context: &RafxDeviceContextGl,
+        device_context: &RafxDeviceContextGles2,
         src: &str,
     ) -> RafxResult<Self> {
-        let inner = RafxShaderModuleGlInner {
+        let inner = RafxShaderModuleGles2Inner {
             device_context: device_context.clone(),
             compiled_shader: TrustCell::new(None),
             src: CString::new(src).map_err(|_| "Could not conver GL src from string to cstring")?,
         };
 
-        Ok(RafxShaderModuleGl {
+        Ok(RafxShaderModuleGles2 {
             inner: Arc::new(inner),
         })
     }
@@ -91,7 +91,7 @@ impl RafxShaderModuleGl {
     pub(crate) fn compile_shader(
         &self,
         stage: RafxShaderStageFlags,
-    ) -> RafxResult<GlCompiledShader> {
+    ) -> RafxResult<Gles2CompiledShader> {
         let mut previously_compiled_shader = self.inner.compiled_shader.borrow_mut();
         if let Some(compiled_shader) = previously_compiled_shader.as_ref() {
             return if compiled_shader.stage() == stage {
@@ -113,13 +113,13 @@ impl RafxShaderModuleGl {
         let gl_context = self.inner.device_context.gl_context();
         let shader_id = gl_context.compile_shader(gl_stage, &self.inner.src)?;
 
-        let inner = GlCompiledShaderInner {
+        let inner = Gles2CompiledShaderInner {
             device_context: self.inner.device_context.clone(),
             shader_id,
             stage,
         };
 
-        let compiled_shader = GlCompiledShader {
+        let compiled_shader = Gles2CompiledShader {
             inner: Arc::new(inner),
         };
 
@@ -129,7 +129,7 @@ impl RafxShaderModuleGl {
     }
 }
 
-impl Into<RafxShaderModule> for RafxShaderModuleGl {
+impl Into<RafxShaderModule> for RafxShaderModuleGles2 {
     fn into(self) -> RafxShaderModule {
         RafxShaderModule::Gl(self)
     }

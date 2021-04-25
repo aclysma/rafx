@@ -1,4 +1,4 @@
-use crate::gl::{DescriptorSetArrayData, GlPipelineInfo, RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl, RafxRootSignatureGl, FramebufferId};
+use crate::gl::{DescriptorSetArrayData, Gles2PipelineInfo, RafxCommandBufferGles2, RafxDeviceContextGles2, RafxQueueGles2, RafxRootSignatureGles2, FramebufferId};
 use crate::{
     RafxCommandBufferDef, RafxCommandPoolDef, RafxExtents2D, RafxQueueType, RafxResult,
     MAX_DESCRIPTOR_SET_LAYOUTS,
@@ -14,16 +14,16 @@ pub(crate) struct BoundDescriptorSet {
     pub(crate) array_index: u32,
 }
 
-pub(crate) struct CommandPoolGlStateInner {
-    device_context: RafxDeviceContextGl,
+pub(crate) struct CommandPoolGles2StateInner {
+    device_context: RafxDeviceContextGles2,
     pub(crate) id: u32,
     pub(crate) is_started: bool,
     pub(crate) surface_size: Option<RafxExtents2D>,
-    pub(crate) current_gl_pipeline_info: Option<Arc<GlPipelineInfo>>,
+    pub(crate) current_gl_pipeline_info: Option<Arc<Gles2PipelineInfo>>,
     pub(crate) stencil_reference_value: u32,
 
     pub(crate) bound_descriptor_sets: [Option<BoundDescriptorSet>; MAX_DESCRIPTOR_SET_LAYOUTS],
-    pub(crate) bound_descriptor_sets_root_signature: Option<RafxRootSignatureGl>,
+    pub(crate) bound_descriptor_sets_root_signature: Option<RafxRootSignatureGles2>,
     pub(crate) descriptor_sets_update_index: [u64; MAX_DESCRIPTOR_SET_LAYOUTS],
 
     // One per possible bound vertex buffer (could be 1 per attribute!)
@@ -32,13 +32,13 @@ pub(crate) struct CommandPoolGlStateInner {
     pub(crate) framebuffer_id: FramebufferId,
 }
 
-impl Drop for CommandPoolGlStateInner {
+impl Drop for CommandPoolGles2StateInner {
     fn drop(&mut self) {
         self.device_context.gl_context().gl_destroy_framebuffer(self.framebuffer_id).unwrap();
     }
 }
 
-impl PartialEq for CommandPoolGlStateInner {
+impl PartialEq for CommandPoolGles2StateInner {
     fn eq(
         &self,
         other: &Self,
@@ -47,7 +47,7 @@ impl PartialEq for CommandPoolGlStateInner {
     }
 }
 
-impl std::fmt::Debug for CommandPoolGlStateInner {
+impl std::fmt::Debug for CommandPoolGles2StateInner {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
@@ -66,7 +66,7 @@ impl std::fmt::Debug for CommandPoolGlStateInner {
     }
 }
 
-impl CommandPoolGlStateInner {
+impl CommandPoolGles2StateInner {
     pub(crate) fn clear_bindings(&mut self) {
         for i in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
             self.bound_descriptor_sets[i] = None;
@@ -77,15 +77,15 @@ impl CommandPoolGlStateInner {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct CommandPoolGlState {
-    inner: Arc<TrustCell<CommandPoolGlStateInner>>,
+pub(crate) struct CommandPoolGles2State {
+    inner: Arc<TrustCell<CommandPoolGles2StateInner>>,
 }
 
-impl CommandPoolGlState {
-    fn new(device_context: &RafxDeviceContextGl) -> RafxResult<Self> {
+impl CommandPoolGles2State {
+    fn new(device_context: &RafxDeviceContextGles2) -> RafxResult<Self> {
         let framebuffer_id = device_context.gl_context().gl_create_framebuffer()?;
 
-        let inner = CommandPoolGlStateInner {
+        let inner = CommandPoolGles2StateInner {
             device_context: device_context.clone(),
             id: NEXT_COMMAND_POOL_STATE_ID.fetch_add(1, Ordering::Relaxed),
             is_started: false,
@@ -104,27 +104,27 @@ impl CommandPoolGlState {
             framebuffer_id
         };
 
-        Ok(CommandPoolGlState {
+        Ok(CommandPoolGles2State {
             inner: Arc::new(TrustCell::new(inner)),
         })
     }
 
-    pub(crate) fn borrow(&self) -> rafx_base::trust_cell::Ref<CommandPoolGlStateInner> {
+    pub(crate) fn borrow(&self) -> rafx_base::trust_cell::Ref<CommandPoolGles2StateInner> {
         self.inner.borrow()
     }
 
-    pub(crate) fn borrow_mut(&self) -> rafx_base::trust_cell::RefMut<CommandPoolGlStateInner> {
+    pub(crate) fn borrow_mut(&self) -> rafx_base::trust_cell::RefMut<CommandPoolGles2StateInner> {
         self.inner.borrow_mut()
     }
 }
 
-pub struct RafxCommandPoolGl {
-    command_pool_state: CommandPoolGlState,
-    queue: RafxQueueGl,
+pub struct RafxCommandPoolGles2 {
+    command_pool_state: CommandPoolGles2State,
+    queue: RafxQueueGles2,
 }
 
-impl RafxCommandPoolGl {
-    pub fn device_context(&self) -> &RafxDeviceContextGl {
+impl RafxCommandPoolGles2 {
+    pub fn device_context(&self) -> &RafxDeviceContextGles2 {
         self.queue.device_context()
     }
 
@@ -132,19 +132,19 @@ impl RafxCommandPoolGl {
         self.queue.queue_type()
     }
 
-    pub fn queue(&self) -> &RafxQueueGl {
+    pub fn queue(&self) -> &RafxQueueGles2 {
         &self.queue
     }
 
-    pub(crate) fn command_pool_state(&self) -> &CommandPoolGlState {
+    pub(crate) fn command_pool_state(&self) -> &CommandPoolGles2State {
         &self.command_pool_state
     }
 
     pub fn create_command_buffer(
         &self,
         command_buffer_def: &RafxCommandBufferDef,
-    ) -> RafxResult<RafxCommandBufferGl> {
-        RafxCommandBufferGl::new(self, command_buffer_def)
+    ) -> RafxResult<RafxCommandBufferGles2> {
+        RafxCommandBufferGles2::new(self, command_buffer_def)
     }
 
     pub fn reset_command_pool(&self) -> RafxResult<()> {
@@ -156,11 +156,11 @@ impl RafxCommandPoolGl {
     }
 
     pub fn new(
-        queue: &RafxQueueGl,
+        queue: &RafxQueueGles2,
         _command_pool_def: &RafxCommandPoolDef,
-    ) -> RafxResult<RafxCommandPoolGl> {
-        Ok(RafxCommandPoolGl {
-            command_pool_state: CommandPoolGlState::new(queue.device_context())?,
+    ) -> RafxResult<RafxCommandPoolGles2> {
+        Ok(RafxCommandPoolGles2 {
+            command_pool_state: CommandPoolGles2State::new(queue.device_context())?,
             queue: queue.clone(),
         })
     }

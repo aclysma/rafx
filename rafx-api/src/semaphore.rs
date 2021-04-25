@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxSemaphoreEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxSemaphoreGl;
+use crate::gl::RafxSemaphoreGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSemaphoreMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -24,7 +24,7 @@ pub enum RafxSemaphore {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSemaphoreMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxSemaphoreGl),
+    Gl(RafxSemaphoreGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -74,7 +74,7 @@ impl RafxSemaphore {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_semaphore(&self) -> Option<&RafxSemaphoreGl> {
+    pub fn gl_semaphore(&self) -> Option<&RafxSemaphoreGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxSemaphore::Vk(_) => None,
