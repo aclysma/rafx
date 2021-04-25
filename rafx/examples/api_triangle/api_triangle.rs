@@ -327,22 +327,6 @@ fn run() -> RafxResult<()> {
             vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
             uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
-            unsafe {
-                println!("color: {}", elapsed_seconds.sin() * 0.5 + 0.5);
-                device_context
-                    .gl_device_context()
-                    .unwrap()
-                    .gl_context()
-                    .gles2()
-                    .ClearColor(elapsed_seconds.sin() * 0.5 + 0.5, 0.0, 1.0, 1.0);
-                device_context
-                    .gl_device_context()
-                    .unwrap()
-                    .gl_context()
-                    .gles2()
-                    .Clear(rafx_api::gl::gles20::COLOR_BUFFER_BIT);
-            }
-
             //
             // Record the command buffer. For now just transition it between layouts
             //

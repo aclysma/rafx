@@ -56,6 +56,7 @@ impl RafxDeviceContextMetalInner {
             upload_buffer_texture_alignment: 16,
             upload_buffer_texture_row_alignment: 1,
             supports_clamp_to_border_color: true, //TODO: Check for iOS support
+            max_vertex_attribute_count: 31
         };
 
         #[cfg(debug_assertions)]
@@ -70,6 +71,9 @@ impl RafxDeviceContextMetalInner {
         let device = metal_rs::Device::system_default().expect("no device found");
 
         let metal_features = MetalFeatures::from_device(device.as_ref());
+
+        log::debug!("Device: {}", metal_features.device_name);
+        log::debug!("GPU family (apple={:?} mac={:?} common={:?}", metal_features.gpu_family_apple, metal_features.gpu_family_mac, metal_features.gpu_family_common);
 
         Ok(RafxDeviceContextMetalInner {
             device_info,
