@@ -1,5 +1,5 @@
-use crate::gl::gles2_bindings;
-use crate::gl::gles2_bindings::types::GLenum;
+use crate::gles2::gles2_bindings;
+use crate::gles2::gles2_bindings::types::GLenum;
 use crate::{
     RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxBlendState, RafxCompareOp, RafxCullMode,
     RafxDepthState, RafxFilterType, RafxFrontFace, RafxMemoryUsage, RafxPrimitiveTopology,

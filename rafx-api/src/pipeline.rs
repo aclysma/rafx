@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxPipelineEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxPipelineGles2;
+use crate::gles2::RafxPipelineGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxPipelineMetal;
 #[cfg(feature = "rafx-vulkan")]

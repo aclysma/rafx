@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxRootSignatureEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxRootSignatureGles2;
+use crate::gles2::RafxRootSignatureGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxRootSignatureMetal;
 #[cfg(feature = "rafx-vulkan")]

@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxBufferEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxBufferGles2;
+use crate::gles2::RafxBufferGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxBufferMetal;
 #[cfg(feature = "rafx-vulkan")]

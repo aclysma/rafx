@@ -1,4 +1,4 @@
-use crate::gl::{BufferId, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2, DescriptorInfo};
+use crate::gles2::{BufferId, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2, DescriptorInfo};
 use crate::{
     RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType,
     RafxResult, RafxRootSignature,

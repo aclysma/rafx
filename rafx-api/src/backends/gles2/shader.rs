@@ -1,4 +1,4 @@
-use crate::gl::{Gles2CompiledShader, ProgramId, RafxDeviceContextGles2};
+use crate::gles2::{Gles2CompiledShader, ProgramId, RafxDeviceContextGles2};
 use crate::{RafxPipelineReflection, RafxResult, RafxShaderStageDef, RafxShaderStageFlags};
 use std::sync::Arc;
 

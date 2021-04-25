@@ -1,5 +1,5 @@
-use crate::gl::gles2_bindings::types::*;
-use crate::gl::{gles2_bindings, ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId, WindowHash, NONE_BUFFER, NONE_PROGRAM, NONE_RENDERBUFFER, NONE_TEXTURE, FramebufferId, NONE_FRAMEBUFFER};
+use crate::gles2::gles2_bindings::types::*;
+use crate::gles2::{gles2_bindings, ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId, WindowHash, NONE_BUFFER, NONE_PROGRAM, NONE_RENDERBUFFER, NONE_TEXTURE, FramebufferId, NONE_FRAMEBUFFER};
 use crate::{RafxError, RafxResult};
 use fnv::FnvHashMap;
 use raw_window_handle::HasRawWindowHandle;

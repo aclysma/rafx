@@ -1,4 +1,4 @@
-use crate::gl::{gles2_bindings, ProgramId, RafxTextureGles2, BufferId, GlContext, NONE_PROGRAM, NONE_TEXTURE, NONE_BUFFER};
+use crate::gles2::{gles2_bindings, ProgramId, RafxTextureGles2, BufferId, GlContext, NONE_PROGRAM, NONE_TEXTURE, NONE_BUFFER};
 use crate::{RafxResult, RafxDeviceInfo};
 use std::ffi::CString;
 

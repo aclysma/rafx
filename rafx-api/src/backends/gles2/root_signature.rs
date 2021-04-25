@@ -1,5 +1,5 @@
-use crate::gl::reflection::{UniformIndex, UniformReflectionData};
-use crate::gl::{ProgramId, RafxDeviceContextGles2};
+use crate::gles2::reflection::{UniformIndex, UniformReflectionData};
+use crate::gles2::{ProgramId, RafxDeviceContextGles2};
 use crate::{
     RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,

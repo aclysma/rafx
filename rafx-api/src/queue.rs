@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxQueueEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxQueueGles2;
+use crate::gles2::RafxQueueGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxQueueMetal;
 #[cfg(feature = "rafx-vulkan")]

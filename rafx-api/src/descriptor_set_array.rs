@@ -4,7 +4,7 @@
 ))]
 use crate::empty::{RafxDescriptorSetArrayEmpty, RafxDescriptorSetHandleEmpty};
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::{RafxDescriptorSetArrayGles2, RafxDescriptorSetHandleGles2};
+use crate::gles2::{RafxDescriptorSetArrayGles2, RafxDescriptorSetHandleGles2};
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxDescriptorSetArrayMetal, RafxDescriptorSetHandleMetal};
 #[cfg(feature = "rafx-vulkan")]

@@ -2,7 +2,7 @@ use crate::{RafxApiDef, RafxResult};
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
-use crate::gl::{RafxDeviceContextGles2, RafxDeviceContextGles2Inner};
+use crate::gles2::{RafxDeviceContextGles2, RafxDeviceContextGles2Inner};
 
 /// Gl-specific configuration
 #[derive(Default)]

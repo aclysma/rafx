@@ -1,5 +1,5 @@
-use crate::gl::gles2_bindings::types::GLenum;
-use crate::gl::{gles2_bindings, GlContext, LocationId};
+use crate::gles2::gles2_bindings::types::GLenum;
+use crate::gles2::{gles2_bindings, GlContext, LocationId};
 use crate::RafxResult;
 
 pub fn byte_size_of_type(gl_type: GLenum) -> u32 {

@@ -1,4 +1,4 @@
-use crate::gl::{RafxCommandBufferGles2, RafxCommandPoolGles2, RafxDeviceContextGles2, RafxFenceGles2, RafxSemaphoreGles2, RafxSwapchainGles2, NONE_FRAMEBUFFER, gles2_bindings};
+use crate::gles2::{RafxCommandBufferGles2, RafxCommandPoolGles2, RafxDeviceContextGles2, RafxFenceGles2, RafxSemaphoreGles2, RafxSwapchainGles2, NONE_FRAMEBUFFER, gles2_bindings};
 use crate::{RafxCommandPoolDef, RafxPresentSuccessResult, RafxQueueType, RafxResult};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;

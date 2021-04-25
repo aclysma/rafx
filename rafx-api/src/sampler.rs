@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxSamplerEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxSamplerGles2;
+use crate::gles2::RafxSamplerGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSamplerMetal;
 #[cfg(feature = "rafx-vulkan")]

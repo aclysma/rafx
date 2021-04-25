@@ -1,8 +1,8 @@
-use crate::gl::{BufferId, RafxDeviceContextGles2, NONE_BUFFER};
+use crate::gles2::{BufferId, RafxDeviceContextGles2, NONE_BUFFER};
 use crate::{RafxBufferDef, RafxMemoryUsage, RafxResourceType, RafxResult};
 
-use crate::gl::gles2_bindings;
-use crate::gl::gles2_bindings::types::GLenum;
+use crate::gles2::gles2_bindings;
+use crate::gles2::gles2_bindings::types::GLenum;
 use rafx_base::trust_cell::TrustCell;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;

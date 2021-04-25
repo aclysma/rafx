@@ -4,7 +4,7 @@
 ))]
 use crate::backends::empty::RafxDeviceContextEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxDeviceContextGles2;
+use crate::gles2::RafxDeviceContextGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxDeviceContextMetal;
 #[cfg(feature = "rafx-vulkan")]

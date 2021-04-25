@@ -1,6 +1,6 @@
-use crate::gl::gles2_bindings;
-use crate::gl::gles2_bindings::types::GLenum;
-use crate::gl::RafxDeviceContextGles2;
+use crate::gles2::gles2_bindings;
+use crate::gles2::gles2_bindings::types::GLenum;
+use crate::gles2::RafxDeviceContextGles2;
 use crate::{RafxFilterType, RafxMipMapMode, RafxResult, RafxSamplerDef};
 use std::sync::Arc;
 

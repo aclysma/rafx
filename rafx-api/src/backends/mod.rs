@@ -5,7 +5,7 @@ pub mod metal;
 pub mod vulkan;
 
 #[cfg(feature = "rafx-gles2")]
-pub mod gl;
+pub mod gles2;
 
 #[cfg(any(
     feature = "rafx-empty",

@@ -1,4 +1,4 @@
-use crate::gl::{gles2_bindings, RafxDeviceContextGles2, ShaderId};
+use crate::gles2::{gles2_bindings, RafxDeviceContextGles2, ShaderId};
 use crate::{RafxResult, RafxShaderModule, RafxShaderModuleDefGles2, RafxShaderStageFlags};
 use rafx_base::trust_cell::TrustCell;
 use std::ffi::{CStr, CString};

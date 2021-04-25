@@ -7,16 +7,16 @@ use crate::{
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
-use crate::gl::{
+use crate::gles2::{
     GlContextManager, RafxBufferGles2, RafxDescriptorSetArrayGles2, RafxFenceGles2, RafxPipelineGles2,
     RafxQueueGles2, RafxRootSignatureGles2, RafxSamplerGles2, RafxSemaphoreGles2, RafxShaderGles2,
     RafxShaderModuleGles2, RafxSwapchainGles2, RafxTextureGles2,
 };
 
-use crate::gl::gles2_bindings;
-use crate::gl::GlContext;
+use crate::gles2::gles2_bindings;
+use crate::gles2::GlContext;
 
-use crate::gl::fullscreen_quad::FullscreenQuad;
+use crate::gles2::fullscreen_quad::FullscreenQuad;
 
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]

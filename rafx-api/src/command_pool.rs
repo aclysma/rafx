@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxCommandPoolEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxCommandPoolGles2;
+use crate::gles2::RafxCommandPoolGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxCommandPoolMetal;
 #[cfg(feature = "rafx-vulkan")]

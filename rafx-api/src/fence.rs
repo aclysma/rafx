@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxFenceEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxFenceGles2;
+use crate::gles2::RafxFenceGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxFenceMetal;
 #[cfg(feature = "rafx-vulkan")]

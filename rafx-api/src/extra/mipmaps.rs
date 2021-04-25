@@ -1,7 +1,7 @@
 use crate::{RafxCommandBuffer, RafxResult, RafxTexture};
 
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxCommandBufferGles2;
+use crate::gles2::RafxCommandBufferGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxCommandBufferMetal;
 #[cfg(feature = "rafx-vulkan")]

@@ -1,4 +1,4 @@
-use crate::gl::GlContext;
+use crate::gles2::GlContext;
 use crate::RafxResult;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::{Arc, Mutex};

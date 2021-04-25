@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxSemaphoreEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxSemaphoreGles2;
+use crate::gles2::RafxSemaphoreGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSemaphoreMetal;
 #[cfg(feature = "rafx-vulkan")]

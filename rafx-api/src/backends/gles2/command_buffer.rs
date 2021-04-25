@@ -1,4 +1,4 @@
-use crate::gl::{
+use crate::gles2::{
     BoundDescriptorSet, CommandPoolGles2State, CommandPoolGles2StateInner, DescriptorSetArrayData,
     GlContext, Gles2PipelineInfo, RafxBufferGles2, RafxCommandPoolGles2, RafxDescriptorSetArrayGles2,
     RafxDescriptorSetHandleGles2, RafxPipelineGles2, RafxQueueGles2, RafxRootSignatureGles2, RafxTextureGles2,
@@ -13,12 +13,12 @@ use crate::{
 
 use rafx_base::trust_cell::TrustCell;
 
-use crate::gl::conversions::Gles2DepthStencilState;
-use crate::gl::gles2_bindings;
+use crate::gles2::conversions::Gles2DepthStencilState;
+use crate::gles2::gles2_bindings;
 
-use crate::backends::gl::RafxRawImageGles2;
-use crate::gl::gl_type_util;
-use crate::gl::gles2_bindings::types::GLenum;
+use crate::backends::gles2::RafxRawImageGles2;
+use crate::gles2::gl_type_util;
+use crate::gles2::gles2_bindings::types::GLenum;
 use std::sync::Arc;
 
 #[derive(Debug)]

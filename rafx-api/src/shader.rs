@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxShaderEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxShaderGles2;
+use crate::gles2::RafxShaderGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxShaderMetal;
 #[cfg(feature = "rafx-vulkan")]

@@ -1,4 +1,4 @@
-use crate::gl::RafxDeviceContextGles2;
+use crate::gles2::RafxDeviceContextGles2;
 use crate::{RafxFenceStatus, RafxResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 

@@ -1,5 +1,5 @@
-use crate::backends::gl::RafxTextureGles2;
-use crate::gl::{
+use crate::backends::gles2::RafxTextureGles2;
+use crate::gles2::{
     GlContext, RafxDeviceContextGles2, RafxFenceGles2, RafxSemaphoreGles2,
 };
 use crate::{

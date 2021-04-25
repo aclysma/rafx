@@ -241,9 +241,9 @@ pub use backends::vulkan;
 pub use backends::vulkan::RafxApiDefVulkan;
 
 #[cfg(feature = "rafx-gles2")]
-pub use backends::gl;
+pub use backends::gles2;
 #[cfg(feature = "rafx-gles2")]
-pub use backends::gl::RafxApiDefGles2;
+pub use backends::gles2::RafxApiDefGles2;
 
 #[cfg(any(
     feature = "rafx-empty",

@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxApiEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::{RafxApiDefGles2, RafxApiGles2};
+use crate::gles2::{RafxApiDefGles2, RafxApiGles2};
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxApiDefMetal, RafxApiMetal};
 #[cfg(feature = "rafx-vulkan")]

@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxSwapchainEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxSwapchainGles2;
+use crate::gles2::RafxSwapchainGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSwapchainMetal;
 #[cfg(feature = "rafx-vulkan")]

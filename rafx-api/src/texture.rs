@@ -4,7 +4,7 @@
 ))]
 use crate::empty::RafxTextureEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::RafxTextureGles2;
+use crate::gles2::RafxTextureGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxTextureMetal;
 #[cfg(feature = "rafx-vulkan")]
