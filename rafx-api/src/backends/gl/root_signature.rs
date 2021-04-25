@@ -1,4 +1,4 @@
-use crate::gl::{RafxDeviceContextGl, RafxSamplerGl, ProgramId, LocationId};
+use crate::gl::{RafxDeviceContextGl, ProgramId};
 use crate::{
     RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
@@ -163,7 +163,7 @@ impl RafxRootSignatureGl {
         let gl_context = device_context.gl_context();
 
         // Make sure all shaders are compatible/build lookup of shared data from them
-        let (pipeline_type, mut merged_resources, _merged_resources_name_index_map) =
+        let (pipeline_type, merged_resources, _merged_resources_name_index_map) =
             crate::internal_shared::merge_resources(root_signature_def)?;
 
         let mut layouts = [
@@ -193,7 +193,7 @@ impl RafxRootSignatureGl {
         for resource in &merged_resources {
             resource.validate()?;
 
-            let mut descriptor_data_offset_in_set = None;
+            let descriptor_data_offset_in_set;
             if resource.resource_type.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE | RafxResourceType::SAMPLER) {
                 descriptor_data_offset_in_set = Some(next_descriptor_data_image_offset[resource.set_index as usize]);
                 next_descriptor_data_image_offset[resource.set_index as usize] += resource.element_count_normalized();

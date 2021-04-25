@@ -228,6 +228,10 @@ fn process_glsl_shader(
     let package_gles = (args.package_all || args.package_gles) && cooked_shader_file.is_some();
     log::trace!("package VK: {} Metal: {} GLES: {}", package_vk, package_metal, package_gles);
 
+    if cooked_shader_file.is_some() && !(package_vk || package_metal || package_gles) {
+        Err("A cooked shader file or path was specified but no shader types are specified to package. Pass --package-vk, --package-metal, --package-gles, or --package-all")?;
+    }
+
     let code = std::fs::read_to_string(&glsl_file)?;
     let entry_point_name = "main";
 

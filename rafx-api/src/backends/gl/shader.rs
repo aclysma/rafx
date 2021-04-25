@@ -1,7 +1,6 @@
-use crate::gl::{RafxDeviceContextGl, ShaderId, ProgramId, GlCompiledShader};
+use crate::gl::{RafxDeviceContextGl, ProgramId, GlCompiledShader};
 use crate::{RafxPipelineReflection, RafxResult, RafxShaderStageDef, RafxShaderStageFlags};
 use std::sync::Arc;
-use fnv::FnvHashMap;
 
 #[derive(Debug)]
 struct RafxShaderGlInner {
@@ -12,12 +11,11 @@ struct RafxShaderGlInner {
     vertex_shader: GlCompiledShader,
     fragment_shader: GlCompiledShader,
     program_id: ProgramId,
-    all_uniform_member_offsets: FnvHashMap<String, u32>
 }
 
 impl Drop for RafxShaderGlInner {
     fn drop(&mut self) {
-        self.device_context.gl_context().gl_destroy_program(self.program_id);
+        self.device_context.gl_context().gl_destroy_program(self.program_id).unwrap();
     }
 }
 
@@ -61,8 +59,6 @@ impl RafxShaderGl {
         let mut vertex_shader_id = None;
         let mut fragment_shader_id = None;
 
-        let mut all_uniform_member_offsets = FnvHashMap::<String, u32>::default();
-
         for stage in &stages {
             stage_flags |= stage.reflection.shader_stage;
 
@@ -95,7 +91,6 @@ impl RafxShaderGl {
             vertex_shader,
             fragment_shader,
             program_id,
-            all_uniform_member_offsets
         };
 
         Ok(RafxShaderGl {

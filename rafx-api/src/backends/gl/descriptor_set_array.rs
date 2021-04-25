@@ -1,8 +1,7 @@
-use crate::gl::{RafxBufferGl, RafxDeviceContextGl, DescriptorSetLayoutInfo, GlBufferContents, BufferId};
+use crate::gl::{RafxDeviceContextGl, DescriptorSetLayoutInfo, GlBufferContents, BufferId};
 use crate::{
-    RafxBufferDef, RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate,
-    RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult, RafxRootSignature,
-    RafxTextureBindType,
+    RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate,
+    RafxResourceType, RafxResult, RafxRootSignature,
 };
 
 use rafx_base::trust_cell::TrustCell;
@@ -90,7 +89,7 @@ impl RafxDescriptorSetArrayGl {
     }
 
     pub(crate) fn new(
-        device_context: &RafxDeviceContextGl,
+        _device_context: &RafxDeviceContextGl,
         descriptor_set_array_def: &RafxDescriptorSetArrayDef,
     ) -> RafxResult<Self> {
         let root_signature = descriptor_set_array_def

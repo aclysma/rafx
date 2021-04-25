@@ -1,7 +1,6 @@
 use crate::gl::{RafxCommandBufferGl, RafxCommandPoolGl, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl, RafxSwapchainGl};
 use crate::{RafxCommandPoolDef, RafxPresentSuccessResult, RafxQueueType, RafxResult};
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 static NEXT_QUEUE_ID: AtomicU32 = AtomicU32::new(0);

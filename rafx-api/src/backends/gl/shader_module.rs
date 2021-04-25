@@ -1,6 +1,6 @@
 use crate::gl::{RafxDeviceContextGl, gles20, ShaderId};
 use crate::{RafxResult, RafxShaderModule, RafxShaderModuleDefGl, RafxShaderStageFlags};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::ffi::{CString, CStr};
 use rafx_base::trust_cell::TrustCell;
 

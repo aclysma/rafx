@@ -3,7 +3,7 @@ use crate::RafxResult;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct RafxSemaphoreGl {
-    device_context: RafxDeviceContextGl,
+    _device_context: RafxDeviceContextGl,
 
     // Set to true when an operation is scheduled to signal this semaphore
     // Cleared when an operation is scheduled to consume this semaphore
@@ -15,7 +15,7 @@ impl RafxSemaphoreGl {
         // Semaphores are not available on OpenGL ES 2.0
         // use glFlush for Gpu->Gpu sync
         Ok(RafxSemaphoreGl {
-            device_context: device_context.clone(),
+            _device_context: device_context.clone(),
             signal_available: AtomicBool::new(false),
         })
     }

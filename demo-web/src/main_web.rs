@@ -1,10 +1,8 @@
-use web_sys::WebGlRenderingContext;
 use wasm_bindgen::prelude::*;
 use log::Level;
 
 use winit::{
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::EventLoop,
     window::WindowBuilder,
 };
 use raw_window_handle::HasRawWindowHandle;

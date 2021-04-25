@@ -1,5 +1,4 @@
 use crate::gl::{gles20, GlContext, LocationId};
-use crate::gl::gles20::types;
 use crate::gl::gles20::types::GLenum;
 use crate::RafxResult;
 

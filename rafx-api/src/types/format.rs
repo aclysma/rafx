@@ -8,7 +8,6 @@ use metal_rs::MTLVertexFormat;
 use crate::gl::gles20::types::GLenum;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
-use crate::RafxMemoryUsage::Unknown;
 
 //TODO: Try using Some/None instead of UNDEFINED format
 
@@ -854,22 +853,7 @@ impl Into<MTLVertexFormat> for RafxFormat {
 pub struct GlTextureFormatInfo {
     pub gl_format: GLenum,
     pub gl_type: GLenum,
-    pub gl_internal_format: GLenum,
-}
-
-#[cfg(feature = "rafx-gl")]
-impl GlTextureFormatInfo {
-    fn new(
-        gl_format: GLenum,
-        gl_type: GLenum,
-        gl_internal_format: GLenum,
-    ) -> Self {
-        GlTextureFormatInfo {
-            gl_format,
-            gl_type,
-            gl_internal_format,
-        }
-    }
+    pub gl_internal_format: i32,
 }
 
 //TODO: Really not sure about this or what GL ES 2.0 supports
@@ -1267,7 +1251,7 @@ impl RafxFormat {
         formats.map(|(gl_format, gl_internal_format)| GlTextureFormatInfo {
             gl_format,
             gl_type,
-            gl_internal_format
+            gl_internal_format: gl_internal_format as i32
         })
     }
 }

@@ -40,7 +40,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-metal")]
             RafxDeviceContext::Metal(inner) => inner.device_info(),
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => inner.device_info(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -58,11 +58,9 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-vulkan")]
             RafxDeviceContext::Vk(inner) => inner.find_supported_format(candidates, resource_type),
             #[cfg(feature = "rafx-metal")]
-            RafxDeviceContext::Metal(inner) => {
-                inner.find_supported_format(candidates, resource_type)
-            }
+            RafxDeviceContext::Metal(inner) => inner.find_supported_format(candidates, resource_type),
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => inner.find_supported_format(candidates, resource_type),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -198,11 +196,9 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-vulkan")]
             RafxDeviceContext::Vk(inner) => RafxSampler::Vk(inner.create_sampler(sampler_def)?),
             #[cfg(feature = "rafx-metal")]
-            RafxDeviceContext::Metal(inner) => {
-                RafxSampler::Metal(inner.create_sampler(sampler_def)?)
-            }
+            RafxDeviceContext::Metal(inner) => RafxSampler::Metal(inner.create_sampler(sampler_def)?),
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => RafxSampler::Gl(inner.create_sampler(sampler_def)?),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -226,7 +222,7 @@ impl RafxDeviceContext {
                 RafxTexture::Metal(inner.create_texture(texture_def)?)
             }
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => RafxTexture::Gl(inner.create_texture(texture_def)?),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -377,7 +373,7 @@ impl RafxDeviceContext {
                 RafxPipeline::Metal(inner.create_compute_pipeline(pipeline_def)?)
             }
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(inner) => RafxPipeline::Gl(inner.create_compute_pipeline(pipeline_def)?),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -426,7 +422,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-metal")]
             RafxDeviceContext::Metal(_) => None,
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -445,7 +441,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-metal")]
             RafxDeviceContext::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -484,9 +480,9 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-vulkan")]
             RafxDeviceContext::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxDeviceContext::Metal(inner) => None,
+            RafxDeviceContext::Metal(_) => None,
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => unimplemented!(),
+            RafxDeviceContext::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

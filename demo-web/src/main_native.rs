@@ -1,4 +1,3 @@
-use winit::event_loop::ControlFlow;
 use winit::window::WindowBuilder;
 use winit::event_loop::EventLoop;
 

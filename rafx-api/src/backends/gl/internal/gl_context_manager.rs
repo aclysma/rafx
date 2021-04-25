@@ -1,8 +1,6 @@
-use crate::gl::{GlContext, WindowHash};
+use crate::gl::GlContext;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::{Arc, Mutex};
-use fnv::FnvHasher;
-use std::hash::{Hash, Hasher};
 use crate::RafxResult;
 
 pub struct GlContextManager {

@@ -129,7 +129,7 @@ impl RafxFence {
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxFence::Empty(inner) => None,
+            RafxFence::Empty(_) => None,
         }
     }
 

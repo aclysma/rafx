@@ -358,7 +358,7 @@ impl RafxQueue {
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
             ))]
-            RafxQueue::Empty(inner) => None,
+            RafxQueue::Empty(_) => None,
         }
     }
 

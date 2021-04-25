@@ -233,7 +233,7 @@ impl RafxApi {
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_) => None,
             #[cfg(feature = "rafx-gl")]
-            RafxApi::Gl(inner) => None,
+            RafxApi::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

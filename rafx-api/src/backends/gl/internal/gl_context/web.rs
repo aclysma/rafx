@@ -1,7 +1,7 @@
 use raw_window_handle::HasRawWindowHandle;
 use web_sys::{WebGlRenderingContext, WebGlBuffer, WebGlShader, WebGlProgram, WebGlUniformLocation, WebGlRenderbuffer, WebGlTexture};
 use crate::{RafxResult, RafxError};
-use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER, NONE_PROGRAM, RenderbufferId, NONE_RENDERBUFFER, TextureId};
+use crate::gl::{gles20, ProgramId, ShaderId, BufferId, WindowHash, ActiveUniformInfo, NONE_BUFFER, NONE_PROGRAM, RenderbufferId, NONE_RENDERBUFFER, TextureId, NONE_TEXTURE};
 use crate::gl::gles20::types::*;
 use std::ffi::{CString, CStr};
 use fnv::FnvHashMap;
@@ -14,8 +14,8 @@ pub struct GetActiveUniformMaxNameLengthHint;
 static NEXT_GL_TEXTURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_SHADER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
-static NEXT_GL_PROGRAM_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
-static NEXT_GL_RENDERBUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+//static NEXT_GL_PROGRAM_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+//static NEXT_GL_RENDERBUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocationId(WebGlUniformLocation);
@@ -517,6 +517,17 @@ impl GlContext {
         self.check_for_error()
     }
 
+    pub fn gl_framebuffer_texture(&self, target: GLenum, attachment: GLenum, texture_target: GLenum, texture_id: TextureId, mip_level: u8) -> RafxResult<()> {
+        if texture_id == NONE_TEXTURE {
+            self.context.framebuffer_texture_2d(target, attachment, texture_target, None, mip_level as _);
+        } else {
+            let textures = self.textures.lock().unwrap();
+            self.context.framebuffer_texture_2d(target, attachment, texture_target, Some(textures.get(&texture_id).unwrap()), mip_level as _);
+        }
+
+        self.check_for_error()
+    }
+
     pub fn gl_check_framebuffer_status(&self, target: GLenum) -> RafxResult<u32> {
         let result = self.context.check_framebuffer_status(target);
         self.check_for_error()?;
@@ -534,10 +545,8 @@ impl GlContext {
     }
 
     pub fn gl_draw_elements(&self, mode: GLenum, count: i32, type_: GLenum, byte_offset: u32) -> RafxResult<()> {
-        unsafe {
-            self.context.draw_elements_with_i32(mode, count, type_, byte_offset as _);
-            self.check_for_error()
-        }
+        self.context.draw_elements_with_i32(mode, count, type_, byte_offset as _);
+        self.check_for_error()
     }
 
     pub fn gl_uniform_1iv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
@@ -637,5 +646,26 @@ impl GlContext {
             self.context.uniform_matrix4fv_with_f32_array(Some(&location.0), false, slice);
             self.check_for_error()
         }
+    }
+
+    pub fn gl_bind_texture(&self, target: GLenum, texture_id: TextureId) -> RafxResult<()> {
+        let textures = self.textures.lock().unwrap();
+        self.context.bind_texture(target, textures.get(&texture_id));
+        self.check_for_error()
+    }
+
+    pub fn gl_tex_image_2d(&self, target: GLenum, mip_level: u8, internal_format: i32, width: u32, height: u32, border: i32, format: GLenum, type_: u32, pixels: &[u8]) -> RafxResult<()> {
+        self.context.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+            target,
+            mip_level as _,
+            internal_format,
+            width as _,
+            height as _,
+            border,
+            format,
+            type_,
+            Some(pixels)
+        ).map_err(|x| format!("{:?}", x))?;
+        self.check_for_error()
     }
 }

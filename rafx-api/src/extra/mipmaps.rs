@@ -64,8 +64,8 @@ fn generate_mipmaps_metal(
 // This custom path for metal can be removed after I implement cmd_blit
 #[cfg(feature = "rafx-gl")]
 fn generate_mipmaps_gl(
-    command_buffer: &RafxCommandBufferGl,
-    texture: &RafxTexture,
+    _command_buffer: &RafxCommandBufferGl,
+    _texture: &RafxTexture,
 ) -> RafxResult<()> {
     unimplemented!();
 }

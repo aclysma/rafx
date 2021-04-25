@@ -4,15 +4,11 @@ use raw_gl_context::GlConfig;
 use super::gles20::Gles2;
 use super::gles20;
 use super::gles20::types::GLenum;
-use fnv::{FnvHasher, FnvHashMap};
-use std::hash::{Hasher, Hash};
 use super::WindowHash;
-use crate::{RafxResult, RafxError, RafxResourceType};
-use crate::gl::gles20::types::{GLsizeiptr, GLint, GLboolean};
+use crate::{RafxResult, RafxError};
+use crate::gl::gles20::types::{GLint, GLboolean};
 use std::ffi::{CStr, CString};
-use std::ops::Range;
 use crate::gl::{ProgramId, ShaderId, BufferId, ActiveUniformInfo, RenderbufferId, TextureId};
-use std::cmp::max;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocationId(u32);
@@ -309,7 +305,7 @@ impl GlContext {
 
     fn gl_get_shader_info_log(&self, shader_id: ShaderId, string: &mut [u8]) -> RafxResult<()> {
         unsafe {
-            let mut len = string.len();
+            let len = string.len();
             self.gles2.GetShaderInfoLog(shader_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
             self.check_for_error()
         }
@@ -317,7 +313,7 @@ impl GlContext {
 
     fn gl_get_program_info_log(&self, program_id: ProgramId, string: &mut [u8]) -> RafxResult<()> {
         unsafe {
-            let mut len = string.len();
+            let len = string.len();
             self.gles2.GetProgramInfoLog(program_id.0, len as _, std::ptr::null_mut(), string.as_mut_ptr() as _);
             self.check_for_error()
         }
@@ -568,7 +564,8 @@ impl GlContext {
 
     pub fn gl_bind_attrib_location(&self, program_id: ProgramId, index: u32, name: &str) -> RafxResult<()> {
         unsafe {
-            self.gles2.BindAttribLocation(program_id.0, index, CString::new(name).unwrap().as_ptr());
+            let cstr = CString::new(name).unwrap();
+            self.gles2.BindAttribLocation(program_id.0, index, cstr.as_ptr());
             self.check_for_error()
         }
     }
@@ -590,6 +587,13 @@ impl GlContext {
     pub fn gl_framebuffer_renderbuffer(&self, target: GLenum, attachment: GLenum, renderbuffer_target: GLenum, renderbuffer: RenderbufferId) -> RafxResult<()> {
         unsafe {
             self.gles2.FramebufferRenderbuffer(target, attachment, renderbuffer_target, renderbuffer.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_framebuffer_texture(&self, target: GLenum, attachment: GLenum, texture_target: GLenum, texture_id: TextureId, mip_level: u8) -> RafxResult<()> {
+        unsafe {
+            self.gles2.FramebufferTexture2D(target, attachment, texture_target, texture_id.0, mip_level as _);
             self.check_for_error()
         }
     }
@@ -697,6 +701,20 @@ impl GlContext {
     pub fn gl_uniform_matrix_4fv<T: Copy>(&self, location: &LocationId, data: &T, count: u32) -> RafxResult<()> {
         unsafe {
             self.gles2.UniformMatrix4fv(location.0 as _, count as _, gles20::FALSE, data as *const T as _);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_bind_texture(&self, target: GLenum, texture_id: TextureId) -> RafxResult<()> {
+        unsafe {
+            self.gles2.BindTexture(target, texture_id.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_tex_image_2d(&self, target: GLenum, mip_level: u8, internal_format: i32, width: u32, height: u32, border: i32, format: GLenum, type_: u32, pixels: &[u8]) -> RafxResult<()> {
+        unsafe {
+            self.gles2.TexImage2D(target, mip_level as _, internal_format, width as _, height as _, border, format, type_, pixels.as_ptr() as _);
             self.check_for_error()
         }
     }

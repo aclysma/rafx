@@ -38,7 +38,7 @@ impl std::error::Error for RafxError {
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkMemError(ref e) => Some(&**e),
             #[cfg(feature = "rafx-gl")]
-            RafxError::GlError(e) => None
+            RafxError::GlError(_) => None
         }
     }
 }

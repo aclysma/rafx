@@ -3,7 +3,7 @@ use crate::{RafxBufferDef, RafxMemoryUsage, RafxResourceType, RafxResult};
 
 use crate::gl::gles20;
 use crate::gl::gles20::types::GLenum;
-use std::sync::atomic::{AtomicU32, AtomicBool};
+use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
@@ -49,7 +49,7 @@ pub struct RafxBufferGl {
 impl Drop for RafxBufferGl {
     fn drop(&mut self) {
         if let Some(buffer_id) = self.buffer_id {
-            self.device_context.gl_context().gl_destroy_buffer(buffer_id);
+            self.device_context.gl_context().gl_destroy_buffer(buffer_id).unwrap();
         }
     }
 }
@@ -146,7 +146,7 @@ impl RafxBufferGl {
 
         let mut buffer_id = None;
         let mut buffer_contents = None;
-        let mut target = gles20::NONE;
+        let target;
         if buffer_def.resource_type.intersects(RafxResourceType::INDEX_BUFFER | RafxResourceType::VERTEX_BUFFER) {
             target = if buffer_def.resource_type.contains(RafxResourceType::INDEX_BUFFER) {
                 gles20::ELEMENT_ARRAY_BUFFER
@@ -159,10 +159,10 @@ impl RafxBufferGl {
 
             let usage = buffer_def.memory_usage.gl_usage().unwrap();
             if usage != gles20::NONE {
-                device_context.gl_context().gl_buffer_data(target, buffer_def.size, std::ptr::null(), usage);
+                device_context.gl_context().gl_buffer_data(target, buffer_def.size, std::ptr::null(), usage)?;
             }
 
-            device_context.gl_context().gl_bind_buffer(target, NONE_BUFFER);
+            device_context.gl_context().gl_bind_buffer(target, NONE_BUFFER)?;
 
             if buffer_def.memory_usage != RafxMemoryUsage::GpuOnly {
                 buffer_contents = Some(vec![0_u8; buffer_def.size as _]);
@@ -177,7 +177,7 @@ impl RafxBufferGl {
             }
 
             buffer_def.memory_usage = RafxMemoryUsage::CpuOnly;
-            buffer_contents = Some(vec![0_u8; buffer_def.size as _]);
+            buffer_contents = Some(vec![0_u8; allocation_size as _]);
             target = gles20::NONE;
         }
 

@@ -1,5 +1,5 @@
-use std::ffi::{CString, CStr};
-use crate::gl::{gles20, ProgramId, GlContext, LocationId};
+use std::ffi::CString;
+use crate::gl::{gles20, ProgramId, GlContext};
 use crate::{RafxResult, RafxShader};
 use fnv::FnvHashMap;
 use std::ops::Range;
@@ -73,13 +73,11 @@ impl UniformReflectionData {
 
             // Merges all the uniforms from the program into uniform_lookup and field_lookup
             for i in 0..active_uniform_count {
-                let mut uniform_info = unsafe {
-                    gl_context.gl_get_active_uniform(
-                        program_id,
-                        i,
-                        &max_name_length_hint,
-                    )
-                }?;
+                let uniform_info = gl_context.gl_get_active_uniform(
+                    program_id,
+                    i,
+                    &max_name_length_hint,
+                )?;
 
                 gl_context.check_for_error()?;
 
@@ -122,8 +120,6 @@ impl UniformReflectionData {
         let mut uniforms = Vec::<UniformInfo>::default();
         // fields are stored grouped by uniform. This list is somewhat parallel with the locations list
         let mut fields = Vec::<UniformFieldInfo>::default();
-        // Indexed by (field_index * program_count) + program_index
-        let mut locations = Vec::<Option<LocationId>>::default();
 
         let mut uniform_name_lookup = FnvHashMap::<String, UniformIndex>::default();
 

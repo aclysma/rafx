@@ -1,9 +1,8 @@
-use crate::gl::{RafxDeviceContextGl, RenderbufferId, TextureId, NONE_RENDERBUFFER, gles20};
-use crate::{RafxMemoryUsage, RafxResourceType, RafxResult, RafxSampleCount, RafxTextureDef, RafxTextureDimensions, GlTextureFormatInfo};
+use crate::gl::{RafxDeviceContextGl, RenderbufferId, TextureId, gles20};
+use crate::{RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions, GlTextureFormatInfo};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::process::exit;
 use crate::gl::gles20::types::GLenum;
 
 #[derive(Debug, PartialEq)]
@@ -81,6 +80,14 @@ impl RafxTextureGl {
 
     pub fn gl_raw_image(&self) -> &RafxRawImageGl {
         &self.inner.image
+    }
+
+    pub fn gl_target(&self) -> GLenum {
+        self.inner.gl_target
+    }
+
+    pub fn gl_format_info(&self) -> &GlTextureFormatInfo {
+        &self.inner.format_info
     }
 
     pub fn new(

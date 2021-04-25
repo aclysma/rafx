@@ -1,7 +1,6 @@
 use crate::gl::RafxDeviceContextGl;
 use crate::{RafxFenceStatus, RafxResult};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 pub struct RafxFenceGl {
     device_context: RafxDeviceContextGl,
@@ -26,7 +25,7 @@ impl RafxFenceGl {
 
     pub fn wait(&self) -> RafxResult<()> {
         if self.submitted() {
-            self.device_context.gl_context().gl_finish();
+            self.device_context.gl_context().gl_finish()?;
         }
 
         self.set_submitted(false);
@@ -40,7 +39,7 @@ impl RafxFenceGl {
         let mut finish_called = false;
         for fence in fences {
             if fence.submitted() {
-                fence.device_context.gl_context().gl_finish();
+                fence.device_context.gl_context().gl_finish()?;
                 finish_called = true;
                 break;
             }

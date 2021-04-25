@@ -11,11 +11,9 @@ pub use main_web::*;
 
 use winit::{
     event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    event_loop::{ControlFlow},
 };
 use rafx::api::{RafxApi, RafxSwapchainDef, RafxSwapchainHelper, RafxQueueType, RafxResult, RafxCommandPoolDef, RafxBufferDef, RafxCommandBufferDef, RafxShaderModuleDef, RafxShaderModuleDefGl, RafxShaderResource, RafxGlUniformMember, RafxShaderStageDef, RafxShaderStageReflection, RafxShaderStageFlags, RafxResourceType, RafxRootSignatureDef, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxDescriptorKey, RafxDescriptorElements, RafxVertexLayout, RafxVertexLayoutAttribute, RafxFormat, RafxVertexLayoutBuffer, RafxVertexAttributeRate, RafxGraphicsPipelineDef, RafxSampleCount, RafxPrimitiveTopology, RafxTextureBarrier, RafxResourceState, RafxColorRenderTargetBinding, RafxStoreOp, RafxColorClearValue, RafxLoadOp, RafxVertexBufferBinding};
-use rafx::api::gl::NONE_RENDERBUFFER;
 
 pub fn update_loop(
     window: winit::window::Window,
@@ -25,7 +23,7 @@ pub fn update_loop(
     // Create the api
     //
     log::trace!("Creating the API");
-    let mut api = RafxApi::new(&window, &Default::default())?;
+    let api = RafxApi::new(&window, &Default::default())?;
 
     // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
     // clean shutdown.
@@ -275,21 +273,20 @@ pub fn update_loop(
         log::trace!("Starting event loop");
         let start_time = instant::Instant::now();
 
-        let mut i = 0;
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;
 
             match event {
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
-                    window_id,
+                    ..
                 } => *control_flow = ControlFlow::Exit,
                 Event::MainEventsCleared => {
                     window.request_redraw();
                 },
                 Event::WindowEvent {
                     event: window_event,
-                    window_id: _
+                    ..
                 } => {
                     match window_event {
                         WindowEvent::KeyboardInput { .. } | WindowEvent::MouseInput { .. } => {
@@ -299,16 +296,6 @@ pub fn update_loop(
                     }
                 },
                 Event::RedrawRequested(_) => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        i += 1;
-                    }
-
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        i += 100;
-                    }
-
                     let elapsed_seconds = start_time.elapsed().as_secs_f32();
 
                     #[rustfmt::skip]

@@ -1,17 +1,16 @@
 use crate::backends::gl::RafxTextureGl;
-use crate::gl::{RafxDeviceContextGl, RafxFenceGl, RafxRawImageGl, RafxSemaphoreGl, RafxTextureGlInner, GlContext, NONE_RENDERBUFFER};
+use crate::gl::{RafxDeviceContextGl, RafxFenceGl, RafxRawImageGl, RafxSemaphoreGl, GlContext, NONE_RENDERBUFFER};
 use crate::{
     RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
     RafxSwapchainImage, RafxTexture, RafxTextureDef, RafxTextureDimensions,
 };
-use rafx_base::trust_cell::TrustCell;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
 const SWAPCHAIN_IMAGE_COUNT: u32 = 3;
 
 pub struct RafxSwapchainGl {
-    device_context: RafxDeviceContextGl,
+    _device_context: RafxDeviceContextGl,
     surface_context: Arc<GlContext>,
     //layer: gl_rs::GlLayer,
     //drawable: TrustCell<Option<gl_rs::GlDrawable>>,
@@ -54,7 +53,7 @@ impl RafxSwapchainGl {
     ) -> RafxResult<RafxSwapchainGl> {
         let format = RafxFormat::R8G8B8A8_UNORM;
 
-        let mut resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
+        let resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
 
         let surface_context = device_context.gl_context_manager().create_surface_context(raw_window_handle)?;
 
@@ -78,7 +77,7 @@ impl RafxSwapchainGl {
         }
 
         Ok(RafxSwapchainGl {
-            device_context: device_context.clone(),
+            _device_context: device_context.clone(),
             surface_context,
             swapchain_def: swapchain_def.clone(),
             next_swapchain_image_index: 0,
