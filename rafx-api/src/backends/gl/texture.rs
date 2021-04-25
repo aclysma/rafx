@@ -110,7 +110,7 @@ impl RafxTextureGl {
         texture_def.verify();
 
         if texture_def.sample_count != RafxSampleCount::SampleCount1 {
-            Err("GL ES 2.0 backend does not implement multisampled images")?;
+            unimplemented!("GL ES 2.0 backend does not implement multisampled images");
         }
 
         let dimensions = texture_def
@@ -118,7 +118,7 @@ impl RafxTextureGl {
             .determine_dimensions(texture_def.extents);
 
         if dimensions != RafxTextureDimensions::Dim2D {
-            Err("GL ES 2.0 only supports 2D textures")?;
+            unimplemented!("GL ES 2.0 only supports 2D textures");
         }
 
         let gl_target = if texture_def

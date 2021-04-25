@@ -98,7 +98,6 @@ impl FullscreenQuad {
         gl_context.gl_tex_parameteri(gles20::TEXTURE_2D, gles20::TEXTURE_MAG_FILTER, gles20::LINEAR as _)?;
         gl_context.gl_tex_parameteri(gles20::TEXTURE_2D, gles20::TEXTURE_WRAP_S, gles20::CLAMP_TO_EDGE as _)?;
         gl_context.gl_tex_parameteri(gles20::TEXTURE_2D, gles20::TEXTURE_WRAP_T, gles20::CLAMP_TO_EDGE as _)?;
-        //gl_context.gl_tex
         gl_context.gl_draw_arrays(gles20::TRIANGLES, 0, 6)?;
 
         gl_context.gl_bind_buffer(gles20::ARRAY_BUFFER, NONE_BUFFER)?;
