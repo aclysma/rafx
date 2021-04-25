@@ -85,7 +85,7 @@ impl RafxShader {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_shader(&self) -> Option<&RafxShaderGles2> {
+    pub fn gles2_shader(&self) -> Option<&RafxShaderGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxShader::Vk(_) => None,

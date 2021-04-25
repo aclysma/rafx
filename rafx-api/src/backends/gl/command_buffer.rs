@@ -13,7 +13,7 @@ use crate::{
 
 use rafx_base::trust_cell::TrustCell;
 
-use crate::gl::conversions::GlDepthStencilState;
+use crate::gl::conversions::Gles2DepthStencilState;
 use crate::gl::gles20;
 
 use crate::backends::gl::RafxRawImageGles2;
@@ -129,7 +129,7 @@ impl RafxCommandBufferGles2 {
         for (index, render_target) in color_targets.iter().enumerate() {
             extents = render_target.texture.texture_def().extents;
 
-            let gl_texture = render_target.texture.gl_texture().unwrap();
+            let gl_texture = render_target.texture.gles2_texture().unwrap();
             let attachment = gles20::COLOR_ATTACHMENT0 + index as u32;
             Self::bind_framebuffer(gl_context, gl_texture, attachment, render_target.mip_slice)?;
 
@@ -191,7 +191,7 @@ impl RafxCommandBufferGles2 {
                 //     )?;
                 // }
 
-                let gl_texture = depth_target.texture.gl_texture().unwrap();
+                let gl_texture = depth_target.texture.gles2_texture().unwrap();
                 let attachment = gles20::DEPTH_ATTACHMENT;
                 Self::bind_framebuffer(gl_context, gl_texture, attachment, depth_target.mip_slice)?;
 
@@ -223,7 +223,7 @@ impl RafxCommandBufferGles2 {
                 //     )?;
                 // }
 
-                let gl_texture = depth_target.texture.gl_texture().unwrap();
+                let gl_texture = depth_target.texture.gles2_texture().unwrap();
                 let attachment = gles20::STENCIL_ATTACHMENT;
                 Self::bind_framebuffer(gl_context, gl_texture, attachment, depth_target.mip_slice)?;
 
@@ -358,7 +358,7 @@ impl RafxCommandBufferGles2 {
     // This logic is shared between cmd_set_stencil_reference_value and cmd_bind_pipeline
     fn do_set_stencil_compare_ref_mask(
         gl_context: &GlContext,
-        state: &GlDepthStencilState,
+        state: &Gles2DepthStencilState,
         stencil_reference_value: u32,
     ) -> RafxResult<()> {
         if state.stencil_test_enable {
@@ -501,7 +501,7 @@ impl RafxCommandBufferGles2 {
 
         let mut binding_index = first_binding;
         for binding in bindings {
-            let gl_buffer = binding.buffer.gl_buffer().unwrap();
+            let gl_buffer = binding.buffer.gles2_buffer().unwrap();
             assert_eq!(gl_buffer.gl_target(), gles20::ARRAY_BUFFER);
 
             // Bind the vertex buffer
@@ -546,7 +546,7 @@ impl RafxCommandBufferGles2 {
             Err("GL ES 2.0 only supports Uint16 index buffers")?;
         }
 
-        let buffer = binding.buffer.gl_buffer().unwrap();
+        let buffer = binding.buffer.gles2_buffer().unwrap();
         if buffer.gl_target() != gles20::ELEMENT_ARRAY_BUFFER {
             Err("Buffers provided to cmd_bind_index_buffer must be index buffers")?;
         }
@@ -568,7 +568,7 @@ impl RafxCommandBufferGles2 {
             descriptor_set_array.descriptor_set_array_data(),
             descriptor_set_array
                 .root_signature()
-                .gl_root_signature()
+                .gles2_root_signature()
                 .unwrap(),
             descriptor_set_array.set_index(),
             index,

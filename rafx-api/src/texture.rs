@@ -88,7 +88,7 @@ impl RafxTexture {
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_texture(&self) -> Option<&RafxTextureGles2> {
+    pub fn gles2_texture(&self) -> Option<&RafxTextureGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(_) => None,

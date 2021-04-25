@@ -264,7 +264,7 @@ impl RafxCommandBuffer {
             }
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => {
-                inner.cmd_bind_pipeline(pipeline.gl_pipeline().unwrap())
+                inner.cmd_bind_pipeline(pipeline.gles2_pipeline().unwrap())
             }
             #[cfg(any(
                 feature = "rafx-empty",
@@ -348,7 +348,7 @@ impl RafxCommandBuffer {
             ),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => inner.cmd_bind_descriptor_set(
-                descriptor_set_array.gl_descriptor_set_array().unwrap(),
+                descriptor_set_array.gles2_descriptor_set_array().unwrap(),
                 index,
             ),
             #[cfg(any(
@@ -387,9 +387,9 @@ impl RafxCommandBuffer {
             ),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => inner.cmd_bind_descriptor_set_handle(
-                root_signature.gl_root_signature().unwrap(),
+                root_signature.gles2_root_signature().unwrap(),
                 set_index,
-                descriptor_set_handle.gl_descriptor_set_handle().unwrap(),
+                descriptor_set_handle.gles2_descriptor_set_handle().unwrap(),
             ),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -624,8 +624,8 @@ impl RafxCommandBuffer {
             ),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => inner.cmd_copy_buffer_to_buffer(
-                src_buffer.gl_buffer().unwrap(),
-                dst_buffer.gl_buffer().unwrap(),
+                src_buffer.gles2_buffer().unwrap(),
+                dst_buffer.gles2_buffer().unwrap(),
                 src_offset,
                 dst_offset,
                 size,
@@ -667,8 +667,8 @@ impl RafxCommandBuffer {
             ),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => inner.cmd_copy_buffer_to_texture(
-                src_buffer.gl_buffer().unwrap(),
-                dst_texture.gl_texture().unwrap(),
+                src_buffer.gles2_buffer().unwrap(),
+                dst_texture.gles2_texture().unwrap(),
                 params,
             ),
             #[cfg(any(
@@ -724,7 +724,7 @@ impl RafxCommandBuffer {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_command_buffer(&self) -> Option<&RafxCommandBufferGles2> {
+    pub fn gles2_command_buffer(&self) -> Option<&RafxCommandBufferGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(_) => None,

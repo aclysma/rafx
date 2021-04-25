@@ -1,4 +1,4 @@
-use crate::gl::conversions::{GlBlendState, GlDepthStencilState, GlRasterizerState};
+use crate::gl::conversions::{Gles2BlendState, Gles2DepthStencilState, Gles2RasterizerState};
 use crate::gl::gles20::types::GLenum;
 use crate::gl::reflection::FieldIndex;
 use crate::gl::{LocationId, ProgramId, RafxDeviceContextGles2, RafxRootSignatureGles2, RafxShaderGles2};
@@ -22,9 +22,9 @@ pub(crate) struct Gles2Attribute {
 
 #[derive(Debug)]
 pub(crate) struct Gles2PipelineInfo {
-    pub(crate) gl_rasterizer_state: GlRasterizerState,
-    pub(crate) gl_depth_stencil_state: GlDepthStencilState,
-    pub(crate) gl_blend_state: GlBlendState,
+    pub(crate) gl_rasterizer_state: Gles2RasterizerState,
+    pub(crate) gl_depth_stencil_state: Gles2DepthStencilState,
+    pub(crate) gl_blend_state: Gles2BlendState,
     pub(crate) gl_topology: GLenum,
     pub(crate) gl_attributes: Vec<Gles2Attribute>,
     pub(crate) program_id: ProgramId,
@@ -64,7 +64,7 @@ impl Drop for RafxPipelineGles2 {
     fn drop(&mut self) {
         let device_context = self
             .root_signature
-            .gl_root_signature()
+            .gles2_root_signature()
             .unwrap()
             .device_context();
         device_context
@@ -96,14 +96,14 @@ impl RafxPipelineGles2 {
         pipeline_def: &RafxGraphicsPipelineDef,
     ) -> RafxResult<Self> {
         let gl_context = device_context.gl_context();
-        let shader = pipeline_def.shader.gl_shader().unwrap();
+        let shader = pipeline_def.shader.gles2_shader().unwrap();
 
         // Create a new program so that we can customize the vertex attributes
         let program_id = gl_context.gl_create_program()?;
         gl_context.gl_attach_shader(program_id, shader.gl_vertex_shader().shader_id())?;
         gl_context.gl_attach_shader(program_id, shader.gl_fragment_shader().shader_id())?;
 
-        let gl_root_signature = pipeline_def.root_signature.gl_root_signature().unwrap();
+        let gl_root_signature = pipeline_def.root_signature.gles2_root_signature().unwrap();
 
         let mut gl_attributes = Vec::with_capacity(pipeline_def.vertex_layout.attributes.len());
 
@@ -161,7 +161,7 @@ impl RafxPipelineGles2 {
 
         let gl_topology = pipeline_def
             .primitive_topology
-            .gl_topology()
+            .gles2_topology()
             .ok_or_else(|| {
                 format!(
                     "GL ES 2.0 does not support topology {:?}",
@@ -173,7 +173,7 @@ impl RafxPipelineGles2 {
             last_bound_by_command_pool: TrustCell::new(0),
             gl_rasterizer_state: pipeline_def.rasterizer_state.into(),
             gl_depth_stencil_state: pipeline_def.depth_state.into(),
-            gl_blend_state: pipeline_def.blend_state.gl_blend_state()?,
+            gl_blend_state: pipeline_def.blend_state.gles2_blend_state()?,
             gl_topology,
             gl_attributes,
             program_id,

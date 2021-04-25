@@ -71,7 +71,7 @@ impl RafxShaderGles2 {
             );
             let compiled = stage
                 .shader_module
-                .gl_shader_module()
+                .gles2_shader_module()
                 .unwrap()
                 .compile_shader(stage.reflection.shader_stage)?;
             if stage.reflection.shader_stage == RafxShaderStageFlags::VERTEX {

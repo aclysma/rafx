@@ -36,12 +36,12 @@ impl RafxSamplerGles2 {
             },
         };
 
-        let gl_min_filter = sampler_def.min_filter.gl_filter_type();
-        let gl_mag_filter = sampler_def.mag_filter.gl_filter_type();
+        let gl_min_filter = sampler_def.min_filter.gles2_filter_type();
+        let gl_mag_filter = sampler_def.mag_filter.gles2_filter_type();
 
         let gl_address_mode_s = sampler_def
             .address_mode_u
-            .gl_address_mode()
+            .gles2_address_mode()
             .ok_or_else(|| {
                 format!(
                     "Address mode {:?} not supported in GL ES 2.0",
@@ -50,14 +50,14 @@ impl RafxSamplerGles2 {
             })?;
         let gl_address_mode_t = sampler_def
             .address_mode_v
-            .gl_address_mode()
+            .gles2_address_mode()
             .ok_or_else(|| {
                 format!(
                     "Address mode {:?} not supported in GL ES 2.0",
                     sampler_def.address_mode_v
                 )
             })?;
-        let gl_compare_op = sampler_def.compare_op.gl_compare_op();
+        let gl_compare_op = sampler_def.compare_op.gles2_compare_op();
 
         //TODO: address_mode_w, mip_lod_bias, max_anisotropy, ClampToBorder
         //TODO: sampler objects

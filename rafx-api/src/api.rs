@@ -201,7 +201,7 @@ impl RafxApi {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_api(&self) -> Option<&RafxApiGles2> {
+    pub fn gles2_api(&self) -> Option<&RafxApiGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(_) => None,

@@ -1,7 +1,7 @@
 use crate::{
     RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext,
     RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxResourceType,
-    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDefGl,
+    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDefGles2,
     RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
 use raw_window_handle::HasRawWindowHandle;
@@ -187,14 +187,6 @@ impl RafxDeviceContextGles2 {
         &self.inner.device_info
     }
 
-    // pub fn device(&self) -> &gl_rs::Device {
-    //     &self.inner.device
-    // }
-
-    // pub fn gl_features(&self) -> &GlFeatures {
-    //     &self.inner.gl_features
-    // }
-
     pub fn gl_context(&self) -> &GlContext {
         &self.inner.gl_context
     }
@@ -300,7 +292,7 @@ impl RafxDeviceContextGles2 {
 
     pub fn create_shader_module(
         &self,
-        data: RafxShaderModuleDefGl,
+        data: RafxShaderModuleDefGles2,
     ) -> RafxResult<RafxShaderModuleGles2> {
         RafxShaderModuleGles2::new(self, data)
     }

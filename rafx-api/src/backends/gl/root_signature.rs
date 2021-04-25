@@ -188,7 +188,7 @@ impl RafxRootSignatureGles2 {
         let program_ids: Vec<ProgramId> = root_signature_def
             .shaders
             .iter()
-            .map(|x| x.gl_shader().unwrap().gl_program_id())
+            .map(|x| x.gles2_shader().unwrap().gl_program_id())
             .collect();
 
         // Lookup for uniform fields

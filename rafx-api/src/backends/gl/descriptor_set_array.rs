@@ -96,7 +96,7 @@ impl RafxDescriptorSetArrayGles2 {
     ) -> RafxResult<Self> {
         let root_signature = descriptor_set_array_def
             .root_signature
-            .gl_root_signature()
+            .gles2_root_signature()
             .unwrap()
             .clone();
 
@@ -137,7 +137,7 @@ impl RafxDescriptorSetArrayGles2 {
         &mut self,
         update: &RafxDescriptorUpdate,
     ) -> RafxResult<()> {
-        let root_signature = self.root_signature.gl_root_signature().unwrap();
+        let root_signature = self.root_signature.gles2_root_signature().unwrap();
         let layout: &DescriptorSetLayoutInfo =
             &root_signature.inner.layouts[self.set_index as usize];
         let descriptor_index = match &update.descriptor_key {
@@ -349,7 +349,7 @@ impl RafxDescriptorSetArrayGles2 {
                         .map(|x| x[buffer_index].byte_offset)
                         .unwrap_or(0);
 
-                    let gl_buffer = buffer.gl_buffer().unwrap();
+                    let gl_buffer = buffer.gles2_buffer().unwrap();
                     descriptor_set_data.buffer_states[next_index as usize] =
                         Some(BufferDescriptorState {
                             buffer_contents: gl_buffer.buffer_contents().clone(),

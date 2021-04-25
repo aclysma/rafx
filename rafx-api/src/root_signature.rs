@@ -89,7 +89,7 @@ impl RafxRootSignature {
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_root_signature(&self) -> Option<&RafxRootSignatureGles2> {
+    pub fn gles2_root_signature(&self) -> Option<&RafxRootSignatureGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(_) => None,

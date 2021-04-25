@@ -198,7 +198,7 @@ impl RafxDeviceContext {
             }
             #[cfg(feature = "rafx-gles2")]
             RafxDeviceContext::Gles2(inner) => {
-                let fences: Vec<_> = fences.iter().map(|x| x.gl_fence().unwrap()).collect();
+                let fences: Vec<_> = fences.iter().map(|x| x.gles2_fence().unwrap()).collect();
                 inner.wait_for_fences(&fences)?
             }
             #[cfg(any(
@@ -296,7 +296,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-gles2")]
             RafxDeviceContext::Gles2(inner) => RafxShaderModule::Gles2(
                 // This one is different because we have different flavors of GL
-                inner.create_shader_module(shader_module_def.gl.unwrap())?,
+                inner.create_shader_module(shader_module_def.gles2.unwrap())?,
             ),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -482,7 +482,7 @@ impl RafxDeviceContext {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_device_context(&self) -> Option<&RafxDeviceContextGles2> {
+    pub fn gles2_device_context(&self) -> Option<&RafxDeviceContextGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxDeviceContext::Vk(_) => None,

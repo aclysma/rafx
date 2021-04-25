@@ -74,7 +74,7 @@ impl RafxSemaphore {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_semaphore(&self) -> Option<&RafxSemaphoreGles2> {
+    pub fn gles2_semaphore(&self) -> Option<&RafxSemaphoreGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxSemaphore::Vk(_) => None,

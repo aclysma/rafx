@@ -74,7 +74,7 @@ impl RafxDescriptorSetHandle {
     }
 
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_descriptor_set_handle(&self) -> Option<&RafxDescriptorSetHandleGles2> {
+    pub fn gles2_descriptor_set_handle(&self) -> Option<&RafxDescriptorSetHandleGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetHandle::Vk(_) => None,
@@ -293,7 +293,7 @@ impl RafxDescriptorSetArray {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_descriptor_set_array(&self) -> Option<&RafxDescriptorSetArrayGles2> {
+    pub fn gles2_descriptor_set_array(&self) -> Option<&RafxDescriptorSetArrayGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(_) => None,

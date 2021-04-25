@@ -202,7 +202,7 @@ impl RafxBuffer {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_buffer(&self) -> Option<&RafxBufferGles2> {
+    pub fn gles2_buffer(&self) -> Option<&RafxBufferGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxBuffer::Vk(_) => None,

@@ -71,7 +71,7 @@ impl Importer for ShaderImporterSpv {
         let shader_package = RafxShaderPackage {
             metal: None,
             vk: Some(RafxShaderPackageVulkan::SpvBytes(spv_bytes)),
-            gl: None,
+            gles2: None,
         };
 
         let shader_module_hash = ShaderModuleHash::new(&shader_package);

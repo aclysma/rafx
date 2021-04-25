@@ -497,7 +497,7 @@ fn load_shader_packages(
     {
         let gles_path = _base_path.join(_gles_src_file);
         let gles_src = std::fs::read_to_string(gles_path)?;
-        _package.gl = Some(RafxShaderPackageGl::Src(gles_src));
+        _package.gles2 = Some(RafxShaderPackageGl::Src(gles_src));
     }
 
     Ok(_package)

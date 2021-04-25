@@ -14,7 +14,7 @@ use rafx::api::{
     RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxFormat, RafxGlUniformMember,
     RafxGraphicsPipelineDef, RafxLoadOp, RafxPrimitiveTopology, RafxQueueType, RafxResourceState,
     RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxShaderModuleDef,
-    RafxShaderModuleDefGl, RafxShaderResource, RafxShaderStageDef, RafxShaderStageFlags,
+    RafxShaderModuleDefGles2, RafxShaderResource, RafxShaderStageDef, RafxShaderStageFlags,
     RafxShaderStageReflection, RafxStoreOp, RafxSwapchainDef, RafxSwapchainHelper,
     RafxTextureBarrier, RafxVertexAttributeRate, RafxVertexBufferBinding, RafxVertexLayout,
     RafxVertexLayoutAttribute, RafxVertexLayoutBuffer,
@@ -139,7 +139,7 @@ pub fn update_loop(
         //
         log::trace!("Creating shader modules");
         let vert_shader_module = device_context.create_shader_module(RafxShaderModuleDef {
-            gl: Some(RafxShaderModuleDefGl::GlSrc(include_str!(concat!(
+            gles2: Some(RafxShaderModuleDefGles2::GlSrc(include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/shaders/shader.vert.gles"
             )))),
@@ -147,7 +147,7 @@ pub fn update_loop(
         })?;
 
         let frag_shader_module = device_context.create_shader_module(RafxShaderModuleDef {
-            gl: Some(RafxShaderModuleDefGl::GlSrc(include_str!(concat!(
+            gles2: Some(RafxShaderModuleDefGles2::GlSrc(include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/shaders/shader.frag.gles"
             )))),

@@ -7,7 +7,7 @@ use crate::{
 };
 
 impl RafxFilterType {
-    pub fn gl_filter_type(self) -> GLenum {
+    pub fn gles2_filter_type(self) -> GLenum {
         match self {
             RafxFilterType::Nearest => gles20::NEAREST,
             RafxFilterType::Linear => gles20::LINEAR,
@@ -16,7 +16,7 @@ impl RafxFilterType {
 }
 
 impl RafxAddressMode {
-    pub fn gl_address_mode(self) -> Option<GLenum> {
+    pub fn gles2_address_mode(self) -> Option<GLenum> {
         match self {
             RafxAddressMode::Mirror => Some(gles20::MIRRORED_REPEAT),
             RafxAddressMode::Repeat => Some(gles20::REPEAT),
@@ -29,7 +29,7 @@ impl RafxAddressMode {
 }
 
 impl RafxPrimitiveTopology {
-    pub fn gl_topology(self) -> Option<GLenum> {
+    pub fn gles2_topology(self) -> Option<GLenum> {
         match self {
             RafxPrimitiveTopology::PointList => Some(gles20::POINTS),
             RafxPrimitiveTopology::LineList => Some(gles20::LINES),
@@ -42,7 +42,7 @@ impl RafxPrimitiveTopology {
 }
 
 impl RafxMemoryUsage {
-    pub fn gl_usage(self) -> Option<GLenum> {
+    pub fn gles2_usage(self) -> Option<GLenum> {
         match self {
             RafxMemoryUsage::Unknown => None,
             RafxMemoryUsage::GpuOnly => Some(gles20::STATIC_DRAW),
@@ -54,7 +54,7 @@ impl RafxMemoryUsage {
 }
 
 impl RafxCullMode {
-    pub fn gl_cull_mode(self) -> GLenum {
+    pub fn gles2_cull_mode(self) -> GLenum {
         match self {
             RafxCullMode::None => gles20::NONE,
             RafxCullMode::Back => gles20::BACK,
@@ -64,7 +64,7 @@ impl RafxCullMode {
 }
 
 impl RafxFrontFace {
-    pub fn gl_front_face(self) -> GLenum {
+    pub fn gles2_front_face(self) -> GLenum {
         match self {
             RafxFrontFace::CounterClockwise => gles20::CCW,
             RafxFrontFace::Clockwise => gles20::CW,
@@ -73,7 +73,7 @@ impl RafxFrontFace {
 }
 
 impl RafxCompareOp {
-    pub fn gl_compare_op(self) -> GLenum {
+    pub fn gles2_compare_op(self) -> GLenum {
         match self {
             RafxCompareOp::Never => gles20::NEVER,
             RafxCompareOp::Less => gles20::LESS,
@@ -88,7 +88,7 @@ impl RafxCompareOp {
 }
 
 impl RafxStencilOp {
-    pub fn gl_stencil_op(self) -> GLenum {
+    pub fn gles2_stencil_op(self) -> GLenum {
         match self {
             RafxStencilOp::Keep => gles20::KEEP,
             RafxStencilOp::Zero => gles20::ZERO,
@@ -104,17 +104,17 @@ impl RafxStencilOp {
 
 //TODO: Some fields in RafxRasterizerState are not handled!
 #[derive(Debug)]
-pub struct GlRasterizerState {
+pub struct Gles2RasterizerState {
     pub cull_mode: GLenum,
     pub front_face: GLenum,
     pub scissor_test: bool,
 }
 
-impl From<&RafxRasterizerState> for GlRasterizerState {
+impl From<&RafxRasterizerState> for Gles2RasterizerState {
     fn from(state: &RafxRasterizerState) -> Self {
-        GlRasterizerState {
-            cull_mode: state.cull_mode.gl_cull_mode(),
-            front_face: state.front_face.gl_front_face(),
+        Gles2RasterizerState {
+            cull_mode: state.cull_mode.gles2_cull_mode(),
+            front_face: state.front_face.gles2_front_face(),
             scissor_test: state.scissor,
         }
     }
@@ -122,7 +122,7 @@ impl From<&RafxRasterizerState> for GlRasterizerState {
 
 //TODO: Some fields in RafxDepthState are not handled!
 #[derive(Debug)]
-pub struct GlDepthStencilState {
+pub struct Gles2DepthStencilState {
     pub depth_test_enable: bool,
     pub depth_write_enable: bool,
     pub depth_compare_op: GLenum,
@@ -139,29 +139,29 @@ pub struct GlDepthStencilState {
     pub back_stencil_pass_op: GLenum,
 }
 
-impl From<&RafxDepthState> for GlDepthStencilState {
+impl From<&RafxDepthState> for Gles2DepthStencilState {
     fn from(state: &RafxDepthState) -> Self {
-        GlDepthStencilState {
+        Gles2DepthStencilState {
             depth_test_enable: state.depth_test_enable,
             depth_write_enable: state.depth_write_enable,
-            depth_compare_op: state.depth_compare_op.gl_compare_op(),
+            depth_compare_op: state.depth_compare_op.gles2_compare_op(),
             stencil_test_enable: state.stencil_test_enable,
             //stencil_read_mask: state.stencil_read_mask,
             stencil_write_mask: state.stencil_write_mask,
-            front_depth_fail_op: state.front_depth_fail_op.gl_stencil_op(),
-            front_stencil_compare_op: state.front_stencil_compare_op.gl_compare_op(),
-            front_stencil_fail_op: state.front_stencil_fail_op.gl_stencil_op(),
-            front_stencil_pass_op: state.front_stencil_pass_op.gl_stencil_op(),
-            back_depth_fail_op: state.back_depth_fail_op.gl_stencil_op(),
-            back_stencil_compare_op: state.back_stencil_compare_op.gl_compare_op(),
-            back_stencil_fail_op: state.back_stencil_fail_op.gl_stencil_op(),
-            back_stencil_pass_op: state.back_stencil_pass_op.gl_stencil_op(),
+            front_depth_fail_op: state.front_depth_fail_op.gles2_stencil_op(),
+            front_stencil_compare_op: state.front_stencil_compare_op.gles2_compare_op(),
+            front_stencil_fail_op: state.front_stencil_fail_op.gles2_stencil_op(),
+            front_stencil_pass_op: state.front_stencil_pass_op.gles2_stencil_op(),
+            back_depth_fail_op: state.back_depth_fail_op.gles2_stencil_op(),
+            back_stencil_compare_op: state.back_stencil_compare_op.gles2_compare_op(),
+            back_stencil_fail_op: state.back_stencil_fail_op.gles2_stencil_op(),
+            back_stencil_pass_op: state.back_stencil_pass_op.gles2_stencil_op(),
         }
     }
 }
 
 impl RafxBlendFactor {
-    pub fn gl_blend_factor(self) -> GLenum {
+    pub fn gles2_blend_factor(self) -> GLenum {
         match self {
             RafxBlendFactor::Zero => gles20::ZERO,
             RafxBlendFactor::One => gles20::ONE,
@@ -181,7 +181,7 @@ impl RafxBlendFactor {
 }
 
 impl RafxBlendOp {
-    pub fn gl_blend_op(self) -> Option<GLenum> {
+    pub fn gles2_blend_op(self) -> Option<GLenum> {
         match self {
             RafxBlendOp::Add => Some(gles20::FUNC_ADD),
             RafxBlendOp::Subtract => Some(gles20::FUNC_SUBTRACT),
@@ -196,7 +196,7 @@ impl RafxBlendOp {
 
 //TODO: Some fields in RafxBlendState are not handled!
 #[derive(Debug)]
-pub struct GlBlendState {
+pub struct Gles2BlendState {
     pub enabled: bool,
     pub src_factor: GLenum,
     pub dst_factor: GLenum,
@@ -207,7 +207,7 @@ pub struct GlBlendState {
 }
 
 impl RafxBlendState {
-    pub fn gl_blend_state(&self) -> RafxResult<GlBlendState> {
+    pub fn gles2_blend_state(&self) -> RafxResult<Gles2BlendState> {
         if self.independent_blend {
             return Err("GL ES 2.0 does not support independent blend states")?;
         }
@@ -216,19 +216,19 @@ impl RafxBlendState {
             .render_target_blend_states
             .get(0)
             .ok_or("RafxBlendState has no render target blend states")?;
-        let blend_state = GlBlendState {
+        let blend_state = Gles2BlendState {
             enabled: rt_state.blend_enabled(),
-            src_factor: rt_state.src_factor.gl_blend_factor(),
-            dst_factor: rt_state.dst_factor.gl_blend_factor(),
-            src_factor_alpha: rt_state.src_factor_alpha.gl_blend_factor(),
-            dst_factor_alpha: rt_state.dst_factor_alpha.gl_blend_factor(),
-            blend_op: rt_state.blend_op.gl_blend_op().ok_or_else(|| {
+            src_factor: rt_state.src_factor.gles2_blend_factor(),
+            dst_factor: rt_state.dst_factor.gles2_blend_factor(),
+            src_factor_alpha: rt_state.src_factor_alpha.gles2_blend_factor(),
+            dst_factor_alpha: rt_state.dst_factor_alpha.gles2_blend_factor(),
+            blend_op: rt_state.blend_op.gles2_blend_op().ok_or_else(|| {
                 format!(
                     "GL ES 2.0 does not support blend op {:?}",
                     rt_state.blend_op
                 )
             })?,
-            blend_op_alpha: rt_state.blend_op.gl_blend_op().ok_or_else(|| {
+            blend_op_alpha: rt_state.blend_op.gles2_blend_op().ok_or_else(|| {
                 format!(
                     "GL ES 2.0 does not support blend op {:?}",
                     rt_state.blend_op

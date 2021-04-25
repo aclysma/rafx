@@ -49,7 +49,7 @@ impl UniformReflectionData {
 
         let mut all_uniform_member_offsets = FnvHashMap::<String, u32>::default();
         for shader in shaders {
-            for stage in shader.gl_shader().unwrap().stages() {
+            for stage in shader.gles2_shader().unwrap().stages() {
                 for resource in &stage.reflection.resources {
                     for uniform_member in &resource.gl_uniform_members {
                         let old = all_uniform_member_offsets

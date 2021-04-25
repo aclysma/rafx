@@ -180,21 +180,21 @@ impl RafxQueue {
             RafxQueue::Gles2(inner) => {
                 let command_buffers: Vec<_> = command_buffers
                     .iter()
-                    .map(|x| x.gl_command_buffer().unwrap())
+                    .map(|x| x.gles2_command_buffer().unwrap())
                     .collect();
                 let wait_semaphores: Vec<_> = wait_semaphores
                     .iter()
-                    .map(|x| x.gl_semaphore().unwrap())
+                    .map(|x| x.gles2_semaphore().unwrap())
                     .collect();
                 let signal_semaphores: Vec<_> = signal_semaphores
                     .iter()
-                    .map(|x| x.gl_semaphore().unwrap())
+                    .map(|x| x.gles2_semaphore().unwrap())
                     .collect();
                 inner.submit(
                     &command_buffers,
                     &wait_semaphores,
                     &signal_semaphores,
-                    signal_fence.map(|x| x.gl_fence().unwrap()),
+                    signal_fence.map(|x| x.gles2_fence().unwrap()),
                 )
             }
             #[cfg(any(
@@ -262,10 +262,10 @@ impl RafxQueue {
             RafxQueue::Gles2(inner) => {
                 let wait_semaphores: Vec<_> = wait_semaphores
                     .iter()
-                    .map(|x| x.gl_semaphore().unwrap())
+                    .map(|x| x.gles2_semaphore().unwrap())
                     .collect();
                 inner.present(
-                    swapchain.gl_swapchain().unwrap(),
+                    swapchain.gles2_swapchain().unwrap(),
                     &wait_semaphores,
                     image_index,
                 )
@@ -346,7 +346,7 @@ impl RafxQueue {
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_queue(&self) -> Option<&RafxQueueGles2> {
+    pub fn gles2_queue(&self) -> Option<&RafxQueueGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(_) => None,

@@ -19,7 +19,7 @@ pub(crate) fn cook_shader(
         // API so will need to figure out how to compile the shader programmatically.)
         metal: metal_source.map(|x| RafxShaderPackageMetal::Src(x)),
 
-        gl: gles_source.map(|x| RafxShaderPackageGl::Src(x)),
+        gles2: gles_source.map(|x| RafxShaderPackageGl::Src(x)),
     };
 
     let cooked_shader = CookedShaderPackage {

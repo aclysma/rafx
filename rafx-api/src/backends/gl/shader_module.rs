@@ -1,5 +1,5 @@
 use crate::gl::{gles20, RafxDeviceContextGles2, ShaderId};
-use crate::{RafxResult, RafxShaderModule, RafxShaderModuleDefGl, RafxShaderStageFlags};
+use crate::{RafxResult, RafxShaderModule, RafxShaderModuleDefGles2, RafxShaderStageFlags};
 use rafx_base::trust_cell::TrustCell;
 use std::ffi::{CStr, CString};
 use std::sync::Arc;
@@ -64,10 +64,10 @@ impl RafxShaderModuleGles2 {
 
     pub fn new(
         device_context: &RafxDeviceContextGles2,
-        data: RafxShaderModuleDefGl,
+        data: RafxShaderModuleDefGles2,
     ) -> RafxResult<Self> {
         match data {
-            RafxShaderModuleDefGl::GlSrc(src) => {
+            RafxShaderModuleDefGles2::GlSrc(src) => {
                 RafxShaderModuleGles2::new_from_src(device_context, src)
             }
         }

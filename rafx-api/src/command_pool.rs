@@ -148,7 +148,7 @@ impl RafxCommandPool {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_command_pool(&self) -> Option<&RafxCommandPoolGles2> {
+    pub fn gles2_command_pool(&self) -> Option<&RafxCommandPoolGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandPool::Vk(_) => None,

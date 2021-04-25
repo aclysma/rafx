@@ -97,7 +97,7 @@ impl RafxSwapchain {
                 inner.acquire_next_image_fence(fence.metal_fence().unwrap())
             }
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gles2(inner) => inner.acquire_next_image_fence(fence.gl_fence().unwrap()),
+            RafxSwapchain::Gles2(inner) => inner.acquire_next_image_fence(fence.gles2_fence().unwrap()),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -126,7 +126,7 @@ impl RafxSwapchain {
             }
             #[cfg(feature = "rafx-gles2")]
             RafxSwapchain::Gles2(inner) => {
-                inner.acquire_next_image_semaphore(semaphore.gl_semaphore().unwrap())
+                inner.acquire_next_image_semaphore(semaphore.gles2_semaphore().unwrap())
             }
             #[cfg(any(
                 feature = "rafx-empty",
@@ -199,7 +199,7 @@ impl RafxSwapchain {
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
     #[cfg(feature = "rafx-gles2")]
-    pub fn gl_swapchain(&self) -> Option<&RafxSwapchainGles2> {
+    pub fn gles2_swapchain(&self) -> Option<&RafxSwapchainGles2> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxSwapchain::Vk(_) => None,

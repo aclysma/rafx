@@ -164,7 +164,7 @@ impl RafxBufferGles2 {
                 .gl_context()
                 .gl_bind_buffer(target, buffer_id.unwrap())?;
 
-            let usage = buffer_def.memory_usage.gl_usage().unwrap();
+            let usage = buffer_def.memory_usage.gles2_usage().unwrap();
             if usage != gles20::NONE {
                 device_context.gl_context().gl_buffer_data(
                     target,
