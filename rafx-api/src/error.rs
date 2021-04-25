@@ -19,7 +19,7 @@ pub enum RafxError {
     VkCreateInstanceError(Arc<VkCreateInstanceError>),
     #[cfg(feature = "rafx-vulkan")]
     VkMemError(Arc<vk_mem::Error>),
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     GlError(u32),
 }
 
@@ -37,7 +37,7 @@ impl std::error::Error for RafxError {
             RafxError::VkCreateInstanceError(ref e) => Some(&**e),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkMemError(ref e) => Some(&**e),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxError::GlError(_) => None,
         }
     }
@@ -59,7 +59,7 @@ impl core::fmt::Display for RafxError {
             RafxError::VkCreateInstanceError(ref e) => e.fmt(fmt),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkMemError(ref e) => e.fmt(fmt),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxError::GlError(ref e) => e.fmt(fmt),
         }
     }

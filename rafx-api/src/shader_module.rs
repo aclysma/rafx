@@ -3,7 +3,7 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxShaderModuleEmpty;
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 use crate::gl::RafxShaderModuleGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxShaderModuleMetal;
@@ -21,7 +21,7 @@ pub enum RafxShaderModule {
     Vk(RafxShaderModuleVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxShaderModuleMetal),
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     Gl(RafxShaderModuleGl),
     #[cfg(any(
         feature = "rafx-empty",
@@ -40,7 +40,7 @@ impl RafxShaderModule {
             RafxShaderModule::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxShaderModule::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -59,7 +59,7 @@ impl RafxShaderModule {
             RafxShaderModule::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(inner) => Some(inner),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxShaderModule::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -71,14 +71,14 @@ impl RafxShaderModule {
 
     /// Get the underlying metal API object. This provides access to any internally created
     /// metal objects.
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     pub fn gl_shader_module(&self) -> Option<&RafxShaderModuleGl> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxShaderModule::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxShaderModule::Gl(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -100,7 +100,7 @@ impl RafxShaderModule {
             RafxShaderModule::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxShaderModule::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",

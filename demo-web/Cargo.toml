@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-rafx = { path = "../rafx", features = ["rafx-gl"] }
+rafx = { path = "../rafx", features = ["rafx-gles2"] }
 raw-window-handle = "0.3.3"
 log = "0.4.14"
 
@@ -46,7 +46,7 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 #rafx-empty = ["rafx/rafx-empty"]
 #rafx-vulkan = ["rafx/rafx-vulkan"]
 #rafx-metal = ["rafx/rafx-metal"]
-#rafx-gl = ["rafx/rafx-gl"]
+#rafx-gles2 = ["rafx/rafx-gles2"]
 #sdl2-bundled = ["sdl2/bundled"]
 #sdl2-static-link = ["sdl2/static-link"]
 #static-vulkan = ["rafx/static-vulkan"]

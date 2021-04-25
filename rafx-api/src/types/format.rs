@@ -1,4 +1,4 @@
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 use crate::gl::gles20::types::GLenum;
 #[cfg(feature = "rafx-vulkan")]
 use ash::vk;
@@ -848,7 +848,7 @@ impl Into<MTLVertexFormat> for RafxFormat {
     }
 }
 
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 #[derive(Debug)]
 pub struct GlTextureFormatInfo {
     pub gl_format: GLenum,
@@ -862,7 +862,7 @@ pub struct GlTextureFormatInfo {
 // internal (gpu format): GL_ALPHA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_RGB, or GL_RGBA
 
 #[rustfmt::skip]
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 impl RafxFormat {
     pub fn gl_type(self) -> Option<GLenum> {
         use crate::gl::gles20 as gl;

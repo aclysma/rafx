@@ -47,6 +47,7 @@ unsafe impl Sync for RafxDeviceContextGlInner {}
 
 impl Drop for RafxDeviceContextGlInner {
     fn drop(&mut self) {
+        self.fullscreen_quad.destroy(&self.gl_context).unwrap();
         log::trace!("destroying device");
         self.destroyed.swap(true, Ordering::AcqRel);
     }

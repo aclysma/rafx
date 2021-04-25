@@ -59,7 +59,7 @@ pub struct RafxShaderPackage {
 impl RafxShaderPackage {
     /// Create a shader module def for use with a GL RafxDevice. Returns none if the package does
     /// not contain data necessary for GL (not GL ES)
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     pub fn gl_module_def(&self) -> Option<RafxShaderModuleDefGl> {
         if let Some(gl) = self.gl.as_ref() {
             Some(match gl {
@@ -114,7 +114,7 @@ impl RafxShaderPackage {
 
     pub fn module_def(&self) -> RafxShaderModuleDef {
         RafxShaderModuleDef {
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             gl: self.gl_module_def(),
             #[cfg(feature = "rafx-metal")]
             metal: self.metal_module_def(),
@@ -134,7 +134,7 @@ impl RafxShaderPackage {
 ///
 /// This enum may be populated manually or created from a RafxShaderPackage.
 #[derive(Copy, Clone, Hash)]
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 pub enum RafxShaderModuleDefGl<'a> {
     /// GL source code
     GlSrc(&'a str),
@@ -179,7 +179,7 @@ pub enum RafxShaderModuleDefEmpty<'a> {
 /// This enum may be populated manually or created from a RafxShaderPackage.
 #[derive(Copy, Clone, Hash, Default)]
 pub struct RafxShaderModuleDef<'a> {
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     pub gl: Option<RafxShaderModuleDefGl<'a>>,
     #[cfg(feature = "rafx-metal")]
     pub metal: Option<RafxShaderModuleDefMetal<'a>>,

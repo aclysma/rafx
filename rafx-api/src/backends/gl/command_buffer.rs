@@ -2,7 +2,7 @@ use crate::gl::{
     BoundDescriptorSet, CommandPoolGlState, CommandPoolGlStateInner, DescriptorSetArrayData,
     GlContext, GlPipelineInfo, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl,
     RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl,
-    NONE_BUFFER, NONE_RENDERBUFFER, NONE_TEXTURE,
+    NONE_BUFFER, NONE_TEXTURE,
 };
 use crate::{
     RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,

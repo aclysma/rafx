@@ -3,7 +3,7 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxPipelineEmpty;
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 use crate::gl::RafxPipelineGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxPipelineMetal;
@@ -30,7 +30,7 @@ pub enum RafxPipeline {
     Vk(RafxPipelineVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxPipelineMetal),
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     Gl(RafxPipelineGl),
     #[cfg(any(
         feature = "rafx-empty",
@@ -47,7 +47,7 @@ impl RafxPipeline {
             RafxPipeline::Vk(inner) => inner.pipeline_type(),
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(inner) => inner.pipeline_type(),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxPipeline::Gl(inner) => inner.pipeline_type(),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -64,7 +64,7 @@ impl RafxPipeline {
             RafxPipeline::Vk(inner) => inner.root_signature(),
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(inner) => inner.root_signature(),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxPipeline::Gl(inner) => inner.root_signature(),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -83,7 +83,7 @@ impl RafxPipeline {
             RafxPipeline::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxPipeline::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -102,7 +102,7 @@ impl RafxPipeline {
             RafxPipeline::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(inner) => Some(inner),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxPipeline::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -114,14 +114,14 @@ impl RafxPipeline {
 
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     pub fn gl_pipeline(&self) -> Option<&RafxPipelineGl> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxPipeline::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxPipeline::Gl(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -141,7 +141,7 @@ impl RafxPipeline {
             RafxPipeline::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxPipeline::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",

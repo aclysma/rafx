@@ -3,7 +3,7 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxApiEmpty;
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 use crate::gl::{RafxApiDefGl, RafxApiGl};
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxApiDefMetal, RafxApiMetal};
@@ -28,7 +28,7 @@ pub enum RafxApi {
     Vk(RafxApiVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxApiMetal),
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     Gl(RafxApiGl),
     #[cfg(any(
         feature = "rafx-empty",
@@ -60,12 +60,12 @@ impl RafxApi {
             return RafxApi::new_vulkan(_window, _api_def, &Default::default());
         }
 
-        #[cfg(feature = "rafx-gl")]
+        #[cfg(feature = "rafx-gles2")]
         {
             return RafxApi::new_gl(_window, _api_def, &Default::default());
         }
 
-        return Err("Rafx was compiled with no backend feature flag. Use on of the following features: rafx-metal, rafx-vulkan, rafx-gl")?;
+        return Err("Rafx was compiled with no backend feature flag. Use on of the following features: rafx-metal, rafx-vulkan, rafx-gles2")?;
     }
 
     /// Initialize a device using vulkan
@@ -105,7 +105,7 @@ impl RafxApi {
     }
 
     /// Initialize a device using vulkan
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     pub fn new_gl(
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
@@ -129,7 +129,7 @@ impl RafxApi {
             RafxApi::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => RafxDeviceContext::Metal(inner.device_context().clone()),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxApi::Gl(inner) => RafxDeviceContext::Gl(inner.device_context().clone()),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -150,7 +150,7 @@ impl RafxApi {
             RafxApi::Vk(inner) => inner.destroy(),
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => inner.destroy(),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxApi::Gl(inner) => inner.destroy(),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -169,7 +169,7 @@ impl RafxApi {
             RafxApi::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxApi::Gl(inner) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -188,7 +188,7 @@ impl RafxApi {
             RafxApi::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => Some(inner),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxApi::Gl(inner) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -200,14 +200,14 @@ impl RafxApi {
 
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     pub fn gl_api(&self) -> Option<&RafxApiGl> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxApi::Gl(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -229,7 +229,7 @@ impl RafxApi {
             RafxApi::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxApi::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",

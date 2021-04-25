@@ -1,6 +1,6 @@
 use crate::{RafxCommandBuffer, RafxResult, RafxTexture};
 
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 use crate::gl::RafxCommandBufferGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxCommandBufferMetal;
@@ -34,7 +34,7 @@ pub fn generate_mipmaps(
         RafxCommandBuffer::Vk(inner) => generate_mipmaps_vk(inner, _texture),
         #[cfg(feature = "rafx-metal")]
         RafxCommandBuffer::Metal(inner) => generate_mipmaps_metal(inner, _texture),
-        #[cfg(feature = "rafx-gl")]
+        #[cfg(feature = "rafx-gles2")]
         RafxCommandBuffer::Gl(inner) => generate_mipmaps_gl(inner, _texture),
         #[cfg(any(
             feature = "rafx-empty",
@@ -62,7 +62,7 @@ fn generate_mipmaps_metal(
 }
 
 // This custom path for metal can be removed after I implement cmd_blit
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 fn generate_mipmaps_gl(
     _command_buffer: &RafxCommandBufferGl,
     _texture: &RafxTexture,

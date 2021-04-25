@@ -36,6 +36,6 @@ slotmap = "1.0.2"
 default = []
 rafx-vulkan = ["rafx-api/rafx-vulkan"]
 rafx-metal = ["rafx-api/rafx-metal"]
-rafx-gl = ["rafx-api/rafx-gl"]
+rafx-gles2 = ["rafx-api/rafx-gles2"]
 static-vulkan = ["rafx-api/static-vulkan"]
 

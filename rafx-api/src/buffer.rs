@@ -3,7 +3,7 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxBufferEmpty;
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 use crate::gl::RafxBufferGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxBufferMetal;
@@ -20,7 +20,7 @@ pub enum RafxBuffer {
     Vk(RafxBufferVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxBufferMetal),
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     Gl(RafxBufferGl),
     #[cfg(any(
         feature = "rafx-empty",
@@ -42,7 +42,7 @@ impl RafxBuffer {
             RafxBuffer::Vk(inner) => inner.copy_to_host_visible_buffer(data),
             #[cfg(feature = "rafx-metal")]
             RafxBuffer::Metal(inner) => inner.copy_to_host_visible_buffer(data),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(inner) => inner.copy_to_host_visible_buffer(data),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -68,7 +68,7 @@ impl RafxBuffer {
             RafxBuffer::Metal(inner) => {
                 inner.copy_to_host_visible_buffer_with_offset(data, buffer_byte_offset)
             }
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(inner) => {
                 inner.copy_to_host_visible_buffer_with_offset(data, buffer_byte_offset)
             }
@@ -89,7 +89,7 @@ impl RafxBuffer {
             RafxBuffer::Vk(inner) => inner.buffer_def(),
             #[cfg(feature = "rafx-metal")]
             RafxBuffer::Metal(inner) => inner.buffer_def(),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(inner) => inner.buffer_def(),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -112,7 +112,7 @@ impl RafxBuffer {
             RafxBuffer::Vk(inner) => inner.map_buffer(),
             #[cfg(feature = "rafx-metal")]
             RafxBuffer::Metal(inner) => inner.map_buffer(),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(inner) => inner.map_buffer(),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -134,7 +134,7 @@ impl RafxBuffer {
             RafxBuffer::Vk(inner) => inner.unmap_buffer(),
             #[cfg(feature = "rafx-metal")]
             RafxBuffer::Metal(inner) => inner.unmap_buffer(),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(inner) => inner.unmap_buffer(),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -151,7 +151,7 @@ impl RafxBuffer {
             RafxBuffer::Vk(inner) => inner.mapped_memory(),
             #[cfg(feature = "rafx-metal")]
             RafxBuffer::Metal(inner) => inner.mapped_memory(),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(inner) => inner.mapped_memory(),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -170,7 +170,7 @@ impl RafxBuffer {
             RafxBuffer::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxBuffer::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -189,7 +189,7 @@ impl RafxBuffer {
             RafxBuffer::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxBuffer::Metal(inner) => Some(inner),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -201,14 +201,14 @@ impl RafxBuffer {
 
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     pub fn gl_buffer(&self) -> Option<&RafxBufferGl> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxBuffer::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxBuffer::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -230,7 +230,7 @@ impl RafxBuffer {
             RafxBuffer::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxBuffer::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",

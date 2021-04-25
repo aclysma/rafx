@@ -1,6 +1,6 @@
 use crate::backends::gl::RafxTextureGl;
 use crate::gl::{
-    GlContext, RafxDeviceContextGl, RafxFenceGl, RafxRawImageGl, RafxSemaphoreGl, NONE_RENDERBUFFER,
+    GlContext, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl,
 };
 use crate::{
     RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
@@ -15,13 +15,10 @@ const SWAPCHAIN_FORMAT: RafxFormat = RafxFormat::R8G8B8A8_UNORM;
 pub struct RafxSwapchainGl {
     device_context: RafxDeviceContextGl,
     surface_context: Arc<GlContext>,
-    //layer: gl_rs::GlLayer,
-    //drawable: TrustCell<Option<gl_rs::GlDrawable>>,
     swapchain_def: RafxSwapchainDef,
     format: RafxFormat,
     // Just fake this
     next_swapchain_image_index: u32,
-    //swapchain_images: Vec<RafxTextureGl>,
     pub(crate) swapchain_image: RafxTextureGl,
 }
 
@@ -42,14 +39,6 @@ impl RafxSwapchainGl {
         &self.surface_context
     }
 
-    // pub fn gl_layer(&self) -> &gl_rs::GlLayerRef {
-    //     self.layer.as_ref()
-    // }
-
-    // pub(crate) fn take_drawable(&self) -> Option<gl_rs::GlDrawable> {
-    //     self.drawable.borrow_mut().take()
-    // }
-
     pub fn new(
         device_context: &RafxDeviceContextGl,
         raw_window_handle: &dyn HasRawWindowHandle,
@@ -69,7 +58,6 @@ impl RafxSwapchainGl {
             swapchain_def: swapchain_def.clone(),
             next_swapchain_image_index: 0,
             format: SWAPCHAIN_FORMAT,
-            //swapchain_images,
             swapchain_image
         })
     }

@@ -493,7 +493,7 @@ fn load_shader_packages(
         _package.vk = Some(RafxShaderPackageVulkan::SpvBytes(vk_bytes));
     }
 
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     {
         let gles_path = _base_path.join(_gles_src_file);
         let gles_src = std::fs::read_to_string(gles_path)?;

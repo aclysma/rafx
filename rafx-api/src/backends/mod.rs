@@ -4,7 +4,7 @@ pub mod metal;
 #[cfg(feature = "rafx-vulkan")]
 pub mod vulkan;
 
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 pub mod gl;
 
 #[cfg(any(

@@ -38,7 +38,7 @@ default = []
 rafx-empty = ["rafx-api/rafx-empty"]
 rafx-vulkan = ["rafx-api/rafx-vulkan"]
 rafx-metal = ["rafx-api/rafx-metal"]
-rafx-gl = ["rafx-api/rafx-gl"]
+rafx-gles2 = ["rafx-api/rafx-gles2"]
 
 # Vulkan-specific feature, use statically-linked vulkan instead of dynamically loading it
 static-vulkan = ["rafx-api/static-vulkan"]

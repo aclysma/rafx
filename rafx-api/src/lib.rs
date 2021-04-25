@@ -240,9 +240,9 @@ pub use backends::vulkan;
 #[cfg(feature = "rafx-vulkan")]
 pub use backends::vulkan::RafxApiDefVulkan;
 
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 pub use backends::gl;
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 pub use backends::gl::RafxApiDefGl;
 
 #[cfg(any(

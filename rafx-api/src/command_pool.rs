@@ -3,7 +3,7 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxCommandPoolEmpty;
-#[cfg(feature = "rafx-gl")]
+#[cfg(feature = "rafx-gles2")]
 use crate::gl::RafxCommandPoolGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxCommandPoolMetal;
@@ -27,7 +27,7 @@ pub enum RafxCommandPool {
     Vk(RafxCommandPoolVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxCommandPoolMetal),
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     Gl(RafxCommandPoolGl),
     #[cfg(any(
         feature = "rafx-empty",
@@ -45,7 +45,7 @@ impl RafxCommandPool {
             RafxCommandPool::Metal(inner) => {
                 RafxDeviceContext::Metal(inner.device_context().clone())
             }
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxCommandPool::Gl(inner) => RafxDeviceContext::Gl(inner.device_context().clone()),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -72,7 +72,7 @@ impl RafxCommandPool {
             RafxCommandPool::Metal(inner) => {
                 RafxCommandBuffer::Metal(inner.create_command_buffer(command_buffer_def)?)
             }
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxCommandPool::Gl(inner) => {
                 RafxCommandBuffer::Gl(inner.create_command_buffer(command_buffer_def)?)
             }
@@ -97,7 +97,7 @@ impl RafxCommandPool {
             // metal does not have the concept of command buffer pools in the API
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(inner) => inner.reset_command_pool(),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxCommandPool::Gl(inner) => inner.reset_command_pool(),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -116,7 +116,7 @@ impl RafxCommandPool {
             RafxCommandPool::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxCommandPool::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -135,7 +135,7 @@ impl RafxCommandPool {
             RafxCommandPool::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(inner) => Some(inner),
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxCommandPool::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
@@ -147,14 +147,14 @@ impl RafxCommandPool {
 
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.
-    #[cfg(feature = "rafx-gl")]
+    #[cfg(feature = "rafx-gles2")]
     pub fn gl_command_pool(&self) -> Option<&RafxCommandPoolGl> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandPool::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxCommandPool::Gl(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -174,7 +174,7 @@ impl RafxCommandPool {
             RafxCommandPool::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(_) => None,
-            #[cfg(feature = "rafx-gl")]
+            #[cfg(feature = "rafx-gles2")]
             RafxCommandPool::Gl(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",

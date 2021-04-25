@@ -1,5 +1,5 @@
 use crate::gl::gles20::types::GLenum;
-use crate::gl::{gles20, RafxDeviceContextGl, RenderbufferId, TextureId, NONE_TEXTURE};
+use crate::gl::{gles20, RafxDeviceContextGl, TextureId, NONE_TEXTURE};
 use crate::{GlTextureFormatInfo, RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions, RafxSampleCount};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::Ordering;
