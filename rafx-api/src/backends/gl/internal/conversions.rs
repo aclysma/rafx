@@ -1,6 +1,10 @@
-use crate::{RafxMemoryUsage, RafxCullMode, RafxRasterizerState, RafxFrontFace, RafxDepthState, RafxCompareOp, RafxStencilOp, RafxBlendState, RafxBlendFactor, RafxBlendOp, RafxResult, RafxPrimitiveTopology, RafxFilterType, RafxAddressMode};
-use crate::gl::gles20::types::GLenum;
 use crate::gl::gles20;
+use crate::gl::gles20::types::GLenum;
+use crate::{
+    RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxBlendState, RafxCompareOp, RafxCullMode,
+    RafxDepthState, RafxFilterType, RafxFrontFace, RafxMemoryUsage, RafxPrimitiveTopology,
+    RafxRasterizerState, RafxResult, RafxStencilOp,
+};
 
 impl RafxFilterType {
     pub fn gl_filter_type(self) -> GLenum {
@@ -103,7 +107,7 @@ impl RafxStencilOp {
 pub struct GlRasterizerState {
     pub cull_mode: GLenum,
     pub front_face: GLenum,
-    pub scissor_test: bool
+    pub scissor_test: bool,
 }
 
 impl From<&RafxRasterizerState> for GlRasterizerState {
@@ -208,15 +212,28 @@ impl RafxBlendState {
             return Err("GL ES 2.0 does not support independent blend states")?;
         }
 
-        let rt_state = self.render_target_blend_states.get(0).ok_or("RafxBlendState has no render target blend states")?;
+        let rt_state = self
+            .render_target_blend_states
+            .get(0)
+            .ok_or("RafxBlendState has no render target blend states")?;
         let blend_state = GlBlendState {
             enabled: rt_state.blend_enabled(),
             src_factor: rt_state.src_factor.gl_blend_factor(),
             dst_factor: rt_state.dst_factor.gl_blend_factor(),
             src_factor_alpha: rt_state.src_factor_alpha.gl_blend_factor(),
             dst_factor_alpha: rt_state.dst_factor_alpha.gl_blend_factor(),
-            blend_op: rt_state.blend_op.gl_blend_op().ok_or_else(|| format!("GL ES 2.0 does not support blend op {:?}", rt_state.blend_op))?,
-            blend_op_alpha: rt_state.blend_op.gl_blend_op().ok_or_else(|| format!("GL ES 2.0 does not support blend op {:?}", rt_state.blend_op))?,
+            blend_op: rt_state.blend_op.gl_blend_op().ok_or_else(|| {
+                format!(
+                    "GL ES 2.0 does not support blend op {:?}",
+                    rt_state.blend_op
+                )
+            })?,
+            blend_op_alpha: rt_state.blend_op.gl_blend_op().ok_or_else(|| {
+                format!(
+                    "GL ES 2.0 does not support blend op {:?}",
+                    rt_state.blend_op
+                )
+            })?,
         };
 
         Ok(blend_state)

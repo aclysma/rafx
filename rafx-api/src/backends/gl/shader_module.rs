@@ -1,8 +1,8 @@
-use crate::gl::{RafxDeviceContextGl, gles20, ShaderId};
+use crate::gl::{gles20, RafxDeviceContextGl, ShaderId};
 use crate::{RafxResult, RafxShaderModule, RafxShaderModuleDefGl, RafxShaderStageFlags};
-use std::sync::Arc;
-use std::ffi::{CString, CStr};
 use rafx_base::trust_cell::TrustCell;
+use std::ffi::{CStr, CString};
+use std::sync::Arc;
 
 #[derive(Debug)]
 struct GlCompiledShaderInner {
@@ -13,13 +13,16 @@ struct GlCompiledShaderInner {
 
 impl Drop for GlCompiledShaderInner {
     fn drop(&mut self) {
-        self.device_context.gl_context().gl_destroy_shader(self.shader_id).unwrap();
+        self.device_context
+            .gl_context()
+            .gl_destroy_shader(self.shader_id)
+            .unwrap();
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct GlCompiledShader {
-    inner: Arc<GlCompiledShaderInner>
+    inner: Arc<GlCompiledShaderInner>,
 }
 
 impl GlCompiledShader {
@@ -64,7 +67,9 @@ impl RafxShaderModuleGl {
         data: RafxShaderModuleDefGl,
     ) -> RafxResult<Self> {
         match data {
-            RafxShaderModuleDefGl::GlSrc(src) => RafxShaderModuleGl::new_from_src(device_context, src)
+            RafxShaderModuleDefGl::GlSrc(src) => {
+                RafxShaderModuleGl::new_from_src(device_context, src)
+            }
         }
     }
 
@@ -75,7 +80,7 @@ impl RafxShaderModuleGl {
         let inner = RafxShaderModuleGlInner {
             device_context: device_context.clone(),
             compiled_shader: TrustCell::new(None),
-            src: CString::new(src).map_err(|_| "Could not conver GL src from string to cstring")?
+            src: CString::new(src).map_err(|_| "Could not conver GL src from string to cstring")?,
         };
 
         Ok(RafxShaderModuleGl {
@@ -83,7 +88,10 @@ impl RafxShaderModuleGl {
         })
     }
 
-    pub(crate) fn compile_shader(&self, stage: RafxShaderStageFlags) -> RafxResult<GlCompiledShader> {
+    pub(crate) fn compile_shader(
+        &self,
+        stage: RafxShaderStageFlags,
+    ) -> RafxResult<GlCompiledShader> {
         let mut previously_compiled_shader = self.inner.compiled_shader.borrow_mut();
         if let Some(compiled_shader) = previously_compiled_shader.as_ref() {
             return if compiled_shader.stage() == stage {
@@ -108,11 +116,11 @@ impl RafxShaderModuleGl {
         let inner = GlCompiledShaderInner {
             device_context: self.inner.device_context.clone(),
             shader_id,
-            stage
+            stage,
         };
 
         let compiled_shader = GlCompiledShader {
-            inner: Arc::new(inner)
+            inner: Arc::new(inner),
         };
 
         *previously_compiled_shader = Some(compiled_shader.clone());

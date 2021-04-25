@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxCommandBufferEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxCommandBufferGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxCommandBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxCommandBufferVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxCommandBufferGl;
 use crate::{
     RafxBuffer, RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
     RafxDepthStencilRenderTargetBinding, RafxDescriptorSetArray, RafxDescriptorSetHandle,

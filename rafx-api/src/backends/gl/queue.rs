@@ -1,4 +1,7 @@
-use crate::gl::{RafxCommandBufferGl, RafxCommandPoolGl, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl, RafxSwapchainGl};
+use crate::gl::{
+    RafxCommandBufferGl, RafxCommandPoolGl, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl,
+    RafxSwapchainGl,
+};
 use crate::{RafxCommandPoolDef, RafxPresentSuccessResult, RafxQueueType, RafxResult};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -41,7 +44,6 @@ impl RafxQueueGl {
         device_context: &RafxDeviceContextGl,
         queue_type: RafxQueueType,
     ) -> RafxResult<RafxQueueGl> {
-
         let queue_id = NEXT_QUEUE_ID.fetch_add(1, Ordering::Relaxed);
         let inner = RafxQueueGlInner {
             device_context: device_context.clone(),
@@ -112,7 +114,9 @@ impl RafxQueueGl {
     ) -> RafxResult<RafxPresentSuccessResult> {
         self.submit_semaphore_wait(wait_semaphores)?;
 
-        self.device_context().gl_context().gl_disable(crate::gl::gles20::SCISSOR_TEST)?;
+        self.device_context()
+            .gl_context()
+            .gl_disable(crate::gl::gles20::SCISSOR_TEST)?;
 
         let surface_context = swapchain.surface_context();
         let gl_context_manager = self.device_context().gl_context_manager();

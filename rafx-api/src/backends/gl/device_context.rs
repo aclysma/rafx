@@ -1,11 +1,20 @@
-use crate::{RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext, RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDefGl, RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef};
+use crate::{
+    RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext,
+    RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxResourceType,
+    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDefGl,
+    RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
+};
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
-use crate::gl::{RafxBufferGl, RafxDescriptorSetArrayGl, RafxFenceGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxSamplerGl, RafxSemaphoreGl, RafxShaderGl, RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl, GlContextManager};
+use crate::gl::{
+    GlContextManager, RafxBufferGl, RafxDescriptorSetArrayGl, RafxFenceGl, RafxPipelineGl,
+    RafxQueueGl, RafxRootSignatureGl, RafxSamplerGl, RafxSemaphoreGl, RafxShaderGl,
+    RafxShaderModuleGl, RafxSwapchainGl, RafxTextureGl,
+};
 
-use crate::gl::GlContext;
 use crate::gl::gles20;
+use crate::gl::GlContext;
 
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
@@ -55,9 +64,9 @@ impl RafxDeviceContextGlInner {
         let shading_language_version = gl_context.gl_get_string(gles20::SHADING_LANGUAGE_VERSION);
         log::debug!("Shading Language Version: {}", shading_language_version);
 
-
         let pack_alignment = gl_context.gl_get_integerv(gles20::PACK_ALIGNMENT) as u32;
-        let max_vertex_attribute_count = gl_context.gl_get_integerv(gles20::MAX_VERTEX_ATTRIBS) as u32;
+        let max_vertex_attribute_count =
+            gl_context.gl_get_integerv(gles20::MAX_VERTEX_ATTRIBS) as u32;
 
         let device_info = RafxDeviceInfo {
             min_uniform_buffer_offset_alignment: pack_alignment,
@@ -71,8 +80,8 @@ impl RafxDeviceContextGlInner {
         //TODO: Support extensions
 
         #[cfg(debug_assertions)]
-            #[cfg(feature = "track-device-contexts")]
-            let all_contexts = {
+        #[cfg(feature = "track-device-contexts")]
+        let all_contexts = {
             let create_backtrace = backtrace::Backtrace::new_unresolved();
             let mut all_contexts = fnv::FnvHashMap::<u64, backtrace::Backtrace>::default();
             all_contexts.insert(0, create_backtrace);
@@ -132,10 +141,7 @@ impl Clone for RafxDeviceContextGl {
                     .insert(create_index, create_backtrace);
             }
 
-            log::trace!(
-                "Cloned RafxDeviceContextGl create_index {}",
-                create_index
-            );
+            log::trace!("Cloned RafxDeviceContextGl create_index {}", create_index);
             create_index
         };
 

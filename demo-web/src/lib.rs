@@ -1,4 +1,3 @@
-
 #[cfg(not(target_arch = "wasm32"))]
 mod main_native;
 #[cfg(not(target_arch = "wasm32"))]
@@ -9,11 +8,21 @@ mod main_web;
 #[cfg(target_arch = "wasm32")]
 pub use main_web::*;
 
+use rafx::api::{
+    RafxApi, RafxBufferDef, RafxColorClearValue, RafxColorRenderTargetBinding,
+    RafxCommandBufferDef, RafxCommandPoolDef, RafxDescriptorElements, RafxDescriptorKey,
+    RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxFormat, RafxGlUniformMember,
+    RafxGraphicsPipelineDef, RafxLoadOp, RafxPrimitiveTopology, RafxQueueType, RafxResourceState,
+    RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxShaderModuleDef,
+    RafxShaderModuleDefGl, RafxShaderResource, RafxShaderStageDef, RafxShaderStageFlags,
+    RafxShaderStageReflection, RafxStoreOp, RafxSwapchainDef, RafxSwapchainHelper,
+    RafxTextureBarrier, RafxVertexAttributeRate, RafxVertexBufferBinding, RafxVertexLayout,
+    RafxVertexLayoutAttribute, RafxVertexLayoutBuffer,
+};
 use winit::{
     event::{Event, WindowEvent},
-    event_loop::{ControlFlow},
+    event_loop::ControlFlow,
 };
-use rafx::api::{RafxApi, RafxSwapchainDef, RafxSwapchainHelper, RafxQueueType, RafxResult, RafxCommandPoolDef, RafxBufferDef, RafxCommandBufferDef, RafxShaderModuleDef, RafxShaderModuleDefGl, RafxShaderResource, RafxGlUniformMember, RafxShaderStageDef, RafxShaderStageReflection, RafxShaderStageFlags, RafxResourceType, RafxRootSignatureDef, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxDescriptorKey, RafxDescriptorElements, RafxVertexLayout, RafxVertexLayoutAttribute, RafxFormat, RafxVertexLayoutBuffer, RafxVertexAttributeRate, RafxGraphicsPipelineDef, RafxSampleCount, RafxPrimitiveTopology, RafxTextureBarrier, RafxResourceState, RafxColorRenderTargetBinding, RafxStoreOp, RafxColorClearValue, RafxLoadOp, RafxVertexBufferBinding};
 
 pub fn update_loop(
     window: winit::window::Window,
@@ -23,9 +32,7 @@ pub fn update_loop(
     // Create the api
     //
     log::trace!("Creating the API");
-    let api = unsafe {
-        RafxApi::new(&window, &Default::default())?
-    };
+    let api = unsafe { RafxApi::new(&window, &Default::default())? };
 
     // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
     // clean shutdown.
@@ -133,16 +140,16 @@ pub fn update_loop(
         log::trace!("Creating shader modules");
         let vert_shader_module = device_context.create_shader_module(RafxShaderModuleDef {
             gl: Some(RafxShaderModuleDefGl::GlSrc(include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/shaders/shader.vert.gles"
+                env!("CARGO_MANIFEST_DIR"),
+                "/shaders/shader.vert.gles"
             )))),
             ..Default::default()
         })?;
 
         let frag_shader_module = device_context.create_shader_module(RafxShaderModuleDef {
             gl: Some(RafxShaderModuleDefGl::GlSrc(include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/shaders/shader.frag.gles"
+                env!("CARGO_MANIFEST_DIR"),
+                "/shaders/shader.frag.gles"
             )))),
             ..Default::default()
         })?;
@@ -162,9 +169,7 @@ pub fn update_loop(
             binding: 0,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
             gl_name: Some("uniform_data".to_string()),
-            gl_uniform_members: vec![
-                RafxGlUniformMember::new("uniform_data.uniform_color", 0)
-            ],
+            gl_uniform_members: vec![RafxGlUniformMember::new("uniform_data.uniform_color", 0)],
             ..Default::default()
         };
 
@@ -243,14 +248,14 @@ pub fn update_loop(
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
-                    gl_attribute_name: Some("pos".to_string())
+                    gl_attribute_name: Some("pos".to_string()),
                 },
                 RafxVertexLayoutAttribute {
                     format: RafxFormat::R32G32B32_SFLOAT,
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
-                    gl_attribute_name: Some("in_color".to_string())
+                    gl_attribute_name: Some("in_color".to_string()),
                 },
             ],
             buffers: vec![RafxVertexLayoutBuffer {
@@ -285,17 +290,15 @@ pub fn update_loop(
                 } => *control_flow = ControlFlow::Exit,
                 Event::MainEventsCleared => {
                     window.request_redraw();
-                },
+                }
                 Event::WindowEvent {
                     event: window_event,
                     ..
-                } => {
-                    match window_event {
-                        WindowEvent::KeyboardInput { .. } | WindowEvent::MouseInput { .. } => {
-                            log::debug!("{:?}", window_event);
-                        }
-                        _ => {}
+                } => match window_event {
+                    WindowEvent::KeyboardInput { .. } | WindowEvent::MouseInput { .. } => {
+                        log::debug!("{:?}", window_event);
                     }
+                    _ => {}
                 },
                 Event::RedrawRequested(_) => {
                     let elapsed_seconds = start_time.elapsed().as_secs_f32();
@@ -314,8 +317,9 @@ pub fn update_loop(
                     // Acquire swapchain image
                     //
                     let window_size = window.inner_size();
-                    let presentable_frame =
-                        swapchain_helper.acquire_next_image(window_size.width, window_size.height, None).unwrap();
+                    let presentable_frame = swapchain_helper
+                        .acquire_next_image(window_size.width, window_size.height, None)
+                        .unwrap();
                     let swapchain_texture = presentable_frame.swapchain_texture();
 
                     //
@@ -329,8 +333,12 @@ pub fn update_loop(
                     //
                     // Update the buffers
                     //
-                    vertex_buffer.copy_to_host_visible_buffer(&vertex_data).unwrap();
-                    uniform_buffer.copy_to_host_visible_buffer(&uniform_data).unwrap();
+                    vertex_buffer
+                        .copy_to_host_visible_buffer(&vertex_data)
+                        .unwrap();
+                    uniform_buffer
+                        .copy_to_host_visible_buffer(&uniform_data)
+                        .unwrap();
 
                     //
                     // Record the command buffer. For now just transition it between layouts
@@ -339,65 +347,82 @@ pub fn update_loop(
                     cmd_buffer.begin().unwrap();
 
                     // Put it into a layout where we can draw on it
-                    cmd_buffer.cmd_resource_barrier(
-                        &[],
-                        &[RafxTextureBarrier::state_transition(
-                            &swapchain_texture,
-                            RafxResourceState::PRESENT,
-                            RafxResourceState::RENDER_TARGET,
-                        )],
-                    ).unwrap();
+                    cmd_buffer
+                        .cmd_resource_barrier(
+                            &[],
+                            &[RafxTextureBarrier::state_transition(
+                                &swapchain_texture,
+                                RafxResourceState::PRESENT,
+                                RafxResourceState::RENDER_TARGET,
+                            )],
+                        )
+                        .unwrap();
 
-                    cmd_buffer.cmd_begin_render_pass(
-                        &[RafxColorRenderTargetBinding {
-                            texture: &swapchain_texture,
-                            load_op: RafxLoadOp::Clear,
-                            store_op: RafxStoreOp::Store,
-                            array_slice: None,
-                            mip_slice: None,
-                            clear_value: RafxColorClearValue([elapsed_seconds.sin() * 0.5 + 0.5, 0.0, 1.0, 1.0]),
-                            resolve_target: None,
-                            resolve_store_op: RafxStoreOp::DontCare,
-                            resolve_mip_slice: None,
-                            resolve_array_slice: None,
-                        }],
-                        None,
-                    ).unwrap();
+                    cmd_buffer
+                        .cmd_begin_render_pass(
+                            &[RafxColorRenderTargetBinding {
+                                texture: &swapchain_texture,
+                                load_op: RafxLoadOp::Clear,
+                                store_op: RafxStoreOp::Store,
+                                array_slice: None,
+                                mip_slice: None,
+                                clear_value: RafxColorClearValue([
+                                    elapsed_seconds.sin() * 0.5 + 0.5,
+                                    0.0,
+                                    1.0,
+                                    1.0,
+                                ]),
+                                resolve_target: None,
+                                resolve_store_op: RafxStoreOp::DontCare,
+                                resolve_mip_slice: None,
+                                resolve_array_slice: None,
+                            }],
+                            None,
+                        )
+                        .unwrap();
 
                     cmd_buffer.cmd_bind_pipeline(&pipeline).unwrap();
 
-                    cmd_buffer.cmd_bind_vertex_buffers(
-                        0,
-                        &[RafxVertexBufferBinding {
-                            buffer: &vertex_buffer,
-                            byte_offset: 0,
-                        }],
-                    ).unwrap();
+                    cmd_buffer
+                        .cmd_bind_vertex_buffers(
+                            0,
+                            &[RafxVertexBufferBinding {
+                                buffer: &vertex_buffer,
+                                byte_offset: 0,
+                            }],
+                        )
+                        .unwrap();
 
-                    cmd_buffer.cmd_bind_descriptor_set(
-                        &descriptor_set_array,
-                        presentable_frame.rotating_frame_index() as u32,
-                    ).unwrap();
+                    cmd_buffer
+                        .cmd_bind_descriptor_set(
+                            &descriptor_set_array,
+                            presentable_frame.rotating_frame_index() as u32,
+                        )
+                        .unwrap();
                     cmd_buffer.cmd_draw(3, 0).unwrap();
 
                     cmd_buffer.cmd_end_render_pass().unwrap();
 
                     // Put it into a layout where we can present it
-                    cmd_buffer.cmd_resource_barrier(
-                        &[],
-                        &[RafxTextureBarrier::state_transition(
-                            &swapchain_texture,
-                            RafxResourceState::RENDER_TARGET,
-                            RafxResourceState::PRESENT,
-                        )],
-                    ).unwrap();
+                    cmd_buffer
+                        .cmd_resource_barrier(
+                            &[],
+                            &[RafxTextureBarrier::state_transition(
+                                &swapchain_texture,
+                                RafxResourceState::RENDER_TARGET,
+                                RafxResourceState::PRESENT,
+                            )],
+                        )
+                        .unwrap();
 
                     cmd_buffer.end().unwrap();
 
                     //
                     // Present the image
                     //
-                    presentable_frame.present(&graphics_queue, &[&cmd_buffer]).unwrap();
+                    presentable_frame
+                        .present(&graphics_queue, &[&cmd_buffer])
+                        .unwrap();
                 }
                 _ => (),
             }
@@ -405,6 +430,4 @@ pub fn update_loop(
     }
 }
 
-pub fn update() {
-
-}
+pub fn update() {}

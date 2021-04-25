@@ -1,5 +1,7 @@
 use crate::backends::gl::RafxTextureGl;
-use crate::gl::{RafxDeviceContextGl, RafxFenceGl, RafxRawImageGl, RafxSemaphoreGl, GlContext, NONE_RENDERBUFFER};
+use crate::gl::{
+    GlContext, RafxDeviceContextGl, RafxFenceGl, RafxRawImageGl, RafxSemaphoreGl, NONE_RENDERBUFFER,
+};
 use crate::{
     RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
     RafxSwapchainImage, RafxTexture, RafxTextureDef, RafxTextureDimensions,
@@ -55,25 +57,31 @@ impl RafxSwapchainGl {
 
         let resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
 
-        let surface_context = device_context.gl_context_manager().create_surface_context(raw_window_handle)?;
+        let surface_context = device_context
+            .gl_context_manager()
+            .create_surface_context(raw_window_handle)?;
 
         //TODO: set GL swap interval (vsync)
 
         let mut swapchain_images = Vec::with_capacity(SWAPCHAIN_IMAGE_COUNT as usize);
         for _ in 0..SWAPCHAIN_IMAGE_COUNT {
-            swapchain_images.push(RafxTextureGl::from_existing(device_context, Some(RafxRawImageGl::Renderbuffer(NONE_RENDERBUFFER)), &RafxTextureDef {
-                extents: RafxExtents3D {
-                    width: swapchain_def.width,
-                    height: swapchain_def.height,
-                    depth: 1
+            swapchain_images.push(RafxTextureGl::from_existing(
+                device_context,
+                Some(RafxRawImageGl::Renderbuffer(NONE_RENDERBUFFER)),
+                &RafxTextureDef {
+                    extents: RafxExtents3D {
+                        width: swapchain_def.width,
+                        height: swapchain_def.height,
+                        depth: 1,
+                    },
+                    array_length: 1,
+                    mip_count: 1,
+                    format,
+                    resource_type,
+                    sample_count: RafxSampleCount::SampleCount1,
+                    dimensions: RafxTextureDimensions::Dim2D,
                 },
-                array_length: 1,
-                mip_count: 1,
-                format,
-                resource_type,
-                sample_count: RafxSampleCount::SampleCount1,
-                dimensions: RafxTextureDimensions::Dim2D,
-            })?);
+            )?);
         }
 
         Ok(RafxSwapchainGl {

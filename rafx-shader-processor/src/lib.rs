@@ -143,7 +143,10 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                     .map(|x| x.join(metal_src_name));
 
                 let gles_src_name = format!("{}.gles", file_name);
-                let gles_generated_src_path = args.gles_generated_src_path.as_ref().map(|x| x.join(gles_src_name));
+                let gles_generated_src_path = args
+                    .gles_generated_src_path
+                    .as_ref()
+                    .map(|x| x.join(gles_src_name));
 
                 let cooked_shader_name = format!("{}.cookedshaderpackage", file_name);
                 let cooked_shader_path = args
@@ -212,7 +215,7 @@ fn process_glsl_shader(
     gles_generated_src_file: Option<&PathBuf>,
     cooked_shader_file: Option<&PathBuf>,
     shader_kind: shaderc::ShaderKind,
-    args: &ShaderProcessorArgs
+    args: &ShaderProcessorArgs,
 ) -> Result<(), Box<dyn Error>> {
     log::trace!("--- Start processing shader job ---");
     log::trace!("glsl: {:?}", glsl_file);
@@ -226,7 +229,12 @@ fn process_glsl_shader(
     let package_vk = (args.package_all || args.package_vk) && cooked_shader_file.is_some();
     let package_metal = (args.package_all || args.package_metal) && cooked_shader_file.is_some();
     let package_gles = (args.package_all || args.package_gles) && cooked_shader_file.is_some();
-    log::trace!("package VK: {} Metal: {} GLES: {}", package_vk, package_metal, package_gles);
+    log::trace!(
+        "package VK: {} Metal: {} GLES: {}",
+        package_vk,
+        package_metal,
+        package_gles
+    );
 
     if cooked_shader_file.is_some() && !(package_vk || package_metal || package_gles) {
         Err("A cooked shader file or path was specified but no shader types are specified to package. Pass --package-vk, --package-metal, --package-gles, or --package-all")?;
@@ -406,7 +414,8 @@ fn process_glsl_shader(
 
     let gles_src = if gles_generated_src_file.is_some() || package_gles {
         log::trace!("{:?}: create gles", glsl_file);
-        let mut gles_ast = spirv_cross::spirv::Ast::<spirv_cross::glsl::Target>::parse(&spirv_cross_module)?;
+        let mut gles_ast =
+            spirv_cross::spirv::Ast::<spirv_cross::glsl::Target>::parse(&spirv_cross_module)?;
         let mut spirv_cross_gles_options = spirv_cross::glsl::CompilerOptions::default();
         spirv_cross_gles_options.version = spirv_cross::glsl::Version::V1_00Es;
         spirv_cross_gles_options.vulkan_semantics = false;
@@ -415,13 +424,23 @@ fn process_glsl_shader(
 
         if normalize_shader_kind(shader_kind) == ShaderKind::Vertex {
             for resource in shader_resources.stage_outputs {
-                let location = gles_ast.get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
-                gles_ast.rename_interface_variable(&[resource], location, &format!("interface_var_{}", location))?;
+                let location = gles_ast
+                    .get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
+                gles_ast.rename_interface_variable(
+                    &[resource],
+                    location,
+                    &format!("interface_var_{}", location),
+                )?;
             }
         } else if normalize_shader_kind(shader_kind) == ShaderKind::Fragment {
             for resource in shader_resources.stage_inputs {
-                let location = gles_ast.get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
-                gles_ast.rename_interface_variable(&[resource], location, &format!("interface_var_{}", location))?;
+                let location = gles_ast
+                    .get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
+                gles_ast.rename_interface_variable(
+                    &[resource],
+                    location,
+                    &format!("interface_var_{}", location),
+                )?;
             }
         }
 
@@ -436,11 +455,7 @@ fn process_glsl_shader(
     // Don't worry about the return value
     log::trace!("{:?}: cook shader", glsl_file);
     let cooked_shader = if cooked_shader_file.is_some() {
-        let output_spv = if package_vk {
-            Some(&output_spv)
-        } else {
-            None
-        };
+        let output_spv = if package_vk { Some(&output_spv) } else { None };
 
         let metal_src = if package_metal {
             Some(metal_src.as_ref().unwrap().clone())
@@ -560,7 +575,9 @@ fn normalize_shader_kind(shader_kind: ShaderKind) -> ShaderKind {
         ShaderKind::Compute | ShaderKind::DefaultCompute => ShaderKind::Compute,
         ShaderKind::Geometry | ShaderKind::DefaultGeometry => ShaderKind::Geometry,
         ShaderKind::TessControl | ShaderKind::DefaultTessControl => ShaderKind::TessControl,
-        ShaderKind::TessEvaluation | ShaderKind::DefaultTessEvaluation => ShaderKind::TessEvaluation,
+        ShaderKind::TessEvaluation | ShaderKind::DefaultTessEvaluation => {
+            ShaderKind::TessEvaluation
+        }
         ShaderKind::RayGeneration | ShaderKind::DefaultRayGeneration => ShaderKind::RayGeneration,
         ShaderKind::AnyHit | ShaderKind::DefaultAnyHit => ShaderKind::AnyHit,
         ShaderKind::ClosestHit | ShaderKind::DefaultClosestHit => ShaderKind::ClosestHit,

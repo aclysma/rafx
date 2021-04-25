@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxApiEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::{RafxApiDefGl, RafxApiGl};
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxApiDefMetal, RafxApiMetal};
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::{RafxApiDefVulkan, RafxApiVulkan};
-#[cfg(feature = "rafx-gl")]
-use crate::gl::{RafxApiDefGl, RafxApiGl};
 use crate::*;
 use raw_window_handle::HasRawWindowHandle;
 
@@ -111,9 +111,7 @@ impl RafxApi {
         api_def: &RafxApiDef,
         gl_api_def: &RafxApiDefGl,
     ) -> RafxResult<Self> {
-        Ok(RafxApi::Gl(RafxApiGl::new(
-            window, api_def, gl_api_def,
-        )?))
+        Ok(RafxApi::Gl(RafxApiGl::new(window, api_def, gl_api_def)?))
     }
 
     /// Create a cloneable handle to the device. Most of the interaction with the graphics backend
@@ -199,7 +197,6 @@ impl RafxApi {
             RafxApi::Empty(_) => None,
         }
     }
-
 
     /// Get the underlying gl API object. This provides access to any internally created
     /// metal objects.

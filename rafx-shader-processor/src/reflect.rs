@@ -3,12 +3,18 @@ use rafx_framework::cooked_shader::{
     ReflectedVertexInput,
 };
 
+use crate::shader_types::{
+    element_count, generate_struct, MemoryLayout, TypeAlignmentInfo, UserType,
+};
 use fnv::FnvHashMap;
-use rafx_api::{RafxAddressMode, RafxCompareOp, RafxFilterType, RafxMipMapMode, RafxResourceType, RafxResult, RafxSamplerDef, RafxShaderResource, RafxShaderStageFlags, RafxShaderStageReflection, MAX_DESCRIPTOR_SET_LAYOUTS, RafxGlUniformMember};
+use rafx_api::{
+    RafxAddressMode, RafxCompareOp, RafxFilterType, RafxGlUniformMember, RafxMipMapMode,
+    RafxResourceType, RafxResult, RafxSamplerDef, RafxShaderResource, RafxShaderStageFlags,
+    RafxShaderStageReflection, MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 use spirv_cross::msl::{ResourceBinding, ResourceBindingLocation, SamplerData, SamplerLocation};
 use spirv_cross::spirv::{ExecutionModel, Type};
 use std::collections::BTreeMap;
-use crate::shader_types::{TypeAlignmentInfo, UserType, generate_struct, MemoryLayout, element_count};
 
 fn get_descriptor_count_from_type<TargetT>(
     ast: &spirv_cross::spirv::Ast<TargetT>,
@@ -97,10 +103,10 @@ fn get_rafx_resource<TargetT>(
     resource_type: RafxResourceType,
     stage_flags: RafxShaderStageFlags,
 ) -> RafxResult<RafxShaderResource>
-    where
-        TargetT: spirv_cross::spirv::Target,
-        spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Parse<TargetT>,
-        spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Compile<TargetT>,
+where
+    TargetT: spirv_cross::spirv::Target,
+    spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Parse<TargetT>,
+    spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Compile<TargetT>,
 {
     let set = ast
         .get_decoration(resource.id, spirv_cross::spirv::Decoration::DescriptorSet)
@@ -128,7 +134,7 @@ fn get_rafx_resource<TargetT>(
             &parsed_binding.parsed.type_name,
             parsed_binding.parsed.instance_name.clone(),
             0,
-            &mut gl_uniform_members
+            &mut gl_uniform_members,
         )?;
     }
 
@@ -171,7 +177,7 @@ where
         declarations,
         resource,
         resource_type,
-        stage_flags
+        stage_flags,
     )?;
     let set = rafx_resource.set_index;
     let binding = rafx_resource.binding;
@@ -559,7 +565,7 @@ fn generate_gl_uniform_members(
     type_name: &str,
     prefix: String,
     offset: usize,
-    gl_uniform_members: &mut Vec<RafxGlUniformMember>
+    gl_uniform_members: &mut Vec<RafxGlUniformMember>,
 ) -> RafxResult<()> {
     if builtin_types.contains_key(type_name) {
         //println!("{} at {}: {}", prefix, offset, type_name);
@@ -568,23 +574,58 @@ fn generate_gl_uniform_members(
             offset: offset as u32,
         })
     } else {
-        let user_type = user_types.get(type_name).ok_or_else(|| format!("Could not find type named {} in generate_gl_uniform_members", type_name))?;
+        let user_type = user_types.get(type_name).ok_or_else(|| {
+            format!(
+                "Could not find type named {} in generate_gl_uniform_members",
+                type_name
+            )
+        })?;
 
-        let generated_struct = generate_struct(builtin_types, user_types, &user_type.type_name, user_type, MemoryLayout::Std140)?;
+        let generated_struct = generate_struct(
+            builtin_types,
+            user_types,
+            &user_type.type_name,
+            user_type,
+            MemoryLayout::Std140,
+        )?;
 
         for field in &*user_type.fields {
-            let struct_member = generated_struct.members.iter().find(|x| x.name == field.field_name).ok_or_else(|| format!("Could not find member {} within generated struct {}", field.field_name, generated_struct.name))?;
+            let struct_member = generated_struct
+                .members
+                .iter()
+                .find(|x| x.name == field.field_name)
+                .ok_or_else(|| {
+                    format!(
+                        "Could not find member {} within generated struct {}",
+                        field.field_name, generated_struct.name
+                    )
+                })?;
 
             if field.array_sizes.is_empty() {
                 let member_full_name = format!("{}.{}", prefix, field.field_name);
                 let field_offset = offset + struct_member.offset;
-                generate_gl_uniform_members(builtin_types, user_types, &field.type_name, member_full_name, field_offset, gl_uniform_members)?;
+                generate_gl_uniform_members(
+                    builtin_types,
+                    user_types,
+                    &field.type_name,
+                    member_full_name,
+                    field_offset,
+                    gl_uniform_members,
+                )?;
             } else {
                 let element_count = element_count(&field.array_sizes);
                 for i in 0..element_count {
                     let member_full_name = format!("{}.{}[{}]", prefix, field.field_name, i);
-                    let field_offset = offset + struct_member.offset + (i * struct_member.size / element_count);
-                    generate_gl_uniform_members(builtin_types, user_types, &field.type_name, member_full_name, field_offset, gl_uniform_members)?;
+                    let field_offset =
+                        offset + struct_member.offset + (i * struct_member.size / element_count);
+                    generate_gl_uniform_members(
+                        builtin_types,
+                        user_types,
+                        &field.type_name,
+                        member_full_name,
+                        field_offset,
+                        gl_uniform_members,
+                    )?;
                 }
             }
         }
@@ -629,7 +670,7 @@ where
             &shader_resources,
             ast,
             declarations,
-            stage_flags
+            stage_flags,
         )?;
 
         // stage inputs

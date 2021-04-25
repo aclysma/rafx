@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxQueueEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxQueueGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxQueueMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxQueueVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxQueueGl;
 use crate::{
     RafxCommandBuffer, RafxCommandPool, RafxCommandPoolDef, RafxDeviceContext, RafxFence,
     RafxPresentSuccessResult, RafxQueueType, RafxResult, RafxSemaphore, RafxSwapchain,

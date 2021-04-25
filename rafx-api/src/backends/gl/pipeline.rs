@@ -1,10 +1,13 @@
-use crate::gl::{RafxDeviceContextGl, ProgramId, RafxShaderGl, LocationId, RafxRootSignatureGl};
-use crate::{RafxComputePipelineDef, RafxGraphicsPipelineDef, RafxPipelineType, RafxResult, RafxRootSignature, RafxDescriptorIndex, MAX_DESCRIPTOR_SET_LAYOUTS};
-use crate::gl::conversions::{GlRasterizerState, GlBlendState, GlDepthStencilState};
+use crate::gl::conversions::{GlBlendState, GlDepthStencilState, GlRasterizerState};
 use crate::gl::gles20::types::GLenum;
-use std::sync::Arc;
 use crate::gl::reflection::FieldIndex;
+use crate::gl::{LocationId, ProgramId, RafxDeviceContextGl, RafxRootSignatureGl, RafxShaderGl};
+use crate::{
+    RafxComputePipelineDef, RafxDescriptorIndex, RafxGraphicsPipelineDef, RafxPipelineType,
+    RafxResult, RafxRootSignature, MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 use rafx_base::trust_cell::TrustCell;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub(crate) struct GlAttribute {
@@ -33,11 +36,17 @@ pub(crate) struct GlPipelineInfo {
 }
 
 impl GlPipelineInfo {
-    pub fn resource_location(&self, descriptor_index: RafxDescriptorIndex) -> &Option<LocationId> {
+    pub fn resource_location(
+        &self,
+        descriptor_index: RafxDescriptorIndex,
+    ) -> &Option<LocationId> {
         &self.resource_locations[descriptor_index.0 as usize]
     }
 
-    pub fn uniform_member_location(&self, field_index: FieldIndex) -> &Option<LocationId> {
+    pub fn uniform_member_location(
+        &self,
+        field_index: FieldIndex,
+    ) -> &Option<LocationId> {
         &self.uniform_field_locations[field_index.0 as usize]
     }
 }
@@ -53,8 +62,15 @@ pub struct RafxPipelineGl {
 
 impl Drop for RafxPipelineGl {
     fn drop(&mut self) {
-        let device_context = self.root_signature.gl_root_signature().unwrap().device_context();
-        device_context.gl_context().gl_destroy_program(self.gl_pipeline_info.program_id).unwrap();
+        let device_context = self
+            .root_signature
+            .gl_root_signature()
+            .unwrap()
+            .device_context();
+        device_context
+            .gl_context()
+            .gl_destroy_program(self.gl_pipeline_info.program_id)
+            .unwrap();
     }
 }
 
@@ -103,10 +119,13 @@ impl RafxPipelineGl {
             gl_context.gl_bind_attrib_location(
                 program_id,
                 attribute.location,
-                attribute.gl_attribute_name.as_ref().unwrap()
+                attribute.gl_attribute_name.as_ref().unwrap(),
             )?;
 
-            let gl_type = attribute.format.gl_type().ok_or_else(|| format!("Unsupported format {:?}", attribute.format))?;
+            let gl_type = attribute
+                .format
+                .gl_type()
+                .ok_or_else(|| format!("Unsupported format {:?}", attribute.format))?;
 
             let buffer = &pipeline_def.vertex_layout.buffers[attribute.buffer_index as usize];
 
@@ -117,7 +136,7 @@ impl RafxPipelineGl {
                 gl_type,
                 stride: buffer.stride,
                 is_normalized: attribute.format.is_normalized(),
-                byte_offset: attribute.byte_offset
+                byte_offset: attribute.byte_offset,
             });
         }
 
@@ -125,13 +144,15 @@ impl RafxPipelineGl {
 
         let mut resource_locations = Vec::with_capacity(gl_root_signature.inner.descriptors.len());
         for resource in &gl_root_signature.inner.descriptors {
-            resource_locations.push(gl_context.gl_get_uniform_location(program_id, &resource.gl_name)?);
+            resource_locations
+                .push(gl_context.gl_get_uniform_location(program_id, &resource.gl_name)?);
         }
 
         let all_uniform_fields = gl_root_signature.inner.uniform_reflection.fields();
         let mut uniform_field_locations = Vec::with_capacity(all_uniform_fields.len());
         for field in all_uniform_fields {
-            uniform_field_locations.push(gl_context.gl_get_uniform_location(program_id, &field.name)?);
+            uniform_field_locations
+                .push(gl_context.gl_get_uniform_location(program_id, &field.name)?);
         }
 
         //TODO: set up textures?
@@ -141,7 +162,12 @@ impl RafxPipelineGl {
         let gl_topology = pipeline_def
             .primitive_topology
             .gl_topology()
-            .ok_or_else(|| format!("GL ES 2.0 does not support topology {:?}", pipeline_def.primitive_topology))?;
+            .ok_or_else(|| {
+                format!(
+                    "GL ES 2.0 does not support topology {:?}",
+                    pipeline_def.primitive_topology
+                )
+            })?;
 
         let gl_pipeline_info = GlPipelineInfo {
             last_bound_by_command_pool: TrustCell::new(0),
@@ -154,7 +180,7 @@ impl RafxPipelineGl {
             resource_locations,
             uniform_field_locations,
             root_signature: gl_root_signature.clone(),
-            last_descriptor_updates: Default::default()
+            last_descriptor_updates: Default::default(),
         };
 
         Ok(RafxPipelineGl {

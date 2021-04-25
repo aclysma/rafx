@@ -45,7 +45,6 @@ pub struct RafxDeviceInfo {
     pub supports_clamp_to_border_color: bool,
 
     pub max_vertex_attribute_count: u32,
-
     //max_vertex_input_binding_count: u32,
     // max_root_signature_dwords: u32,
     // wave_lane_count: u32,
@@ -142,7 +141,7 @@ impl RafxExtents3D {
     pub fn to_2d(self) -> RafxExtents2D {
         RafxExtents2D {
             width: self.width,
-            height: self.height
+            height: self.height,
         }
     }
 }

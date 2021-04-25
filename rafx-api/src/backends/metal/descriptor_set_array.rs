@@ -217,7 +217,7 @@ impl RafxDescriptorSetArrayMetal {
             root_signature: RafxRootSignature::Metal(root_signature),
             set_index: descriptor_set_array_def.set_index,
             argument_buffer_data: argument_buffer_data.map(|x| Arc::new(x)),
-            array_length: descriptor_set_array_def.array_length as u32
+            array_length: descriptor_set_array_def.array_length as u32,
         })
     }
 

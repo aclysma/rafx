@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxSemaphoreEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxSemaphoreGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSemaphoreMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxSemaphoreVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxSemaphoreGl;
 
 /// A GPU -> GPU synchronization mechanism.
 ///

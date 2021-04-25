@@ -1,7 +1,7 @@
-use crate::gl::{RafxDeviceContextGl, DescriptorSetLayoutInfo, GlBufferContents, BufferId};
+use crate::gl::{BufferId, DescriptorSetLayoutInfo, GlBufferContents, RafxDeviceContextGl};
 use crate::{
-    RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate,
-    RafxResourceType, RafxResult, RafxRootSignature,
+    RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType,
+    RafxResult, RafxRootSignature,
 };
 
 use rafx_base::trust_cell::TrustCell;
@@ -58,7 +58,7 @@ pub struct RafxDescriptorSetArrayGl {
     root_signature: RafxRootSignature,
     set_index: u32,
     data: Arc<TrustCell<DescriptorSetArrayData>>,
-    array_length: u32
+    array_length: u32,
 }
 
 impl RafxDescriptorSetArrayGl {
@@ -110,7 +110,7 @@ impl RafxDescriptorSetArrayGl {
             root_signature: RafxRootSignature::Gl(root_signature),
             set_index: descriptor_set_array_def.set_index,
             data: Arc::new(TrustCell::new(data)),
-            array_length: descriptor_set_array_def.array_length as u32
+            array_length: descriptor_set_array_def.array_length as u32,
         })
     }
 
@@ -187,33 +187,33 @@ impl RafxDescriptorSetArrayGl {
         let mut descriptor_set_data = self.data.borrow_mut();
 
         match descriptor.resource_type {
-        //     RafxResourceType::SAMPLER => {
-        //         let samplers = update.elements.samplers.ok_or_else(||
-        //             format!(
-        //                 "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the samplers element list was None",
-        //                 update.descriptor_key,
-        //                 descriptor.set_index,
-        //                 descriptor.binding,
-        //                 descriptor.name,
-        //                 descriptor.resource_type,
-        //             )
-        //         )?;
-        //
-        //         let begin_index =
-        //             descriptor.argument_buffer_id as usize + update.dst_element_offset as usize;
-        //         assert!(
-        //             update.dst_element_offset + samplers.len() as u32 <= descriptor.element_count
-        //         );
-        //
-        //         let mut next_index = begin_index;
-        //         for sampler in samplers {
-        //             let gl_sampler = sampler.gl_sampler().unwrap().gl_sampler();
-        //             argument_buffer
-        //                 .encoder
-        //                 .set_sampler_state(next_index as _, gl_sampler);
-        //             next_index += 1;
-        //         }
-        //     }
+            //     RafxResourceType::SAMPLER => {
+            //         let samplers = update.elements.samplers.ok_or_else(||
+            //             format!(
+            //                 "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the samplers element list was None",
+            //                 update.descriptor_key,
+            //                 descriptor.set_index,
+            //                 descriptor.binding,
+            //                 descriptor.name,
+            //                 descriptor.resource_type,
+            //             )
+            //         )?;
+            //
+            //         let begin_index =
+            //             descriptor.argument_buffer_id as usize + update.dst_element_offset as usize;
+            //         assert!(
+            //             update.dst_element_offset + samplers.len() as u32 <= descriptor.element_count
+            //         );
+            //
+            //         let mut next_index = begin_index;
+            //         for sampler in samplers {
+            //             let gl_sampler = sampler.gl_sampler().unwrap().gl_sampler();
+            //             argument_buffer
+            //                 .encoder
+            //                 .set_sampler_state(next_index as _, gl_sampler);
+            //             next_index += 1;
+            //         }
+            //     }
             RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
                 let textures = update.elements.textures.ok_or_else(||
                     format!(
@@ -228,94 +228,94 @@ impl RafxDescriptorSetArrayGl {
 
                 unimplemented!();
 
-        //
-        //         // Defaults to UavMipSlice(0) for TEXTURE_READ_WRITE and Srv for TEXTURE
-        //         let texture_bind_type =
-        //             if descriptor.resource_type == RafxResourceType::TEXTURE_READ_WRITE {
-        //                 update
-        //                     .texture_bind_type
-        //                     .unwrap_or(RafxTextureBindType::UavMipSlice(0))
-        //             } else {
-        //                 update.texture_bind_type.unwrap_or(RafxTextureBindType::Srv)
-        //             };
-        //
-        //         let begin_index =
-        //             descriptor.argument_buffer_id as usize + update.dst_element_offset as usize;
-        //         assert!(
-        //             update.dst_element_offset + textures.len() as u32 <= descriptor.element_count
-        //         );
-        //
-        //         let mut next_index = begin_index;
-        //         if let RafxTextureBindType::UavMipSlice(slice) = texture_bind_type {
-        //             for texture in textures {
-        //                 let uav_views =
-        //                     texture.gl_texture().unwrap().gl_mip_level_uav_views();
-        //                 let uav_view = uav_views.get(slice as usize).ok_or_else(|| format!(
-        //                     "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the chosen mip slice {} exceeds the mip count of {} in the image",
-        //                     update.descriptor_key,
-        //                     descriptor.set_index,
-        //                     descriptor.binding,
-        //                     descriptor.name,
-        //                     descriptor.resource_type,
-        //                     slice,
-        //                     uav_views.len()
-        //                 ))?;
-        //
-        //                 argument_buffer
-        //                     .encoder
-        //                     .set_texture(next_index as _, uav_view);
-        //                 descriptor_resource_pointers[next_index] =
-        //                     (uav_view as &gl_rs::ResourceRef).as_ptr();
-        //                 next_index += 1;
-        //             }
-        //         } else if texture_bind_type == RafxTextureBindType::UavMipChain {
-        //             let texture = textures.first().unwrap();
-        //
-        //             let uav_views = texture.gl_texture().unwrap().gl_mip_level_uav_views();
-        //             if uav_views.len() > descriptor.element_count as usize {
-        //                 Err(format!(
-        //                     "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) using UavMipChain but the mip chain has {} images and the descriptor has {} elements",
-        //                     update.descriptor_key,
-        //                     descriptor.set_index,
-        //                     descriptor.binding,
-        //                     descriptor.name,
-        //                     descriptor.resource_type,
-        //                     uav_views.len(),
-        //                     descriptor.element_count
-        //                 ))?;
-        //             }
-        //
-        //             for uav_view in uav_views {
-        //                 argument_buffer
-        //                     .encoder
-        //                     .set_texture(next_index as _, uav_view);
-        //                 descriptor_resource_pointers[next_index] =
-        //                     (uav_view as &gl_rs::ResourceRef).as_ptr();
-        //                 next_index += 1;
-        //             }
-        //         } else if texture_bind_type == RafxTextureBindType::Srv
-        //             || texture_bind_type == RafxTextureBindType::SrvStencil
-        //         {
-        //             for texture in textures {
-        //                 let gl_texture = texture.gl_texture().unwrap().gl_texture();
-        //                 argument_buffer
-        //                     .encoder
-        //                     .set_texture(next_index as _, gl_texture);
-        //                 descriptor_resource_pointers[next_index] =
-        //                     (gl_texture as &gl_rs::ResourceRef).as_ptr();
-        //                 next_index += 1;
-        //             }
-        //         } else {
-        //             Err(format!(
-        //                 "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but texture_bind_type {:?} was unexpected for this kind of resource",
-        //                 update.descriptor_key,
-        //                 descriptor.set_index,
-        //                 descriptor.binding,
-        //                 descriptor.name,
-        //                 descriptor.resource_type,
-        //                 update.texture_bind_type
-        //             ))?;
-        //         }
+                //
+                //         // Defaults to UavMipSlice(0) for TEXTURE_READ_WRITE and Srv for TEXTURE
+                //         let texture_bind_type =
+                //             if descriptor.resource_type == RafxResourceType::TEXTURE_READ_WRITE {
+                //                 update
+                //                     .texture_bind_type
+                //                     .unwrap_or(RafxTextureBindType::UavMipSlice(0))
+                //             } else {
+                //                 update.texture_bind_type.unwrap_or(RafxTextureBindType::Srv)
+                //             };
+                //
+                //         let begin_index =
+                //             descriptor.argument_buffer_id as usize + update.dst_element_offset as usize;
+                //         assert!(
+                //             update.dst_element_offset + textures.len() as u32 <= descriptor.element_count
+                //         );
+                //
+                //         let mut next_index = begin_index;
+                //         if let RafxTextureBindType::UavMipSlice(slice) = texture_bind_type {
+                //             for texture in textures {
+                //                 let uav_views =
+                //                     texture.gl_texture().unwrap().gl_mip_level_uav_views();
+                //                 let uav_view = uav_views.get(slice as usize).ok_or_else(|| format!(
+                //                     "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the chosen mip slice {} exceeds the mip count of {} in the image",
+                //                     update.descriptor_key,
+                //                     descriptor.set_index,
+                //                     descriptor.binding,
+                //                     descriptor.name,
+                //                     descriptor.resource_type,
+                //                     slice,
+                //                     uav_views.len()
+                //                 ))?;
+                //
+                //                 argument_buffer
+                //                     .encoder
+                //                     .set_texture(next_index as _, uav_view);
+                //                 descriptor_resource_pointers[next_index] =
+                //                     (uav_view as &gl_rs::ResourceRef).as_ptr();
+                //                 next_index += 1;
+                //             }
+                //         } else if texture_bind_type == RafxTextureBindType::UavMipChain {
+                //             let texture = textures.first().unwrap();
+                //
+                //             let uav_views = texture.gl_texture().unwrap().gl_mip_level_uav_views();
+                //             if uav_views.len() > descriptor.element_count as usize {
+                //                 Err(format!(
+                //                     "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) using UavMipChain but the mip chain has {} images and the descriptor has {} elements",
+                //                     update.descriptor_key,
+                //                     descriptor.set_index,
+                //                     descriptor.binding,
+                //                     descriptor.name,
+                //                     descriptor.resource_type,
+                //                     uav_views.len(),
+                //                     descriptor.element_count
+                //                 ))?;
+                //             }
+                //
+                //             for uav_view in uav_views {
+                //                 argument_buffer
+                //                     .encoder
+                //                     .set_texture(next_index as _, uav_view);
+                //                 descriptor_resource_pointers[next_index] =
+                //                     (uav_view as &gl_rs::ResourceRef).as_ptr();
+                //                 next_index += 1;
+                //             }
+                //         } else if texture_bind_type == RafxTextureBindType::Srv
+                //             || texture_bind_type == RafxTextureBindType::SrvStencil
+                //         {
+                //             for texture in textures {
+                //                 let gl_texture = texture.gl_texture().unwrap().gl_texture();
+                //                 argument_buffer
+                //                     .encoder
+                //                     .set_texture(next_index as _, gl_texture);
+                //                 descriptor_resource_pointers[next_index] =
+                //                     (gl_texture as &gl_rs::ResourceRef).as_ptr();
+                //                 next_index += 1;
+                //             }
+                //         } else {
+                //             Err(format!(
+                //                 "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but texture_bind_type {:?} was unexpected for this kind of resource",
+                //                 update.descriptor_key,
+                //                 descriptor.set_index,
+                //                 descriptor.binding,
+                //                 descriptor.name,
+                //                 descriptor.resource_type,
+                //                 update.texture_bind_type
+                //             ))?;
+                //         }
             }
             RafxResourceType::UNIFORM_BUFFER
             | RafxResourceType::BUFFER
@@ -331,8 +331,8 @@ impl RafxDescriptorSetArrayGl {
                     )
                 )?;
 
-                let begin_index =
-                    descriptor.descriptor_data_offset_in_set.unwrap() as usize + update.dst_element_offset as usize;
+                let begin_index = descriptor.descriptor_data_offset_in_set.unwrap() as usize
+                    + update.dst_element_offset as usize;
                 assert!(
                     update.dst_element_offset + buffers.len() as u32 <= descriptor.element_count
                 );
@@ -348,11 +348,12 @@ impl RafxDescriptorSetArrayGl {
                     //println!("arg buffer index: {} offset {} buffer {:?}", next_index, offset, buffer.gl_buffer().unwrap().gl_buffer());
 
                     let gl_buffer = buffer.gl_buffer().unwrap();
-                    descriptor_set_data.buffer_states[next_index as usize] = Some(BufferDescriptorState {
-                        buffer_contents: gl_buffer.buffer_contents().clone(),
-                        buffer_id: gl_buffer.gl_buffer_id(),
-                        offset
-                    });
+                    descriptor_set_data.buffer_states[next_index as usize] =
+                        Some(BufferDescriptorState {
+                            buffer_contents: gl_buffer.buffer_contents().clone(),
+                            buffer_id: gl_buffer.gl_buffer_id(),
+                            offset,
+                        });
                     // argument_buffer
                     //     .encoder
                     //     .set_buffer(next_index as _, gl_buffer, offset);

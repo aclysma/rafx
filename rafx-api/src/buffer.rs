@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxBufferEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxBufferGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxBufferVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxBufferGl;
 use crate::{RafxBufferDef, RafxResult};
 
 /// Memory that can be accessed by the rendering API. It may reside in CPU or GPU memory.

@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxSwapchainEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxSwapchainGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSwapchainMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxSwapchainVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxSwapchainGl;
 use crate::{
     RafxFence, RafxFormat, RafxResult, RafxSemaphore, RafxSwapchainDef, RafxSwapchainImage,
 };
@@ -97,9 +97,7 @@ impl RafxSwapchain {
                 inner.acquire_next_image_fence(fence.metal_fence().unwrap())
             }
             #[cfg(feature = "rafx-gl")]
-            RafxSwapchain::Gl(inner) => {
-                inner.acquire_next_image_fence(fence.gl_fence().unwrap())
-            }
+            RafxSwapchain::Gl(inner) => inner.acquire_next_image_fence(fence.gl_fence().unwrap()),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

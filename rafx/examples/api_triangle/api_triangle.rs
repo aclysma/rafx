@@ -151,7 +151,7 @@ fn run() -> RafxResult<()> {
             "shader.frag.metal",
             "shader.frag.spv",
             "shader.frag.gles",
-            "shader.frag.gles"
+            "shader.frag.gles",
         )?;
 
         let vert_shader_module =
@@ -173,9 +173,7 @@ fn run() -> RafxResult<()> {
             binding: 0,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
             gl_name: Some("uniform_data".to_string()),
-            gl_uniform_members: vec![
-                RafxGlUniformMember::new("uniform_data.uniform_color", 0)
-            ],
+            gl_uniform_members: vec![RafxGlUniformMember::new("uniform_data.uniform_color", 0)],
             ..Default::default()
         };
 
@@ -250,14 +248,14 @@ fn run() -> RafxResult<()> {
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
-                    gl_attribute_name: Some("pos".to_string())
+                    gl_attribute_name: Some("pos".to_string()),
                 },
                 RafxVertexLayoutAttribute {
                     format: RafxFormat::R32G32B32_SFLOAT,
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
-                    gl_attribute_name: Some("in_color".to_string())
+                    gl_attribute_name: Some("in_color".to_string()),
                 },
             ],
             buffers: vec![RafxVertexLayoutBuffer {
@@ -331,13 +329,18 @@ fn run() -> RafxResult<()> {
 
             unsafe {
                 println!("color: {}", elapsed_seconds.sin() * 0.5 + 0.5);
-                device_context.gl_device_context().unwrap().gl_context().gles2().ClearColor(
-                    elapsed_seconds.sin() * 0.5 + 0.5,
-                    0.0,
-                    1.0,
-                    1.0
-                );
-                device_context.gl_device_context().unwrap().gl_context().gles2().Clear(rafx_api::gl::gles20::COLOR_BUFFER_BIT);
+                device_context
+                    .gl_device_context()
+                    .unwrap()
+                    .gl_context()
+                    .gles2()
+                    .ClearColor(elapsed_seconds.sin() * 0.5 + 0.5, 0.0, 1.0, 1.0);
+                device_context
+                    .gl_device_context()
+                    .unwrap()
+                    .gl_context()
+                    .gles2()
+                    .Clear(rafx_api::gl::gles20::COLOR_BUFFER_BIT);
             }
 
             //

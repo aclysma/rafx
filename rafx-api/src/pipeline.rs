@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxPipelineEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxPipelineGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxPipelineMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxPipelineVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxPipelineGl;
 use crate::{RafxPipelineType, RafxRootSignature};
 
 /// Represents a complete GPU configuration for executing work.

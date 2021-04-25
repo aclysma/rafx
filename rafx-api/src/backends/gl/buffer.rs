@@ -1,23 +1,23 @@
-use crate::gl::{RafxDeviceContextGl, NONE_BUFFER, BufferId};
+use crate::gl::{BufferId, RafxDeviceContextGl, NONE_BUFFER};
 use crate::{RafxBufferDef, RafxMemoryUsage, RafxResourceType, RafxResult};
 
 use crate::gl::gles20;
 use crate::gl::gles20::types::GLenum;
+use rafx_base::trust_cell::TrustCell;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
-use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
 
 // This struct exists so that descriptor sets can (somewhat) safely point at the contents of a buffer
 #[derive(Debug, Clone)]
 pub(crate) struct GlBufferContents {
-    data: Arc<TrustCell<Box<[u8]>>>
+    data: Arc<TrustCell<Box<[u8]>>>,
 }
 
 impl GlBufferContents {
     pub fn new(data: Vec<u8>) -> Self {
         GlBufferContents {
-            data: Arc::new(TrustCell::new(data.into_boxed_slice()))
+            data: Arc::new(TrustCell::new(data.into_boxed_slice())),
         }
     }
 
@@ -49,7 +49,10 @@ pub struct RafxBufferGl {
 impl Drop for RafxBufferGl {
     fn drop(&mut self) {
         if let Some(buffer_id) = self.buffer_id {
-            self.device_context.gl_context().gl_destroy_buffer(buffer_id).unwrap();
+            self.device_context
+                .gl_context()
+                .gl_destroy_buffer(buffer_id)
+                .unwrap();
         }
     }
 }
@@ -75,9 +78,7 @@ impl RafxBufferGl {
     pub fn map_buffer(&self) -> RafxResult<*mut u8> {
         self.mapped_count.fetch_add(1, Ordering::Acquire);
         assert_ne!(self.buffer_def.memory_usage, RafxMemoryUsage::GpuOnly);
-        unsafe {
-            Ok(self.buffer_contents.as_ref().unwrap().as_mut_ptr())
-        }
+        unsafe { Ok(self.buffer_contents.as_ref().unwrap().as_mut_ptr()) }
     }
 
     pub fn unmap_buffer(&self) -> RafxResult<()> {
@@ -86,9 +87,7 @@ impl RafxBufferGl {
         if self.target != gles20::NONE {
             let gl_context = self.device_context.gl_context();
             gl_context.gl_bind_buffer(self.target, self.buffer_id.unwrap())?;
-            let ptr = unsafe {
-                self.buffer_contents.as_ref().unwrap().as_ptr()
-            };
+            let ptr = unsafe { self.buffer_contents.as_ref().unwrap().as_ptr() };
             gl_context.gl_buffer_sub_data(self.target, 0, self.buffer_def.size, ptr)?;
             gl_context.gl_bind_buffer(self.target, NONE_BUFFER)?;
         }
@@ -99,9 +98,9 @@ impl RafxBufferGl {
 
     pub fn mapped_memory(&self) -> Option<*mut u8> {
         if self.mapped_count.load(Ordering::Relaxed) > 0 {
-            self.buffer_contents.as_ref().map(|x| unsafe {
-                x.as_mut_ptr()
-            })
+            self.buffer_contents
+                .as_ref()
+                .map(|x| unsafe { x.as_mut_ptr() })
         } else {
             None
         }
@@ -147,32 +146,52 @@ impl RafxBufferGl {
         let mut buffer_id = None;
         let mut buffer_contents = None;
         let target;
-        if buffer_def.resource_type.intersects(RafxResourceType::INDEX_BUFFER | RafxResourceType::VERTEX_BUFFER) {
-            target = if buffer_def.resource_type.contains(RafxResourceType::INDEX_BUFFER) {
+        if buffer_def
+            .resource_type
+            .intersects(RafxResourceType::INDEX_BUFFER | RafxResourceType::VERTEX_BUFFER)
+        {
+            target = if buffer_def
+                .resource_type
+                .contains(RafxResourceType::INDEX_BUFFER)
+            {
                 gles20::ELEMENT_ARRAY_BUFFER
             } else {
                 gles20::ARRAY_BUFFER
             };
 
             buffer_id = Some(device_context.gl_context().gl_create_buffer()?);
-            device_context.gl_context().gl_bind_buffer(target, buffer_id.unwrap())?;
+            device_context
+                .gl_context()
+                .gl_bind_buffer(target, buffer_id.unwrap())?;
 
             let usage = buffer_def.memory_usage.gl_usage().unwrap();
             if usage != gles20::NONE {
-                device_context.gl_context().gl_buffer_data(target, buffer_def.size, std::ptr::null(), usage)?;
+                device_context.gl_context().gl_buffer_data(
+                    target,
+                    buffer_def.size,
+                    std::ptr::null(),
+                    usage,
+                )?;
             }
 
-            device_context.gl_context().gl_bind_buffer(target, NONE_BUFFER)?;
+            device_context
+                .gl_context()
+                .gl_bind_buffer(target, NONE_BUFFER)?;
 
             if buffer_def.memory_usage != RafxMemoryUsage::GpuOnly {
                 buffer_contents = Some(vec![0_u8; buffer_def.size as _]);
             }
         } else {
             let mut allocation_size = buffer_def.size;
-            if buffer_def.resource_type.intersects(RafxResourceType::UNIFORM_BUFFER) {
+            if buffer_def
+                .resource_type
+                .intersects(RafxResourceType::UNIFORM_BUFFER)
+            {
                 allocation_size = rafx_base::memory::round_size_up_to_alignment_u64(
                     allocation_size,
-                    device_context.device_info().min_uniform_buffer_offset_alignment as u64
+                    device_context
+                        .device_info()
+                        .min_uniform_buffer_offset_alignment as u64,
                 );
             }
 
@@ -187,7 +206,7 @@ impl RafxBufferGl {
             buffer_id,
             buffer_contents: buffer_contents.map(|x| GlBufferContents::new(x)),
             mapped_count: AtomicU32::new(0),
-            target
+            target,
         })
     }
 }

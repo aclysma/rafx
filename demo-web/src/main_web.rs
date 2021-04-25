@@ -1,16 +1,12 @@
-use wasm_bindgen::prelude::*;
 use log::Level;
+use wasm_bindgen::prelude::*;
 
-use winit::{
-    event_loop::EventLoop,
-    window::WindowBuilder,
-};
 use raw_window_handle::HasRawWindowHandle;
 use winit::platform::web::WindowExtWebSys;
+use winit::{event_loop::EventLoop, window::WindowBuilder};
 
 #[wasm_bindgen(start)]
-pub fn start() -> Result<(), JsValue>
-{
+pub fn start() -> Result<(), JsValue> {
     console_log::init_with_level(Level::Debug).unwrap();
 
     let event_loop = EventLoop::new();

@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::{RafxDescriptorSetArrayEmpty, RafxDescriptorSetHandleEmpty};
+#[cfg(feature = "rafx-gl")]
+use crate::gl::{RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl};
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxDescriptorSetArrayMetal, RafxDescriptorSetHandleMetal};
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::{RafxDescriptorSetArrayVulkan, RafxDescriptorSetHandleVulkan};
-#[cfg(feature = "rafx-gl")]
-use crate::gl::{RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl};
 use crate::{RafxDescriptorUpdate, RafxResult, RafxRootSignature};
 
 /// A lightweight handle to a specific descriptor set in a `RafxDescriptorSetArray`.

@@ -1,7 +1,6 @@
+use crate::parse_declarations::{ParseDeclarationsResult, ParseFieldResult};
 use fnv::FnvHashMap;
 use std::sync::Arc;
-use crate::parse_declarations::{ParseFieldResult, ParseDeclarationsResult};
-
 
 // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
 fn next_power_of_2(mut v: usize) -> usize {
@@ -678,8 +677,6 @@ fn determine_alignment_c(
     }
 }
 
-
-
 pub(crate) fn verify_all_binding_layouts(
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
     user_types: &FnvHashMap<String, UserType>,
@@ -1105,7 +1102,7 @@ mod test {
             &mut included_files,
             &code,
         )
-            .unwrap();
+        .unwrap();
         let parsed_declarations =
             crate::parse_declarations::parse_declarations(&declarations).unwrap();
         (reflect_data, parsed_declarations)

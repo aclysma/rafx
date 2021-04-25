@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxShaderModuleEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxShaderModuleGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxShaderModuleMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxShaderModuleVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxShaderModuleGl;
 
 /// Rrepresents loaded shader code that can be used to create a pipeline.
 ///

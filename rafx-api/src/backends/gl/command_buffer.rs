@@ -1,15 +1,25 @@
-use crate::gl::{DescriptorSetArrayData, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl, RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl, CommandPoolGlState, NONE_RENDERBUFFER, GlContext, CommandPoolGlStateInner, BoundDescriptorSet, GlPipelineInfo, NONE_BUFFER, NONE_TEXTURE};
-use crate::{RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxResult, RafxTextureBarrier, RafxVertexBufferBinding, RafxResourceType, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::gl::{
+    BoundDescriptorSet, CommandPoolGlState, CommandPoolGlStateInner, DescriptorSetArrayData,
+    GlContext, GlPipelineInfo, RafxBufferGl, RafxCommandPoolGl, RafxDescriptorSetArrayGl,
+    RafxDescriptorSetHandleGl, RafxPipelineGl, RafxQueueGl, RafxRootSignatureGl, RafxTextureGl,
+    NONE_BUFFER, NONE_RENDERBUFFER, NONE_TEXTURE,
+};
+use crate::{
+    RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
+    RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D,
+    RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxResourceType, RafxResult,
+    RafxTextureBarrier, RafxVertexBufferBinding, MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 
 use rafx_base::trust_cell::TrustCell;
 
-use crate::gl::gles20;
 use crate::gl::conversions::GlDepthStencilState;
+use crate::gl::gles20;
 
-use crate::gl::gl_type_util;
-use std::sync::Arc;
 use crate::backends::gl::RafxRawImageGl;
+use crate::gl::gl_type_util;
 use crate::gl::gles20::types::GLenum;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct RafxCommandBufferGl {
@@ -63,14 +73,19 @@ impl RafxCommandBufferGl {
         gl_context: &GlContext,
         texture: &RafxTextureGl,
         attachment: GLenum,
-        mip_slice: Option<u8>
+        mip_slice: Option<u8>,
     ) -> RafxResult<()> {
         match texture.gl_raw_image() {
             RafxRawImageGl::Renderbuffer(id) => {
                 assert!(mip_slice.is_none());
                 gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, *id)?;
                 if *id != NONE_RENDERBUFFER {
-                    gl_context.gl_framebuffer_renderbuffer(gles20::FRAMEBUFFER, attachment, gles20::RENDERBUFFER, *id)?;
+                    gl_context.gl_framebuffer_renderbuffer(
+                        gles20::FRAMEBUFFER,
+                        attachment,
+                        gles20::RENDERBUFFER,
+                        *id,
+                    )?;
                 }
 
                 gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
@@ -79,7 +94,13 @@ impl RafxCommandBufferGl {
                 //TODO: Handle cubemap
                 let texture_target = gles20::TEXTURE_2D;
                 gl_context.gl_bind_texture(texture_target, *id)?;
-                gl_context.gl_framebuffer_texture(gles20::FRAMEBUFFER, attachment, texture_target, *id, mip_slice.unwrap_or(0))?;
+                gl_context.gl_framebuffer_texture(
+                    gles20::FRAMEBUFFER,
+                    attachment,
+                    texture_target,
+                    *id,
+                    mip_slice.unwrap_or(0),
+                )?;
                 gl_context.gl_bind_texture(texture_target, NONE_TEXTURE)?;
             }
         }
@@ -130,7 +151,12 @@ impl RafxCommandBufferGl {
             let renderbuffer = gl_texture.gl_raw_image().gl_renderbuffer_id().unwrap();
             gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
             if renderbuffer != NONE_RENDERBUFFER {
-                gl_context.gl_framebuffer_renderbuffer(gles20::FRAMEBUFFER, attachment, gles20::RENDERBUFFER, renderbuffer)?;
+                gl_context.gl_framebuffer_renderbuffer(
+                    gles20::FRAMEBUFFER,
+                    attachment,
+                    gles20::RENDERBUFFER,
+                    renderbuffer,
+                )?;
             }
 
             if render_target.load_op == RafxLoadOp::Clear {
@@ -147,10 +173,21 @@ impl RafxCommandBufferGl {
             if format.has_depth() {
                 extents = depth_target.texture.texture_def().extents;
 
-                let renderbuffer = depth_target.texture.gl_texture().unwrap().gl_raw_image().gl_renderbuffer_id().unwrap();
+                let renderbuffer = depth_target
+                    .texture
+                    .gl_texture()
+                    .unwrap()
+                    .gl_raw_image()
+                    .gl_renderbuffer_id()
+                    .unwrap();
                 gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
                 if renderbuffer != NONE_RENDERBUFFER {
-                    gl_context.gl_framebuffer_renderbuffer(gles20::FRAMEBUFFER, gles20::DEPTH_ATTACHMENT, gles20::RENDERBUFFER, renderbuffer)?;
+                    gl_context.gl_framebuffer_renderbuffer(
+                        gles20::FRAMEBUFFER,
+                        gles20::DEPTH_ATTACHMENT,
+                        gles20::RENDERBUFFER,
+                        renderbuffer,
+                    )?;
                 }
 
                 if depth_target.depth_load_op == RafxLoadOp::Clear {
@@ -164,10 +201,21 @@ impl RafxCommandBufferGl {
             if format.has_stencil() {
                 extents = depth_target.texture.texture_def().extents;
 
-                let renderbuffer = depth_target.texture.gl_texture().unwrap().gl_raw_image().gl_renderbuffer_id().unwrap();
+                let renderbuffer = depth_target
+                    .texture
+                    .gl_texture()
+                    .unwrap()
+                    .gl_raw_image()
+                    .gl_renderbuffer_id()
+                    .unwrap();
                 gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
                 if renderbuffer != NONE_RENDERBUFFER {
-                    gl_context.gl_framebuffer_renderbuffer(gles20::FRAMEBUFFER, gles20::STENCIL_ATTACHMENT, gles20::RENDERBUFFER, renderbuffer)?;
+                    gl_context.gl_framebuffer_renderbuffer(
+                        gles20::FRAMEBUFFER,
+                        gles20::STENCIL_ATTACHMENT,
+                        gles20::RENDERBUFFER,
+                        renderbuffer,
+                    )?;
                 }
 
                 if depth_target.stencil_load_op == RafxLoadOp::Clear {
@@ -256,17 +304,35 @@ impl RafxCommandBufferGl {
 
         let gl_context = self.queue.device_context().gl_context();
         if let Some(info) = &state.current_gl_pipeline_info {
-            Self::do_set_stencil_compare_ref_mask(gl_context, &info.gl_depth_stencil_state, state.stencil_reference_value)?;
+            Self::do_set_stencil_compare_ref_mask(
+                gl_context,
+                &info.gl_depth_stencil_state,
+                state.stencil_reference_value,
+            )?;
         }
 
         Ok(())
     }
 
     // This logic is shared between cmd_set_stencil_reference_value and cmd_bind_pipeline
-    fn do_set_stencil_compare_ref_mask(gl_context: &GlContext, state: &GlDepthStencilState, stencil_reference_value: u32) -> RafxResult<()> {
+    fn do_set_stencil_compare_ref_mask(
+        gl_context: &GlContext,
+        state: &GlDepthStencilState,
+        stencil_reference_value: u32,
+    ) -> RafxResult<()> {
         if state.stencil_test_enable {
-            gl_context.gl_stencil_func_separate(gles20::FRONT, state.front_stencil_compare_op, stencil_reference_value as _, !0)?;
-            gl_context.gl_stencil_func_separate(gles20::BACK, state.back_stencil_compare_op, stencil_reference_value as _, !0)?;
+            gl_context.gl_stencil_func_separate(
+                gles20::FRONT,
+                state.front_stencil_compare_op,
+                stencil_reference_value as _,
+                !0,
+            )?;
+            gl_context.gl_stencil_func_separate(
+                gles20::BACK,
+                state.back_stencil_compare_op,
+                stencil_reference_value as _,
+                !0,
+            )?;
         }
 
         Ok(())
@@ -285,7 +351,6 @@ impl RafxCommandBufferGl {
         //     }
         // }
 
-
         let pipeline_info = pipeline.gl_pipeline_info();
         state.current_gl_pipeline_info = Some(pipeline_info.clone());
 
@@ -296,7 +361,11 @@ impl RafxCommandBufferGl {
         let gl_context = self.queue.device_context().gl_context();
         gl_context.gl_use_program(pipeline.gl_program_id())?;
 
-        let max_attribs = self.queue.device_context().device_info().max_vertex_attribute_count;
+        let max_attribs = self
+            .queue
+            .device_context()
+            .device_info()
+            .max_vertex_attribute_count;
         for i in 0..max_attribs {
             gl_context.gl_disable_vertex_attrib_array(i)?;
         }
@@ -327,20 +396,24 @@ impl RafxCommandBufferGl {
             gl_context.gl_enable(gles20::STENCIL_TEST)?;
             gl_context.gl_stencil_mask(gl_depth_stencil_state.stencil_write_mask as _)?;
 
-            Self::do_set_stencil_compare_ref_mask(gl_context, gl_depth_stencil_state, state.stencil_reference_value)?;
+            Self::do_set_stencil_compare_ref_mask(
+                gl_context,
+                gl_depth_stencil_state,
+                state.stencil_reference_value,
+            )?;
 
             gl_context.gl_stencil_op_separate(
                 gles20::FRONT,
                 gl_depth_stencil_state.front_stencil_fail_op,
                 gl_depth_stencil_state.front_depth_fail_op,
-                gl_depth_stencil_state.front_stencil_pass_op
+                gl_depth_stencil_state.front_stencil_pass_op,
             )?;
 
             gl_context.gl_stencil_op_separate(
                 gles20::BACK,
                 gl_depth_stencil_state.back_stencil_fail_op,
                 gl_depth_stencil_state.back_depth_fail_op,
-                gl_depth_stencil_state.back_stencil_pass_op
+                gl_depth_stencil_state.back_stencil_pass_op,
             )?;
         } else {
             gl_context.gl_disable(gles20::STENCIL_TEST)?;
@@ -352,10 +425,13 @@ impl RafxCommandBufferGl {
                 gl_blend_state.src_factor,
                 gl_blend_state.dst_factor,
                 gl_blend_state.src_factor_alpha,
-                gl_blend_state.dst_factor_alpha
+                gl_blend_state.dst_factor_alpha,
             )?;
 
-            gl_context.gl_blend_equation_separate(gl_blend_state.blend_op, gl_blend_state.blend_op_alpha)?;
+            gl_context.gl_blend_equation_separate(
+                gl_blend_state.blend_op,
+                gl_blend_state.blend_op_alpha,
+            )?;
         } else {
             gl_context.gl_disable(gles20::BLEND)?;
         }
@@ -370,7 +446,14 @@ impl RafxCommandBufferGl {
     ) -> RafxResult<()> {
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
-        assert!(first_binding + bindings.len() as u32 <= self.queue.device_context().device_info().max_vertex_attribute_count);
+        assert!(
+            first_binding + bindings.len() as u32
+                <= self
+                    .queue
+                    .device_context()
+                    .device_info()
+                    .max_vertex_attribute_count
+        );
 
         let gl_pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap().clone();
         let gl_context = self.queue.device_context().gl_context();
@@ -397,7 +480,7 @@ impl RafxCommandBufferGl {
                     attribute.gl_type,
                     attribute.is_normalized,
                     attribute.stride,
-                    byte_offset
+                    byte_offset,
                 )?;
 
                 gl_context.gl_enable_vertex_attrib_array(attribute.location)?;
@@ -467,7 +550,7 @@ impl RafxCommandBufferGl {
             descriptor_set_handle.descriptor_set_array_data(),
             root_signature,
             set_index,
-            descriptor_set_handle.array_index()
+            descriptor_set_handle.array_index(),
         );
         Ok(())
     }
@@ -521,21 +604,26 @@ impl RafxCommandBufferGl {
             }
         }
 
-        if let Some(bound_descriptor_sets_root_signature) = &state.bound_descriptor_sets_root_signature {
+        if let Some(bound_descriptor_sets_root_signature) =
+            &state.bound_descriptor_sets_root_signature
+        {
             // Only update the program if the bound descriptor sets match the root signature
             if *bound_descriptor_sets_root_signature == pipeline.root_signature {
                 for set_index in 0..MAX_DESCRIPTOR_SET_LAYOUTS {
                     if let Some(bound_descriptor_set) = &state.bound_descriptor_sets[set_index] {
-                        if last_descriptor_updates[set_index] < state.descriptor_sets_update_index[set_index] {
+                        if last_descriptor_updates[set_index]
+                            < state.descriptor_sets_update_index[set_index]
+                        {
                             Self::do_bind_descriptor_set(
                                 gl_context,
                                 pipeline,
                                 &*bound_descriptor_set.data.borrow(),
                                 set_index as u32,
-                                bound_descriptor_set.array_index
+                                bound_descriptor_set.array_index,
                             )?;
 
-                            last_descriptor_updates[set_index] = state.descriptor_sets_update_index[set_index];
+                            last_descriptor_updates[set_index] =
+                                state.descriptor_sets_update_index[set_index];
                         }
                     }
                 }
@@ -561,7 +649,9 @@ impl RafxCommandBufferGl {
                 RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE => {
                     let data_offset = descriptor.descriptor_data_offset_in_set.unwrap();
                     for i in 0..descriptor.element_count {
-                        let buffer_state = data.buffer_states[(data_offset + i) as usize].as_ref().unwrap();
+                        let buffer_state = data.buffer_states[(data_offset + i) as usize]
+                            .as_ref()
+                            .unwrap();
 
                         // let base_offset = buffer_state.offset;
                         // let data = unsafe {
@@ -574,39 +664,51 @@ impl RafxCommandBufferGl {
                         // }
                         unimplemented!()
                     }
-                },
+                }
                 RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
                     unimplemented!()
-                },
+                }
                 RafxResourceType::UNIFORM_BUFFER => {
                     let data_offset = descriptor.descriptor_data_offset_in_set.unwrap();
                     for i in 0..descriptor.element_count {
-                        let buffer_state = data.buffer_states[(data_offset + i) as usize].as_ref().unwrap();
+                        let buffer_state = data.buffer_states[(data_offset + i) as usize]
+                            .as_ref()
+                            .unwrap();
 
                         let base_offset = buffer_state.offset;
-                        let data = unsafe {
-                            buffer_state.buffer_contents.as_ref().unwrap().as_slice()
-                        };
+                        let data =
+                            unsafe { buffer_state.buffer_contents.as_ref().unwrap().as_slice() };
 
                         let uniform_reflection_data = root_signature.uniform_reflection_data();
-                        let uniform_index = root_signature.uniform_index(descriptor.descriptor_index);
+                        let uniform_index =
+                            root_signature.uniform_index(descriptor.descriptor_index);
 
                         if let Some(uniform_index) = uniform_index {
                             let fields = uniform_reflection_data.uniform_fields(uniform_index);
                             for field in fields {
-                                if let Some(location) = pipeline_info.uniform_member_location(field.field_index) {
+                                if let Some(location) =
+                                    pipeline_info.uniform_member_location(field.field_index)
+                                {
                                     let field_offset = field.offset + base_offset as u32;
-                                    assert!(field_offset + field.element_count <= data.len() as u32);
+                                    assert!(
+                                        field_offset + field.element_count <= data.len() as u32
+                                    );
                                     unsafe {
                                         let data_ref = &*data.as_ptr().add(field_offset as usize);
-                                        gl_type_util::set_uniform(gl_context, location, data_ref, field.ty, field.element_count)?;
+                                        gl_type_util::set_uniform(
+                                            gl_context,
+                                            location,
+                                            data_ref,
+                                            field.ty,
+                                            field.element_count,
+                                        )?;
                                     }
                                 }
                             }
                         }
                     }
-                },
-                _ => unimplemented!("Unrecognized descriptor type in do_bind_descriptor_set")
+                }
+                _ => unimplemented!("Unrecognized descriptor type in do_bind_descriptor_set"),
             }
         }
 
@@ -625,7 +727,11 @@ impl RafxCommandBufferGl {
         let pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap();
         Self::ensure_pipeline_bindings_up_to_date(gl_context, &*state)?;
 
-        gl_context.gl_draw_arrays(pipeline_info.gl_topology, first_vertex as _, vertex_count as _)?;
+        gl_context.gl_draw_arrays(
+            pipeline_info.gl_topology,
+            first_vertex as _,
+            vertex_count as _,
+        )?;
 
         Ok(())
     }
@@ -657,8 +763,14 @@ impl RafxCommandBufferGl {
             unimplemented!("GL ES 2.0 does not support vertex offsets during glDrawElements");
         }
 
-        let offset = first_index * (std::mem::size_of::<gles20::types::GLushort>() as u32) + state.index_buffer_byte_offset;
-        gl_context.gl_draw_elements(pipeline_info.gl_topology, index_count as _, gles20::UNSIGNED_SHORT, offset)
+        let offset = first_index * (std::mem::size_of::<gles20::types::GLushort>() as u32)
+            + state.index_buffer_byte_offset;
+        gl_context.gl_draw_elements(
+            pipeline_info.gl_topology,
+            index_count as _,
+            gles20::UNSIGNED_SHORT,
+            offset,
+        )
     }
 
     pub fn cmd_draw_indexed_instanced(
@@ -705,7 +817,12 @@ impl RafxCommandBufferGl {
 
         gl_context.gl_bind_buffer(dst_buffer.gl_target(), dst_buffer.gl_buffer_id().unwrap())?;
         let src_data = unsafe {
-            src_buffer.buffer_contents().as_ref().unwrap().as_ptr().add(src_offset as usize)
+            src_buffer
+                .buffer_contents()
+                .as_ref()
+                .unwrap()
+                .as_ptr()
+                .add(src_offset as usize)
         };
         gl_context.gl_buffer_sub_data(dst_buffer.gl_target(), dst_offset as _, size, src_data)?;
         gl_context.gl_bind_buffer(dst_buffer.gl_target(), NONE_BUFFER)
@@ -734,19 +851,23 @@ impl RafxCommandBufferGl {
                 3 => target = gles20::TEXTURE_CUBE_MAP_NEGATIVE_Y,
                 4 => target = gles20::TEXTURE_CUBE_MAP_POSITIVE_Z,
                 5 => target = gles20::TEXTURE_CUBE_MAP_NEGATIVE_Z,
-                _ => return Err("GL ES 2.0 does not support more than 6 images for a cubemap")?
+                _ => return Err("GL ES 2.0 does not support more than 6 images for a cubemap")?,
             }
         }
 
         let format_info = dst_texture.gl_format_info();
 
         //TODO: Compressed texture support?
-        let texture_id = dst_texture.gl_raw_image().gl_texture_id().ok_or("Cannot use cmd_copy_buffer_to_texture with swapchain image in GL ES 2.0")?;
+        let texture_id = dst_texture
+            .gl_raw_image()
+            .gl_texture_id()
+            .ok_or("Cannot use cmd_copy_buffer_to_texture with swapchain image in GL ES 2.0")?;
 
-        let buffer_contents = src_buffer.buffer_contents().as_ref().ok_or("Buffer used by cmd_copy_buffer_to_texture in GL ES 2.0 must be CPU-visible")?;
-        let buffer_ptr = unsafe {
-            buffer_contents.as_slice()
-        };
+        let buffer_contents = src_buffer
+            .buffer_contents()
+            .as_ref()
+            .ok_or("Buffer used by cmd_copy_buffer_to_texture in GL ES 2.0 must be CPU-visible")?;
+        let buffer_ptr = unsafe { buffer_contents.as_slice() };
 
         gl_context.gl_bind_texture(target, texture_id)?;
         gl_context.gl_tex_image_2d(

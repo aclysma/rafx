@@ -412,7 +412,8 @@ impl RafxSwapchainVulkanInstance {
 
             let format: RafxFormat = self.swapchain_info.surface_format.format.into();
 
-            let mut resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
+            let mut resource_type =
+                RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
 
             let texture = RafxTextureVulkan::from_existing(
                 &self.device_context,

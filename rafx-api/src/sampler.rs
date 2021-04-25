@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxSamplerEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxSamplerGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSamplerMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxSamplerVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxSamplerGl;
 
 /// Configures how images will be sampled by the GPU
 ///

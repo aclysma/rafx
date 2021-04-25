@@ -1,28 +1,30 @@
-use crate::gl::{RafxDeviceContextGl, RenderbufferId, TextureId, gles20};
-use crate::{RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions, GlTextureFormatInfo};
+use crate::gl::gles20::types::GLenum;
+use crate::gl::{gles20, RafxDeviceContextGl, RenderbufferId, TextureId};
+use crate::{
+    GlTextureFormatInfo, RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions,
+};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use crate::gl::gles20::types::GLenum;
 
 #[derive(Debug, PartialEq)]
 pub enum RafxRawImageGl {
     Renderbuffer(RenderbufferId),
-    Texture(TextureId)
+    Texture(TextureId),
 }
 
 impl RafxRawImageGl {
     pub fn gl_texture_id(&self) -> Option<TextureId> {
         match self {
             RafxRawImageGl::Renderbuffer(_) => None,
-            RafxRawImageGl::Texture(id) => Some(*id)
+            RafxRawImageGl::Texture(id) => Some(*id),
         }
     }
 
     pub fn gl_renderbuffer_id(&self) -> Option<RenderbufferId> {
         match self {
             RafxRawImageGl::Renderbuffer(id) => Some(*id),
-            RafxRawImageGl::Texture(_) => None
+            RafxRawImageGl::Texture(_) => None,
         }
     }
 }
@@ -34,14 +36,18 @@ pub struct RafxTextureGlInner {
     image: RafxRawImageGl,
     gl_target: GLenum,
     texture_id: u32,
-    format_info: GlTextureFormatInfo
+    format_info: GlTextureFormatInfo,
 }
 
 impl Drop for RafxTextureGlInner {
     fn drop(&mut self) {
         match self.image {
             RafxRawImageGl::Renderbuffer(_) => {} // do nothing
-            RafxRawImageGl::Texture(texture_id) => self.device_context.gl_context().gl_destroy_texture(texture_id).unwrap()
+            RafxRawImageGl::Texture(texture_id) => self
+                .device_context
+                .gl_context()
+                .gl_destroy_texture(texture_id)
+                .unwrap(),
         }
     }
 }
@@ -121,13 +127,19 @@ impl RafxTextureGl {
             RafxRawImageGl::Texture(texture_id)
         };
 
-        let gl_target = if texture_def.resource_type.intersects(RafxResourceType::TEXTURE_CUBE) {
+        let gl_target = if texture_def
+            .resource_type
+            .intersects(RafxResourceType::TEXTURE_CUBE)
+        {
             gles20::TEXTURE_CUBE_MAP
         } else {
             gles20::TEXTURE_2D
         };
 
-        let format_info = texture_def.format.gl_texture_format_info().ok_or_else(|| format!("Format {:?} not supported", texture_def.format))?;
+        let format_info = texture_def
+            .format
+            .gl_texture_format_info()
+            .ok_or_else(|| format!("Format {:?} not supported", texture_def.format))?;
 
         let texture_id = crate::internal_shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
 
@@ -137,11 +149,11 @@ impl RafxTextureGl {
             texture_def: texture_def.clone(),
             gl_target,
             texture_id,
-            format_info
+            format_info,
         };
 
         return Ok(RafxTextureGl {
-            inner: Arc::new(inner)
-        })
+            inner: Arc::new(inner),
+        });
     }
 }

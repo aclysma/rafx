@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxCommandPoolEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxCommandPoolGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxCommandPoolMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxCommandPoolVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxCommandPoolGl;
 use crate::{RafxCommandBuffer, RafxCommandBufferDef, RafxDeviceContext, RafxResult};
 
 /// A pool of command buffers. A command pool is necessary to create a command buffer.

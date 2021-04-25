@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxShaderPackageGl {
     /// Raw uncompiled OpenGL ES source code. Will be compiled at runtime.
-    Src(String)
+    Src(String),
 }
 
 /// Metal-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
@@ -63,7 +63,7 @@ impl RafxShaderPackage {
     pub fn gl_module_def(&self) -> Option<RafxShaderModuleDefGl> {
         if let Some(gl) = self.gl.as_ref() {
             Some(match gl {
-                RafxShaderPackageGl::Src(src) => RafxShaderModuleDefGl::GlSrc(src)
+                RafxShaderPackageGl::Src(src) => RafxShaderModuleDefGl::GlSrc(src),
             })
         } else {
             None

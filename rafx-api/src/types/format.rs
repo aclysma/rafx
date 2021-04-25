@@ -1,11 +1,11 @@
+#[cfg(feature = "rafx-gl")]
+use crate::gl::gles20::types::GLenum;
 #[cfg(feature = "rafx-vulkan")]
 use ash::vk;
 #[cfg(feature = "rafx-metal")]
 use metal_rs::MTLPixelFormat;
 #[cfg(feature = "rafx-metal")]
 use metal_rs::MTLVertexFormat;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::gles20::types::GLenum;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
@@ -1255,7 +1255,6 @@ impl RafxFormat {
         })
     }
 }
-
 
 // Returns None for formats unlikely to be used for vertices (like ATSC blocks) or undefined
 impl RafxFormat {

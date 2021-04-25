@@ -1,9 +1,11 @@
-use crate::parse_declarations::{BindingType, ParsedBindingWithAnnotations, ParseDeclarationsResult};
+use crate::parse_declarations::{
+    BindingType, ParseDeclarationsResult, ParsedBindingWithAnnotations,
+};
+use crate::shader_types::*;
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::RafxResourceType;
 use rafx_framework::cooked_shader::ReflectedEntryPoint;
 use std::collections::BTreeMap;
-use crate::shader_types::*;
 
 // Structs can be used in one of these three ways. The usage will determine the memory layout
 #[derive(Copy, Clone, Debug)]
@@ -34,7 +36,6 @@ fn determine_memory_layout(binding_struct_type: StructBindingType) -> MemoryLayo
         StructBindingType::PushConstant => MemoryLayout::Std430,
     }
 }
-
 
 pub(crate) fn generate_rust_code(
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
@@ -721,7 +722,6 @@ fn get_rust_type_name_alias(
         Err(format!("Could not find type {}. Is this a built in type that needs to be added to create_builtin_type_lookup()?", name))
     }
 }
-
 
 fn generate_struct_code(st: &GenerateStructResult) -> String {
     let mut result_string = String::default();

@@ -1,4 +1,4 @@
-use crate::gl::{RafxDeviceContextGl, ProgramId, GlCompiledShader};
+use crate::gl::{GlCompiledShader, ProgramId, RafxDeviceContextGl};
 use crate::{RafxPipelineReflection, RafxResult, RafxShaderStageDef, RafxShaderStageFlags};
 use std::sync::Arc;
 
@@ -15,7 +15,10 @@ struct RafxShaderGlInner {
 
 impl Drop for RafxShaderGlInner {
     fn drop(&mut self) {
-        self.device_context.gl_context().gl_destroy_program(self.program_id).unwrap();
+        self.device_context
+            .gl_context()
+            .gl_destroy_program(self.program_id)
+            .unwrap();
     }
 }
 
@@ -62,19 +65,31 @@ impl RafxShaderGl {
         for stage in &stages {
             stage_flags |= stage.reflection.shader_stage;
 
-            log::debug!("Compiling shader for stage {:?}", stage.reflection.shader_stage);
-            let compiled = stage.shader_module.gl_shader_module().unwrap().compile_shader(stage.reflection.shader_stage)?;
+            log::debug!(
+                "Compiling shader for stage {:?}",
+                stage.reflection.shader_stage
+            );
+            let compiled = stage
+                .shader_module
+                .gl_shader_module()
+                .unwrap()
+                .compile_shader(stage.reflection.shader_stage)?;
             if stage.reflection.shader_stage == RafxShaderStageFlags::VERTEX {
                 vertex_shader_id = Some(compiled);
             } else if stage.reflection.shader_stage == RafxShaderStageFlags::FRAGMENT {
                 fragment_shader_id = Some(compiled);
             } else {
-                return Err(format!("Unexpected shader stage for GL ES 2.0: {:?}", stage.reflection.shader_stage))?;
+                return Err(format!(
+                    "Unexpected shader stage for GL ES 2.0: {:?}",
+                    stage.reflection.shader_stage
+                ))?;
             }
         }
 
-        let vertex_shader = vertex_shader_id.ok_or("No vertex shader specified, it is required for GL ES 2.0")?;
-        let fragment_shader = fragment_shader_id.ok_or("No fragment shader specified, it is required for GL ES 2.0")?;
+        let vertex_shader =
+            vertex_shader_id.ok_or("No vertex shader specified, it is required for GL ES 2.0")?;
+        let fragment_shader = fragment_shader_id
+            .ok_or("No fragment shader specified, it is required for GL ES 2.0")?;
 
         let gl_context = device_context.gl_context();
         let program_id = gl_context.gl_create_program()?;

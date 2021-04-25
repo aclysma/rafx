@@ -1,8 +1,14 @@
-use crate::gl::{RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl, GlPipelineInfo, DescriptorSetArrayData, RafxRootSignatureGl};
-use crate::{RafxCommandBufferDef, RafxCommandPoolDef, RafxQueueType, RafxResult, RafxExtents2D, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::gl::{
+    DescriptorSetArrayData, GlPipelineInfo, RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl,
+    RafxRootSignatureGl,
+};
+use crate::{
+    RafxCommandBufferDef, RafxCommandPoolDef, RafxExtents2D, RafxQueueType, RafxResult,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
+};
 use rafx_base::trust_cell::TrustCell;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 
 static NEXT_COMMAND_POOL_STATE_ID: AtomicU32 = AtomicU32::new(0);
 
@@ -22,14 +28,16 @@ pub(crate) struct CommandPoolGlStateInner {
     pub(crate) bound_descriptor_sets_root_signature: Option<RafxRootSignatureGl>,
     pub(crate) descriptor_sets_update_index: [u64; MAX_DESCRIPTOR_SET_LAYOUTS],
 
-
     // One per possible bound vertex buffer (could be 1 per attribute!)
     pub(crate) vertex_buffer_byte_offsets: Vec<u32>,
     pub(crate) index_buffer_byte_offset: u32,
 }
 
 impl PartialEq for CommandPoolGlStateInner {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
         self.id == other.id
     }
 }
@@ -44,7 +52,10 @@ impl std::fmt::Debug for CommandPoolGlStateInner {
             .field("surface_size", &self.surface_size)
             .field("current_gl_pipeline_info", &self.current_gl_pipeline_info)
             .field("stencil_reference_value", &self.stencil_reference_value)
-            .field("vertex_buffer_byte_offsets", &self.vertex_buffer_byte_offsets)
+            .field(
+                "vertex_buffer_byte_offsets",
+                &self.vertex_buffer_byte_offsets,
+            )
             .field("index_buffer_byte_offset", &self.index_buffer_byte_offset)
             .finish()
     }
@@ -62,7 +73,7 @@ impl CommandPoolGlStateInner {
 
 #[derive(Clone, Debug)]
 pub(crate) struct CommandPoolGlState {
-    inner: Arc<TrustCell<CommandPoolGlStateInner>>
+    inner: Arc<TrustCell<CommandPoolGlStateInner>>,
 }
 
 impl CommandPoolGlState {
@@ -73,7 +84,11 @@ impl CommandPoolGlState {
             surface_size: None,
             current_gl_pipeline_info: None,
             stencil_reference_value: 0,
-            vertex_buffer_byte_offsets: vec![0; device_context.device_info().max_vertex_attribute_count as usize],
+            vertex_buffer_byte_offsets: vec![
+                0;
+                device_context.device_info().max_vertex_attribute_count
+                    as usize
+            ],
             index_buffer_byte_offset: 0,
             bound_descriptor_sets: Default::default(),
             bound_descriptor_sets_root_signature: None,
@@ -81,7 +96,7 @@ impl CommandPoolGlState {
         };
 
         CommandPoolGlState {
-            inner: Arc::new(TrustCell::new(inner))
+            inner: Arc::new(TrustCell::new(inner)),
         }
     }
 

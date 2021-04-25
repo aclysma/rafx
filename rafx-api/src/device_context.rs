@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::backends::empty::RafxDeviceContextEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxDeviceContextGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxDeviceContextMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxDeviceContextVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxDeviceContextGl;
 use crate::*;
 use raw_window_handle::HasRawWindowHandle;
 
@@ -58,7 +58,9 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-vulkan")]
             RafxDeviceContext::Vk(inner) => inner.find_supported_format(candidates, resource_type),
             #[cfg(feature = "rafx-metal")]
-            RafxDeviceContext::Metal(inner) => inner.find_supported_format(candidates, resource_type),
+            RafxDeviceContext::Metal(inner) => {
+                inner.find_supported_format(candidates, resource_type)
+            }
             #[cfg(feature = "rafx-gl")]
             RafxDeviceContext::Gl(inner) => inner.find_supported_format(candidates, resource_type),
             #[cfg(any(
@@ -143,7 +145,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-gl")]
             RafxDeviceContext::Gl(inner) => {
                 RafxSwapchain::Gl(inner.create_swapchain(raw_window_handle, swapchain_def)?)
-            },
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -175,7 +177,7 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gl(inner) => {
                 let fences: Vec<_> = fences.iter().map(|x| x.gl_fence().unwrap()).collect();
                 inner.wait_for_fences(&fences)?
-            },
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -196,7 +198,9 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-vulkan")]
             RafxDeviceContext::Vk(inner) => RafxSampler::Vk(inner.create_sampler(sampler_def)?),
             #[cfg(feature = "rafx-metal")]
-            RafxDeviceContext::Metal(inner) => RafxSampler::Metal(inner.create_sampler(sampler_def)?),
+            RafxDeviceContext::Metal(inner) => {
+                RafxSampler::Metal(inner.create_sampler(sampler_def)?)
+            }
             #[cfg(feature = "rafx-gl")]
             RafxDeviceContext::Gl(inner) => RafxSampler::Gl(inner.create_sampler(sampler_def)?),
             #[cfg(any(
@@ -319,7 +323,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-gl")]
             RafxDeviceContext::Gl(inner) => {
                 RafxRootSignature::Gl(inner.create_root_signature(root_signature_def)?)
-            },
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -347,7 +351,7 @@ impl RafxDeviceContext {
             #[cfg(feature = "rafx-gl")]
             RafxDeviceContext::Gl(inner) => {
                 RafxPipeline::Gl(inner.create_graphics_pipeline(pipeline_def)?)
-            },
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -373,7 +377,9 @@ impl RafxDeviceContext {
                 RafxPipeline::Metal(inner.create_compute_pipeline(pipeline_def)?)
             }
             #[cfg(feature = "rafx-gl")]
-            RafxDeviceContext::Gl(inner) => RafxPipeline::Gl(inner.create_compute_pipeline(pipeline_def)?),
+            RafxDeviceContext::Gl(inner) => {
+                RafxPipeline::Gl(inner.create_compute_pipeline(pipeline_def)?)
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

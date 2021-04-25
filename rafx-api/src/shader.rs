@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxShaderEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxShaderGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxShaderMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxShaderVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxShaderGl;
 use crate::RafxPipelineReflection;
 
 /// Represents one or more shader stages, producing an entire "program" to execute on the GPU

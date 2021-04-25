@@ -19,10 +19,13 @@ pub struct RafxGlUniformMember {
 }
 
 impl RafxGlUniformMember {
-    pub fn new<T: Into<String>>(name: T, offset: u32) -> Self {
+    pub fn new<T: Into<String>>(
+        name: T,
+        offset: u32,
+    ) -> Self {
         RafxGlUniformMember {
             name: name.into(),
-            offset
+            offset,
         }
     }
 }

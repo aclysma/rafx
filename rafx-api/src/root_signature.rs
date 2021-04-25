@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxRootSignatureEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxRootSignatureGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxRootSignatureMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxRootSignatureVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxRootSignatureGl;
 use crate::RafxPipelineType;
 
 /// Represents the full "layout" or "interface" of a shader (or set of shaders.)

@@ -1,5 +1,5 @@
-use winit::window::WindowBuilder;
 use winit::event_loop::EventLoop;
+use winit::window::WindowBuilder;
 
 pub fn main_native() {
     let event_loop = EventLoop::new();

@@ -3,12 +3,12 @@
     not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
 ))]
 use crate::empty::RafxTextureEmpty;
+#[cfg(feature = "rafx-gl")]
+use crate::gl::RafxTextureGl;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxTextureMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxTextureVulkan;
-#[cfg(feature = "rafx-gl")]
-use crate::gl::RafxTextureGl;
 use crate::RafxTextureDef;
 
 /// An image that can be used by the GPU.

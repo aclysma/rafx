@@ -1,13 +1,13 @@
-use crate::gl::{RafxDeviceContextGl, ProgramId};
+use crate::gl::reflection::{UniformIndex, UniformReflectionData};
+use crate::gl::{ProgramId, RafxDeviceContextGl};
 use crate::{
     RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use fnv::FnvHashMap;
-use std::sync::Arc;
-use crate::gl::reflection::{UniformReflectionData, UniformIndex};
 use std::ffi::CString;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 static NEXT_ROOT_SIGNATURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
@@ -78,7 +78,6 @@ pub(crate) struct RafxRootSignatureGlInner {
     // // Keeps them in scope so they don't drop
     // //TODO: Can potentially remove, they are held in DescriptorInfo too
     // //immutable_samplers: Vec<RafxSampler>,
-
     pub(crate) uniform_reflection: UniformReflectionData,
     pub(crate) root_signature_id: u32,
 }
@@ -89,7 +88,10 @@ pub struct RafxRootSignatureGl {
 }
 
 impl PartialEq for RafxRootSignatureGl {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(
+        &self,
+        other: &Self,
+    ) -> bool {
         self.inner.root_signature_id == other.inner.root_signature_id
     }
 }
@@ -133,7 +135,10 @@ impl RafxRootSignatureGl {
         &self.inner.uniform_reflection
     }
 
-    pub(crate) fn uniform_index(&self, descriptor_index: RafxDescriptorIndex) -> Option<UniformIndex> {
+    pub(crate) fn uniform_index(
+        &self,
+        descriptor_index: RafxDescriptorIndex,
+    ) -> Option<UniformIndex> {
         self.inner.descriptors[descriptor_index.0 as usize].uniform_index
     }
 
@@ -147,7 +152,6 @@ impl RafxRootSignatureGl {
 
         // If we update this constant, update the arrays in this function
         assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
-
 
         if !root_signature_def.immutable_samplers.is_empty() {
             unimplemented!();
@@ -181,27 +185,43 @@ impl RafxRootSignatureGl {
         let mut descriptors = Vec::with_capacity(merged_resources.len());
         let mut name_to_descriptor_index = FnvHashMap::default();
 
-        let program_ids : Vec<ProgramId> = root_signature_def.shaders.iter().map(|x| x.gl_shader().unwrap().gl_program_id()).collect();
+        let program_ids: Vec<ProgramId> = root_signature_def
+            .shaders
+            .iter()
+            .map(|x| x.gl_shader().unwrap().gl_program_id())
+            .collect();
 
         // Lookup for uniform fields
-        let uniform_reflection = UniformReflectionData::new(
-            gl_context,
-            &program_ids,
-            root_signature_def.shaders,
-        )?;
+        let uniform_reflection =
+            UniformReflectionData::new(gl_context, &program_ids, root_signature_def.shaders)?;
 
         for resource in &merged_resources {
             resource.validate()?;
 
             let descriptor_data_offset_in_set;
-            if resource.resource_type.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE | RafxResourceType::SAMPLER) {
-                descriptor_data_offset_in_set = Some(next_descriptor_data_image_offset[resource.set_index as usize]);
-                next_descriptor_data_image_offset[resource.set_index as usize] += resource.element_count_normalized();
-            } else if resource.resource_type.intersects(RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE | RafxResourceType::UNIFORM_BUFFER) {
-                descriptor_data_offset_in_set = Some(next_descriptor_data_buffer_offset[resource.set_index as usize]);
-                next_descriptor_data_buffer_offset[resource.set_index as usize] += resource.element_count_normalized();
+            if resource.resource_type.intersects(
+                RafxResourceType::TEXTURE
+                    | RafxResourceType::TEXTURE_READ_WRITE
+                    | RafxResourceType::SAMPLER,
+            ) {
+                descriptor_data_offset_in_set =
+                    Some(next_descriptor_data_image_offset[resource.set_index as usize]);
+                next_descriptor_data_image_offset[resource.set_index as usize] +=
+                    resource.element_count_normalized();
+            } else if resource.resource_type.intersects(
+                RafxResourceType::BUFFER
+                    | RafxResourceType::BUFFER_READ_WRITE
+                    | RafxResourceType::UNIFORM_BUFFER,
+            ) {
+                descriptor_data_offset_in_set =
+                    Some(next_descriptor_data_buffer_offset[resource.set_index as usize]);
+                next_descriptor_data_buffer_offset[resource.set_index as usize] +=
+                    resource.element_count_normalized();
             } else {
-                return Err(format!("Resource type {:?} not supporrted by GL ES", resource.resource_type))?;
+                return Err(format!(
+                    "Resource type {:?} not supporrted by GL ES",
+                    resource.resource_type
+                ))?;
             }
 
             // Not currently supported
@@ -302,7 +322,7 @@ impl RafxRootSignatureGl {
             descriptors,
             name_to_descriptor_index,
             uniform_reflection,
-            root_signature_id
+            root_signature_id,
         };
 
         Ok(RafxRootSignatureGl {
