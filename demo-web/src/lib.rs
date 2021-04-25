@@ -23,7 +23,9 @@ pub fn update_loop(
     // Create the api
     //
     log::trace!("Creating the API");
-    let api = RafxApi::new(&window, &Default::default())?;
+    let api = unsafe {
+        RafxApi::new(&window, &Default::default())?
+    };
 
     // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
     // clean shutdown.
