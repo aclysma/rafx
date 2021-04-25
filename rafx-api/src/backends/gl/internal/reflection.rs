@@ -1,4 +1,4 @@
-use crate::gl::{gles20, GlContext, ProgramId};
+use crate::gl::{gles2_bindings, GlContext, ProgramId};
 use crate::{RafxResult, RafxShader};
 use fnv::FnvHashMap;
 use std::ffi::CString;
@@ -20,7 +20,7 @@ pub struct UniformInfo {
 #[derive(Debug)]
 pub struct UniformFieldInfo {
     pub(crate) element_count: u32,
-    pub(crate) ty: gles20::types::GLenum,
+    pub(crate) ty: gles2_bindings::types::GLenum,
     pub(crate) field_index: FieldIndex,
     pub(crate) offset: u32,
     pub(crate) name: CString,
@@ -43,7 +43,7 @@ impl UniformReflectionData {
         struct SizeTypeName {
             // size is number of elements here, not bytes
             size: u32,
-            ty: gles20::types::GLenum,
+            ty: gles2_bindings::types::GLenum,
             name: CString,
         }
 
@@ -70,7 +70,7 @@ impl UniformReflectionData {
 
         for &program_id in program_ids {
             let active_uniform_count =
-                gl_context.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORMS)? as u32;
+                gl_context.gl_get_programiv(program_id, gles2_bindings::ACTIVE_UNIFORMS)? as u32;
             let max_name_length_hint =
                 gl_context.get_active_uniform_max_name_length_hint(program_id)?;
 

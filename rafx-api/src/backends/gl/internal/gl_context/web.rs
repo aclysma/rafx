@@ -1,5 +1,5 @@
-use crate::gl::gles20::types::*;
-use crate::gl::{gles20, ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId, WindowHash, NONE_BUFFER, NONE_PROGRAM, NONE_RENDERBUFFER, NONE_TEXTURE, FramebufferId, NONE_FRAMEBUFFER};
+use crate::gl::gles2_bindings::types::*;
+use crate::gl::{gles2_bindings, ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId, WindowHash, NONE_BUFFER, NONE_PROGRAM, NONE_RENDERBUFFER, NONE_TEXTURE, FramebufferId, NONE_FRAMEBUFFER};
 use crate::{RafxError, RafxResult};
 use fnv::FnvHashMap;
 use raw_window_handle::HasRawWindowHandle;
@@ -125,7 +125,7 @@ impl GlContext {
 
     pub fn check_for_error(&self) -> RafxResult<()> {
         let result = self.context.get_error();
-        if result != gles20::NO_ERROR {
+        if result != gles2_bindings::NO_ERROR {
             Err(RafxError::GlError(result))
         } else {
             Ok(())
@@ -430,7 +430,7 @@ impl GlContext {
         pname: GLenum,
     ) -> RafxResult<i32> {
         // This pname is undefined in webgl
-        if pname == gles20::ACTIVE_UNIFORM_MAX_LENGTH {
+        if pname == gles2_bindings::ACTIVE_UNIFORM_MAX_LENGTH {
             // Return a
             return Ok(256);
         }
@@ -473,7 +473,7 @@ impl GlContext {
         let shader_id = self.gl_create_shader(shader_type)?;
         self.gl_shader_source(shader_id, &src)?;
         self.gl_compile_shader(shader_id)?;
-        if self.gl_get_shaderiv(shader_id, gles20::COMPILE_STATUS)? == 0 {
+        if self.gl_get_shaderiv(shader_id, gles2_bindings::COMPILE_STATUS)? == 0 {
             return Err(match self.get_shader_info_log(shader_id)? {
                 Some(x) => format!("Error compiling shader: {}", x),
                 None => "Error compiling shader, info log not available".to_string(),
@@ -561,7 +561,7 @@ impl GlContext {
         program_id: ProgramId,
     ) -> RafxResult<()> {
         self.gl_link_program(program_id)?;
-        if self.gl_get_programiv(program_id, gles20::LINK_STATUS)? == 0 {
+        if self.gl_get_programiv(program_id, gles2_bindings::LINK_STATUS)? == 0 {
             return Err(match self.get_program_info_log(program_id)? {
                 Some(x) => format!("Error linking shader program: {}", x),
                 None => "Error linking shader program, info log not available".to_string(),
@@ -580,7 +580,7 @@ impl GlContext {
         program_id: ProgramId,
     ) -> RafxResult<()> {
         self.gl_validate_program(program_id)?;
-        if self.gl_get_programiv(program_id, gles20::VALIDATE_STATUS)? == 0 {
+        if self.gl_get_programiv(program_id, gles2_bindings::VALIDATE_STATUS)? == 0 {
             return Err(match self.get_program_info_log(program_id)? {
                 Some(x) => format!("Error validating shader program: {}", x),
                 None => "Error validating shader program, info log not available".to_string(),

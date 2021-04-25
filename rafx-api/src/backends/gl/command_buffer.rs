@@ -14,11 +14,11 @@ use crate::{
 use rafx_base::trust_cell::TrustCell;
 
 use crate::gl::conversions::Gles2DepthStencilState;
-use crate::gl::gles20;
+use crate::gl::gles2_bindings;
 
 use crate::backends::gl::RafxRawImageGles2;
 use crate::gl::gl_type_util;
-use crate::gl::gles20::types::GLenum;
+use crate::gl::gles2_bindings::types::GLenum;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -92,10 +92,10 @@ impl RafxCommandBufferGles2 {
             // }
             RafxRawImageGles2::Texture(id) => {
                 //TODO: Handle cubemap
-                let texture_target = gles20::TEXTURE_2D;
+                let texture_target = gles2_bindings::TEXTURE_2D;
                 gl_context.gl_bind_texture(texture_target, *id)?;
                 gl_context.gl_framebuffer_texture(
-                    gles20::FRAMEBUFFER,
+                    gles2_bindings::FRAMEBUFFER,
                     attachment,
                     texture_target,
                     *id,
@@ -124,13 +124,13 @@ impl RafxCommandBufferGles2 {
         let mut clear_mask = 0;
         let mut extents = RafxExtents3D::default();
 
-        gl_context.gl_bind_framebuffer(gles20::FRAMEBUFFER, state.framebuffer_id)?;
+        gl_context.gl_bind_framebuffer(gles2_bindings::FRAMEBUFFER, state.framebuffer_id)?;
 
         for (index, render_target) in color_targets.iter().enumerate() {
             extents = render_target.texture.texture_def().extents;
 
             let gl_texture = render_target.texture.gles2_texture().unwrap();
-            let attachment = gles20::COLOR_ATTACHMENT0 + index as u32;
+            let attachment = gles2_bindings::COLOR_ATTACHMENT0 + index as u32;
             Self::bind_framebuffer(gl_context, gl_texture, attachment, render_target.mip_slice)?;
 
             // match gl_texture.gl_raw_image() {
@@ -163,7 +163,7 @@ impl RafxCommandBufferGles2 {
             if render_target.load_op == RafxLoadOp::Clear {
                 let c = &render_target.clear_value.0;
                 gl_context.gl_clear_color(c[0], c[1], c[2], c[3])?;
-                clear_mask |= gles20::COLOR_BUFFER_BIT;
+                clear_mask |= gles2_bindings::COLOR_BUFFER_BIT;
             }
 
             //gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
@@ -192,12 +192,12 @@ impl RafxCommandBufferGles2 {
                 // }
 
                 let gl_texture = depth_target.texture.gles2_texture().unwrap();
-                let attachment = gles20::DEPTH_ATTACHMENT;
+                let attachment = gles2_bindings::DEPTH_ATTACHMENT;
                 Self::bind_framebuffer(gl_context, gl_texture, attachment, depth_target.mip_slice)?;
 
                 if depth_target.depth_load_op == RafxLoadOp::Clear {
                     gl_context.gl_clear_depthf(depth_target.clear_value.depth)?;
-                    clear_mask |= gles20::DEPTH_BUFFER_BIT;
+                    clear_mask |= gles2_bindings::DEPTH_BUFFER_BIT;
                 }
 
                 //gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
@@ -224,12 +224,12 @@ impl RafxCommandBufferGles2 {
                 // }
 
                 let gl_texture = depth_target.texture.gles2_texture().unwrap();
-                let attachment = gles20::STENCIL_ATTACHMENT;
+                let attachment = gles2_bindings::STENCIL_ATTACHMENT;
                 Self::bind_framebuffer(gl_context, gl_texture, attachment, depth_target.mip_slice)?;
 
                 if depth_target.stencil_load_op == RafxLoadOp::Clear {
                     gl_context.gl_clear_stencil(depth_target.clear_value.stencil as _)?;
-                    clear_mask |= gles20::STENCIL_BUFFER_BIT;
+                    clear_mask |= gles2_bindings::STENCIL_BUFFER_BIT;
                 }
 
                 //gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
@@ -247,8 +247,8 @@ impl RafxCommandBufferGles2 {
             1.0
         )?;
 
-        let result = gl_context.gl_check_framebuffer_status(gles20::FRAMEBUFFER)?;
-        if result != gles20::FRAMEBUFFER_COMPLETE {
+        let result = gl_context.gl_check_framebuffer_status(gles2_bindings::FRAMEBUFFER)?;
+        if result != gles2_bindings::FRAMEBUFFER_COMPLETE {
             Err(format!("Framebuffer Status is not FRAMEBUFFER_COMPLETE, result: {:#x}", result))?;
         }
 
@@ -363,13 +363,13 @@ impl RafxCommandBufferGles2 {
     ) -> RafxResult<()> {
         if state.stencil_test_enable {
             gl_context.gl_stencil_func_separate(
-                gles20::FRONT,
+                gles2_bindings::FRONT,
                 state.front_stencil_compare_op,
                 stencil_reference_value as _,
                 !0,
             )?;
             gl_context.gl_stencil_func_separate(
-                gles20::BACK,
+                gles2_bindings::BACK,
                 state.back_stencil_compare_op,
                 stencil_reference_value as _,
                 !0,
@@ -411,30 +411,30 @@ impl RafxCommandBufferGles2 {
             gl_context.gl_disable_vertex_attrib_array(i)?;
         }
 
-        if gl_rasterizer_state.cull_mode != gles20::NONE {
-            gl_context.gl_enable(gles20::CULL_FACE)?;
+        if gl_rasterizer_state.cull_mode != gles2_bindings::NONE {
+            gl_context.gl_enable(gles2_bindings::CULL_FACE)?;
             gl_context.gl_cull_face(gl_rasterizer_state.cull_mode)?;
             gl_context.gl_front_face(gl_rasterizer_state.front_face)?;
         } else {
-            gl_context.gl_disable(gles20::CULL_FACE)?;
+            gl_context.gl_disable(gles2_bindings::CULL_FACE)?;
         }
 
         if gl_rasterizer_state.scissor_test {
-            gl_context.gl_enable(gles20::SCISSOR_TEST)?;
+            gl_context.gl_enable(gles2_bindings::SCISSOR_TEST)?;
         } else {
-            gl_context.gl_disable(gles20::SCISSOR_TEST)?;
+            gl_context.gl_disable(gles2_bindings::SCISSOR_TEST)?;
         }
 
         if gl_depth_stencil_state.depth_test_enable {
-            gl_context.gl_enable(gles20::DEPTH_TEST)?;
+            gl_context.gl_enable(gles2_bindings::DEPTH_TEST)?;
             gl_context.gl_depth_mask(gl_depth_stencil_state.depth_write_enable)?;
             gl_context.gl_depth_func(gl_depth_stencil_state.depth_compare_op)?;
         } else {
-            gl_context.gl_disable(gles20::DEPTH_TEST)?;
+            gl_context.gl_disable(gles2_bindings::DEPTH_TEST)?;
         }
 
         if gl_depth_stencil_state.stencil_test_enable {
-            gl_context.gl_enable(gles20::STENCIL_TEST)?;
+            gl_context.gl_enable(gles2_bindings::STENCIL_TEST)?;
             gl_context.gl_stencil_mask(gl_depth_stencil_state.stencil_write_mask as _)?;
 
             Self::do_set_stencil_compare_ref_mask(
@@ -444,24 +444,24 @@ impl RafxCommandBufferGles2 {
             )?;
 
             gl_context.gl_stencil_op_separate(
-                gles20::FRONT,
+                gles2_bindings::FRONT,
                 gl_depth_stencil_state.front_stencil_fail_op,
                 gl_depth_stencil_state.front_depth_fail_op,
                 gl_depth_stencil_state.front_stencil_pass_op,
             )?;
 
             gl_context.gl_stencil_op_separate(
-                gles20::BACK,
+                gles2_bindings::BACK,
                 gl_depth_stencil_state.back_stencil_fail_op,
                 gl_depth_stencil_state.back_depth_fail_op,
                 gl_depth_stencil_state.back_stencil_pass_op,
             )?;
         } else {
-            gl_context.gl_disable(gles20::STENCIL_TEST)?;
+            gl_context.gl_disable(gles2_bindings::STENCIL_TEST)?;
         }
 
         if gl_blend_state.enabled {
-            gl_context.gl_enable(gles20::BLEND)?;
+            gl_context.gl_enable(gles2_bindings::BLEND)?;
             gl_context.gl_blend_func_separate(
                 gl_blend_state.src_factor,
                 gl_blend_state.dst_factor,
@@ -474,7 +474,7 @@ impl RafxCommandBufferGles2 {
                 gl_blend_state.blend_op_alpha,
             )?;
         } else {
-            gl_context.gl_disable(gles20::BLEND)?;
+            gl_context.gl_disable(gles2_bindings::BLEND)?;
         }
 
         Ok(())
@@ -502,7 +502,7 @@ impl RafxCommandBufferGles2 {
         let mut binding_index = first_binding;
         for binding in bindings {
             let gl_buffer = binding.buffer.gles2_buffer().unwrap();
-            assert_eq!(gl_buffer.gl_target(), gles20::ARRAY_BUFFER);
+            assert_eq!(gl_buffer.gl_target(), gles2_bindings::ARRAY_BUFFER);
 
             // Bind the vertex buffer
             gl_context.gl_bind_buffer(gl_buffer.gl_target(), gl_buffer.gl_buffer_id().unwrap())?;
@@ -547,12 +547,12 @@ impl RafxCommandBufferGles2 {
         }
 
         let buffer = binding.buffer.gles2_buffer().unwrap();
-        if buffer.gl_target() != gles20::ELEMENT_ARRAY_BUFFER {
+        if buffer.gl_target() != gles2_bindings::ELEMENT_ARRAY_BUFFER {
             Err("Buffers provided to cmd_bind_index_buffer must be index buffers")?;
         }
 
         state.index_buffer_byte_offset = binding.byte_offset as u32;
-        gl_context.gl_bind_buffer(gles20::ELEMENT_ARRAY_BUFFER, buffer.gl_buffer_id().unwrap())
+        gl_context.gl_bind_buffer(gles2_bindings::ELEMENT_ARRAY_BUFFER, buffer.gl_buffer_id().unwrap())
     }
 
     pub fn cmd_bind_descriptor_set(
@@ -805,12 +805,12 @@ impl RafxCommandBufferGles2 {
             unimplemented!("GL ES 2.0 does not support vertex offsets during glDrawElements");
         }
 
-        let offset = first_index * (std::mem::size_of::<gles20::types::GLushort>() as u32)
+        let offset = first_index * (std::mem::size_of::<gles2_bindings::types::GLushort>() as u32)
             + state.index_buffer_byte_offset;
         gl_context.gl_draw_elements(
             pipeline_info.gl_topology,
             index_count as _,
-            gles20::UNSIGNED_SHORT,
+            gles2_bindings::UNSIGNED_SHORT,
             offset,
         )
     }
@@ -885,14 +885,14 @@ impl RafxCommandBufferGles2 {
         let height = 1.max(dst_texture.texture_def().extents.height >> params.mip_level);
 
         let mut target = dst_texture.gl_target();
-        if target == gles20::TEXTURE_CUBE_MAP {
+        if target == gles2_bindings::TEXTURE_CUBE_MAP {
             match params.array_layer {
-                0 => target = gles20::TEXTURE_CUBE_MAP_POSITIVE_X,
-                1 => target = gles20::TEXTURE_CUBE_MAP_NEGATIVE_X,
-                2 => target = gles20::TEXTURE_CUBE_MAP_POSITIVE_Y,
-                3 => target = gles20::TEXTURE_CUBE_MAP_NEGATIVE_Y,
-                4 => target = gles20::TEXTURE_CUBE_MAP_POSITIVE_Z,
-                5 => target = gles20::TEXTURE_CUBE_MAP_NEGATIVE_Z,
+                0 => target = gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_X,
+                1 => target = gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_X,
+                2 => target = gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_Y,
+                3 => target = gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_Y,
+                4 => target = gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_Z,
+                5 => target = gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_Z,
                 _ => return Err("GL ES 2.0 does not support more than 6 images for a cubemap")?,
             }
         }

@@ -1,5 +1,5 @@
-use crate::gl::gles20::types::GLenum;
-use crate::gl::{gles20, RafxDeviceContextGles2, TextureId, NONE_TEXTURE};
+use crate::gl::gles2_bindings::types::GLenum;
+use crate::gl::{gles2_bindings, RafxDeviceContextGles2, TextureId, NONE_TEXTURE};
 use crate::{GlTextureFormatInfo, RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions, RafxSampleCount};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::Ordering;
@@ -126,10 +126,10 @@ impl RafxTextureGles2 {
             .contains(RafxResourceType::TEXTURE_CUBE)
         {
             log::info!("texture cube map");
-            gles20::TEXTURE_CUBE_MAP
+            gles2_bindings::TEXTURE_CUBE_MAP
         } else {
             log::info!("texture2d");
-            gles20::TEXTURE_2D
+            gles2_bindings::TEXTURE_2D
         };
 
         let format_info = texture_def

@@ -13,7 +13,7 @@ use crate::gl::{
     RafxShaderModuleGles2, RafxSwapchainGles2, RafxTextureGles2,
 };
 
-use crate::gl::gles20;
+use crate::gl::gles2_bindings;
 use crate::gl::GlContext;
 
 use crate::gl::fullscreen_quad::FullscreenQuad;
@@ -60,18 +60,18 @@ impl RafxDeviceContextGles2Inner {
         // GL requires a window for initialization
         let gl_context = gl_context_manager.main_context().clone();
 
-        let renderer = gl_context.gl_get_string(gles20::RENDERER);
+        let renderer = gl_context.gl_get_string(gles2_bindings::RENDERER);
         log::debug!("Renderer: {}", renderer);
-        let version = gl_context.gl_get_string(gles20::VERSION);
+        let version = gl_context.gl_get_string(gles2_bindings::VERSION);
         log::debug!("Version: {}", version);
-        let vendor = gl_context.gl_get_string(gles20::VENDOR);
+        let vendor = gl_context.gl_get_string(gles2_bindings::VENDOR);
         log::debug!("Vendor: {}", vendor);
-        let shading_language_version = gl_context.gl_get_string(gles20::SHADING_LANGUAGE_VERSION);
+        let shading_language_version = gl_context.gl_get_string(gles2_bindings::SHADING_LANGUAGE_VERSION);
         log::debug!("Shading Language Version: {}", shading_language_version);
 
-        let pack_alignment = gl_context.gl_get_integerv(gles20::PACK_ALIGNMENT) as u32;
+        let pack_alignment = gl_context.gl_get_integerv(gles2_bindings::PACK_ALIGNMENT) as u32;
         let max_vertex_attribute_count =
-            gl_context.gl_get_integerv(gles20::MAX_VERTEX_ATTRIBS) as u32;
+            gl_context.gl_get_integerv(gles2_bindings::MAX_VERTEX_ATTRIBS) as u32;
 
         let device_info = RafxDeviceInfo {
             min_uniform_buffer_offset_alignment: pack_alignment,

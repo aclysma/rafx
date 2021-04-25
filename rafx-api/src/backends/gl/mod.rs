@@ -49,7 +49,7 @@ pub use pipeline::*;
 mod internal;
 pub(crate) use internal::*;
 
-pub use internal::gles20;
+pub use internal::gles2_bindings;
 pub use internal::NONE_BUFFER;
 pub use internal::NONE_PROGRAM;
 pub use internal::NONE_RENDERBUFFER;

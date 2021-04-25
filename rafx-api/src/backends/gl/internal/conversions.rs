@@ -1,5 +1,5 @@
-use crate::gl::gles20;
-use crate::gl::gles20::types::GLenum;
+use crate::gl::gles2_bindings;
+use crate::gl::gles2_bindings::types::GLenum;
 use crate::{
     RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxBlendState, RafxCompareOp, RafxCullMode,
     RafxDepthState, RafxFilterType, RafxFrontFace, RafxMemoryUsage, RafxPrimitiveTopology,
@@ -9,8 +9,8 @@ use crate::{
 impl RafxFilterType {
     pub fn gles2_filter_type(self) -> GLenum {
         match self {
-            RafxFilterType::Nearest => gles20::NEAREST,
-            RafxFilterType::Linear => gles20::LINEAR,
+            RafxFilterType::Nearest => gles2_bindings::NEAREST,
+            RafxFilterType::Linear => gles2_bindings::LINEAR,
         }
     }
 }
@@ -18,9 +18,9 @@ impl RafxFilterType {
 impl RafxAddressMode {
     pub fn gles2_address_mode(self) -> Option<GLenum> {
         match self {
-            RafxAddressMode::Mirror => Some(gles20::MIRRORED_REPEAT),
-            RafxAddressMode::Repeat => Some(gles20::REPEAT),
-            RafxAddressMode::ClampToEdge => Some(gles20::CLAMP_TO_EDGE),
+            RafxAddressMode::Mirror => Some(gles2_bindings::MIRRORED_REPEAT),
+            RafxAddressMode::Repeat => Some(gles2_bindings::REPEAT),
+            RafxAddressMode::ClampToEdge => Some(gles2_bindings::CLAMP_TO_EDGE),
             // requires GL_OES_texture_border_clamp
             //RafxAddressMode::ClampToBorder => gles20::CLAMP_TO_BORDER,
             RafxAddressMode::ClampToBorder => None,
@@ -31,11 +31,11 @@ impl RafxAddressMode {
 impl RafxPrimitiveTopology {
     pub fn gles2_topology(self) -> Option<GLenum> {
         match self {
-            RafxPrimitiveTopology::PointList => Some(gles20::POINTS),
-            RafxPrimitiveTopology::LineList => Some(gles20::LINES),
-            RafxPrimitiveTopology::LineStrip => Some(gles20::LINE_STRIP),
-            RafxPrimitiveTopology::TriangleList => Some(gles20::TRIANGLES),
-            RafxPrimitiveTopology::TriangleStrip => Some(gles20::TRIANGLE_STRIP),
+            RafxPrimitiveTopology::PointList => Some(gles2_bindings::POINTS),
+            RafxPrimitiveTopology::LineList => Some(gles2_bindings::LINES),
+            RafxPrimitiveTopology::LineStrip => Some(gles2_bindings::LINE_STRIP),
+            RafxPrimitiveTopology::TriangleList => Some(gles2_bindings::TRIANGLES),
+            RafxPrimitiveTopology::TriangleStrip => Some(gles2_bindings::TRIANGLE_STRIP),
             RafxPrimitiveTopology::PatchList => None,
         }
     }
@@ -45,10 +45,10 @@ impl RafxMemoryUsage {
     pub fn gles2_usage(self) -> Option<GLenum> {
         match self {
             RafxMemoryUsage::Unknown => None,
-            RafxMemoryUsage::GpuOnly => Some(gles20::STATIC_DRAW),
-            RafxMemoryUsage::CpuOnly => Some(gles20::NONE),
-            RafxMemoryUsage::CpuToGpu => Some(gles20::DYNAMIC_DRAW),
-            RafxMemoryUsage::GpuToCpu => Some(gles20::STREAM_DRAW),
+            RafxMemoryUsage::GpuOnly => Some(gles2_bindings::STATIC_DRAW),
+            RafxMemoryUsage::CpuOnly => Some(gles2_bindings::NONE),
+            RafxMemoryUsage::CpuToGpu => Some(gles2_bindings::DYNAMIC_DRAW),
+            RafxMemoryUsage::GpuToCpu => Some(gles2_bindings::STREAM_DRAW),
         }
     }
 }
@@ -56,9 +56,9 @@ impl RafxMemoryUsage {
 impl RafxCullMode {
     pub fn gles2_cull_mode(self) -> GLenum {
         match self {
-            RafxCullMode::None => gles20::NONE,
-            RafxCullMode::Back => gles20::BACK,
-            RafxCullMode::Front => gles20::FRONT,
+            RafxCullMode::None => gles2_bindings::NONE,
+            RafxCullMode::Back => gles2_bindings::BACK,
+            RafxCullMode::Front => gles2_bindings::FRONT,
         }
     }
 }
@@ -66,8 +66,8 @@ impl RafxCullMode {
 impl RafxFrontFace {
     pub fn gles2_front_face(self) -> GLenum {
         match self {
-            RafxFrontFace::CounterClockwise => gles20::CCW,
-            RafxFrontFace::Clockwise => gles20::CW,
+            RafxFrontFace::CounterClockwise => gles2_bindings::CCW,
+            RafxFrontFace::Clockwise => gles2_bindings::CW,
         }
     }
 }
@@ -75,14 +75,14 @@ impl RafxFrontFace {
 impl RafxCompareOp {
     pub fn gles2_compare_op(self) -> GLenum {
         match self {
-            RafxCompareOp::Never => gles20::NEVER,
-            RafxCompareOp::Less => gles20::LESS,
-            RafxCompareOp::Equal => gles20::EQUAL,
-            RafxCompareOp::LessOrEqual => gles20::LEQUAL,
-            RafxCompareOp::Greater => gles20::GREATER,
-            RafxCompareOp::NotEqual => gles20::NOTEQUAL,
-            RafxCompareOp::GreaterOrEqual => gles20::GEQUAL,
-            RafxCompareOp::Always => gles20::ALWAYS,
+            RafxCompareOp::Never => gles2_bindings::NEVER,
+            RafxCompareOp::Less => gles2_bindings::LESS,
+            RafxCompareOp::Equal => gles2_bindings::EQUAL,
+            RafxCompareOp::LessOrEqual => gles2_bindings::LEQUAL,
+            RafxCompareOp::Greater => gles2_bindings::GREATER,
+            RafxCompareOp::NotEqual => gles2_bindings::NOTEQUAL,
+            RafxCompareOp::GreaterOrEqual => gles2_bindings::GEQUAL,
+            RafxCompareOp::Always => gles2_bindings::ALWAYS,
         }
     }
 }
@@ -90,14 +90,14 @@ impl RafxCompareOp {
 impl RafxStencilOp {
     pub fn gles2_stencil_op(self) -> GLenum {
         match self {
-            RafxStencilOp::Keep => gles20::KEEP,
-            RafxStencilOp::Zero => gles20::ZERO,
-            RafxStencilOp::Replace => gles20::REPLACE,
-            RafxStencilOp::IncrementAndClamp => gles20::INCR,
-            RafxStencilOp::DecrementAndClamp => gles20::DECR,
-            RafxStencilOp::Invert => gles20::INVERT,
-            RafxStencilOp::IncrementAndWrap => gles20::INCR_WRAP,
-            RafxStencilOp::DecrementAndWrap => gles20::INCR_WRAP,
+            RafxStencilOp::Keep => gles2_bindings::KEEP,
+            RafxStencilOp::Zero => gles2_bindings::ZERO,
+            RafxStencilOp::Replace => gles2_bindings::REPLACE,
+            RafxStencilOp::IncrementAndClamp => gles2_bindings::INCR,
+            RafxStencilOp::DecrementAndClamp => gles2_bindings::DECR,
+            RafxStencilOp::Invert => gles2_bindings::INVERT,
+            RafxStencilOp::IncrementAndWrap => gles2_bindings::INCR_WRAP,
+            RafxStencilOp::DecrementAndWrap => gles2_bindings::INCR_WRAP,
         }
     }
 }
@@ -163,19 +163,19 @@ impl From<&RafxDepthState> for Gles2DepthStencilState {
 impl RafxBlendFactor {
     pub fn gles2_blend_factor(self) -> GLenum {
         match self {
-            RafxBlendFactor::Zero => gles20::ZERO,
-            RafxBlendFactor::One => gles20::ONE,
-            RafxBlendFactor::SrcColor => gles20::SRC_COLOR,
-            RafxBlendFactor::OneMinusSrcColor => gles20::ONE_MINUS_SRC_COLOR,
-            RafxBlendFactor::DstColor => gles20::DST_COLOR,
-            RafxBlendFactor::OneMinusDstColor => gles20::ONE_MINUS_DST_COLOR,
-            RafxBlendFactor::SrcAlpha => gles20::SRC_ALPHA,
-            RafxBlendFactor::OneMinusSrcAlpha => gles20::ONE_MINUS_SRC_ALPHA,
-            RafxBlendFactor::DstAlpha => gles20::DST_ALPHA,
-            RafxBlendFactor::OneMinusDstAlpha => gles20::ONE_MINUS_DST_ALPHA,
-            RafxBlendFactor::SrcAlphaSaturate => gles20::SRC_ALPHA_SATURATE,
-            RafxBlendFactor::ConstantColor => gles20::CONSTANT_COLOR,
-            RafxBlendFactor::OneMinusConstantColor => gles20::ONE_MINUS_CONSTANT_COLOR,
+            RafxBlendFactor::Zero => gles2_bindings::ZERO,
+            RafxBlendFactor::One => gles2_bindings::ONE,
+            RafxBlendFactor::SrcColor => gles2_bindings::SRC_COLOR,
+            RafxBlendFactor::OneMinusSrcColor => gles2_bindings::ONE_MINUS_SRC_COLOR,
+            RafxBlendFactor::DstColor => gles2_bindings::DST_COLOR,
+            RafxBlendFactor::OneMinusDstColor => gles2_bindings::ONE_MINUS_DST_COLOR,
+            RafxBlendFactor::SrcAlpha => gles2_bindings::SRC_ALPHA,
+            RafxBlendFactor::OneMinusSrcAlpha => gles2_bindings::ONE_MINUS_SRC_ALPHA,
+            RafxBlendFactor::DstAlpha => gles2_bindings::DST_ALPHA,
+            RafxBlendFactor::OneMinusDstAlpha => gles2_bindings::ONE_MINUS_DST_ALPHA,
+            RafxBlendFactor::SrcAlphaSaturate => gles2_bindings::SRC_ALPHA_SATURATE,
+            RafxBlendFactor::ConstantColor => gles2_bindings::CONSTANT_COLOR,
+            RafxBlendFactor::OneMinusConstantColor => gles2_bindings::ONE_MINUS_CONSTANT_COLOR,
         }
     }
 }
@@ -183,9 +183,9 @@ impl RafxBlendFactor {
 impl RafxBlendOp {
     pub fn gles2_blend_op(self) -> Option<GLenum> {
         match self {
-            RafxBlendOp::Add => Some(gles20::FUNC_ADD),
-            RafxBlendOp::Subtract => Some(gles20::FUNC_SUBTRACT),
-            RafxBlendOp::ReverseSubtract => Some(gles20::FUNC_REVERSE_SUBTRACT),
+            RafxBlendOp::Add => Some(gles2_bindings::FUNC_ADD),
+            RafxBlendOp::Subtract => Some(gles2_bindings::FUNC_SUBTRACT),
+            RafxBlendOp::ReverseSubtract => Some(gles2_bindings::FUNC_REVERSE_SUBTRACT),
 
             // min/max are GLES 3.2
             RafxBlendOp::Min => None,

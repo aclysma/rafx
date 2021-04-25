@@ -1,8 +1,8 @@
-use super::gles20;
-use super::gles20::types::GLenum;
-use super::gles20::Gles2;
+use super::gles2_bindings;
+use super::gles2_bindings::types::GLenum;
+use super::gles2_bindings::Gles2;
 use super::WindowHash;
-use crate::gl::gles20::types::{GLboolean, GLint};
+use crate::gl::gles2_bindings::types::{GLboolean, GLint};
 use crate::gl::{ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId, FramebufferId};
 use crate::{RafxError, RafxResult};
 use raw_gl_context::GlConfig;
@@ -480,7 +480,7 @@ impl GlContext {
         &self,
         shader_id: ShaderId,
     ) -> RafxResult<Option<String>> {
-        let error_len = self.gl_get_shaderiv(shader_id, gles20::INFO_LOG_LENGTH)?;
+        let error_len = self.gl_get_shaderiv(shader_id, gles2_bindings::INFO_LOG_LENGTH)?;
         if error_len == 0 {
             return Ok(None);
         };
@@ -498,7 +498,7 @@ impl GlContext {
         let shader_id = self.gl_create_shader(shader_type)?;
         self.gl_shader_source(shader_id, &src)?;
         self.gl_compile_shader(shader_id)?;
-        if self.gl_get_shaderiv(shader_id, gles20::COMPILE_STATUS)? == 0 {
+        if self.gl_get_shaderiv(shader_id, gles2_bindings::COMPILE_STATUS)? == 0 {
             return Err(match self.get_shader_info_log(shader_id)? {
                 Some(x) => format!("Error compiling shader: {}", x),
                 None => "Error compiling shader, info log not available".to_string(),
@@ -565,7 +565,7 @@ impl GlContext {
         &self,
         program_id: ProgramId,
     ) -> RafxResult<Option<String>> {
-        let error_len = self.gl_get_programiv(program_id, gles20::INFO_LOG_LENGTH)?;
+        let error_len = self.gl_get_programiv(program_id, gles2_bindings::INFO_LOG_LENGTH)?;
         if error_len == 0 {
             return Ok(None);
         };
@@ -580,7 +580,7 @@ impl GlContext {
         program_id: ProgramId,
     ) -> RafxResult<()> {
         self.gl_link_program(program_id)?;
-        if self.gl_get_programiv(program_id, gles20::LINK_STATUS)? == 0 {
+        if self.gl_get_programiv(program_id, gles2_bindings::LINK_STATUS)? == 0 {
             return Err(match self.get_program_info_log(program_id)? {
                 Some(x) => format!("Error linking shader program: {}", x),
                 None => "Error linking shader program, info log not available".to_string(),
@@ -599,7 +599,7 @@ impl GlContext {
         program_id: ProgramId,
     ) -> RafxResult<()> {
         self.gl_validate_program(program_id)?;
-        if self.gl_get_programiv(program_id, gles20::VALIDATE_STATUS)? == 0 {
+        if self.gl_get_programiv(program_id, gles2_bindings::VALIDATE_STATUS)? == 0 {
             return Err(match self.get_program_info_log(program_id)? {
                 Some(x) => format!("Error validating shader program: {}", x),
                 None => "Error validating shader program, info log not available".to_string(),
@@ -634,7 +634,7 @@ impl GlContext {
         &self,
         program_id: ProgramId,
     ) -> RafxResult<GetActiveUniformMaxNameLengthHint> {
-        let max_length = self.gl_get_programiv(program_id, gles20::ACTIVE_UNIFORM_MAX_LENGTH)?;
+        let max_length = self.gl_get_programiv(program_id, gles2_bindings::ACTIVE_UNIFORM_MAX_LENGTH)?;
         Ok(GetActiveUniformMaxNameLengthHint(max_length))
     }
 
@@ -1033,7 +1033,7 @@ impl GlContext {
             self.gles2.UniformMatrix2fv(
                 location.0 as _,
                 count as _,
-                gles20::FALSE,
+                gles2_bindings::FALSE,
                 data as *const T as _,
             );
             self.check_for_error()
@@ -1050,7 +1050,7 @@ impl GlContext {
             self.gles2.UniformMatrix3fv(
                 location.0 as _,
                 count as _,
-                gles20::FALSE,
+                gles2_bindings::FALSE,
                 data as *const T as _,
             );
             self.check_for_error()
@@ -1067,7 +1067,7 @@ impl GlContext {
             self.gles2.UniformMatrix4fv(
                 location.0 as _,
                 count as _,
-                gles20::FALSE,
+                gles2_bindings::FALSE,
                 data as *const T as _,
             );
             self.check_for_error()
@@ -1124,16 +1124,16 @@ impl GlContext {
 
 fn to_gl_bool(value: bool) -> GLboolean {
     if value {
-        gles20::TRUE
+        gles2_bindings::TRUE
     } else {
-        gles20::FALSE
+        gles2_bindings::FALSE
     }
 }
 
 pub fn check_for_error(gles2: &Gles2) -> RafxResult<()> {
     unsafe {
         let result = gles2.GetError();
-        if result != gles20::NO_ERROR {
+        if result != gles2_bindings::NO_ERROR {
             Err(RafxError::GlError(result))
         } else {
             Ok(())

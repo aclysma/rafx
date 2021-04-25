@@ -1,8 +1,8 @@
 use crate::gl::{BufferId, RafxDeviceContextGles2, NONE_BUFFER};
 use crate::{RafxBufferDef, RafxMemoryUsage, RafxResourceType, RafxResult};
 
-use crate::gl::gles20;
-use crate::gl::gles20::types::GLenum;
+use crate::gl::gles2_bindings;
+use crate::gl::gles2_bindings::types::GLenum;
 use rafx_base::trust_cell::TrustCell;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
@@ -84,7 +84,7 @@ impl RafxBufferGles2 {
     pub fn unmap_buffer(&self) -> RafxResult<()> {
         // We flush on every unmap because if some code leaves the buffer in an "always mapped"
         // state the buffer would never get flushed
-        if self.target != gles20::NONE {
+        if self.target != gles2_bindings::NONE {
             let gl_context = self.device_context.gl_context();
             gl_context.gl_bind_buffer(self.target, self.buffer_id.unwrap())?;
             let ptr = unsafe { self.buffer_contents.as_ref().unwrap().as_ptr() };
@@ -154,9 +154,9 @@ impl RafxBufferGles2 {
                 .resource_type
                 .contains(RafxResourceType::INDEX_BUFFER)
             {
-                gles20::ELEMENT_ARRAY_BUFFER
+                gles2_bindings::ELEMENT_ARRAY_BUFFER
             } else {
-                gles20::ARRAY_BUFFER
+                gles2_bindings::ARRAY_BUFFER
             };
 
             buffer_id = Some(device_context.gl_context().gl_create_buffer()?);
@@ -165,7 +165,7 @@ impl RafxBufferGles2 {
                 .gl_bind_buffer(target, buffer_id.unwrap())?;
 
             let usage = buffer_def.memory_usage.gles2_usage().unwrap();
-            if usage != gles20::NONE {
+            if usage != gles2_bindings::NONE {
                 device_context.gl_context().gl_buffer_data(
                     target,
                     buffer_def.size,
@@ -197,7 +197,7 @@ impl RafxBufferGles2 {
 
             buffer_def.memory_usage = RafxMemoryUsage::CpuOnly;
             buffer_contents = Some(vec![0_u8; allocation_size as _]);
-            target = gles20::NONE;
+            target = gles2_bindings::NONE;
         }
 
         Ok(RafxBufferGles2 {

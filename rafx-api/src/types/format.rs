@@ -1,5 +1,5 @@
 #[cfg(feature = "rafx-gles2")]
-use crate::gl::gles20::types::GLenum;
+use crate::gl::gles2_bindings::types::GLenum;
 #[cfg(feature = "rafx-vulkan")]
 use ash::vk;
 #[cfg(feature = "rafx-metal")]
@@ -865,7 +865,7 @@ pub struct GlTextureFormatInfo {
 #[cfg(feature = "rafx-gles2")]
 impl RafxFormat {
     pub fn gl_type(self) -> Option<GLenum> {
-        use crate::gl::gles20 as gl;
+        use crate::gl::gles2_bindings as gl;
         match self {
             RafxFormat::R4G4_UNORM_PACK8 => Some(gl::UNSIGNED_SHORT_4_4_4_4),
             RafxFormat::R4G4B4A4_UNORM_PACK16 => Some(gl::UNSIGNED_SHORT_4_4_4_4),
@@ -1056,7 +1056,7 @@ impl RafxFormat {
     }
 
     pub fn gl_texture_format_info(self) -> Option<GlTextureFormatInfo> {
-        use crate::gl::gles20 as gl;
+        use crate::gl::gles2_bindings as gl;
         #[rustfmt::skip]
         let formats = match self {
             // RafxFormat::UNDEFINED => None,

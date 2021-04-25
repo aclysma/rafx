@@ -1,5 +1,5 @@
 use crate::gl::conversions::{Gles2BlendState, Gles2DepthStencilState, Gles2RasterizerState};
-use crate::gl::gles20::types::GLenum;
+use crate::gl::gles2_bindings::types::GLenum;
 use crate::gl::reflection::FieldIndex;
 use crate::gl::{LocationId, ProgramId, RafxDeviceContextGles2, RafxRootSignatureGles2, RafxShaderGles2};
 use crate::{

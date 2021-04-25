@@ -1,4 +1,4 @@
-use crate::gl::{gles20, ProgramId, RafxTextureGles2, BufferId, GlContext, NONE_PROGRAM, NONE_TEXTURE, NONE_BUFFER};
+use crate::gl::{gles2_bindings, ProgramId, RafxTextureGles2, BufferId, GlContext, NONE_PROGRAM, NONE_TEXTURE, NONE_BUFFER};
 use crate::{RafxResult, RafxDeviceInfo};
 use std::ffi::CString;
 
@@ -12,8 +12,8 @@ impl FullscreenQuad {
         let vert_shader_src = CString::new(include_str!("shaders/fullscreen_quad.vert.gles")).unwrap();
         let frag_shader_src = CString::new(include_str!("shaders/fullscreen_quad.frag.gles")).unwrap();
 
-        let vert_shader = gl_context.compile_shader(gles20::VERTEX_SHADER, &vert_shader_src)?;
-        let frag_shader = gl_context.compile_shader(gles20::FRAGMENT_SHADER, &frag_shader_src)?;
+        let vert_shader = gl_context.compile_shader(gles2_bindings::VERTEX_SHADER, &vert_shader_src)?;
+        let frag_shader = gl_context.compile_shader(gles2_bindings::FRAGMENT_SHADER, &frag_shader_src)?;
 
         let program_id = gl_context.gl_create_program()?;
         gl_context.gl_attach_shader(program_id, vert_shader)?;
@@ -38,8 +38,8 @@ impl FullscreenQuad {
         ];
 
         let buffer_id = gl_context.gl_create_buffer()?;
-        gl_context.gl_bind_buffer(gles20::ARRAY_BUFFER, buffer_id)?;
-        gl_context.gl_buffer_data(gles20::ARRAY_BUFFER, 24 * 4, QUAD_VERTICES.as_ptr() as _, gles20::STATIC_DRAW)?;
+        gl_context.gl_bind_buffer(gles2_bindings::ARRAY_BUFFER, buffer_id)?;
+        gl_context.gl_buffer_data(gles2_bindings::ARRAY_BUFFER, 24 * 4, QUAD_VERTICES.as_ptr() as _, gles2_bindings::STATIC_DRAW)?;
 
         Ok(FullscreenQuad {
             program_id,
@@ -48,30 +48,30 @@ impl FullscreenQuad {
     }
 
     pub(crate) fn draw(&self, gl_context: &GlContext, device_info: &RafxDeviceInfo, texture: &RafxTextureGles2) -> RafxResult<()> {
-        gl_context.gl_disable(gles20::DEPTH_TEST)?;
+        gl_context.gl_disable(gles2_bindings::DEPTH_TEST)?;
         gl_context.gl_use_program(self.program_id)?;
 
-        gl_context.gl_bind_buffer(gles20::ARRAY_BUFFER, self.buffer_id)?;
+        gl_context.gl_bind_buffer(gles2_bindings::ARRAY_BUFFER, self.buffer_id)?;
 
-        gl_context.gl_vertex_attrib_pointer(0, 2, gles20::FLOAT, false, 16, 0)?;
+        gl_context.gl_vertex_attrib_pointer(0, 2, gles2_bindings::FLOAT, false, 16, 0)?;
         gl_context.gl_enable_vertex_attrib_array(0)?;
 
-        gl_context.gl_vertex_attrib_pointer(1, 2, gles20::FLOAT, false, 16, 8)?;
+        gl_context.gl_vertex_attrib_pointer(1, 2, gles2_bindings::FLOAT, false, 16, 8)?;
         gl_context.gl_enable_vertex_attrib_array(1)?;
 
         for i in 2..device_info.max_vertex_attribute_count {
             gl_context.gl_disable_vertex_attrib_array(i)?;
         }
 
-        gl_context.gl_bind_texture(gles20::TEXTURE_2D, texture.gl_raw_image().gl_texture_id().unwrap())?;
-        gl_context.gl_tex_parameteri(gles20::TEXTURE_2D, gles20::TEXTURE_MIN_FILTER, gles20::LINEAR as _)?;
-        gl_context.gl_tex_parameteri(gles20::TEXTURE_2D, gles20::TEXTURE_MAG_FILTER, gles20::LINEAR as _)?;
-        gl_context.gl_tex_parameteri(gles20::TEXTURE_2D, gles20::TEXTURE_WRAP_S, gles20::CLAMP_TO_EDGE as _)?;
-        gl_context.gl_tex_parameteri(gles20::TEXTURE_2D, gles20::TEXTURE_WRAP_T, gles20::CLAMP_TO_EDGE as _)?;
-        gl_context.gl_draw_arrays(gles20::TRIANGLES, 0, 6)?;
+        gl_context.gl_bind_texture(gles2_bindings::TEXTURE_2D, texture.gl_raw_image().gl_texture_id().unwrap())?;
+        gl_context.gl_tex_parameteri(gles2_bindings::TEXTURE_2D, gles2_bindings::TEXTURE_MIN_FILTER, gles2_bindings::LINEAR as _)?;
+        gl_context.gl_tex_parameteri(gles2_bindings::TEXTURE_2D, gles2_bindings::TEXTURE_MAG_FILTER, gles2_bindings::LINEAR as _)?;
+        gl_context.gl_tex_parameteri(gles2_bindings::TEXTURE_2D, gles2_bindings::TEXTURE_WRAP_S, gles2_bindings::CLAMP_TO_EDGE as _)?;
+        gl_context.gl_tex_parameteri(gles2_bindings::TEXTURE_2D, gles2_bindings::TEXTURE_WRAP_T, gles2_bindings::CLAMP_TO_EDGE as _)?;
+        gl_context.gl_draw_arrays(gles2_bindings::TRIANGLES, 0, 6)?;
 
-        gl_context.gl_bind_buffer(gles20::ARRAY_BUFFER, NONE_BUFFER)?;
-        gl_context.gl_bind_texture(gles20::TEXTURE_2D, NONE_TEXTURE)?;
+        gl_context.gl_bind_buffer(gles2_bindings::ARRAY_BUFFER, NONE_BUFFER)?;
+        gl_context.gl_bind_texture(gles2_bindings::TEXTURE_2D, NONE_TEXTURE)?;
         gl_context.gl_use_program(NONE_PROGRAM)?;
 
         Ok(())

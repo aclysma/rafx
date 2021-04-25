@@ -1,5 +1,5 @@
-use crate::gl::gles20;
-use crate::gl::gles20::types::GLenum;
+use crate::gl::gles2_bindings;
+use crate::gl::gles2_bindings::types::GLenum;
 use crate::gl::RafxDeviceContextGles2;
 use crate::{RafxFilterType, RafxMipMapMode, RafxResult, RafxSamplerDef};
 use std::sync::Arc;
@@ -27,12 +27,12 @@ impl RafxSamplerGles2 {
     ) -> RafxResult<RafxSamplerGles2> {
         let gl_mip_map_mode = match sampler_def.min_filter {
             RafxFilterType::Nearest => match sampler_def.mip_map_mode {
-                RafxMipMapMode::Nearest => gles20::NEAREST_MIPMAP_NEAREST,
-                RafxMipMapMode::Linear => gles20::NEAREST_MIPMAP_LINEAR,
+                RafxMipMapMode::Nearest => gles2_bindings::NEAREST_MIPMAP_NEAREST,
+                RafxMipMapMode::Linear => gles2_bindings::NEAREST_MIPMAP_LINEAR,
             },
             RafxFilterType::Linear => match sampler_def.mip_map_mode {
-                RafxMipMapMode::Nearest => gles20::LINEAR_MIPMAP_NEAREST,
-                RafxMipMapMode::Linear => gles20::LINEAR_MIPMAP_LINEAR,
+                RafxMipMapMode::Nearest => gles2_bindings::LINEAR_MIPMAP_NEAREST,
+                RafxMipMapMode::Linear => gles2_bindings::LINEAR_MIPMAP_LINEAR,
             },
         };
 

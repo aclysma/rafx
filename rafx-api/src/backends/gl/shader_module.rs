@@ -1,4 +1,4 @@
-use crate::gl::{gles20, RafxDeviceContextGles2, ShaderId};
+use crate::gl::{gles2_bindings, RafxDeviceContextGles2, ShaderId};
 use crate::{RafxResult, RafxShaderModule, RafxShaderModuleDefGles2, RafxShaderStageFlags};
 use rafx_base::trust_cell::TrustCell;
 use std::ffi::{CStr, CString};
@@ -103,9 +103,9 @@ impl RafxShaderModuleGles2 {
         }
 
         let gl_stage = if stage == RafxShaderStageFlags::VERTEX {
-            gles20::VERTEX_SHADER
+            gles2_bindings::VERTEX_SHADER
         } else if stage == RafxShaderStageFlags::FRAGMENT {
-            gles20::FRAGMENT_SHADER
+            gles2_bindings::FRAGMENT_SHADER
         } else {
             return Err(format!("Could not compile shader, stage flags must be EITHER vertex or fragment. Flags: {:?}", stage))?;
         };
