@@ -543,7 +543,7 @@ impl RafxCommandBufferGles2 {
         let gl_context = self.queue.device_context().gl_context();
 
         if binding.index_type != RafxIndexType::Uint16 {
-            Err("GL ES 2.0 only supports Uint16 index buffers")?;
+            unimplemented!("GL ES 2.0 only supports Uint16 index buffers");
         }
 
         let buffer = binding.buffer.gles2_buffer().unwrap();
@@ -893,7 +893,7 @@ impl RafxCommandBufferGles2 {
                 3 => target = gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_Y,
                 4 => target = gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_Z,
                 5 => target = gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_Z,
-                _ => return Err("GL ES 2.0 does not support more than 6 images for a cubemap")?,
+                _ => unimplemented!("GL ES 2.0 does not support more than 6 images for a cubemap"),
             }
         }
 

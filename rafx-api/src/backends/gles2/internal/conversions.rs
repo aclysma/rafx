@@ -209,7 +209,7 @@ pub struct Gles2BlendState {
 impl RafxBlendState {
     pub fn gles2_blend_state(&self) -> RafxResult<Gles2BlendState> {
         if self.independent_blend {
-            return Err("GL ES 2.0 does not support independent blend states")?;
+            unimplemented!("GL ES 2.0 does not support independent blend states");
         }
 
         let rt_state = self
