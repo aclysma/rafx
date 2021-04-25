@@ -16,6 +16,8 @@ use crate::gl::{
 use crate::gl::gles20;
 use crate::gl::GlContext;
 
+use crate::gl::fullscreen_quad::FullscreenQuad;
+
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
 use std::sync::atomic::AtomicU64;
@@ -27,6 +29,8 @@ pub struct RafxDeviceContextGlInner {
     gl_context_manager: GlContextManager,
     gl_context: Arc<GlContext>,
     destroyed: AtomicBool,
+
+    pub(crate) fullscreen_quad: FullscreenQuad,
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
@@ -77,6 +81,8 @@ impl RafxDeviceContextGlInner {
             max_vertex_attribute_count,
         };
 
+        let fullscreen_quad = FullscreenQuad::new(&gl_context)?;
+
         //TODO: Support extensions
 
         #[cfg(debug_assertions)]
@@ -92,6 +98,7 @@ impl RafxDeviceContextGlInner {
             device_info,
             gl_context_manager,
             gl_context,
+            fullscreen_quad,
             destroyed: AtomicBool::new(false),
 
             #[cfg(debug_assertions)]

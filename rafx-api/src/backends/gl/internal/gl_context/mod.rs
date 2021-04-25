@@ -36,6 +36,10 @@ pub struct TextureId(pub u32);
 pub const NONE_TEXTURE: TextureId = TextureId(gles20::NONE);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FramebufferId(pub u32);
+pub const NONE_FRAMEBUFFER: FramebufferId = FramebufferId(gles20::NONE);
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RenderbufferId(pub u32);
 pub const NONE_RENDERBUFFER: RenderbufferId = RenderbufferId(gles20::NONE);
 

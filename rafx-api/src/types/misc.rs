@@ -228,6 +228,10 @@ impl RafxResourceType {
             RafxResourceType::RENDER_TARGET_COLOR | RafxResourceType::RENDER_TARGET_DEPTH_STENCIL,
         )
     }
+
+    pub fn is_texture(self) -> bool {
+        self.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE)
+    }
 }
 
 bitflags::bitflags! {

@@ -1,7 +1,4 @@
-use crate::gl::{
-    RafxCommandBufferGl, RafxCommandPoolGl, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl,
-    RafxSwapchainGl,
-};
+use crate::gl::{RafxCommandBufferGl, RafxCommandPoolGl, RafxDeviceContextGl, RafxFenceGl, RafxSemaphoreGl, RafxSwapchainGl, NONE_FRAMEBUFFER, gles20};
 use crate::{RafxCommandPoolDef, RafxPresentSuccessResult, RafxQueueType, RafxResult};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -114,9 +111,18 @@ impl RafxQueueGl {
     ) -> RafxResult<RafxPresentSuccessResult> {
         self.submit_semaphore_wait(wait_semaphores)?;
 
-        self.device_context()
-            .gl_context()
-            .gl_disable(crate::gl::gles20::SCISSOR_TEST)?;
+        let gl_context = self.device_context().gl_context();
+
+        //gl_context.gl_disable(gles20::SCISSOR_TEST)?;
+
+        gl_context.gl_bind_framebuffer(gles20::FRAMEBUFFER, NONE_FRAMEBUFFER)?;
+
+        //gl_context.gl_enable(gles20::TEXTURE_2D)?;
+        //gl_context.gl_bind_texture(gles20::TEXTURE_2D, swapchain.swapchain_image.gl_raw_image().gl_texture_id().unwrap());
+
+        self.device_context().inner.fullscreen_quad.draw(gl_context, self.device_context().device_info(), &swapchain.swapchain_image)?;
+
+
 
         let surface_context = swapchain.surface_context();
         let gl_context_manager = self.device_context().gl_context_manager();

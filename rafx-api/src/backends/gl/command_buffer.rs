@@ -76,20 +76,20 @@ impl RafxCommandBufferGl {
         mip_slice: Option<u8>,
     ) -> RafxResult<()> {
         match texture.gl_raw_image() {
-            RafxRawImageGl::Renderbuffer(id) => {
-                assert!(mip_slice.is_none());
-                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, *id)?;
-                if *id != NONE_RENDERBUFFER {
-                    gl_context.gl_framebuffer_renderbuffer(
-                        gles20::FRAMEBUFFER,
-                        attachment,
-                        gles20::RENDERBUFFER,
-                        *id,
-                    )?;
-                }
-
-                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
-            }
+            // RafxRawImageGl::Renderbuffer(id) => {
+            //     assert!(mip_slice.is_none());
+            //     gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, *id)?;
+            //     if *id != NONE_RENDERBUFFER {
+            //         gl_context.gl_framebuffer_renderbuffer(
+            //             gles20::FRAMEBUFFER,
+            //             attachment,
+            //             gles20::RENDERBUFFER,
+            //             *id,
+            //         )?;
+            //     }
+            //
+            //     gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
+            // }
             RafxRawImageGl::Texture(id) => {
                 //TODO: Handle cubemap
                 let texture_target = gles20::TEXTURE_2D;
@@ -124,12 +124,14 @@ impl RafxCommandBufferGl {
         let mut clear_mask = 0;
         let mut extents = RafxExtents3D::default();
 
+        gl_context.gl_bind_framebuffer(gles20::FRAMEBUFFER, state.framebuffer_id)?;
+
         for (index, render_target) in color_targets.iter().enumerate() {
             extents = render_target.texture.texture_def().extents;
 
             let gl_texture = render_target.texture.gl_texture().unwrap();
-
             let attachment = gles20::COLOR_ATTACHMENT0 + index as u32;
+            Self::bind_framebuffer(gl_context, gl_texture, attachment, render_target.mip_slice)?;
 
             // match gl_texture.gl_raw_image() {
             //     RafxRawImageGl::Renderbuffer(id) => {
@@ -146,18 +148,17 @@ impl RafxCommandBufferGl {
             //     }
             // }
 
-            //Self::bind_framebuffer(gl_context, gl_texture, attachment, render_target.mip_slice)?;
 
-            let renderbuffer = gl_texture.gl_raw_image().gl_renderbuffer_id().unwrap();
-            gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
-            if renderbuffer != NONE_RENDERBUFFER {
-                gl_context.gl_framebuffer_renderbuffer(
-                    gles20::FRAMEBUFFER,
-                    attachment,
-                    gles20::RENDERBUFFER,
-                    renderbuffer,
-                )?;
-            }
+            // let renderbuffer = gl_texture.gl_raw_image().gl_renderbuffer_id().unwrap();
+            // gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
+            // if renderbuffer != NONE_RENDERBUFFER {
+            //     gl_context.gl_framebuffer_renderbuffer(
+            //         gles20::FRAMEBUFFER,
+            //         attachment,
+            //         gles20::RENDERBUFFER,
+            //         renderbuffer,
+            //     )?;
+            // }
 
             if render_target.load_op == RafxLoadOp::Clear {
                 let c = &render_target.clear_value.0;
@@ -165,7 +166,7 @@ impl RafxCommandBufferGl {
                 clear_mask |= gles20::COLOR_BUFFER_BIT;
             }
 
-            gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
+            //gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
         }
 
         if let Some(depth_target) = depth_target {
@@ -173,80 +174,99 @@ impl RafxCommandBufferGl {
             if format.has_depth() {
                 extents = depth_target.texture.texture_def().extents;
 
-                let renderbuffer = depth_target
-                    .texture
-                    .gl_texture()
-                    .unwrap()
-                    .gl_raw_image()
-                    .gl_renderbuffer_id()
-                    .unwrap();
-                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
-                if renderbuffer != NONE_RENDERBUFFER {
-                    gl_context.gl_framebuffer_renderbuffer(
-                        gles20::FRAMEBUFFER,
-                        gles20::DEPTH_ATTACHMENT,
-                        gles20::RENDERBUFFER,
-                        renderbuffer,
-                    )?;
-                }
+                // let renderbuffer = depth_target
+                //     .texture
+                //     .gl_texture()
+                //     .unwrap()
+                //     .gl_raw_image()
+                //     .gl_renderbuffer_id()
+                //     .unwrap();
+                // gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
+                // if renderbuffer != NONE_RENDERBUFFER {
+                //     gl_context.gl_framebuffer_renderbuffer(
+                //         gles20::FRAMEBUFFER,
+                //         gles20::DEPTH_ATTACHMENT,
+                //         gles20::RENDERBUFFER,
+                //         renderbuffer,
+                //     )?;
+                // }
+
+                let gl_texture = depth_target.texture.gl_texture().unwrap();
+                let attachment = gles20::DEPTH_ATTACHMENT;
+                Self::bind_framebuffer(gl_context, gl_texture, attachment, depth_target.mip_slice)?;
 
                 if depth_target.depth_load_op == RafxLoadOp::Clear {
                     gl_context.gl_clear_depthf(depth_target.clear_value.depth)?;
                     clear_mask |= gles20::DEPTH_BUFFER_BIT;
                 }
 
-                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
+                //gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
             }
 
             if format.has_stencil() {
                 extents = depth_target.texture.texture_def().extents;
 
-                let renderbuffer = depth_target
-                    .texture
-                    .gl_texture()
-                    .unwrap()
-                    .gl_raw_image()
-                    .gl_renderbuffer_id()
-                    .unwrap();
-                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
-                if renderbuffer != NONE_RENDERBUFFER {
-                    gl_context.gl_framebuffer_renderbuffer(
-                        gles20::FRAMEBUFFER,
-                        gles20::STENCIL_ATTACHMENT,
-                        gles20::RENDERBUFFER,
-                        renderbuffer,
-                    )?;
-                }
+                // let renderbuffer = depth_target
+                //     .texture
+                //     .gl_texture()
+                //     .unwrap()
+                //     .gl_raw_image()
+                //     .gl_renderbuffer_id()
+                //     .unwrap();
+                // gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
+                // if renderbuffer != NONE_RENDERBUFFER {
+                //     gl_context.gl_framebuffer_renderbuffer(
+                //         gles20::FRAMEBUFFER,
+                //         gles20::STENCIL_ATTACHMENT,
+                //         gles20::RENDERBUFFER,
+                //         renderbuffer,
+                //     )?;
+                // }
+
+                let gl_texture = depth_target.texture.gl_texture().unwrap();
+                let attachment = gles20::STENCIL_ATTACHMENT;
+                Self::bind_framebuffer(gl_context, gl_texture, attachment, depth_target.mip_slice)?;
 
                 if depth_target.stencil_load_op == RafxLoadOp::Clear {
                     gl_context.gl_clear_stencil(depth_target.clear_value.stencil as _)?;
                     clear_mask |= gles20::STENCIL_BUFFER_BIT;
                 }
 
-                gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
+                //gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
             }
+        }
+
+        Self::do_set_viewport(
+            gl_context,
+            extents.height as _,
+            0,
+            0,
+            extents.width as _,
+            extents.height as _,
+            0.0,
+            1.0
+        )?;
+
+        let result = gl_context.gl_check_framebuffer_status(gles20::FRAMEBUFFER)?;
+        if result != gles20::FRAMEBUFFER_COMPLETE {
+            Err(format!("Framebuffer Status is not FRAMEBUFFER_COMPLETE, result: {:#x}", result))?;
         }
 
         if clear_mask != 0 {
             gl_context.gl_clear(clear_mask)?;
         }
 
-        let result = gl_context.gl_check_framebuffer_status(gles20::FRAMEBUFFER)?;
-        if result != gles20::FRAMEBUFFER_COMPLETE {
-            log::error!("Incomplete framebuffer {}", result);
-        }
-
         state.surface_size = Some(extents.to_2d());
 
         std::mem::drop(state);
-        self.cmd_set_viewport(
-            0.0,
-            0.0,
-            extents.width as f32,
-            extents.height as f32,
-            0.0,
-            1.0,
-        )?;
+        // self.cmd_set_viewport(
+        //     0.0,
+        //     0.0,
+        //     extents.width as f32,
+        //     extents.height as f32,
+        //     0.0,
+        //     1.0,
+        // )?;
 
         self.cmd_set_scissor(0, 0, extents.width, extents.height)
     }
@@ -272,9 +292,30 @@ impl RafxCommandBufferGl {
         assert!(state.is_started);
 
         let gl_context = self.queue.device_context().gl_context();
-        let y_offset = state.surface_size.unwrap().height as f32 - y - height;
+        Self::do_set_viewport(
+            gl_context,
+            state.surface_size.unwrap().height as _,
+            x as _,
+            y as _,
+            width as _,
+            height as _,
+            depth_min,
+            depth_max
+        )
+    }
 
-        gl_context.gl_viewport(x as _, y_offset as _, width as _, height as _)?;
+    fn do_set_viewport(
+        gl_context: &GlContext,
+        surface_height: i32,
+        x: i32,
+        y: i32,
+        width: i32,
+        height: i32,
+        depth_min: f32,
+        depth_max: f32,
+    ) -> RafxResult<()> {
+        let y_offset = surface_height - y - height;
+        gl_context.gl_viewport(x, y_offset, width, height)?;
         gl_context.gl_depth_rangef(depth_min, depth_max)
     }
 
@@ -879,7 +920,7 @@ impl RafxCommandBufferGl {
             0,
             format_info.gl_format,
             format_info.gl_type,
-            buffer_ptr,
+            Some(buffer_ptr),
         )?;
         gl_context.gl_bind_texture(target, NONE_TEXTURE)
     }

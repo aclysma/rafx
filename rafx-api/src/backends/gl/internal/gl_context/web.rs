@@ -1,8 +1,5 @@
 use crate::gl::gles20::types::*;
-use crate::gl::{
-    gles20, ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId,
-    WindowHash, NONE_BUFFER, NONE_PROGRAM, NONE_RENDERBUFFER, NONE_TEXTURE,
-};
+use crate::gl::{gles20, ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId, WindowHash, NONE_BUFFER, NONE_PROGRAM, NONE_RENDERBUFFER, NONE_TEXTURE, FramebufferId, NONE_FRAMEBUFFER};
 use crate::{RafxError, RafxResult};
 use fnv::FnvHashMap;
 use raw_window_handle::HasRawWindowHandle;
@@ -10,16 +7,14 @@ use std::ffi::{CStr, CString};
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 use wasm_bindgen::JsValue;
-use web_sys::{
-    WebGlBuffer, WebGlProgram, WebGlRenderbuffer, WebGlRenderingContext, WebGlShader, WebGlTexture,
-    WebGlUniformLocation,
-};
+use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderbuffer, WebGlRenderingContext, WebGlShader, WebGlTexture, WebGlUniformLocation, WebGlFramebuffer};
 
 pub struct GetActiveUniformMaxNameLengthHint;
 
 static NEXT_GL_TEXTURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_SHADER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+static NEXT_GL_FRAMEBUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 //static NEXT_GL_PROGRAM_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 //static NEXT_GL_RENDERBUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
@@ -48,6 +43,7 @@ pub struct GlContext {
     shaders: Mutex<FnvHashMap<ShaderId, WebGlShader>>,
     programs: Mutex<FnvHashMap<ProgramId, WebGlProgram>>,
     renderbuffers: Mutex<FnvHashMap<RenderbufferId, WebGlRenderbuffer>>,
+    framebuffers: Mutex<FnvHashMap<FramebufferId, WebGlFramebuffer>>,
 }
 
 impl PartialEq for GlContext {
@@ -103,6 +99,7 @@ impl GlContext {
             shaders: Default::default(),
             programs: Default::default(),
             renderbuffers: Default::default(),
+            framebuffers: Default::default()
         })
     }
 
@@ -224,6 +221,24 @@ impl GlContext {
         self.check_for_error()
     }
 
+    pub fn gl_create_framebuffer(&self) -> RafxResult<FramebufferId> {
+        let framebuffer = self.context.create_framebuffer().unwrap();
+        self.check_for_error()?;
+        let framebuffer_id = FramebufferId(NEXT_GL_FRAMEBUFFER_ID.fetch_add(1, Ordering::Relaxed));
+        let old = self.framebuffers.lock().unwrap().insert(framebuffer_id, framebuffer);
+        assert!(old.is_none());
+        Ok(framebuffer_id)
+    }
+
+    pub fn gl_destroy_framebuffer(
+        &self,
+        framebuffer_id: FramebufferId,
+    ) -> RafxResult<()> {
+        let framebuffer = self.framebuffers.lock().unwrap().remove(&framebuffer_id).unwrap();
+        self.context.delete_framebuffer(Some(&framebuffer));
+        self.check_for_error()
+    }
+
     pub fn gl_create_texture(&self) -> RafxResult<TextureId> {
         let texture = self.context.create_texture().unwrap();
         self.check_for_error()?;
@@ -271,6 +286,22 @@ impl GlContext {
             let buffers = self.buffers.lock().unwrap();
             let buffer = buffers.get(&buffer_id).unwrap();
             self.context.bind_buffer(target, Some(buffer));
+        }
+
+        self.check_for_error()
+    }
+
+    pub fn gl_bind_framebuffer(
+        &self,
+        target: GLenum,
+        framebuffer_id: FramebufferId,
+    ) -> RafxResult<()> {
+        if framebuffer_id == NONE_FRAMEBUFFER {
+            self.context.bind_framebuffer(target, None);
+        } else {
+            let framebuffers = self.framebuffers.lock().unwrap();
+            let framebuffer = framebuffers.get(&framebuffer_id).unwrap();
+            self.context.bind_framebuffer(target, Some(framebuffer));
         }
 
         self.check_for_error()
@@ -1029,7 +1060,7 @@ impl GlContext {
         border: i32,
         format: GLenum,
         type_: u32,
-        pixels: &[u8],
+        pixels: Option<&[u8]>,
     ) -> RafxResult<()> {
         self.context
             .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
@@ -1041,7 +1072,7 @@ impl GlContext {
                 border,
                 format,
                 type_,
-                Some(pixels),
+                pixels,
             )
             .map_err(|x| format!("{:?}", x))?;
         self.check_for_error()

@@ -1,5 +1,5 @@
 use crate::gl::gles20::types::GLenum;
-use crate::gl::{gles20, RafxDeviceContextGl, RenderbufferId, TextureId};
+use crate::gl::{gles20, RafxDeviceContextGl, RenderbufferId, TextureId, NONE_TEXTURE};
 use crate::{
     GlTextureFormatInfo, RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions,
 };
@@ -9,24 +9,24 @@ use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
 pub enum RafxRawImageGl {
-    Renderbuffer(RenderbufferId),
+    //Renderbuffer(RenderbufferId),
     Texture(TextureId),
 }
 
 impl RafxRawImageGl {
     pub fn gl_texture_id(&self) -> Option<TextureId> {
         match self {
-            RafxRawImageGl::Renderbuffer(_) => None,
+            //RafxRawImageGl::Renderbuffer(_) => None,
             RafxRawImageGl::Texture(id) => Some(*id),
         }
     }
 
-    pub fn gl_renderbuffer_id(&self) -> Option<RenderbufferId> {
-        match self {
-            RafxRawImageGl::Renderbuffer(id) => Some(*id),
-            RafxRawImageGl::Texture(_) => None,
-        }
-    }
+    // pub fn gl_renderbuffer_id(&self) -> Option<RenderbufferId> {
+    //     match self {
+    //         //RafxRawImageGl::Renderbuffer(id) => Some(*id),
+    //         RafxRawImageGl::Texture(_) => None,
+    //     }
+    // }
 }
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ pub struct RafxTextureGlInner {
 impl Drop for RafxTextureGlInner {
     fn drop(&mut self) {
         match self.image {
-            RafxRawImageGl::Renderbuffer(_) => {} // do nothing
+            //RafxRawImageGl::Renderbuffer(_) => {} // do nothing
             RafxRawImageGl::Texture(texture_id) => self
                 .device_context
                 .gl_context()
@@ -119,20 +119,14 @@ impl RafxTextureGl {
             Err("GL ES 2.0 only supports 2D textures")?;
         }
 
-        let image = if let Some(existing_image) = existing_image {
-            existing_image
-        } else {
-            let gl_context = device_context.gl_context();
-            let texture_id = gl_context.gl_create_texture()?;
-            RafxRawImageGl::Texture(texture_id)
-        };
-
         let gl_target = if texture_def
             .resource_type
-            .intersects(RafxResourceType::TEXTURE_CUBE)
+            .contains(RafxResourceType::TEXTURE_CUBE)
         {
+            log::info!("texture cube map");
             gles20::TEXTURE_CUBE_MAP
         } else {
+            log::info!("texture2d");
             gles20::TEXTURE_2D
         };
 
@@ -140,6 +134,28 @@ impl RafxTextureGl {
             .format
             .gl_texture_format_info()
             .ok_or_else(|| format!("Format {:?} not supported", texture_def.format))?;
+
+        let image = if let Some(existing_image) = existing_image {
+            existing_image
+        } else {
+            let gl_context = device_context.gl_context();
+            let texture_id = gl_context.gl_create_texture()?;
+            gl_context.gl_bind_texture(gl_target, texture_id)?;
+            gl_context.gl_tex_image_2d(
+                gl_target,
+                0,
+                format_info.gl_internal_format,
+                texture_def.extents.width,
+                texture_def.extents.height,
+                0,
+                format_info.gl_format,
+                format_info.gl_type,
+                None
+            )?;
+            gl_context.gl_bind_texture(gl_target, NONE_TEXTURE)?;
+
+            RafxRawImageGl::Texture(texture_id)
+        };
 
         let texture_id = crate::internal_shared::NEXT_TEXTURE_ID.fetch_add(1, Ordering::Relaxed);
 

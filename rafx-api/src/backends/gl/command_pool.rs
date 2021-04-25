@@ -1,7 +1,4 @@
-use crate::gl::{
-    DescriptorSetArrayData, GlPipelineInfo, RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl,
-    RafxRootSignatureGl,
-};
+use crate::gl::{DescriptorSetArrayData, GlPipelineInfo, RafxCommandBufferGl, RafxDeviceContextGl, RafxQueueGl, RafxRootSignatureGl, FramebufferId};
 use crate::{
     RafxCommandBufferDef, RafxCommandPoolDef, RafxExtents2D, RafxQueueType, RafxResult,
     MAX_DESCRIPTOR_SET_LAYOUTS,
@@ -18,6 +15,7 @@ pub(crate) struct BoundDescriptorSet {
 }
 
 pub(crate) struct CommandPoolGlStateInner {
+    device_context: RafxDeviceContextGl,
     pub(crate) id: u32,
     pub(crate) is_started: bool,
     pub(crate) surface_size: Option<RafxExtents2D>,
@@ -31,6 +29,13 @@ pub(crate) struct CommandPoolGlStateInner {
     // One per possible bound vertex buffer (could be 1 per attribute!)
     pub(crate) vertex_buffer_byte_offsets: Vec<u32>,
     pub(crate) index_buffer_byte_offset: u32,
+    pub(crate) framebuffer_id: FramebufferId,
+}
+
+impl Drop for CommandPoolGlStateInner {
+    fn drop(&mut self) {
+        self.device_context.gl_context().gl_destroy_framebuffer(self.framebuffer_id).unwrap();
+    }
 }
 
 impl PartialEq for CommandPoolGlStateInner {
@@ -77,8 +82,11 @@ pub(crate) struct CommandPoolGlState {
 }
 
 impl CommandPoolGlState {
-    fn new(device_context: &RafxDeviceContextGl) -> Self {
+    fn new(device_context: &RafxDeviceContextGl) -> RafxResult<Self> {
+        let framebuffer_id = device_context.gl_context().gl_create_framebuffer()?;
+
         let inner = CommandPoolGlStateInner {
+            device_context: device_context.clone(),
             id: NEXT_COMMAND_POOL_STATE_ID.fetch_add(1, Ordering::Relaxed),
             is_started: false,
             surface_size: None,
@@ -93,11 +101,12 @@ impl CommandPoolGlState {
             bound_descriptor_sets: Default::default(),
             bound_descriptor_sets_root_signature: None,
             descriptor_sets_update_index: Default::default(),
+            framebuffer_id
         };
 
-        CommandPoolGlState {
+        Ok(CommandPoolGlState {
             inner: Arc::new(TrustCell::new(inner)),
-        }
+        })
     }
 
     pub(crate) fn borrow(&self) -> rafx_base::trust_cell::Ref<CommandPoolGlStateInner> {
@@ -151,7 +160,7 @@ impl RafxCommandPoolGl {
         _command_pool_def: &RafxCommandPoolDef,
     ) -> RafxResult<RafxCommandPoolGl> {
         Ok(RafxCommandPoolGl {
-            command_pool_state: CommandPoolGlState::new(queue.device_context()),
+            command_pool_state: CommandPoolGlState::new(queue.device_context())?,
             queue: queue.clone(),
         })
     }

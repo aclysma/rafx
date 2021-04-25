@@ -3,7 +3,7 @@ use super::gles20::types::GLenum;
 use super::gles20::Gles2;
 use super::WindowHash;
 use crate::gl::gles20::types::{GLboolean, GLint};
-use crate::gl::{ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId};
+use crate::gl::{ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId, FramebufferId};
 use crate::{RafxError, RafxResult};
 use raw_gl_context::GlConfig;
 use raw_window_handle::HasRawWindowHandle;
@@ -233,6 +233,25 @@ impl GlContext {
         }
     }
 
+    pub fn gl_create_framebuffer(&self) -> RafxResult<FramebufferId> {
+        unsafe {
+            let mut framebuffer = 0;
+            self.gles2.GenFramebuffers(1, &mut framebuffer);
+            self.check_for_error()?;
+            Ok(FramebufferId(framebuffer))
+        }
+    }
+
+    pub fn gl_destroy_framebuffer(
+        &self,
+        framebuffer_id: FramebufferId,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles2.DeleteFramebuffers(1, &framebuffer_id.0);
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_create_texture(&self) -> RafxResult<TextureId> {
         unsafe {
             let mut texture = 0;
@@ -278,6 +297,17 @@ impl GlContext {
     ) -> RafxResult<()> {
         unsafe {
             self.gles2.BindBuffer(target, buffer_id.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_bind_framebuffer(
+        &self,
+        target: GLenum,
+        framebuffer_id: FramebufferId,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles2.BindFramebuffer(target, framebuffer_id.0);
             self.check_for_error()
         }
     }
@@ -1065,9 +1095,10 @@ impl GlContext {
         border: i32,
         format: GLenum,
         type_: u32,
-        pixels: &[u8],
+        pixels: Option<&[u8]>,
     ) -> RafxResult<()> {
         unsafe {
+            let pixels_ptr = pixels.map(|x| x.as_ptr()).unwrap_or(std::ptr::null());
             self.gles2.TexImage2D(
                 target,
                 mip_level as _,
@@ -1077,8 +1108,15 @@ impl GlContext {
                 border,
                 format,
                 type_,
-                pixels.as_ptr() as _,
+                pixels_ptr as _,
             );
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_tex_parameteri(&self, target: GLenum, pname: GLenum, param: i32) -> RafxResult<()> {
+        unsafe {
+            self.gles2.TexParameteri(target, pname, param);
             self.check_for_error()
         }
     }

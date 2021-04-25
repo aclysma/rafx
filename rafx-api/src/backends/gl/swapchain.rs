@@ -10,9 +10,10 @@ use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
 const SWAPCHAIN_IMAGE_COUNT: u32 = 3;
+const SWAPCHAIN_FORMAT: RafxFormat = RafxFormat::R8G8B8A8_UNORM;
 
 pub struct RafxSwapchainGl {
-    _device_context: RafxDeviceContextGl,
+    device_context: RafxDeviceContextGl,
     surface_context: Arc<GlContext>,
     //layer: gl_rs::GlLayer,
     //drawable: TrustCell<Option<gl_rs::GlDrawable>>,
@@ -20,7 +21,8 @@ pub struct RafxSwapchainGl {
     format: RafxFormat,
     // Just fake this
     next_swapchain_image_index: u32,
-    swapchain_images: Vec<RafxTextureGl>,
+    //swapchain_images: Vec<RafxTextureGl>,
+    pub(crate) swapchain_image: RafxTextureGl,
 }
 
 impl RafxSwapchainGl {
@@ -53,45 +55,42 @@ impl RafxSwapchainGl {
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainGl> {
-        let format = RafxFormat::R8G8B8A8_UNORM;
-
-        let resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
-
         let surface_context = device_context
             .gl_context_manager()
             .create_surface_context(raw_window_handle)?;
 
         //TODO: set GL swap interval (vsync)
 
-        let mut swapchain_images = Vec::with_capacity(SWAPCHAIN_IMAGE_COUNT as usize);
-        for _ in 0..SWAPCHAIN_IMAGE_COUNT {
-            swapchain_images.push(RafxTextureGl::from_existing(
-                device_context,
-                Some(RafxRawImageGl::Renderbuffer(NONE_RENDERBUFFER)),
-                &RafxTextureDef {
-                    extents: RafxExtents3D {
-                        width: swapchain_def.width,
-                        height: swapchain_def.height,
-                        depth: 1,
-                    },
-                    array_length: 1,
-                    mip_count: 1,
-                    format,
-                    resource_type,
-                    sample_count: RafxSampleCount::SampleCount1,
-                    dimensions: RafxTextureDimensions::Dim2D,
-                },
-            )?);
-        }
+        let swapchain_image = Self::create_swapchain_image(device_context, swapchain_def)?;
 
         Ok(RafxSwapchainGl {
-            _device_context: device_context.clone(),
+            device_context: device_context.clone(),
             surface_context,
             swapchain_def: swapchain_def.clone(),
             next_swapchain_image_index: 0,
-            format,
-            swapchain_images,
+            format: SWAPCHAIN_FORMAT,
+            //swapchain_images,
+            swapchain_image
         })
+    }
+
+    fn create_swapchain_image(device_context: &RafxDeviceContextGl, swapchain_def: &RafxSwapchainDef) -> RafxResult<RafxTextureGl> {
+        RafxTextureGl::new(
+            device_context,
+            &RafxTextureDef {
+                extents: RafxExtents3D {
+                    width: swapchain_def.width,
+                    height: swapchain_def.height,
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: SWAPCHAIN_FORMAT,
+                resource_type: RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR,
+                sample_count: RafxSampleCount::SampleCount1,
+                dimensions: RafxTextureDimensions::Dim2D,
+            }
+        )
     }
 
     pub fn rebuild(
@@ -99,6 +98,7 @@ impl RafxSwapchainGl {
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<()> {
         self.swapchain_def = swapchain_def.clone();
+        self.swapchain_image = Self::create_swapchain_image(&self.device_context, swapchain_def)?;
         Ok(())
     }
 
@@ -126,7 +126,7 @@ impl RafxSwapchainGl {
         }
 
         Ok(RafxSwapchainImage {
-            texture: RafxTexture::Gl(self.swapchain_images[swapchain_image_index as usize].clone()),
+            texture: RafxTexture::Gl(self.swapchain_image.clone()),
             swapchain_image_index,
         })
     }
