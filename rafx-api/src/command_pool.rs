@@ -28,7 +28,7 @@ pub enum RafxCommandPool {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxCommandPoolMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxCommandPoolGles2),
+    Gles2(RafxCommandPoolGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -46,7 +46,7 @@ impl RafxCommandPool {
                 RafxDeviceContext::Metal(inner.device_context().clone())
             }
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandPool::Gl(inner) => RafxDeviceContext::Gl(inner.device_context().clone()),
+            RafxCommandPool::Gles2(inner) => RafxDeviceContext::Gles2(inner.device_context().clone()),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -73,8 +73,8 @@ impl RafxCommandPool {
                 RafxCommandBuffer::Metal(inner.create_command_buffer(command_buffer_def)?)
             }
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandPool::Gl(inner) => {
-                RafxCommandBuffer::Gl(inner.create_command_buffer(command_buffer_def)?)
+            RafxCommandPool::Gles2(inner) => {
+                RafxCommandBuffer::Gles2(inner.create_command_buffer(command_buffer_def)?)
             }
             #[cfg(any(
                 feature = "rafx-empty",
@@ -98,7 +98,7 @@ impl RafxCommandPool {
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(inner) => inner.reset_command_pool(),
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandPool::Gl(inner) => inner.reset_command_pool(),
+            RafxCommandPool::Gles2(inner) => inner.reset_command_pool(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -117,7 +117,7 @@ impl RafxCommandPool {
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandPool::Gl(_) => None,
+            RafxCommandPool::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -136,7 +136,7 @@ impl RafxCommandPool {
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandPool::Gl(_) => None,
+            RafxCommandPool::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -155,7 +155,7 @@ impl RafxCommandPool {
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandPool::Gl(inner) => Some(inner),
+            RafxCommandPool::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -175,7 +175,7 @@ impl RafxCommandPool {
             #[cfg(feature = "rafx-metal")]
             RafxCommandPool::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandPool::Gl(_) => None,
+            RafxCommandPool::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

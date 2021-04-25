@@ -178,7 +178,7 @@ impl Drop for RafxDeviceContextGles2 {
 
 impl Into<RafxDeviceContext> for RafxDeviceContextGles2 {
     fn into(self) -> RafxDeviceContext {
-        RafxDeviceContext::Gl(self)
+        RafxDeviceContext::Gles2(self)
     }
 }
 

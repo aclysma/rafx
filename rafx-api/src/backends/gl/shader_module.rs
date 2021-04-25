@@ -131,6 +131,6 @@ impl RafxShaderModuleGles2 {
 
 impl Into<RafxShaderModule> for RafxShaderModuleGles2 {
     fn into(self) -> RafxShaderModule {
-        RafxShaderModule::Gl(self)
+        RafxShaderModule::Gles2(self)
     }
 }

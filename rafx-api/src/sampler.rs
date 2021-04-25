@@ -20,7 +20,7 @@ pub enum RafxSampler {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSamplerMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxSamplerGles2),
+    Gles2(RafxSamplerGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -39,7 +39,7 @@ impl RafxSampler {
             #[cfg(feature = "rafx-metal")]
             RafxSampler::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxSampler::Gl(_) => None,
+            RafxSampler::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -58,7 +58,7 @@ impl RafxSampler {
             #[cfg(feature = "rafx-metal")]
             RafxSampler::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxSampler::Gl(_) => None,
+            RafxSampler::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -77,7 +77,7 @@ impl RafxSampler {
             #[cfg(feature = "rafx-metal")]
             RafxSampler::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxSampler::Gl(_) => None,
+            RafxSampler::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -99,7 +99,7 @@ impl RafxSampler {
             #[cfg(feature = "rafx-metal")]
             RafxSampler::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxSampler::Gl(_) => None,
+            RafxSampler::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

@@ -24,7 +24,7 @@ pub enum RafxSemaphore {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSemaphoreMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxSemaphoreGles2),
+    Gles2(RafxSemaphoreGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -43,7 +43,7 @@ impl RafxSemaphore {
             #[cfg(feature = "rafx-metal")]
             RafxSemaphore::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxSemaphore::Gl(_) => None,
+            RafxSemaphore::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -62,7 +62,7 @@ impl RafxSemaphore {
             #[cfg(feature = "rafx-metal")]
             RafxSemaphore::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxSemaphore::Gl(_) => None,
+            RafxSemaphore::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -81,7 +81,7 @@ impl RafxSemaphore {
             #[cfg(feature = "rafx-metal")]
             RafxSemaphore::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxSemaphore::Gl(inner) => Some(inner),
+            RafxSemaphore::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -103,7 +103,7 @@ impl RafxSemaphore {
             #[cfg(feature = "rafx-metal")]
             RafxSemaphore::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxSemaphore::Gl(_) => None,
+            RafxSemaphore::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

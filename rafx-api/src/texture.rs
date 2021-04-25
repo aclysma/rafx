@@ -21,7 +21,7 @@ pub enum RafxTexture {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxTextureMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxTextureGles2),
+    Gles2(RafxTextureGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -38,7 +38,7 @@ impl RafxTexture {
             #[cfg(feature = "rafx-metal")]
             RafxTexture::Metal(inner) => inner.texture_def(),
             #[cfg(feature = "rafx-gles2")]
-            RafxTexture::Gl(inner) => inner.texture_def(),
+            RafxTexture::Gles2(inner) => inner.texture_def(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -57,7 +57,7 @@ impl RafxTexture {
             #[cfg(feature = "rafx-metal")]
             RafxTexture::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxTexture::Gl(_) => None,
+            RafxTexture::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -76,7 +76,7 @@ impl RafxTexture {
             #[cfg(feature = "rafx-metal")]
             RafxTexture::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxTexture::Gl(_) => None,
+            RafxTexture::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -95,7 +95,7 @@ impl RafxTexture {
             #[cfg(feature = "rafx-metal")]
             RafxTexture::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxTexture::Gl(inner) => Some(inner),
+            RafxTexture::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -117,7 +117,7 @@ impl RafxTexture {
             #[cfg(feature = "rafx-metal")]
             RafxTexture::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxTexture::Gl(_) => None,
+            RafxTexture::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

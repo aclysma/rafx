@@ -19,7 +19,7 @@ pub enum RafxShader {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxShaderMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxShaderGles2),
+    Gles2(RafxShaderGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -35,7 +35,7 @@ impl RafxShader {
             #[cfg(feature = "rafx-metal")]
             RafxShader::Metal(inner) => inner.pipeline_reflection(),
             #[cfg(feature = "rafx-gles2")]
-            RafxShader::Gl(inner) => inner.pipeline_reflection(),
+            RafxShader::Gles2(inner) => inner.pipeline_reflection(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -54,7 +54,7 @@ impl RafxShader {
             #[cfg(feature = "rafx-metal")]
             RafxShader::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxShader::Gl(_) => None,
+            RafxShader::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -73,7 +73,7 @@ impl RafxShader {
             #[cfg(feature = "rafx-metal")]
             RafxShader::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxShader::Gl(_) => None,
+            RafxShader::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -92,7 +92,7 @@ impl RafxShader {
             #[cfg(feature = "rafx-metal")]
             RafxShader::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxShader::Gl(inner) => Some(inner),
+            RafxShader::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -109,7 +109,7 @@ impl RafxShader {
             #[cfg(feature = "rafx-metal")]
             RafxShader::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxShader::Gl(_) => None,
+            RafxShader::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

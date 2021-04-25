@@ -20,7 +20,7 @@ pub enum RafxSwapchain {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxSwapchainMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxSwapchainGles2),
+    Gles2(RafxSwapchainGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -39,7 +39,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-metal")]
             RafxSwapchain::Metal(inner) => inner.image_count(),
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gl(inner) => inner.image_count(),
+            RafxSwapchain::Gles2(inner) => inner.image_count(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -56,7 +56,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-metal")]
             RafxSwapchain::Metal(inner) => inner.format(),
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gl(inner) => inner.format(),
+            RafxSwapchain::Gles2(inner) => inner.format(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -73,7 +73,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-metal")]
             RafxSwapchain::Metal(inner) => inner.swapchain_def(),
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gl(inner) => inner.swapchain_def(),
+            RafxSwapchain::Gles2(inner) => inner.swapchain_def(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -97,7 +97,7 @@ impl RafxSwapchain {
                 inner.acquire_next_image_fence(fence.metal_fence().unwrap())
             }
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gl(inner) => inner.acquire_next_image_fence(fence.gl_fence().unwrap()),
+            RafxSwapchain::Gles2(inner) => inner.acquire_next_image_fence(fence.gl_fence().unwrap()),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -125,7 +125,7 @@ impl RafxSwapchain {
                 inner.acquire_next_image_semaphore(semaphore.metal_semaphore().unwrap())
             }
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gl(inner) => {
+            RafxSwapchain::Gles2(inner) => {
                 inner.acquire_next_image_semaphore(semaphore.gl_semaphore().unwrap())
             }
             #[cfg(any(
@@ -149,7 +149,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-metal")]
             RafxSwapchain::Metal(inner) => inner.rebuild(swapchain_def),
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gl(inner) => inner.rebuild(swapchain_def),
+            RafxSwapchain::Gles2(inner) => inner.rebuild(swapchain_def),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -168,7 +168,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-metal")]
             RafxSwapchain::Metal(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxSwapchain::Gl(_) => None,
+            RafxSwapchain::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -187,7 +187,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-metal")]
             RafxSwapchain::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gl(_) => None,
+            RafxSwapchain::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -206,7 +206,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-metal")]
             RafxSwapchain::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gl(inner) => Some(inner),
+            RafxSwapchain::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -228,7 +228,7 @@ impl RafxSwapchain {
             #[cfg(feature = "rafx-metal")]
             RafxSwapchain::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gl(_) => None,
+            RafxSwapchain::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

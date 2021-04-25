@@ -35,7 +35,7 @@ pub fn generate_mipmaps(
         #[cfg(feature = "rafx-metal")]
         RafxCommandBuffer::Metal(inner) => generate_mipmaps_metal(inner, _texture),
         #[cfg(feature = "rafx-gles2")]
-        RafxCommandBuffer::Gl(inner) => generate_mipmaps_gl(inner, _texture),
+        RafxCommandBuffer::Gles2(inner) => generate_mipmaps_gles2(inner, _texture),
         #[cfg(any(
             feature = "rafx-empty",
             not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -63,7 +63,7 @@ fn generate_mipmaps_metal(
 
 // This custom path for metal can be removed after I implement cmd_blit
 #[cfg(feature = "rafx-gles2")]
-fn generate_mipmaps_gl(
+fn generate_mipmaps_gles2(
     _command_buffer: &RafxCommandBufferGles2,
     _texture: &RafxTexture,
 ) -> RafxResult<()> {

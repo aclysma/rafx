@@ -111,7 +111,7 @@ impl RafxDescriptorSetArrayGles2 {
         };
 
         Ok(RafxDescriptorSetArrayGles2 {
-            root_signature: RafxRootSignature::Gl(root_signature),
+            root_signature: RafxRootSignature::Gles2(root_signature),
             set_index: descriptor_set_array_def.set_index,
             data: Arc::new(TrustCell::new(data)),
             array_length: descriptor_set_array_def.array_length as u32,

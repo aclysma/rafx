@@ -114,7 +114,7 @@ impl RafxSwapchainGles2 {
         }
 
         Ok(RafxSwapchainImage {
-            texture: RafxTexture::Gl(self.swapchain_image.clone()),
+            texture: RafxTexture::Gles2(self.swapchain_image.clone()),
             swapchain_image_index,
         })
     }

@@ -22,7 +22,7 @@ pub enum RafxShaderModule {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxShaderModuleMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxShaderModuleGles2),
+    Gles2(RafxShaderModuleGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -41,7 +41,7 @@ impl RafxShaderModule {
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxShaderModule::Gl(_) => None,
+            RafxShaderModule::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -60,7 +60,7 @@ impl RafxShaderModule {
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxShaderModule::Gl(_) => None,
+            RafxShaderModule::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -79,7 +79,7 @@ impl RafxShaderModule {
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxShaderModule::Gl(inner) => Some(inner),
+            RafxShaderModule::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -101,7 +101,7 @@ impl RafxShaderModule {
             #[cfg(feature = "rafx-metal")]
             RafxShaderModule::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxShaderModule::Gl(_) => None,
+            RafxShaderModule::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

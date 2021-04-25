@@ -22,7 +22,7 @@ pub enum RafxRootSignature {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxRootSignatureMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxRootSignatureGles2),
+    Gles2(RafxRootSignatureGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -39,7 +39,7 @@ impl RafxRootSignature {
             #[cfg(feature = "rafx-metal")]
             RafxRootSignature::Metal(inner) => inner.pipeline_type(),
             #[cfg(feature = "rafx-gles2")]
-            RafxRootSignature::Gl(inner) => inner.pipeline_type(),
+            RafxRootSignature::Gles2(inner) => inner.pipeline_type(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -58,7 +58,7 @@ impl RafxRootSignature {
             #[cfg(feature = "rafx-metal")]
             RafxRootSignature::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxRootSignature::Gl(_) => None,
+            RafxRootSignature::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -77,7 +77,7 @@ impl RafxRootSignature {
             #[cfg(feature = "rafx-metal")]
             RafxRootSignature::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxRootSignature::Gl(_) => None,
+            RafxRootSignature::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -96,7 +96,7 @@ impl RafxRootSignature {
             #[cfg(feature = "rafx-metal")]
             RafxRootSignature::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxRootSignature::Gl(inner) => Some(inner),
+            RafxRootSignature::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -118,7 +118,7 @@ impl RafxRootSignature {
             #[cfg(feature = "rafx-metal")]
             RafxRootSignature::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxRootSignature::Gl(_) => None,
+            RafxRootSignature::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

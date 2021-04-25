@@ -31,7 +31,7 @@ pub enum RafxPipeline {
     #[cfg(feature = "rafx-metal")]
     Metal(RafxPipelineMetal),
     #[cfg(feature = "rafx-gles2")]
-    Gl(RafxPipelineGles2),
+    Gles2(RafxPipelineGles2),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -48,7 +48,7 @@ impl RafxPipeline {
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(inner) => inner.pipeline_type(),
             #[cfg(feature = "rafx-gles2")]
-            RafxPipeline::Gl(inner) => inner.pipeline_type(),
+            RafxPipeline::Gles2(inner) => inner.pipeline_type(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -65,7 +65,7 @@ impl RafxPipeline {
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(inner) => inner.root_signature(),
             #[cfg(feature = "rafx-gles2")]
-            RafxPipeline::Gl(inner) => inner.root_signature(),
+            RafxPipeline::Gles2(inner) => inner.root_signature(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -84,7 +84,7 @@ impl RafxPipeline {
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxPipeline::Gl(_) => None,
+            RafxPipeline::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -103,7 +103,7 @@ impl RafxPipeline {
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxPipeline::Gl(_) => None,
+            RafxPipeline::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -122,7 +122,7 @@ impl RafxPipeline {
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxPipeline::Gl(inner) => Some(inner),
+            RafxPipeline::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
@@ -142,7 +142,7 @@ impl RafxPipeline {
             #[cfg(feature = "rafx-metal")]
             RafxPipeline::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxPipeline::Gl(_) => None,
+            RafxPipeline::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
