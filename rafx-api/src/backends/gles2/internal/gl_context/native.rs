@@ -18,6 +18,10 @@ pub struct GlContext {
     context: raw_gl_context::GlContext,
     gles2: Gles2,
     window_hash: WindowHash,
+
+    // GL ES 2.0 does not support VAO, but desktop GL core profile *requires* one to be bound. So
+    // we bind a single global VAO at startup if the APIs to do so are available. This allows
+    // downstream code to always act as though VAOs are not supported at all
     global_vao: u32,
 }
 
