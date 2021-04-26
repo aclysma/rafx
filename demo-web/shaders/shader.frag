@@ -1,15 +1,12 @@
 #version 450
 
-layout (set = 0, binding = 0) uniform PerViewData {
-    vec4 uniform_color;
-} uniform_data;
+layout (set = 0, binding = 1) uniform sampler smp;
+layout (set = 0, binding = 2) uniform texture2D tex;
 
-layout (location = 0) in vec4 in_color;
+layout (location = 0) in vec2 in_uv;
 
 layout (location = 0) out vec4 out_color;
 
 void main() {
-    //out_color = in_color;
-    //out_color = in_color * uniform_data.uniform_color;
-    out_color = uniform_data.uniform_color;
+    out_color = texture(sampler2D(tex, smp), in_uv);
 }

@@ -8,17 +8,7 @@ mod main_web;
 #[cfg(target_arch = "wasm32")]
 pub use main_web::*;
 
-use rafx::api::{
-    RafxApi, RafxBufferDef, RafxColorClearValue, RafxColorRenderTargetBinding,
-    RafxCommandBufferDef, RafxCommandPoolDef, RafxDescriptorElements, RafxDescriptorKey,
-    RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxFormat, RafxGlUniformMember,
-    RafxGraphicsPipelineDef, RafxLoadOp, RafxPrimitiveTopology, RafxQueueType, RafxResourceState,
-    RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxShaderModuleDef,
-    RafxShaderModuleDefGles2, RafxShaderResource, RafxShaderStageDef, RafxShaderStageFlags,
-    RafxShaderStageReflection, RafxStoreOp, RafxSwapchainDef, RafxSwapchainHelper,
-    RafxTextureBarrier, RafxVertexAttributeRate, RafxVertexBufferBinding, RafxVertexLayout,
-    RafxVertexLayoutAttribute, RafxVertexLayoutBuffer,
-};
+use rafx::api::{RafxApi, RafxBufferDef, RafxColorClearValue, RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxCommandPoolDef, RafxDescriptorElements, RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxFormat, RafxGlUniformMember, RafxGraphicsPipelineDef, RafxLoadOp, RafxPrimitiveTopology, RafxQueueType, RafxResourceState, RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxShaderModuleDef, RafxShaderModuleDefGles2, RafxShaderResource, RafxShaderStageDef, RafxShaderStageFlags, RafxShaderStageReflection, RafxStoreOp, RafxSwapchainDef, RafxSwapchainHelper, RafxTextureBarrier, RafxVertexAttributeRate, RafxVertexBufferBinding, RafxVertexLayout, RafxVertexLayoutAttribute, RafxVertexLayoutBuffer, RafxTextureDef, RafxExtents3D, RafxCmdCopyBufferToTextureParams, RafxSamplerDef};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::ControlFlow,
@@ -77,11 +67,20 @@ pub fn update_loop(
         // Some default data we can render
         //
         #[rustfmt::skip]
-            let vertex_data = [
-            0.0f32, 0.5, 1.0, 0.0, 0.0,
-            -0.5, -0.5, 0.0, 1.0, 0.0,
-            0.5, 0.5, 0.0, 0.0, 1.0,
+        //     let vertex_data = [
+        //     0.0f32, 0.5, 1.0, 0.0, 0.0,
+        //     -0.5, -0.5, 0.0, 1.0, 0.0,
+        //     0.5, 0.5, 0.0, 0.0, 1.0,
+        // ];
+        let vertex_data = [
+            -0.5f32, -0.5, 0.0, 1.0,
+            -0.5, 0.5, 0.0, 0.0,
+            0.5, 0.5, 1.0, 0.0,
+            -0.5, -0.5, 0.0, 1.0,
+            0.5, 0.5, 1.0, 0.0,
+            0.5, -0.5, 1.0, 1.0
         ];
+
 
         let uniform_data = [1.0f32, 0.0, 1.0, 1.0];
 
@@ -129,6 +128,44 @@ pub fn update_loop(
             uniform_buffers.push(uniform_buffer);
         }
 
+        use image::GenericImageView;
+        let nyancat_image = image::load_from_memory_with_format(include_bytes!("../nyancat.jpg"), image::ImageFormat::Jpeg).unwrap();
+        let (image_width, image_height) = nyancat_image.dimensions();
+        let image_data = nyancat_image.to_rgba8().into_raw();
+        let texture = device_context.create_texture(&RafxTextureDef {
+            extents: RafxExtents3D {
+                width: image_width,
+                height: image_height,
+                depth: 1
+            },
+            format: RafxFormat::R8G8B8A8_UNORM,
+            ..Default::default()
+        })?;
+
+        let texture_staging_buffer = device_context.create_buffer(
+            &RafxBufferDef::for_staging_buffer_data(image_data.as_slice(), RafxResourceType::TEXTURE)
+        ).unwrap();
+        texture_staging_buffer.copy_to_host_visible_buffer(image_data.as_slice()).unwrap();
+
+        let mut upload_command_pool =
+            graphics_queue.create_command_pool(&RafxCommandPoolDef { transient: true })?;
+
+        let upload_command_buffer = upload_command_pool.create_command_buffer(&RafxCommandBufferDef {
+            is_secondary: false
+        }).unwrap();
+
+        upload_command_buffer.begin().unwrap();
+        upload_command_buffer.cmd_copy_buffer_to_texture(&texture_staging_buffer, &texture, &RafxCmdCopyBufferToTextureParams {
+            mip_level: 0,
+            array_layer: 0,
+            buffer_offset: 0
+        });
+        upload_command_buffer.end().unwrap();
+        graphics_queue.submit(&[&upload_command_buffer], &[], &[], None).unwrap();
+        graphics_queue.wait_for_queue_idle().unwrap();
+
+        let sampler = device_context.create_sampler(&RafxSamplerDef::default()).unwrap();
+
         //
         // Load a shader from source - this part is API-specific. vulkan will want SPV, metal wants
         // source code or even better a pre-compiled library. The web demo is GL-only, and it only
@@ -163,13 +200,32 @@ pub fn update_loop(
         // from spirv_cross)
         //
         log::trace!("Creating shader resources");
-        let color_shader_resource = RafxShaderResource {
-            name: Some("color".to_string()),
+        let uniform_resource = RafxShaderResource {
+            name: Some("uniform_data".to_string()),
             set_index: 0,
             binding: 0,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
-            gl_name: Some("uniform_data".to_string()),
-            gl_uniform_members: vec![RafxGlUniformMember::new("uniform_data.uniform_color", 0)],
+            gles2_name: Some("uniform_data".to_string()),
+            gles2_uniform_members: vec![RafxGlUniformMember::new("uniform_data.mvp", 0)],
+            ..Default::default()
+        };
+
+        let texture_resource = RafxShaderResource {
+            name: Some("tex".to_string()),
+            set_index: 0,
+            binding: 1,
+            resource_type: RafxResourceType::TEXTURE,
+            gles2_name: Some("tex".to_string()),
+            gles2_sampler_name: Some("smp".to_string()),
+            ..Default::default()
+        };
+
+        let sampler_resource = RafxShaderResource {
+            name: Some("smp".to_string()),
+            set_index: 0,
+            binding: 2,
+            resource_type: RafxResourceType::SAMPLER,
+            gles2_name: Some("smp".to_string()),
             ..Default::default()
         };
 
@@ -179,7 +235,7 @@ pub fn update_loop(
                 entry_point_name: "main".to_string(),
                 shader_stage: RafxShaderStageFlags::VERTEX,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource.clone()],
+                resources: vec![uniform_resource],
             },
         };
 
@@ -189,7 +245,7 @@ pub fn update_loop(
                 entry_point_name: "main".to_string(),
                 shader_stage: RafxShaderStageFlags::FRAGMENT,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource],
+                resources: vec![sampler_resource, texture_resource],
             },
         };
 
@@ -226,15 +282,35 @@ pub fn update_loop(
         // Initialize them all at once here.. this can be done per-frame as well.
         log::trace!("Set up descriptor sets");
         for i in 0..swapchain_helper.image_count() {
-            descriptor_set_array.update_descriptor_set(&[RafxDescriptorUpdate {
-                array_index: i as u32,
-                descriptor_key: RafxDescriptorKey::Name("color"),
-                elements: RafxDescriptorElements {
-                    buffers: Some(&[&uniform_buffers[i]]),
+            descriptor_set_array.update_descriptor_set(&[
+                RafxDescriptorUpdate {
+                    array_index: i as u32,
+                    descriptor_key: RafxDescriptorKey::Name("uniform_data"),
+                    elements: RafxDescriptorElements {
+                        buffers: Some(&[&uniform_buffers[i]]),
+                        ..Default::default()
+                    },
                     ..Default::default()
                 },
-                ..Default::default()
-            }])?;
+                RafxDescriptorUpdate {
+                    array_index: i as u32,
+                    descriptor_key: RafxDescriptorKey::Name("tex"),
+                    elements: RafxDescriptorElements {
+                        textures: Some(&[&texture]),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                RafxDescriptorUpdate {
+                    array_index: i as u32,
+                    descriptor_key: RafxDescriptorKey::Name("smp"),
+                    elements: RafxDescriptorElements {
+                        samplers: Some(&[&sampler]),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
+            ])?;
         }
 
         //
@@ -251,15 +327,15 @@ pub fn update_loop(
                     gl_attribute_name: Some("pos".to_string()),
                 },
                 RafxVertexLayoutAttribute {
-                    format: RafxFormat::R32G32B32_SFLOAT,
+                    format: RafxFormat::R32G32_SFLOAT,
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
-                    gl_attribute_name: Some("in_color".to_string()),
+                    gl_attribute_name: Some("in_uv".to_string()),
                 },
             ],
             buffers: vec![RafxVertexLayoutBuffer {
-                stride: 20,
+                stride: 16,
                 rate: RafxVertexAttributeRate::Vertex,
             }],
         };
@@ -303,15 +379,26 @@ pub fn update_loop(
                 Event::RedrawRequested(_) => {
                     let elapsed_seconds = start_time.elapsed().as_secs_f32();
 
-                    #[rustfmt::skip]
-                    let vertex_data = [
-                        0.0f32, 0.5, 1.0, 0.0, 0.0,
-                        0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
-                        -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
-                    ];
+                    // #[rustfmt::skip]
+                    // let vertex_data = [
+                    //     0.0f32, 0.5, 1.0, 0.0,
+                    //     0.0, 0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0,
+                    //     1.0, 0.0, -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5,
+                    //     0.0f32, 0.5, 1.0, 0.0,
+                    //     0.0, 0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0,
+                    //     1.0, 0.0, -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5,
+                    // ];
 
-                    let color = (elapsed_seconds.cos() + 1.0) / 2.0;
-                    let uniform_data = [color, 0.0, 1.0 - color, 1.0];
+                    let m = elapsed_seconds.cos();
+
+                    let vertex_data = [
+                        m * -0.5, -0.5, 0.0, 1.0,
+                        m * -0.5, 0.5, 0.0, 0.0,
+                        m * 0.5, 0.5, 1.0, 0.0,
+                        m * -0.5, -0.5, 0.0, 1.0,
+                        m * 0.5, 0.5, 1.0, 0.0,
+                        m * 0.5, -0.5, 1.0, 1.0
+                    ];
 
                     //
                     // Acquire swapchain image
@@ -367,9 +454,9 @@ pub fn update_loop(
                                 array_slice: None,
                                 mip_slice: None,
                                 clear_value: RafxColorClearValue([
-                                    elapsed_seconds.sin() * 0.5 + 0.5,
-                                    0.0,
-                                    1.0,
+                                    0.2,
+                                    0.2,
+                                    0.2,
                                     1.0,
                                 ]),
                                 resolve_target: None,
@@ -399,7 +486,7 @@ pub fn update_loop(
                             presentable_frame.rotating_frame_index() as u32,
                         )
                         .unwrap();
-                    cmd_buffer.cmd_draw(3, 0).unwrap();
+                    cmd_buffer.cmd_draw(6, 0).unwrap();
 
                     cmd_buffer.cmd_end_render_pass().unwrap();
 

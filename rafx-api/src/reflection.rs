@@ -31,6 +31,8 @@ impl RafxGlUniformMember {
 }
 
 /// A data source within a shader. Often a descriptor or push constant.
+///
+/// A RafxShaderResource may be specified by hand or generated using rafx-shader-processor
 //TODO: Consider separate type for bindings vs. push constants
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
@@ -54,11 +56,20 @@ pub struct RafxShaderResource {
 
     // Required for GL ES 2.0 only. Other APIs use set_index and binding. (Rafx shader processor
     // can produce this metadata automatically)
-    pub gl_name: Option<String>,
+    pub gles2_name: Option<String>,
+
+    // Required for GL ES 2.0 only. Every texture must have exactly one sampler associated with it.
+    // Samplers are defined by adding a SAMPLER RafxShaderResource with a valid gl_name. The
+    // gl_sampler_name specified here will reference that sampler. While the GLSL code will not have
+    // a sampler object, rafx API will act as though there is a sampler object. It can be set as if
+    // it was a normal descriptor in a descriptor set. (Rafx shader processor can produce this
+    // metadata automatically)
+    pub gles2_sampler_name: Option<String>,
+
     // Required for GL ES 2.0 only, every field within a uniform must be specified with the byte
     // offset. This includes elements within arrays. (Rafx shader processor can produce rust structs
     // and the necessary metadata automatically.)
-    pub gl_uniform_members: Vec<RafxGlUniformMember>,
+    pub gles2_uniform_members: Vec<RafxGlUniformMember>,
 }
 
 impl RafxShaderResource {
@@ -157,7 +168,7 @@ impl RafxShaderResource {
             ))?;
         }
 
-        if self.gl_uniform_members != other.gl_uniform_members {
+        if self.gles2_uniform_members != other.gles2_uniform_members {
             Err(format!(
                 "Pass is using shaders in different stages with different gl_uniform_members (set={} binding={})",
                 self.set_index, self.binding

@@ -2,17 +2,12 @@
 precision mediump float;
 precision highp int;
 
-struct PerViewData
-{
-    highp vec4 uniform_color;
-};
+uniform highp sampler2D tex;
 
-uniform PerViewData uniform_data;
-
-varying highp vec4 interface_var_0;
+varying highp vec2 interface_var_0;
 
 void main()
 {
-    gl_FragData[0] = uniform_data.uniform_color;
+    gl_FragData[0] = texture2D(tex, interface_var_0);
 }
 

@@ -75,9 +75,9 @@ impl RafxSampler {
             #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxSampler::Metal(inner) => Some(inner),
+            RafxSampler::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxSampler::Gles2(_) => None,
+            RafxSampler::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

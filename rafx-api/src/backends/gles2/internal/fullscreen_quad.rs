@@ -63,6 +63,7 @@ impl FullscreenQuad {
             gl_context.gl_disable_vertex_attrib_array(i)?;
         }
 
+        gl_context.gl_active_texture(0)?;
         gl_context.gl_bind_texture(gles2_bindings::TEXTURE_2D, texture.gl_raw_image().gl_texture_id().unwrap())?;
         gl_context.gl_tex_parameteri(gles2_bindings::TEXTURE_2D, gles2_bindings::TEXTURE_MIN_FILTER, gles2_bindings::LINEAR as _)?;
         gl_context.gl_tex_parameteri(gles2_bindings::TEXTURE_2D, gles2_bindings::TEXTURE_MAG_FILTER, gles2_bindings::LINEAR as _)?;

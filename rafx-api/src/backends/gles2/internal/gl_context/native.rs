@@ -1078,6 +1078,16 @@ impl GlContext {
         }
     }
 
+    pub fn gl_active_texture(
+        &self,
+        i: u32
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles2.ActiveTexture(gles2_bindings::TEXTURE0 + i);
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_bind_texture(
         &self,
         target: GLenum,

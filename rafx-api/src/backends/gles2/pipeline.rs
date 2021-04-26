@@ -144,9 +144,12 @@ impl RafxPipelineGles2 {
 
         let mut resource_locations = Vec::with_capacity(gl_root_signature.inner.descriptors.len());
         for resource in &gl_root_signature.inner.descriptors {
+            println!("get location {:?}", resource.gl_name);
             resource_locations
                 .push(gl_context.gl_get_uniform_location(program_id, &resource.gl_name)?);
         }
+
+        println!("all resources:\n{:#?}", resource_locations);
 
         let all_uniform_fields = gl_root_signature.inner.uniform_reflection.fields();
         let mut uniform_field_locations = Vec::with_capacity(all_uniform_fields.len());

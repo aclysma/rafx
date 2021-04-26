@@ -1,4 +1,4 @@
-use crate::gles2::{gles2_bindings, GlContext, ProgramId};
+use crate::gles2::{gles2_bindings, GlContext, ProgramId, gl_type_util};
 use crate::{RafxResult, RafxShader};
 use fnv::FnvHashMap;
 use std::ffi::CString;
@@ -51,7 +51,7 @@ impl UniformReflectionData {
         for shader in shaders {
             for stage in shader.gles2_shader().unwrap().stages() {
                 for resource in &stage.reflection.resources {
-                    for uniform_member in &resource.gl_uniform_members {
+                    for uniform_member in &resource.gles2_uniform_members {
                         let old = all_uniform_member_offsets
                             .insert(uniform_member.name.clone(), uniform_member.offset);
                         if let Some(offset) = old {
@@ -79,7 +79,9 @@ impl UniformReflectionData {
                 let uniform_info =
                     gl_context.gl_get_active_uniform(program_id, i, &max_name_length_hint)?;
 
-                gl_context.check_for_error()?;
+                if !gl_type_util::is_uniform_buffer_field_type(uniform_info.ty) {
+                    continue;
+                }
 
                 // Find the first part of the name (everything up to but not including the first dot)
                 let first_split = uniform_info

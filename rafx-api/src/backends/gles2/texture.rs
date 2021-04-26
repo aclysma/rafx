@@ -125,10 +125,8 @@ impl RafxTextureGles2 {
             .resource_type
             .contains(RafxResourceType::TEXTURE_CUBE)
         {
-            log::info!("texture cube map");
             gles2_bindings::TEXTURE_CUBE_MAP
         } else {
-            log::info!("texture2d");
             gles2_bindings::TEXTURE_2D
         };
 

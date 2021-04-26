@@ -706,15 +706,58 @@ impl RafxCommandBufferGles2 {
                         // }
                         unimplemented!()
                     }
+                },
+                RafxResourceType::SAMPLER => {
+                    // do nothing, we handle this when dealing with textures
                 }
                 RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
-                    unimplemented!()
+                    //TODO: one location per descriptor might not work
+                    if let Some(location) = pipeline_info.resource_location(descriptor.descriptor_index) {
+                        // Find where the buffers states begin for this resource in this descriptor set
+                        let base_image_state_index = array_index * data.texture_states_per_set + descriptor.descriptor_data_offset_in_set.unwrap();
+
+                        // Find the sampler associated with this texture
+                        let sampler_descriptor_index = descriptor.sampler_descriptor_index.unwrap();
+                        let sampler_descriptor = root_signature.descriptor(sampler_descriptor_index).unwrap();
+                        let base_sampler_state_index = array_index * data.sampler_states_per_set + descriptor.descriptor_data_offset_in_set.unwrap();
+
+                        for i in 0..descriptor.element_count {
+                            let image_state_index = base_image_state_index + i;
+                            let image_state = data.texture_states[image_state_index as usize].as_ref().unwrap();
+                            let sampler_state_index = base_sampler_state_index + i;
+                            let sampler_state = data.sampler_states[image_state_index as usize].as_ref().unwrap();
+
+                            if let Some(texture) = &image_state.texture {
+                                gl_context.gl_active_texture(descriptor.texture_index.unwrap())?;
+                                let target = texture.gl_target();
+                                //TODO: handle cube map
+                                gl_context.gl_bind_texture(target, texture.gl_raw_image().gl_texture_id().unwrap())?;
+
+                                if let Some(sampler) = &sampler_state.sampler {
+                                    gl_type_util::set_uniform(gl_context, location, &descriptor.texture_index.unwrap(), gles2_bindings::SAMPLER_2D, 1);
+
+                                    let min_filter = if texture.texture_def().mip_count > 1 {
+                                        sampler.inner.gl_mip_map_mode
+                                    } else {
+                                        sampler.inner.gl_min_filter
+                                    };
+
+                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_MIN_FILTER, min_filter as _)?;
+                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_MAG_FILTER, sampler.inner.gl_mag_filter as _)?;
+                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_WRAP_S, sampler.inner.gl_address_mode_s as _)?;
+                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_WRAP_T, sampler.inner.gl_address_mode_t as _)?;
+                                } else {
+                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_MIN_FILTER, gles2_bindings::LINEAR as _)?;
+                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_MAG_FILTER, gles2_bindings::LINEAR as _)?;
+                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_WRAP_S, gles2_bindings::CLAMP_TO_EDGE as _)?;
+                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_WRAP_T, gles2_bindings::CLAMP_TO_EDGE as _)?;
+                                }
+                            }
+                        }
+                    }
                 }
                 RafxResourceType::UNIFORM_BUFFER => {
-                    let uniform_index =
-                        root_signature.uniform_index(descriptor.descriptor_index);
-
-                    if let Some(uniform_index) = uniform_index {
+                    if let Some(uniform_index) = descriptor.uniform_index {
                         // Find where the buffers states begin for this resource in this descriptor set
                         let base_buffer_state_index = array_index * data.buffer_states_per_set + descriptor.descriptor_data_offset_in_set.unwrap();
                         for i in 0..descriptor.element_count {

@@ -172,8 +172,8 @@ fn run() -> RafxResult<()> {
             set_index: 0,
             binding: 0,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
-            gl_name: Some("uniform_data".to_string()),
-            gl_uniform_members: vec![RafxGlUniformMember::new("uniform_data.uniform_color", 0)],
+            gles2_name: Some("uniform_data".to_string()),
+            gles2_uniform_members: vec![RafxGlUniformMember::new("uniform_data.uniform_color", 0)],
             ..Default::default()
         };
 
@@ -475,7 +475,7 @@ fn load_shader_packages(
     _metal_src_file: &str,
     _vk_spv_file: &str,
     _gl_src_file: &str,
-    _gles_src_file: &str,
+    _gles2_src_file: &str,
 ) -> RafxResult<RafxShaderPackage> {
     let mut _package = RafxShaderPackage::default();
 
@@ -495,9 +495,9 @@ fn load_shader_packages(
 
     #[cfg(feature = "rafx-gles2")]
     {
-        let gles_path = _base_path.join(_gles_src_file);
-        let gles_src = std::fs::read_to_string(gles_path)?;
-        _package.gles2 = Some(RafxShaderPackageGl::Src(gles_src));
+        let gles2_path = _base_path.join(_gles2_src_file);
+        let gles2_src = std::fs::read_to_string(gles2_path)?;
+        _package.gles2 = Some(RafxShaderPackageGl::Src(gles2_src));
     }
 
     Ok(_package)

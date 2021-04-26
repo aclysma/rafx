@@ -2,6 +2,27 @@ use crate::gles2::gles2_bindings::types::GLenum;
 use crate::gles2::{gles2_bindings, GlContext, LocationId};
 use crate::RafxResult;
 
+pub fn is_uniform_buffer_field_type(gl_type: GLenum) -> bool {
+    match gl_type {
+        gles2_bindings::INT
+        | gles2_bindings::BOOL
+        | gles2_bindings::FLOAT
+        | gles2_bindings::INT_VEC2
+        | gles2_bindings::BOOL_VEC2
+        | gles2_bindings::FLOAT_VEC2
+        | gles2_bindings::INT_VEC3
+        | gles2_bindings::BOOL_VEC3
+        | gles2_bindings::FLOAT_VEC3
+        | gles2_bindings::INT_VEC4
+        | gles2_bindings::BOOL_VEC4
+        | gles2_bindings::FLOAT_VEC4
+        | gles2_bindings::FLOAT_MAT2
+        | gles2_bindings::FLOAT_MAT3
+        | gles2_bindings::FLOAT_MAT4 => true,
+        _ => false
+    }
+}
+
 pub fn byte_size_of_type(gl_type: GLenum) -> u32 {
     match gl_type {
         gles2_bindings::INT | gles2_bindings::BOOL | gles2_bindings::FLOAT => 4,

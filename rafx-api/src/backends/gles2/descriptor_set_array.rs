@@ -1,8 +1,5 @@
-use crate::gles2::{BufferId, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2, DescriptorInfo};
-use crate::{
-    RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType,
-    RafxResult, RafxRootSignature,
-};
+use crate::gles2::{BufferId, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2, DescriptorInfo, TextureId, RafxTextureGles2, RafxSamplerGles2};
+use crate::{RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType, RafxResult, RafxRootSignature, RafxTexture, RafxTextureBindType};
 
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
@@ -43,17 +40,27 @@ pub struct BufferDescriptorState {
 }
 
 #[derive(Clone)]
-pub struct ImageDescriptorState {
-    pub(crate) texture: Option<u32>,
-    pub(crate) sampler: Option<u32>,
+pub struct TextureDescriptorState {
+    //TODO: does this really need to be a RafxTexture?
+    pub(crate) texture: Option<RafxTextureGles2>,
+    //pub(crate) sampler: Option<RafxSamplerGles2>,
+}
+
+#[derive(Clone)]
+pub struct SamplerDescriptorState {
+    //TODO: does this really need to be a RafxTexture?
+    //pub(crate) texture: Option<RafxTextureGles2>,
+    pub(crate) sampler: Option<RafxSamplerGles2>,
 }
 
 #[derive(Clone)]
 pub struct DescriptorSetArrayData {
     pub(crate) buffer_states_per_set: u32,
-    pub(crate) image_states_per_set: u32,
+    pub(crate) texture_states_per_set: u32,
+    pub(crate) sampler_states_per_set: u32,
     pub(crate) buffer_states: Vec<Option<BufferDescriptorState>>,
-    pub(crate) image_states: Vec<Option<ImageDescriptorState>>,
+    pub(crate) texture_states: Vec<Option<TextureDescriptorState>>,
+    pub(crate) sampler_states: Vec<Option<SamplerDescriptorState>>,
 }
 
 pub struct RafxDescriptorSetArrayGles2 {
@@ -105,9 +112,11 @@ impl RafxDescriptorSetArrayGles2 {
 
         let data = DescriptorSetArrayData {
             buffer_states_per_set: layout.buffer_descriptor_state_count,
-            image_states_per_set: layout.image_descriptor_state_count,
+            texture_states_per_set: layout.texture_descriptor_state_count,
+            sampler_states_per_set: layout.sampler_descriptor_state_count,
             buffer_states: vec![None; descriptor_set_array_def.array_length * layout.buffer_descriptor_state_count as usize],
-            image_states: vec![None; descriptor_set_array_def.array_length * layout.image_descriptor_state_count as usize],
+            texture_states: vec![None; descriptor_set_array_def.array_length * layout.texture_descriptor_state_count as usize],
+            sampler_states: vec![None; descriptor_set_array_def.array_length * layout.sampler_descriptor_state_count as usize],
         };
 
         Ok(RafxDescriptorSetArrayGles2 {
@@ -191,33 +200,28 @@ impl RafxDescriptorSetArrayGles2 {
         let mut descriptor_set_data = self.data.borrow_mut();
 
         match descriptor.resource_type {
-            //     RafxResourceType::SAMPLER => {
-            //         let samplers = update.elements.samplers.ok_or_else(||
-            //             format!(
-            //                 "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the samplers element list was None",
-            //                 update.descriptor_key,
-            //                 descriptor.set_index,
-            //                 descriptor.binding,
-            //                 descriptor.name,
-            //                 descriptor.resource_type,
-            //             )
-            //         )?;
-            //
-            //         let begin_index =
-            //             descriptor.argument_buffer_id as usize + update.dst_element_offset as usize;
-            //         assert!(
-            //             update.dst_element_offset + samplers.len() as u32 <= descriptor.element_count
-            //         );
-            //
-            //         let mut next_index = begin_index;
-            //         for sampler in samplers {
-            //             let gl_sampler = sampler.gl_sampler().unwrap().gl_sampler();
-            //             argument_buffer
-            //                 .encoder
-            //                 .set_sampler_state(next_index as _, gl_sampler);
-            //             next_index += 1;
-            //         }
-            //     }
+            RafxResourceType::SAMPLER => {
+                let samplers = update.elements.samplers.ok_or_else(||
+                    format!(
+                        "Tried to update binding {:?} (set: {:?} binding: {} name: {:?} type: {:?}) but the samplers element list was None",
+                        update.descriptor_key,
+                        descriptor.set_index,
+                        descriptor.binding,
+                        descriptor.name,
+                        descriptor.resource_type,
+                    )
+                )?;
+
+                let mut next_index = Self::first_sampler_index(layout, update, descriptor);
+                for sampler in samplers {
+                    descriptor_set_data.sampler_states[next_index as usize] =
+                        Some(SamplerDescriptorState {
+                            sampler: Some(sampler.gles2_sampler().unwrap().clone()),
+                        });
+
+                    next_index += 1;
+                }
+            }
             RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
                 let textures = update.elements.textures.ok_or_else(||
                     format!(
@@ -230,25 +234,30 @@ impl RafxDescriptorSetArrayGles2 {
                     )
                 )?;
 
-                unimplemented!();
 
-                //
-                //         // Defaults to UavMipSlice(0) for TEXTURE_READ_WRITE and Srv for TEXTURE
-                //         let texture_bind_type =
-                //             if descriptor.resource_type == RafxResourceType::TEXTURE_READ_WRITE {
-                //                 update
-                //                     .texture_bind_type
-                //                     .unwrap_or(RafxTextureBindType::UavMipSlice(0))
-                //             } else {
-                //                 update.texture_bind_type.unwrap_or(RafxTextureBindType::Srv)
-                //             };
-                //
-                //         let begin_index =
-                //             descriptor.argument_buffer_id as usize + update.dst_element_offset as usize;
-                //         assert!(
-                //             update.dst_element_offset + textures.len() as u32 <= descriptor.element_count
-                //         );
-                //
+                // Modify the update data
+                let mut next_index = Self::first_texture_index(layout, update, descriptor);
+                for texture in textures {
+                    descriptor_set_data.texture_states[next_index as usize] =
+                        Some(TextureDescriptorState {
+                            texture: Some(texture.gles2_texture().unwrap().clone()),
+                        });
+
+                    next_index += 1;
+                }
+
+                //TODO: Do we need to support these?
+
+                // Defaults to UavMipSlice(0) for TEXTURE_READ_WRITE and Srv for TEXTURE
+                // let texture_bind_type =
+                //     if descriptor.resource_type == RafxResourceType::TEXTURE_READ_WRITE {
+                //         update
+                //             .texture_bind_type
+                //             .unwrap_or(RafxTextureBindType::UavMipSlice(0))
+                //     } else {
+                //         update.texture_bind_type.unwrap_or(RafxTextureBindType::Srv)
+                //     };
+
                 //         let mut next_index = begin_index;
                 //         if let RafxTextureBindType::UavMipSlice(slice) = texture_bind_type {
                 //             for texture in textures {
@@ -335,13 +344,8 @@ impl RafxDescriptorSetArrayGles2 {
                     )
                 )?;
 
-                let begin_index = Self::first_buffer_index(layout, update, descriptor);
-                assert!(
-                    update.dst_element_offset + buffers.len() as u32 <= descriptor.element_count
-                );
-
                 // Modify the update data
-                let mut next_index = begin_index;
+                let mut next_index = Self::first_buffer_index(layout, update, descriptor);
                 for (buffer_index, buffer) in buffers.iter().enumerate() {
                     let offset = update
                         .elements
@@ -370,9 +374,14 @@ impl RafxDescriptorSetArrayGles2 {
         layout.buffer_descriptor_state_count * update.array_index + descriptor.descriptor_data_offset_in_set.unwrap() + update.dst_element_offset
     }
 
-    fn first_image_index(layout: &DescriptorSetLayoutInfo, update: &RafxDescriptorUpdate, descriptor: &DescriptorInfo) -> u32 {
+    fn first_texture_index(layout: &DescriptorSetLayoutInfo, update: &RafxDescriptorUpdate, descriptor: &DescriptorInfo) -> u32 {
         assert!(update.dst_element_offset + update.elements.textures.as_ref().unwrap().len() as u32 <= descriptor.element_count);
-        layout.image_descriptor_state_count * update.array_index + descriptor.descriptor_data_offset_in_set.unwrap() + update.dst_element_offset
+        layout.texture_descriptor_state_count * update.array_index + descriptor.descriptor_data_offset_in_set.unwrap() + update.dst_element_offset
+    }
+
+    fn first_sampler_index(layout: &DescriptorSetLayoutInfo, update: &RafxDescriptorUpdate, descriptor: &DescriptorInfo) -> u32 {
+        assert!(update.dst_element_offset + update.elements.samplers.as_ref().unwrap().len() as u32 <= descriptor.element_count);
+        layout.sampler_descriptor_state_count * update.array_index + descriptor.descriptor_data_offset_in_set.unwrap() + update.dst_element_offset
     }
 }
 

@@ -12,6 +12,7 @@ mod include;
 use include::include_impl;
 use include::IncludeType;
 use shaderc::ShaderKind;
+use fnv::FnvHashSet;
 
 mod codegen;
 
@@ -34,8 +35,8 @@ pub struct ShaderProcessorArgs {
     pub rs_file: Option<PathBuf>,
     #[structopt(name = "metal-generated-src-file", long, parse(from_os_str))]
     pub metal_generated_src_file: Option<PathBuf>,
-    #[structopt(name = "gles-generated-src-file", long, parse(from_os_str))]
-    pub gles_generated_src_file: Option<PathBuf>,
+    #[structopt(name = "gles2-generated-src-file", long, parse(from_os_str))]
+    pub gles2_generated_src_file: Option<PathBuf>,
     #[structopt(name = "cooked-shader-file", long, parse(from_os_str))]
     pub cooked_shader_file: Option<PathBuf>,
 
@@ -50,8 +51,8 @@ pub struct ShaderProcessorArgs {
     pub rs_path: Option<PathBuf>,
     #[structopt(name = "metal-generated-src-path", long, parse(from_os_str))]
     pub metal_generated_src_path: Option<PathBuf>,
-    #[structopt(name = "gles-generated-src-path", long, parse(from_os_str))]
-    pub gles_generated_src_path: Option<PathBuf>,
+    #[structopt(name = "gles2-generated-src-path", long, parse(from_os_str))]
+    pub gles2_generated_src_path: Option<PathBuf>,
     #[structopt(name = "cooked-shaders-path", long, parse(from_os_str))]
     pub cooked_shaders_path: Option<PathBuf>,
 
@@ -68,8 +69,8 @@ pub struct ShaderProcessorArgs {
     pub package_vk: bool,
     #[structopt(name = "package-metal", long)]
     pub package_metal: bool,
-    #[structopt(name = "package-gles", long)]
-    pub package_gles: bool,
+    #[structopt(name = "package-gles2", long)]
+    pub package_gles2: bool,
     #[structopt(name = "package-all", long)]
     pub package_all: bool,
 }
@@ -98,7 +99,7 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
             args.spv_file.as_ref(),
             args.rs_file.as_ref(),
             args.metal_generated_src_file.as_ref(),
-            args.gles_generated_src_file.as_ref(),
+            args.gles2_generated_src_file.as_ref(),
             args.cooked_shader_file.as_ref(),
             shader_kind,
             &args,
@@ -142,11 +143,11 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                     .as_ref()
                     .map(|x| x.join(metal_src_name));
 
-                let gles_src_name = format!("{}.gles", file_name);
-                let gles_generated_src_path = args
-                    .gles_generated_src_path
+                let gles2_src_name = format!("{}.gles", file_name);
+                let gles2_generated_src_path = args
+                    .gles2_generated_src_path
                     .as_ref()
-                    .map(|x| x.join(gles_src_name));
+                    .map(|x| x.join(gles2_src_name));
 
                 let cooked_shader_name = format!("{}.cookedshaderpackage", file_name);
                 let cooked_shader_path = args
@@ -169,7 +170,7 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                     spv_path.as_ref(),
                     rs_path.as_ref(),
                     metal_generated_src_path.as_ref(),
-                    gles_generated_src_path.as_ref(),
+                    gles2_generated_src_path.as_ref(),
                     cooked_shader_path.as_ref(),
                     shader_kind,
                     &args,
@@ -212,7 +213,7 @@ fn process_glsl_shader(
     spv_file: Option<&PathBuf>,
     rs_file: Option<&PathBuf>,
     metal_generated_src_file: Option<&PathBuf>,
-    gles_generated_src_file: Option<&PathBuf>,
+    gles2_generated_src_file: Option<&PathBuf>,
     cooked_shader_file: Option<&PathBuf>,
     shader_kind: shaderc::ShaderKind,
     args: &ShaderProcessorArgs,
@@ -222,13 +223,13 @@ fn process_glsl_shader(
     log::trace!("spv: {:?}", spv_file);
     log::trace!("rs: {:?}", rs_file);
     log::trace!("metal: {:?}", metal_generated_src_file);
-    log::trace!("gles: {:?}", gles_generated_src_file);
+    log::trace!("gles: {:?}", gles2_generated_src_file);
     log::trace!("cooked: {:?}", cooked_shader_file);
     log::trace!("shader kind: {:?}", shader_kind);
 
     let package_vk = (args.package_all || args.package_vk) && cooked_shader_file.is_some();
     let package_metal = (args.package_all || args.package_metal) && cooked_shader_file.is_some();
-    let package_gles = (args.package_all || args.package_gles) && cooked_shader_file.is_some();
+    let package_gles = (args.package_all || args.package_gles2) && cooked_shader_file.is_some();
     log::trace!(
         "package VK: {} Metal: {} GLES: {}",
         package_vk,
@@ -237,7 +238,7 @@ fn process_glsl_shader(
     );
 
     if cooked_shader_file.is_some() && !(package_vk || package_metal || package_gles) {
-        Err("A cooked shader file or path was specified but no shader types are specified to package. Pass --package-vk, --package-metal, --package-gles, or --package-all")?;
+        Err("A cooked shader file or path was specified but no shader types are specified to package. Pass --package-vk, --package-metal, --package-gles2, or --package-all")?;
     }
 
     let code = std::fs::read_to_string(&glsl_file)?;
@@ -305,7 +306,7 @@ fn process_glsl_shader(
     let mut user_types = shader_types::create_user_type_lookup(&parsed_declarations)?;
     let builtin_types = shader_types::create_builtin_type_lookup();
 
-    let reflected_data = if rs_file.is_some()
+    let mut reflected_data = if rs_file.is_some()
         || cooked_shader_file.is_some()
         || metal_generated_src_file.is_some()
     {
@@ -412,21 +413,44 @@ fn process_glsl_shader(
         None
     };
 
-    let gles_src = if gles_generated_src_file.is_some() || package_gles {
+    let gles2_src = if gles2_generated_src_file.is_some() || package_gles {
         log::trace!("{:?}: create gles", glsl_file);
-        let mut gles_ast =
+        let mut gles2_ast =
             spirv_cross::spirv::Ast::<spirv_cross::glsl::Target>::parse(&spirv_cross_module)?;
-        let mut spirv_cross_gles_options = spirv_cross::glsl::CompilerOptions::default();
-        spirv_cross_gles_options.version = spirv_cross::glsl::Version::V1_00Es;
-        spirv_cross_gles_options.vulkan_semantics = false;
+        let mut spirv_cross_gles2_options = spirv_cross::glsl::CompilerOptions::default();
+        spirv_cross_gles2_options.version = spirv_cross::glsl::Version::V1_00Es;
+        spirv_cross_gles2_options.vulkan_semantics = false;
 
-        let shader_resources = gles_ast.get_shader_resources()?;
+        gles2_ast.build_combined_image_samplers()?;
+        let mut all_combined_textures = FnvHashSet::default();
+        for remap in gles2_ast.get_combined_image_samplers()? {
+            let texture_name = gles2_ast.get_name(remap.image_id)?;
+            let sampler_name = gles2_ast.get_name(remap.sampler_id)?;
+
+            let already_sampled = !all_combined_textures.insert(remap.image_id);
+            if already_sampled {
+                Err(format!("The texture {} is being read by multiple samplers. This is not supported in GL ES 2.0", texture_name))?;
+            }
+
+            if let Some(reflected_data) = &mut reflected_data {
+                reflected_data.set_gl_sampler_name(&texture_name, &sampler_name);
+            }
+
+            //let new_name = format!("combined_{}_{}", sampler_name, texture_name);
+            gles2_ast.set_name(remap.combined_id, &texture_name)?
+        }
+
+        if let Some(reflected_data) = &reflected_data {
+            println!("{:#?}", reflected_data.reflection);
+        }
+
+        let shader_resources = gles2_ast.get_shader_resources()?;
 
         if normalize_shader_kind(shader_kind) == ShaderKind::Vertex {
             for resource in shader_resources.stage_outputs {
-                let location = gles_ast
+                let location = gles2_ast
                     .get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
-                gles_ast.rename_interface_variable(
+                gles2_ast.rename_interface_variable(
                     &[resource],
                     location,
                     &format!("interface_var_{}", location),
@@ -434,9 +458,9 @@ fn process_glsl_shader(
             }
         } else if normalize_shader_kind(shader_kind) == ShaderKind::Fragment {
             for resource in shader_resources.stage_inputs {
-                let location = gles_ast
+                let location = gles2_ast
                     .get_decoration(resource.id, spirv_cross::spirv::Decoration::Location)?;
-                gles_ast.rename_interface_variable(
+                gles2_ast.rename_interface_variable(
                     &[resource],
                     location,
                     &format!("interface_var_{}", location),
@@ -444,10 +468,10 @@ fn process_glsl_shader(
             }
         }
 
-        gles_ast.set_compiler_options(&spirv_cross_gles_options)?;
-        let gles_src = gles_ast.compile()?;
+        gles2_ast.set_compiler_options(&spirv_cross_gles2_options)?;
+        let gles2_src = gles2_ast.compile()?;
 
-        Some(gles_src)
+        Some(gles2_src)
     } else {
         None
     };
@@ -463,8 +487,8 @@ fn process_glsl_shader(
             None
         };
 
-        let gles_src = if package_gles {
-            Some(gles_src.as_ref().unwrap().clone())
+        let gles2_src = if package_gles {
+            Some(gles2_src.as_ref().unwrap().clone())
         } else {
             None
         };
@@ -473,7 +497,7 @@ fn process_glsl_shader(
             &reflected_data.as_ref().unwrap().reflection,
             output_spv,
             metal_src,
-            gles_src,
+            gles2_src,
         )?)
     } else {
         None
@@ -494,8 +518,8 @@ fn process_glsl_shader(
         std::fs::write(metal_generated_src_file, metal_src.unwrap())?;
     }
 
-    if let Some(gles_generated_src_file) = &gles_generated_src_file {
-        std::fs::write(gles_generated_src_file, gles_src.unwrap())?;
+    if let Some(gles2_generated_src_file) = &gles2_generated_src_file {
+        std::fs::write(gles2_generated_src_file, gles2_src.unwrap())?;
     }
 
     if let Some(cooked_shader_file) = &cooked_shader_file {
