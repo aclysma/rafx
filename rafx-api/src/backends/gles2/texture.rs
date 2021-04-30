@@ -138,6 +138,10 @@ impl RafxTextureGles2 {
         let image = if let Some(existing_image) = existing_image {
             existing_image
         } else {
+            //TODO: glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            //TODO: glTexStorage2D/3D
+            //multisample support
+            //TODO: Mipmaps
             let gl_context = device_context.gl_context();
             let texture_id = gl_context.gl_create_texture()?;
             gl_context.gl_bind_texture(gl_target, texture_id)?;

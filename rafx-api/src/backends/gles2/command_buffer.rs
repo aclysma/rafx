@@ -116,6 +116,10 @@ impl RafxCommandBufferGles2 {
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
 
+        //TODO: Handle array slice/mip level
+        //TODO: MSAA/resolving
+        //TODO: glInvalidateFramebuffer
+        //TODO: Cache FBOs instead of re-create per frame
         if color_targets.is_empty() && depth_target.is_none() {
             Err("No color or depth target supplied to cmd_begin_render_pass")?;
         }
@@ -272,6 +276,7 @@ impl RafxCommandBufferGles2 {
     }
 
     pub fn cmd_end_render_pass(&self) -> RafxResult<()> {
+        //TODO: Unbind anything?
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
 
@@ -524,6 +529,7 @@ impl RafxCommandBufferGles2 {
                     byte_offset,
                 )?;
 
+                //TODO: UNBIND THESE?
                 gl_context.gl_enable_vertex_attrib_array(attribute.location)?;
             }
 
@@ -731,6 +737,7 @@ impl RafxCommandBufferGles2 {
                                 gl_context.gl_active_texture(descriptor.texture_index.unwrap())?;
                                 let target = texture.gl_target();
                                 //TODO: handle cube map
+                                //TODO: Handle specific mip levels/array slices
                                 gl_context.gl_bind_texture(target, texture.gl_raw_image().gl_texture_id().unwrap())?;
 
                                 if let Some(sampler) = &sampler_state.sampler {

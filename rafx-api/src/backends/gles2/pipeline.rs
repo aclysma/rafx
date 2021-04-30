@@ -141,6 +141,7 @@ impl RafxPipelineGles2 {
         }
 
         gl_context.link_shader_program(program_id)?;
+        //TODO: validate?
 
         let mut resource_locations = Vec::with_capacity(gl_root_signature.inner.descriptors.len());
         for resource in &gl_root_signature.inner.descriptors {
