@@ -185,10 +185,12 @@ fn run() -> RafxResult<()> {
 
         let start_time = std::time::Instant::now();
 
-        let best_sample_count = device_context.find_supported_sample_count(&[
-            RafxSampleCount::SampleCount4,
-            RafxSampleCount::SampleCount1
-        ]).unwrap();
+        let best_sample_count = device_context
+            .find_supported_sample_count(&[
+                RafxSampleCount::SampleCount4,
+                RafxSampleCount::SampleCount1,
+            ])
+            .unwrap();
 
         //
         // SDL2 window pumping

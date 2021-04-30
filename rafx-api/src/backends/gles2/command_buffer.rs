@@ -1,8 +1,8 @@
 use crate::gles2::{
     BoundDescriptorSet, CommandPoolGles2State, CommandPoolGles2StateInner, DescriptorSetArrayData,
-    GlContext, Gles2PipelineInfo, RafxBufferGles2, RafxCommandPoolGles2, RafxDescriptorSetArrayGles2,
-    RafxDescriptorSetHandleGles2, RafxPipelineGles2, RafxQueueGles2, RafxRootSignatureGles2, RafxTextureGles2,
-    NONE_BUFFER, NONE_TEXTURE,
+    GlContext, Gles2PipelineInfo, RafxBufferGles2, RafxCommandPoolGles2,
+    RafxDescriptorSetArrayGles2, RafxDescriptorSetHandleGles2, RafxPipelineGles2, RafxQueueGles2,
+    RafxRootSignatureGles2, RafxTextureGles2, NONE_BUFFER, NONE_TEXTURE,
 };
 use crate::{
     RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
@@ -152,7 +152,6 @@ impl RafxCommandBufferGles2 {
             //     }
             // }
 
-
             // let renderbuffer = gl_texture.gl_raw_image().gl_renderbuffer_id().unwrap();
             // gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
             // if renderbuffer != NONE_RENDERBUFFER {
@@ -248,7 +247,7 @@ impl RafxCommandBufferGles2 {
             extents.width as _,
             extents.height as _,
             0.0,
-            1.0
+            1.0,
         )?;
 
         Self::do_cmd_set_scissor(
@@ -257,12 +256,15 @@ impl RafxCommandBufferGles2 {
             0,
             0,
             extents.width,
-            extents.height
+            extents.height,
         )?;
 
         let result = gl_context.gl_check_framebuffer_status(gles2_bindings::FRAMEBUFFER)?;
         if result != gles2_bindings::FRAMEBUFFER_COMPLETE {
-            Err(format!("Framebuffer Status is not FRAMEBUFFER_COMPLETE, result: {:#x}", result))?;
+            Err(format!(
+                "Framebuffer Status is not FRAMEBUFFER_COMPLETE, result: {:#x}",
+                result
+            ))?;
         }
 
         if clear_mask != 0 {
@@ -303,7 +305,7 @@ impl RafxCommandBufferGles2 {
             width as _,
             height as _,
             depth_min,
-            depth_max
+            depth_max,
         )
     }
 
@@ -342,7 +344,6 @@ impl RafxCommandBufferGles2 {
             height as _,
         )
     }
-
 
     pub fn do_cmd_set_scissor(
         gl_context: &GlContext,
@@ -575,7 +576,10 @@ impl RafxCommandBufferGles2 {
         }
 
         state.index_buffer_byte_offset = binding.byte_offset as u32;
-        gl_context.gl_bind_buffer(gles2_bindings::ELEMENT_ARRAY_BUFFER, buffer.gl_buffer_id().unwrap())
+        gl_context.gl_bind_buffer(
+            gles2_bindings::ELEMENT_ARRAY_BUFFER,
+            buffer.gl_buffer_id().unwrap(),
+        )
     }
 
     pub fn cmd_bind_descriptor_set(
@@ -729,36 +733,54 @@ impl RafxCommandBufferGles2 {
                         // }
                         unimplemented!()
                     }
-                },
+                }
                 RafxResourceType::SAMPLER => {
                     // do nothing, we handle this when dealing with textures
                 }
                 RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
                     //TODO: one location per descriptor might not work
-                    if let Some(location) = pipeline_info.resource_location(descriptor.descriptor_index) {
+                    if let Some(location) =
+                        pipeline_info.resource_location(descriptor.descriptor_index)
+                    {
                         // Find where the buffers states begin for this resource in this descriptor set
-                        let base_image_state_index = array_index * data.texture_states_per_set + descriptor.descriptor_data_offset_in_set.unwrap();
+                        let base_image_state_index = array_index * data.texture_states_per_set
+                            + descriptor.descriptor_data_offset_in_set.unwrap();
 
                         // Find the sampler associated with this texture
                         let sampler_descriptor_index = descriptor.sampler_descriptor_index.unwrap();
-                        let sampler_descriptor = root_signature.descriptor(sampler_descriptor_index).unwrap();
-                        let base_sampler_state_index = array_index * data.sampler_states_per_set + descriptor.descriptor_data_offset_in_set.unwrap();
+                        let sampler_descriptor =
+                            root_signature.descriptor(sampler_descriptor_index).unwrap();
+                        let base_sampler_state_index = array_index * data.sampler_states_per_set
+                            + descriptor.descriptor_data_offset_in_set.unwrap();
 
                         for i in 0..descriptor.element_count {
                             let image_state_index = base_image_state_index + i;
-                            let image_state = data.texture_states[image_state_index as usize].as_ref().unwrap();
+                            let image_state = data.texture_states[image_state_index as usize]
+                                .as_ref()
+                                .unwrap();
                             let sampler_state_index = base_sampler_state_index + i;
-                            let sampler_state = data.sampler_states[image_state_index as usize].as_ref().unwrap();
+                            let sampler_state = data.sampler_states[image_state_index as usize]
+                                .as_ref()
+                                .unwrap();
 
                             if let Some(texture) = &image_state.texture {
                                 gl_context.gl_active_texture(descriptor.texture_index.unwrap())?;
                                 let target = texture.gl_target();
                                 //TODO: handle cube map
                                 //TODO: Handle specific mip levels/array slices
-                                gl_context.gl_bind_texture(target, texture.gl_raw_image().gl_texture_id().unwrap())?;
+                                gl_context.gl_bind_texture(
+                                    target,
+                                    texture.gl_raw_image().gl_texture_id().unwrap(),
+                                )?;
 
                                 if let Some(sampler) = &sampler_state.sampler {
-                                    gl_type_util::set_uniform(gl_context, location, &descriptor.texture_index.unwrap(), gles2_bindings::SAMPLER_2D, 1);
+                                    gl_type_util::set_uniform(
+                                        gl_context,
+                                        location,
+                                        &descriptor.texture_index.unwrap(),
+                                        gles2_bindings::SAMPLER_2D,
+                                        1,
+                                    );
 
                                     let min_filter = if texture.texture_def().mip_count > 1 {
                                         sampler.inner.gl_mip_map_mode
@@ -766,15 +788,47 @@ impl RafxCommandBufferGles2 {
                                         sampler.inner.gl_min_filter
                                     };
 
-                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_MIN_FILTER, min_filter as _)?;
-                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_MAG_FILTER, sampler.inner.gl_mag_filter as _)?;
-                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_WRAP_S, sampler.inner.gl_address_mode_s as _)?;
-                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_WRAP_T, sampler.inner.gl_address_mode_t as _)?;
+                                    gl_context.gl_tex_parameteri(
+                                        target,
+                                        gles2_bindings::TEXTURE_MIN_FILTER,
+                                        min_filter as _,
+                                    )?;
+                                    gl_context.gl_tex_parameteri(
+                                        target,
+                                        gles2_bindings::TEXTURE_MAG_FILTER,
+                                        sampler.inner.gl_mag_filter as _,
+                                    )?;
+                                    gl_context.gl_tex_parameteri(
+                                        target,
+                                        gles2_bindings::TEXTURE_WRAP_S,
+                                        sampler.inner.gl_address_mode_s as _,
+                                    )?;
+                                    gl_context.gl_tex_parameteri(
+                                        target,
+                                        gles2_bindings::TEXTURE_WRAP_T,
+                                        sampler.inner.gl_address_mode_t as _,
+                                    )?;
                                 } else {
-                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_MIN_FILTER, gles2_bindings::LINEAR as _)?;
-                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_MAG_FILTER, gles2_bindings::LINEAR as _)?;
-                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_WRAP_S, gles2_bindings::CLAMP_TO_EDGE as _)?;
-                                    gl_context.gl_tex_parameteri(target, gles2_bindings::TEXTURE_WRAP_T, gles2_bindings::CLAMP_TO_EDGE as _)?;
+                                    gl_context.gl_tex_parameteri(
+                                        target,
+                                        gles2_bindings::TEXTURE_MIN_FILTER,
+                                        gles2_bindings::LINEAR as _,
+                                    )?;
+                                    gl_context.gl_tex_parameteri(
+                                        target,
+                                        gles2_bindings::TEXTURE_MAG_FILTER,
+                                        gles2_bindings::LINEAR as _,
+                                    )?;
+                                    gl_context.gl_tex_parameteri(
+                                        target,
+                                        gles2_bindings::TEXTURE_WRAP_S,
+                                        gles2_bindings::CLAMP_TO_EDGE as _,
+                                    )?;
+                                    gl_context.gl_tex_parameteri(
+                                        target,
+                                        gles2_bindings::TEXTURE_WRAP_T,
+                                        gles2_bindings::CLAMP_TO_EDGE as _,
+                                    )?;
                                 }
                             }
                         }
@@ -783,7 +837,8 @@ impl RafxCommandBufferGles2 {
                 RafxResourceType::UNIFORM_BUFFER => {
                     if let Some(uniform_index) = descriptor.uniform_index {
                         // Find where the buffers states begin for this resource in this descriptor set
-                        let base_buffer_state_index = array_index * data.buffer_states_per_set + descriptor.descriptor_data_offset_in_set.unwrap();
+                        let base_buffer_state_index = array_index * data.buffer_states_per_set
+                            + descriptor.descriptor_data_offset_in_set.unwrap();
                         for i in 0..descriptor.element_count {
                             // Find the buffer state for this specific element of the resource
                             let buffer_state_index = base_buffer_state_index + i;
@@ -792,8 +847,14 @@ impl RafxCommandBufferGles2 {
                                 .unwrap();
 
                             // Get a ptr to the start of the uniform data we're binding
-                            let uniform_data_ptr =
-                                unsafe { buffer_state.buffer_contents.as_ref().unwrap().as_ptr().add(buffer_state.offset as usize) };
+                            let uniform_data_ptr = unsafe {
+                                buffer_state
+                                    .buffer_contents
+                                    .as_ref()
+                                    .unwrap()
+                                    .as_ptr()
+                                    .add(buffer_state.offset as usize)
+                            };
 
                             let fields = uniform_reflection_data.uniform_fields(uniform_index);
                             for field in fields {
@@ -801,9 +862,8 @@ impl RafxCommandBufferGles2 {
                                 if let Some(location) =
                                     pipeline_info.uniform_member_location(field.field_index)
                                 {
-                                    let field_ref = unsafe {
-                                        &*uniform_data_ptr.add(field.offset as usize)
-                                    };
+                                    let field_ref =
+                                        unsafe { &*uniform_data_ptr.add(field.offset as usize) };
 
                                     gl_type_util::set_uniform(
                                         gl_context,

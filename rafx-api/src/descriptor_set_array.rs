@@ -162,7 +162,9 @@ impl RafxDescriptorSetArray {
                 RafxDescriptorSetHandle::Metal(inner.handle(index)?)
             }
             #[cfg(feature = "rafx-gles2")]
-            RafxDescriptorSetArray::Gles2(inner) => RafxDescriptorSetHandle::Gles2(inner.handle(index)?),
+            RafxDescriptorSetArray::Gles2(inner) => {
+                RafxDescriptorSetHandle::Gles2(inner.handle(index)?)
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

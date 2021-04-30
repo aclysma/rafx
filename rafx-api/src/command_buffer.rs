@@ -293,7 +293,9 @@ impl RafxCommandBuffer {
                 inner.cmd_bind_vertex_buffers(first_binding, bindings)
             }
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandBuffer::Gles2(inner) => inner.cmd_bind_vertex_buffers(first_binding, bindings),
+            RafxCommandBuffer::Gles2(inner) => {
+                inner.cmd_bind_vertex_buffers(first_binding, bindings)
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

@@ -1,5 +1,9 @@
 use crate::gles2::gles2_bindings::types::*;
-use crate::gles2::{gles2_bindings, ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId, WindowHash, NONE_BUFFER, NONE_PROGRAM, NONE_RENDERBUFFER, NONE_TEXTURE, FramebufferId, NONE_FRAMEBUFFER};
+use crate::gles2::{
+    gles2_bindings, ActiveUniformInfo, BufferId, FramebufferId, ProgramId, RenderbufferId,
+    ShaderId, TextureId, WindowHash, NONE_BUFFER, NONE_FRAMEBUFFER, NONE_PROGRAM,
+    NONE_RENDERBUFFER, NONE_TEXTURE,
+};
 use crate::{RafxError, RafxResult};
 use fnv::FnvHashMap;
 use raw_window_handle::HasRawWindowHandle;
@@ -7,7 +11,10 @@ use std::ffi::{CStr, CString};
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 use wasm_bindgen::JsValue;
-use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderbuffer, WebGlRenderingContext, WebGlShader, WebGlTexture, WebGlUniformLocation, WebGlFramebuffer};
+use web_sys::{
+    WebGlBuffer, WebGlFramebuffer, WebGlProgram, WebGlRenderbuffer, WebGlRenderingContext,
+    WebGlShader, WebGlTexture, WebGlUniformLocation,
+};
 
 pub struct GetActiveUniformMaxNameLengthHint;
 
@@ -100,7 +107,7 @@ impl GlContext {
             shaders: Default::default(),
             programs: Default::default(),
             renderbuffers: Default::default(),
-            framebuffers: Default::default()
+            framebuffers: Default::default(),
         })
     }
 
@@ -226,7 +233,11 @@ impl GlContext {
         let framebuffer = self.context.create_framebuffer().unwrap();
         self.check_for_error()?;
         let framebuffer_id = FramebufferId(NEXT_GL_FRAMEBUFFER_ID.fetch_add(1, Ordering::Relaxed));
-        let old = self.framebuffers.lock().unwrap().insert(framebuffer_id, framebuffer);
+        let old = self
+            .framebuffers
+            .lock()
+            .unwrap()
+            .insert(framebuffer_id, framebuffer);
         assert!(old.is_none());
         Ok(framebuffer_id)
     }
@@ -235,7 +246,12 @@ impl GlContext {
         &self,
         framebuffer_id: FramebufferId,
     ) -> RafxResult<()> {
-        let framebuffer = self.framebuffers.lock().unwrap().remove(&framebuffer_id).unwrap();
+        let framebuffer = self
+            .framebuffers
+            .lock()
+            .unwrap()
+            .remove(&framebuffer_id)
+            .unwrap();
         self.context.delete_framebuffer(Some(&framebuffer));
         self.check_for_error()
     }
@@ -1043,7 +1059,7 @@ impl GlContext {
 
     pub fn gl_active_texture(
         &self,
-        i: u32
+        i: u32,
     ) -> RafxResult<()> {
         unsafe {
             self.context.active_texture(gles2_bindings::TEXTURE0 + i);
@@ -1089,7 +1105,12 @@ impl GlContext {
         self.check_for_error()
     }
 
-    pub fn gl_tex_parameteri(&self, target: GLenum, pname: GLenum, param: i32) -> RafxResult<()> {
+    pub fn gl_tex_parameteri(
+        &self,
+        target: GLenum,
+        pname: GLenum,
+        param: i32,
+    ) -> RafxResult<()> {
         unsafe {
             self.context.tex_parameteri(target, pname, param);
             self.check_for_error()

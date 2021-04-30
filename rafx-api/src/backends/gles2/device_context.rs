@@ -8,9 +8,10 @@ use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
 use crate::gles2::{
-    GlContextManager, RafxBufferGles2, RafxDescriptorSetArrayGles2, RafxFenceGles2, RafxPipelineGles2,
-    RafxQueueGles2, RafxRootSignatureGles2, RafxSamplerGles2, RafxSemaphoreGles2, RafxShaderGles2,
-    RafxShaderModuleGles2, RafxSwapchainGles2, RafxTextureGles2,
+    GlContextManager, RafxBufferGles2, RafxDescriptorSetArrayGles2, RafxFenceGles2,
+    RafxPipelineGles2, RafxQueueGles2, RafxRootSignatureGles2, RafxSamplerGles2,
+    RafxSemaphoreGles2, RafxShaderGles2, RafxShaderModuleGles2, RafxSwapchainGles2,
+    RafxTextureGles2,
 };
 
 use crate::gles2::gles2_bindings;
@@ -66,7 +67,8 @@ impl RafxDeviceContextGles2Inner {
         log::debug!("Version: {}", version);
         let vendor = gl_context.gl_get_string(gles2_bindings::VENDOR);
         log::debug!("Vendor: {}", vendor);
-        let shading_language_version = gl_context.gl_get_string(gles2_bindings::SHADING_LANGUAGE_VERSION);
+        let shading_language_version =
+            gl_context.gl_get_string(gles2_bindings::SHADING_LANGUAGE_VERSION);
         log::debug!("Shading Language Version: {}", shading_language_version);
 
         let pack_alignment = gl_context.gl_get_integerv(gles2_bindings::PACK_ALIGNMENT) as u32;

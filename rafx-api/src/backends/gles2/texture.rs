@@ -1,6 +1,9 @@
 use crate::gles2::gles2_bindings::types::GLenum;
 use crate::gles2::{gles2_bindings, RafxDeviceContextGles2, TextureId, NONE_TEXTURE};
-use crate::{GlTextureFormatInfo, RafxResourceType, RafxResult, RafxTextureDef, RafxTextureDimensions, RafxSampleCount};
+use crate::{
+    GlTextureFormatInfo, RafxResourceType, RafxResult, RafxSampleCount, RafxTextureDef,
+    RafxTextureDimensions,
+};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -154,7 +157,7 @@ impl RafxTextureGles2 {
                 0,
                 format_info.gl_format,
                 format_info.gl_type,
-                None
+                None,
             )?;
             gl_context.gl_bind_texture(gl_target, NONE_TEXTURE)?;
 

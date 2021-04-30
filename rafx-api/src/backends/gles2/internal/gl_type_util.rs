@@ -19,7 +19,7 @@ pub fn is_uniform_buffer_field_type(gl_type: GLenum) -> bool {
         | gles2_bindings::FLOAT_MAT2
         | gles2_bindings::FLOAT_MAT3
         | gles2_bindings::FLOAT_MAT4 => true,
-        _ => false
+        _ => false,
     }
 }
 
@@ -48,15 +48,22 @@ pub fn set_uniform<T: Copy>(
     count: u32,
 ) -> RafxResult<()> {
     match gl_type {
-        gles2_bindings::INT | gles2_bindings::BOOL | gles2_bindings::SAMPLER_2D | gles2_bindings::SAMPLER_CUBE => {
-            gl_context.gl_uniform_1iv(location, data, count)
-        }
+        gles2_bindings::INT
+        | gles2_bindings::BOOL
+        | gles2_bindings::SAMPLER_2D
+        | gles2_bindings::SAMPLER_CUBE => gl_context.gl_uniform_1iv(location, data, count),
         gles2_bindings::FLOAT => gl_context.gl_uniform_1fv(location, data, count),
-        gles2_bindings::INT_VEC2 | gles2_bindings::BOOL_VEC2 => gl_context.gl_uniform_2iv(location, data, count),
+        gles2_bindings::INT_VEC2 | gles2_bindings::BOOL_VEC2 => {
+            gl_context.gl_uniform_2iv(location, data, count)
+        }
         gles2_bindings::FLOAT_VEC2 => gl_context.gl_uniform_2fv(location, data, count),
-        gles2_bindings::INT_VEC3 | gles2_bindings::BOOL_VEC3 => gl_context.gl_uniform_3iv(location, data, count),
+        gles2_bindings::INT_VEC3 | gles2_bindings::BOOL_VEC3 => {
+            gl_context.gl_uniform_3iv(location, data, count)
+        }
         gles2_bindings::FLOAT_VEC3 => gl_context.gl_uniform_3fv(location, data, count),
-        gles2_bindings::INT_VEC4 | gles2_bindings::BOOL_VEC4 => gl_context.gl_uniform_4iv(location, data, count),
+        gles2_bindings::INT_VEC4 | gles2_bindings::BOOL_VEC4 => {
+            gl_context.gl_uniform_4iv(location, data, count)
+        }
         gles2_bindings::FLOAT_VEC4 => gl_context.gl_uniform_4fv(location, data, count),
         gles2_bindings::FLOAT_MAT2 => gl_context.gl_uniform_matrix_2fv(location, data, count),
         gles2_bindings::FLOAT_MAT3 => gl_context.gl_uniform_matrix_3fv(location, data, count),

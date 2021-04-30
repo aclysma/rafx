@@ -46,7 +46,9 @@ impl RafxCommandPool {
                 RafxDeviceContext::Metal(inner.device_context().clone())
             }
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandPool::Gles2(inner) => RafxDeviceContext::Gles2(inner.device_context().clone()),
+            RafxCommandPool::Gles2(inner) => {
+                RafxDeviceContext::Gles2(inner.device_context().clone())
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

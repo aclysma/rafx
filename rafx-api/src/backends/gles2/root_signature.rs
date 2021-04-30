@@ -212,10 +212,10 @@ impl RafxRootSignatureGles2 {
             resource.validate()?;
 
             let descriptor_data_offset_in_set;
-            if resource.resource_type.intersects(
-                RafxResourceType::TEXTURE
-                    | RafxResourceType::TEXTURE_READ_WRITE
-            ) {
+            if resource
+                .resource_type
+                .intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE)
+            {
                 //TODO: Handle cube maps
                 descriptor_data_offset_in_set =
                     Some(next_descriptor_data_texture_offset[resource.set_index as usize]);
@@ -242,7 +242,10 @@ impl RafxRootSignatureGles2 {
                 ))?;
             }
 
-            let texture_index = if resource.resource_type.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE) {
+            let texture_index = if resource
+                .resource_type
+                .intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE)
+            {
                 let texture_index = texture_count;
                 texture_count += 1;
                 Some(texture_index)
@@ -334,12 +337,19 @@ impl RafxRootSignatureGles2 {
                     .binding_to_descriptor_index
                     .insert(resource.binding, descriptor_index);
 
-                if resource.resource_type.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE) {
-                    texture_descriptor_index_sampler_names.push((descriptor_index, resource.gles2_sampler_name.as_ref().unwrap()));
+                if resource
+                    .resource_type
+                    .intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE)
+                {
+                    texture_descriptor_index_sampler_names.push((
+                        descriptor_index,
+                        resource.gles2_sampler_name.as_ref().unwrap(),
+                    ));
                 }
 
                 if resource.resource_type.intersects(RafxResourceType::SAMPLER) {
-                    sampler_by_gl_name.insert(resource.gles2_name.as_ref().unwrap(), descriptor_index);
+                    sampler_by_gl_name
+                        .insert(resource.gles2_name.as_ref().unwrap(), descriptor_index);
                 }
             }
         }
@@ -354,7 +364,8 @@ impl RafxRootSignatureGles2 {
 
         for (texture_descriptor_index, sampler_name) in texture_descriptor_index_sampler_names {
             let sampler_descriptor_index = sampler_by_gl_name[sampler_name];
-            descriptors[texture_descriptor_index.0 as usize].sampler_descriptor_index = Some(sampler_descriptor_index);
+            descriptors[texture_descriptor_index.0 as usize].sampler_descriptor_index =
+                Some(sampler_descriptor_index);
         }
 
         // // Make a lookup of all samplers by gl_name

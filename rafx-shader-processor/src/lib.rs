@@ -9,10 +9,10 @@ use parse_source::DeclarationText;
 mod parse_declarations;
 
 mod include;
+use fnv::FnvHashSet;
 use include::include_impl;
 use include::IncludeType;
 use shaderc::ShaderKind;
-use fnv::FnvHashSet;
 
 mod codegen;
 

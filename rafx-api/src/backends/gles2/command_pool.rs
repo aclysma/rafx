@@ -1,4 +1,7 @@
-use crate::gles2::{DescriptorSetArrayData, Gles2PipelineInfo, RafxCommandBufferGles2, RafxDeviceContextGles2, RafxQueueGles2, RafxRootSignatureGles2, FramebufferId};
+use crate::gles2::{
+    DescriptorSetArrayData, FramebufferId, Gles2PipelineInfo, RafxCommandBufferGles2,
+    RafxDeviceContextGles2, RafxQueueGles2, RafxRootSignatureGles2,
+};
 use crate::{
     RafxCommandBufferDef, RafxCommandPoolDef, RafxExtents2D, RafxQueueType, RafxResult,
     MAX_DESCRIPTOR_SET_LAYOUTS,
@@ -34,7 +37,10 @@ pub(crate) struct CommandPoolGles2StateInner {
 
 impl Drop for CommandPoolGles2StateInner {
     fn drop(&mut self) {
-        self.device_context.gl_context().gl_destroy_framebuffer(self.framebuffer_id).unwrap();
+        self.device_context
+            .gl_context()
+            .gl_destroy_framebuffer(self.framebuffer_id)
+            .unwrap();
     }
 }
 
@@ -101,7 +107,7 @@ impl CommandPoolGles2State {
             bound_descriptor_sets: Default::default(),
             bound_descriptor_sets_root_signature: None,
             descriptor_sets_update_index: Default::default(),
-            framebuffer_id
+            framebuffer_id,
         };
 
         Ok(CommandPoolGles2State {

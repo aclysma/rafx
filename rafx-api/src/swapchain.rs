@@ -97,7 +97,9 @@ impl RafxSwapchain {
                 inner.acquire_next_image_fence(fence.metal_fence().unwrap())
             }
             #[cfg(feature = "rafx-gles2")]
-            RafxSwapchain::Gles2(inner) => inner.acquire_next_image_fence(fence.gles2_fence().unwrap()),
+            RafxSwapchain::Gles2(inner) => {
+                inner.acquire_next_image_fence(fence.gles2_fence().unwrap())
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(feature = "rafx-metal", feature = "rafx-vulkan"))

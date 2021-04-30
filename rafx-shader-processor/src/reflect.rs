@@ -645,11 +645,17 @@ impl ShaderProcessorRefectionData {
     // GL ES 2.0 attaches sampler state to textures. So every texture must be associated with a
     // single sampler. This function is called when cross-compiling to GL ES 2.0 to set
     // gl_sampler_name on all texture resources.
-    pub fn set_gl_sampler_name(&mut self, texture_gl_name: &str, sampler_gl_name: &str) {
+    pub fn set_gl_sampler_name(
+        &mut self,
+        texture_gl_name: &str,
+        sampler_gl_name: &str,
+    ) {
         for entry_point in &mut self.reflection {
             for resource in &mut entry_point.rafx_api_reflection.resources {
                 if resource.gles2_name.as_ref().unwrap().as_str() == texture_gl_name {
-                    assert!(resource.resource_type.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE));
+                    assert!(resource.resource_type.intersects(
+                        RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE
+                    ));
                     resource.gles2_sampler_name = Some(sampler_gl_name.to_string());
                 }
             }
@@ -657,9 +663,14 @@ impl ShaderProcessorRefectionData {
             for layout in &mut entry_point.descriptor_set_layouts {
                 if let Some(layout) = layout {
                     for resource in &mut layout.bindings {
-                        if resource.resource.gles2_name.as_ref().unwrap().as_str() == texture_gl_name {
-                            assert!(resource.resource.resource_type.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE));
-                            resource.resource.gles2_sampler_name = Some(sampler_gl_name.to_string());
+                        if resource.resource.gles2_name.as_ref().unwrap().as_str()
+                            == texture_gl_name
+                        {
+                            assert!(resource.resource.resource_type.intersects(
+                                RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE
+                            ));
+                            resource.resource.gles2_sampler_name =
+                                Some(sampler_gl_name.to_string());
                         }
                     }
                 }

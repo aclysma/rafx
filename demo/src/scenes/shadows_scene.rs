@@ -141,11 +141,7 @@ impl ShadowsScene {
                 let offset = rand_scale - 1.;
                 let transform_component = TransformComponent {
                     translation: position + Vec3::new(0., 0., offset),
-                    scale: Vec3::new(
-                        rand_scale,
-                        rand_scale,
-                        rand_scale,
-                    ),
+                    scale: Vec3::new(rand_scale, rand_scale, rand_scale),
                     ..Default::default()
                 };
 

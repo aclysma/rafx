@@ -3,7 +3,9 @@ use super::gles2_bindings::types::GLenum;
 use super::gles2_bindings::Gles2;
 use super::WindowHash;
 use crate::gles2::gles2_bindings::types::{GLboolean, GLint};
-use crate::gles2::{ActiveUniformInfo, BufferId, ProgramId, RenderbufferId, ShaderId, TextureId, FramebufferId};
+use crate::gles2::{
+    ActiveUniformInfo, BufferId, FramebufferId, ProgramId, RenderbufferId, ShaderId, TextureId,
+};
 use crate::{RafxError, RafxResult};
 use raw_gl_context::GlConfig;
 use raw_window_handle::HasRawWindowHandle;
@@ -638,7 +640,8 @@ impl GlContext {
         &self,
         program_id: ProgramId,
     ) -> RafxResult<GetActiveUniformMaxNameLengthHint> {
-        let max_length = self.gl_get_programiv(program_id, gles2_bindings::ACTIVE_UNIFORM_MAX_LENGTH)?;
+        let max_length =
+            self.gl_get_programiv(program_id, gles2_bindings::ACTIVE_UNIFORM_MAX_LENGTH)?;
         Ok(GetActiveUniformMaxNameLengthHint(max_length))
     }
 
@@ -1080,7 +1083,7 @@ impl GlContext {
 
     pub fn gl_active_texture(
         &self,
-        i: u32
+        i: u32,
     ) -> RafxResult<()> {
         unsafe {
             self.gles2.ActiveTexture(gles2_bindings::TEXTURE0 + i);
@@ -1128,7 +1131,12 @@ impl GlContext {
         }
     }
 
-    pub fn gl_tex_parameteri(&self, target: GLenum, pname: GLenum, param: i32) -> RafxResult<()> {
+    pub fn gl_tex_parameteri(
+        &self,
+        target: GLenum,
+        pname: GLenum,
+        param: i32,
+    ) -> RafxResult<()> {
         unsafe {
             self.gles2.TexParameteri(target, pname, param);
             self.check_for_error()

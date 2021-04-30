@@ -1,4 +1,4 @@
-use crate::gles2::{gles2_bindings, GlContext, ProgramId, gl_type_util};
+use crate::gles2::{gl_type_util, gles2_bindings, GlContext, ProgramId};
 use crate::{RafxResult, RafxShader};
 use fnv::FnvHashMap;
 use std::ffi::CString;

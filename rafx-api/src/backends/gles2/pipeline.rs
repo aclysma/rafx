@@ -1,7 +1,9 @@
 use crate::gles2::conversions::{Gles2BlendState, Gles2DepthStencilState, Gles2RasterizerState};
 use crate::gles2::gles2_bindings::types::GLenum;
 use crate::gles2::reflection::FieldIndex;
-use crate::gles2::{LocationId, ProgramId, RafxDeviceContextGles2, RafxRootSignatureGles2, RafxShaderGles2};
+use crate::gles2::{
+    LocationId, ProgramId, RafxDeviceContextGles2, RafxRootSignatureGles2, RafxShaderGles2,
+};
 use crate::{
     RafxComputePipelineDef, RafxDescriptorIndex, RafxGraphicsPipelineDef, RafxPipelineType,
     RafxResult, RafxRootSignature, MAX_DESCRIPTOR_SET_LAYOUTS,

@@ -111,7 +111,9 @@ impl RafxApi {
         api_def: &RafxApiDef,
         gl_api_def: &RafxApiDefGles2,
     ) -> RafxResult<Self> {
-        Ok(RafxApi::Gles2(RafxApiGles2::new(window, api_def, gl_api_def)?))
+        Ok(RafxApi::Gles2(RafxApiGles2::new(
+            window, api_def, gl_api_def,
+        )?))
     }
 
     /// Create a cloneable handle to the device. Most of the interaction with the graphics backend

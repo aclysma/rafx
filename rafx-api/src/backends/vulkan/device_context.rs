@@ -166,7 +166,7 @@ impl RafxDeviceContextVulkanInner {
             upload_buffer_texture_row_alignment: limits.optimal_buffer_copy_row_pitch_alignment
                 as u32,
             supports_clamp_to_border_color: true,
-            max_vertex_attribute_count: limits.max_vertex_input_attributes
+            max_vertex_attribute_count: limits.max_vertex_input_attributes,
         };
 
         let resource_cache = RafxDeviceVulkanResourceCache::default();

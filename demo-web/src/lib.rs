@@ -8,7 +8,18 @@ mod main_web;
 #[cfg(target_arch = "wasm32")]
 pub use main_web::*;
 
-use rafx::api::{RafxApi, RafxBufferDef, RafxColorClearValue, RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxCommandPoolDef, RafxDescriptorElements, RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxFormat, RafxGlUniformMember, RafxGraphicsPipelineDef, RafxLoadOp, RafxPrimitiveTopology, RafxQueueType, RafxResourceState, RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxShaderModuleDef, RafxShaderModuleDefGles2, RafxShaderResource, RafxShaderStageDef, RafxShaderStageFlags, RafxShaderStageReflection, RafxStoreOp, RafxSwapchainDef, RafxSwapchainHelper, RafxTextureBarrier, RafxVertexAttributeRate, RafxVertexBufferBinding, RafxVertexLayout, RafxVertexLayoutAttribute, RafxVertexLayoutBuffer, RafxTextureDef, RafxExtents3D, RafxCmdCopyBufferToTextureParams, RafxSamplerDef};
+use rafx::api::{
+    RafxApi, RafxBufferDef, RafxCmdCopyBufferToTextureParams, RafxColorClearValue,
+    RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxCommandPoolDef, RafxDescriptorElements,
+    RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxExtents3D, RafxFormat,
+    RafxGlUniformMember, RafxGraphicsPipelineDef, RafxLoadOp, RafxPrimitiveTopology, RafxQueueType,
+    RafxResourceState, RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount,
+    RafxSamplerDef, RafxShaderModuleDef, RafxShaderModuleDefGles2, RafxShaderResource,
+    RafxShaderStageDef, RafxShaderStageFlags, RafxShaderStageReflection, RafxStoreOp,
+    RafxSwapchainDef, RafxSwapchainHelper, RafxTextureBarrier, RafxTextureDef,
+    RafxVertexAttributeRate, RafxVertexBufferBinding, RafxVertexLayout, RafxVertexLayoutAttribute,
+    RafxVertexLayoutBuffer,
+};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::ControlFlow,
@@ -81,7 +92,6 @@ pub fn update_loop(
             0.5, -0.5, 1.0, 1.0
         ];
 
-
         let uniform_data = [1.0f32, 0.0, 1.0, 1.0];
 
         //
@@ -129,42 +139,61 @@ pub fn update_loop(
         }
 
         use image::GenericImageView;
-        let nyancat_image = image::load_from_memory_with_format(include_bytes!("../nyancat.jpg"), image::ImageFormat::Jpeg).unwrap();
+        let nyancat_image = image::load_from_memory_with_format(
+            include_bytes!("../nyancat.jpg"),
+            image::ImageFormat::Jpeg,
+        )
+        .unwrap();
         let (image_width, image_height) = nyancat_image.dimensions();
         let image_data = nyancat_image.to_rgba8().into_raw();
         let texture = device_context.create_texture(&RafxTextureDef {
             extents: RafxExtents3D {
                 width: image_width,
                 height: image_height,
-                depth: 1
+                depth: 1,
             },
             format: RafxFormat::R8G8B8A8_UNORM,
             ..Default::default()
         })?;
 
-        let texture_staging_buffer = device_context.create_buffer(
-            &RafxBufferDef::for_staging_buffer_data(image_data.as_slice(), RafxResourceType::TEXTURE)
-        ).unwrap();
-        texture_staging_buffer.copy_to_host_visible_buffer(image_data.as_slice()).unwrap();
+        let texture_staging_buffer = device_context
+            .create_buffer(&RafxBufferDef::for_staging_buffer_data(
+                image_data.as_slice(),
+                RafxResourceType::TEXTURE,
+            ))
+            .unwrap();
+        texture_staging_buffer
+            .copy_to_host_visible_buffer(image_data.as_slice())
+            .unwrap();
 
         let mut upload_command_pool =
             graphics_queue.create_command_pool(&RafxCommandPoolDef { transient: true })?;
 
-        let upload_command_buffer = upload_command_pool.create_command_buffer(&RafxCommandBufferDef {
-            is_secondary: false
-        }).unwrap();
+        let upload_command_buffer = upload_command_pool
+            .create_command_buffer(&RafxCommandBufferDef {
+                is_secondary: false,
+            })
+            .unwrap();
 
         upload_command_buffer.begin().unwrap();
-        upload_command_buffer.cmd_copy_buffer_to_texture(&texture_staging_buffer, &texture, &RafxCmdCopyBufferToTextureParams {
-            mip_level: 0,
-            array_layer: 0,
-            buffer_offset: 0
-        });
+        upload_command_buffer.cmd_copy_buffer_to_texture(
+            &texture_staging_buffer,
+            &texture,
+            &RafxCmdCopyBufferToTextureParams {
+                mip_level: 0,
+                array_layer: 0,
+                buffer_offset: 0,
+            },
+        );
         upload_command_buffer.end().unwrap();
-        graphics_queue.submit(&[&upload_command_buffer], &[], &[], None).unwrap();
+        graphics_queue
+            .submit(&[&upload_command_buffer], &[], &[], None)
+            .unwrap();
         graphics_queue.wait_for_queue_idle().unwrap();
 
-        let sampler = device_context.create_sampler(&RafxSamplerDef::default()).unwrap();
+        let sampler = device_context
+            .create_sampler(&RafxSamplerDef::default())
+            .unwrap();
 
         //
         // Load a shader from source - this part is API-specific. vulkan will want SPV, metal wants
@@ -309,7 +338,7 @@ pub fn update_loop(
                         ..Default::default()
                     },
                     ..Default::default()
-                }
+                },
             ])?;
         }
 
@@ -392,12 +421,30 @@ pub fn update_loop(
                     let m = elapsed_seconds.cos();
 
                     let vertex_data = [
-                        m * -0.5, -0.5, 0.0, 1.0,
-                        m * -0.5, 0.5, 0.0, 0.0,
-                        m * 0.5, 0.5, 1.0, 0.0,
-                        m * -0.5, -0.5, 0.0, 1.0,
-                        m * 0.5, 0.5, 1.0, 0.0,
-                        m * 0.5, -0.5, 1.0, 1.0
+                        m * -0.5,
+                        -0.5,
+                        0.0,
+                        1.0,
+                        m * -0.5,
+                        0.5,
+                        0.0,
+                        0.0,
+                        m * 0.5,
+                        0.5,
+                        1.0,
+                        0.0,
+                        m * -0.5,
+                        -0.5,
+                        0.0,
+                        1.0,
+                        m * 0.5,
+                        0.5,
+                        1.0,
+                        0.0,
+                        m * 0.5,
+                        -0.5,
+                        1.0,
+                        1.0,
                     ];
 
                     //
@@ -453,12 +500,7 @@ pub fn update_loop(
                                 store_op: RafxStoreOp::Store,
                                 array_slice: None,
                                 mip_slice: None,
-                                clear_value: RafxColorClearValue([
-                                    0.2,
-                                    0.2,
-                                    0.2,
-                                    1.0,
-                                ]),
+                                clear_value: RafxColorClearValue([0.2, 0.2, 0.2, 1.0]),
                                 resolve_target: None,
                                 resolve_store_op: RafxStoreOp::DontCare,
                                 resolve_mip_slice: None,

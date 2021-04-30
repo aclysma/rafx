@@ -1,5 +1,11 @@
-use crate::gles2::{BufferId, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2, DescriptorInfo, TextureId, RafxTextureGles2, RafxSamplerGles2};
-use crate::{RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType, RafxResult, RafxRootSignature, RafxTexture, RafxTextureBindType};
+use crate::gles2::{
+    BufferId, DescriptorInfo, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2,
+    RafxSamplerGles2, RafxTextureGles2, TextureId,
+};
+use crate::{
+    RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType,
+    RafxResult, RafxRootSignature, RafxTexture, RafxTextureBindType,
+};
 
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
@@ -111,9 +117,21 @@ impl RafxDescriptorSetArrayGles2 {
             buffer_states_per_set: layout.buffer_descriptor_state_count,
             texture_states_per_set: layout.texture_descriptor_state_count,
             sampler_states_per_set: layout.sampler_descriptor_state_count,
-            buffer_states: vec![None; descriptor_set_array_def.array_length * layout.buffer_descriptor_state_count as usize],
-            texture_states: vec![None; descriptor_set_array_def.array_length * layout.texture_descriptor_state_count as usize],
-            sampler_states: vec![None; descriptor_set_array_def.array_length * layout.sampler_descriptor_state_count as usize],
+            buffer_states: vec![
+                None;
+                descriptor_set_array_def.array_length
+                    * layout.buffer_descriptor_state_count as usize
+            ],
+            texture_states: vec![
+                None;
+                descriptor_set_array_def.array_length
+                    * layout.texture_descriptor_state_count as usize
+            ],
+            sampler_states: vec![
+                None;
+                descriptor_set_array_def.array_length
+                    * layout.sampler_descriptor_state_count as usize
+            ],
         };
 
         Ok(RafxDescriptorSetArrayGles2 {
@@ -230,7 +248,6 @@ impl RafxDescriptorSetArrayGles2 {
                         descriptor.resource_type,
                     )
                 )?;
-
 
                 // Modify the update data
                 let mut next_index = Self::first_texture_index(layout, update, descriptor);
@@ -366,19 +383,46 @@ impl RafxDescriptorSetArrayGles2 {
         Ok(())
     }
 
-    fn first_buffer_index(layout: &DescriptorSetLayoutInfo, update: &RafxDescriptorUpdate, descriptor: &DescriptorInfo) -> u32 {
-        assert!(update.dst_element_offset + update.elements.buffers.as_ref().unwrap().len() as u32 <= descriptor.element_count);
-        layout.buffer_descriptor_state_count * update.array_index + descriptor.descriptor_data_offset_in_set.unwrap() + update.dst_element_offset
+    fn first_buffer_index(
+        layout: &DescriptorSetLayoutInfo,
+        update: &RafxDescriptorUpdate,
+        descriptor: &DescriptorInfo,
+    ) -> u32 {
+        assert!(
+            update.dst_element_offset + update.elements.buffers.as_ref().unwrap().len() as u32
+                <= descriptor.element_count
+        );
+        layout.buffer_descriptor_state_count * update.array_index
+            + descriptor.descriptor_data_offset_in_set.unwrap()
+            + update.dst_element_offset
     }
 
-    fn first_texture_index(layout: &DescriptorSetLayoutInfo, update: &RafxDescriptorUpdate, descriptor: &DescriptorInfo) -> u32 {
-        assert!(update.dst_element_offset + update.elements.textures.as_ref().unwrap().len() as u32 <= descriptor.element_count);
-        layout.texture_descriptor_state_count * update.array_index + descriptor.descriptor_data_offset_in_set.unwrap() + update.dst_element_offset
+    fn first_texture_index(
+        layout: &DescriptorSetLayoutInfo,
+        update: &RafxDescriptorUpdate,
+        descriptor: &DescriptorInfo,
+    ) -> u32 {
+        assert!(
+            update.dst_element_offset + update.elements.textures.as_ref().unwrap().len() as u32
+                <= descriptor.element_count
+        );
+        layout.texture_descriptor_state_count * update.array_index
+            + descriptor.descriptor_data_offset_in_set.unwrap()
+            + update.dst_element_offset
     }
 
-    fn first_sampler_index(layout: &DescriptorSetLayoutInfo, update: &RafxDescriptorUpdate, descriptor: &DescriptorInfo) -> u32 {
-        assert!(update.dst_element_offset + update.elements.samplers.as_ref().unwrap().len() as u32 <= descriptor.element_count);
-        layout.sampler_descriptor_state_count * update.array_index + descriptor.descriptor_data_offset_in_set.unwrap() + update.dst_element_offset
+    fn first_sampler_index(
+        layout: &DescriptorSetLayoutInfo,
+        update: &RafxDescriptorUpdate,
+        descriptor: &DescriptorInfo,
+    ) -> u32 {
+        assert!(
+            update.dst_element_offset + update.elements.samplers.as_ref().unwrap().len() as u32
+                <= descriptor.element_count
+        );
+        layout.sampler_descriptor_state_count * update.array_index
+            + descriptor.descriptor_data_offset_in_set.unwrap()
+            + update.dst_element_offset
     }
 }
 

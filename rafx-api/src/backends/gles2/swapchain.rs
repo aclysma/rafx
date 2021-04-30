@@ -1,7 +1,5 @@
 use crate::backends::gles2::RafxTextureGles2;
-use crate::gles2::{
-    GlContext, RafxDeviceContextGles2, RafxFenceGles2, RafxSemaphoreGles2,
-};
+use crate::gles2::{GlContext, RafxDeviceContextGles2, RafxFenceGles2, RafxSemaphoreGles2};
 use crate::{
     RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
     RafxSwapchainImage, RafxTexture, RafxTextureDef, RafxTextureDimensions,
@@ -58,11 +56,14 @@ impl RafxSwapchainGles2 {
             swapchain_def: swapchain_def.clone(),
             next_swapchain_image_index: 0,
             format: SWAPCHAIN_FORMAT,
-            swapchain_image
+            swapchain_image,
         })
     }
 
-    fn create_swapchain_image(device_context: &RafxDeviceContextGles2, swapchain_def: &RafxSwapchainDef) -> RafxResult<RafxTextureGles2> {
+    fn create_swapchain_image(
+        device_context: &RafxDeviceContextGles2,
+        swapchain_def: &RafxSwapchainDef,
+    ) -> RafxResult<RafxTextureGles2> {
         RafxTextureGles2::new(
             device_context,
             &RafxTextureDef {
@@ -77,7 +78,7 @@ impl RafxSwapchainGles2 {
                 resource_type: RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR,
                 sample_count: RafxSampleCount::SampleCount1,
                 dimensions: RafxTextureDimensions::Dim2D,
-            }
+            },
         )
     }
 
