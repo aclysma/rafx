@@ -22,7 +22,7 @@ fnv = "1.0"
 serde = { version = "1", features = ["serde_derive"], optional = true }
 serde_bytes = { version = "0.11", optional = true }
 bitflags = "1.2"
-profiling = "1.0"
+profiling = "1.0.1"
 
 # Used for debug-only tracking of resources
 backtrace = { version = "0.3", optional = true }

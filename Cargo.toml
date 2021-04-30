@@ -31,7 +31,6 @@ opt-level = 2
 
 # Required for https://github.com/gltf-rs/gltf/pull/288
 [patch.crates-io]
-profiling = { git = "https://github.com/aclysma/profiling.git", branch = "feature-flag-rework" }
 #gltf = { path = "gltf" }
 
 #[patch."https://github.com/amethyst/distill"]

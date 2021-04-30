@@ -21,7 +21,7 @@ rafx-visibility = { version = "=0.0.12", path = "../rafx-visibility" }
 glam = { version = "0.13.1", features = [ "serde" ] }
 crossbeam-channel = "0.5"
 log = "0.4"
-profiling = "1.0"
+profiling = "1.0.1"
 
 [features]
 no-render-thread = []
