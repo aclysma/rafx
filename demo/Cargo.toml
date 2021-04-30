@@ -60,8 +60,8 @@ default = [
     "sdl2-bundled",
     "sdl2-static-link",
     "use-imgui",
-    "profile-with-tracy"
-    #"profile-with-puffin",
+    "profile-with-puffin",
+    #"profile-with-tracy"
     #"profile-with-stats-alloc", # Cannot be enabled with "profile-with-tracy-memory". Will run renderer / game loop single-threaded.
     #"profile-with-optick",
     #"profile-with-tracy",
