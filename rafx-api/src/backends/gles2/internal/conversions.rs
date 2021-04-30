@@ -21,6 +21,7 @@ impl RafxAddressMode {
             RafxAddressMode::Mirror => Some(gles2_bindings::MIRRORED_REPEAT),
             RafxAddressMode::Repeat => Some(gles2_bindings::REPEAT),
             RafxAddressMode::ClampToEdge => Some(gles2_bindings::CLAMP_TO_EDGE),
+            //TODO: GL ES 3.0 support
             // requires GL_OES_texture_border_clamp
             //RafxAddressMode::ClampToBorder => gles20::CLAMP_TO_BORDER,
             RafxAddressMode::ClampToBorder => None,

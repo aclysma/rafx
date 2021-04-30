@@ -11,6 +11,8 @@ use std::sync::Arc;
 
 static NEXT_ROOT_SIGNATURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
+//TODO: Immutable sampler support
+
 // #[derive(Debug)]
 // pub(crate) struct ImmutableSampler {
 //     //pub(crate) binding: u32,
@@ -19,7 +21,6 @@ static NEXT_ROOT_SIGNATURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic:
 //     pub(crate) argument_buffer_id: NSUInteger,
 // }
 //
-//TODO: Could compact this down quite a bit
 #[derive(Clone, Debug)]
 pub(crate) struct DescriptorInfo {
     pub(crate) name: Option<String>,

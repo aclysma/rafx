@@ -112,17 +112,9 @@ impl RafxQueueGles2 {
         self.submit_semaphore_wait(wait_semaphores)?;
 
         let gl_context = self.device_context().gl_context();
-
-        //gl_context.gl_disable(gles20::SCISSOR_TEST)?;
-
         gl_context.gl_bind_framebuffer(gles2_bindings::FRAMEBUFFER, NONE_FRAMEBUFFER)?;
 
-        //gl_context.gl_enable(gles20::TEXTURE_2D)?;
-        //gl_context.gl_bind_texture(gles20::TEXTURE_2D, swapchain.swapchain_image.gl_raw_image().gl_texture_id().unwrap());
-
         self.device_context().inner.fullscreen_quad.draw(gl_context, self.device_context().device_info(), &swapchain.swapchain_image)?;
-
-
 
         let surface_context = swapchain.surface_context();
         let gl_context_manager = self.device_context().gl_context_manager();

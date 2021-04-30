@@ -2,6 +2,8 @@ use crate::gles2::RafxDeviceContextGles2;
 use crate::RafxResult;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+//TODO: GL ES 3.0 has some sync primitives
+
 pub struct RafxSemaphoreGles2 {
     _device_context: RafxDeviceContextGles2,
 

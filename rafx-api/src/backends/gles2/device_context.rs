@@ -84,7 +84,7 @@ impl RafxDeviceContextGles2Inner {
 
         let fullscreen_quad = FullscreenQuad::new(&gl_context)?;
 
-        //TODO: Support extensions
+        //TODO: Support extensions?
 
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]

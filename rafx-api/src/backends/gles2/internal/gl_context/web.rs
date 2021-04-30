@@ -11,6 +11,7 @@ use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderbuffer, WebGlRenderingContex
 
 pub struct GetActiveUniformMaxNameLengthHint;
 
+//TODO: Refactor to avoid integer IDs/hash map lookups
 static NEXT_GL_TEXTURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 static NEXT_GL_SHADER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);

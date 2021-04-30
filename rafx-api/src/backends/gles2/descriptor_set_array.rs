@@ -43,13 +43,10 @@ pub struct BufferDescriptorState {
 pub struct TextureDescriptorState {
     //TODO: does this really need to be a RafxTexture?
     pub(crate) texture: Option<RafxTextureGles2>,
-    //pub(crate) sampler: Option<RafxSamplerGles2>,
 }
 
 #[derive(Clone)]
 pub struct SamplerDescriptorState {
-    //TODO: does this really need to be a RafxTexture?
-    //pub(crate) texture: Option<RafxTextureGles2>,
     pub(crate) sampler: Option<RafxSamplerGles2>,
 }
 
@@ -246,7 +243,7 @@ impl RafxDescriptorSetArrayGles2 {
                     next_index += 1;
                 }
 
-                //TODO: Do we need to support these?
+                //TODO: Do we need to support these? Maybe not for GL ES 2.0
 
                 // Defaults to UavMipSlice(0) for TEXTURE_READ_WRITE and Srv for TEXTURE
                 // let texture_bind_type =
@@ -391,10 +388,9 @@ impl std::fmt::Debug for RafxDescriptorSetArrayGles2 {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         f.debug_struct("RafxDescriptorSetArrayGl")
-            //.field("first_descriptor_set", &self.descriptor_sets[0])
-            //.field("root_signature", &self.root_signature)
-            //.field("set_index", &self.set_index)
-            //.field("pending_write_count", &self.pending_writes.len())
+            .field("root_signature", &self.root_signature)
+            .field("set_index", &self.set_index)
+            .field("array_length", &self.array_length)
             .finish()
     }
 }

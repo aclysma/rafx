@@ -2,6 +2,8 @@ use crate::gles2::RafxDeviceContextGles2;
 use crate::{RafxFenceStatus, RafxResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+//TODO: GL ES 3.0 has some sync primitives
+
 pub struct RafxFenceGles2 {
     device_context: RafxDeviceContextGles2,
     // Set to true when an operation is scheduled to signal this fence

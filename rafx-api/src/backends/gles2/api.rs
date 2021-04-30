@@ -40,8 +40,6 @@ impl RafxApiGles2 {
         if let Some(device_context) = self.device_context.take() {
             // Clear any internal caches that may hold references to the device
             let inner = device_context.inner.clone();
-            //inner.descriptor_heap.clear_pools(device_context.device());
-            //inner.resource_cache.clear_caches();
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]

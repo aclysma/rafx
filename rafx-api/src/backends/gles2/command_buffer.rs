@@ -251,6 +251,15 @@ impl RafxCommandBufferGles2 {
             1.0
         )?;
 
+        Self::do_cmd_set_scissor(
+            gl_context,
+            extents.height,
+            0,
+            0,
+            extents.width,
+            extents.height
+        )?;
+
         let result = gl_context.gl_check_framebuffer_status(gles2_bindings::FRAMEBUFFER)?;
         if result != gles2_bindings::FRAMEBUFFER_COMPLETE {
             Err(format!("Framebuffer Status is not FRAMEBUFFER_COMPLETE, result: {:#x}", result))?;
@@ -261,22 +270,11 @@ impl RafxCommandBufferGles2 {
         }
 
         state.surface_size = Some(extents.to_2d());
-
-        std::mem::drop(state);
-        // self.cmd_set_viewport(
-        //     0.0,
-        //     0.0,
-        //     extents.width as f32,
-        //     extents.height as f32,
-        //     0.0,
-        //     1.0,
-        // )?;
-
-        self.cmd_set_scissor(0, 0, extents.width, extents.height)
+        Ok(())
     }
 
     pub fn cmd_end_render_pass(&self) -> RafxResult<()> {
-        //TODO: Unbind anything?
+        //TODO: Unbind anything? (like gl_enable_vertex_attrib_array)
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
 
@@ -335,7 +333,26 @@ impl RafxCommandBufferGles2 {
         assert!(state.is_started);
 
         let gl_context = self.queue.device_context().gl_context();
-        let y_offset = state.surface_size.unwrap().height - y - height;
+        Self::do_cmd_set_scissor(
+            gl_context,
+            state.surface_size.unwrap().height as _,
+            x as _,
+            y as _,
+            width as _,
+            height as _,
+        )
+    }
+
+
+    pub fn do_cmd_set_scissor(
+        gl_context: &GlContext,
+        surface_height: u32,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+    ) -> RafxResult<()> {
+        let y_offset = surface_height - y - height;
 
         gl_context.gl_scissor(x as _, y_offset as _, width as _, height as _)
     }
