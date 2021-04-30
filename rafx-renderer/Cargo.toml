@@ -21,11 +21,7 @@ rafx-visibility = { version = "=0.0.12", path = "../rafx-visibility" }
 glam = { version = "0.13.1", features = [ "serde" ] }
 crossbeam-channel = "0.5"
 log = "0.4"
-profiling = "0.1.9"
+profiling = "1.0.1"
 
 [features]
-profile-with-puffin = ["profiling/profile-with-puffin"]
-profile-with-optick = ["profiling/profile-with-optick"]
-profile-with-superluminal = ["profiling/profile-with-superluminal"]
-profile-with-tracy = ["profiling/profile-with-tracy"]
 no-render-thread = []

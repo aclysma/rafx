@@ -22,7 +22,7 @@ fnv = "1.0"
 serde = { version = "1", features = ["serde_derive"], optional = true }
 serde_bytes = { version = "0.11", optional = true }
 bitflags = "1.2"
-profiling = "0.1.9"
+profiling = "1.0.1"
 
 # Used for debug-only tracking of resources
 backtrace = { version = "0.3", optional = true }
@@ -51,8 +51,3 @@ rafx-metal = ["metal_rs", "objc", "raw-window-metal", "cocoa-foundation", "dispa
 static-vulkan = []
 serde-support = ["serde", "serde_bytes"]
 track-device-contexts = ["backtrace"]
-
-profile-with-puffin = ["profiling/profile-with-puffin"]
-profile-with-optick = ["profiling/profile-with-optick"]
-profile-with-superluminal = ["profiling/profile-with-superluminal"]
-profile-with-tracy = ["profiling/profile-with-tracy"]

@@ -95,16 +95,12 @@ impl RenderThread {
 
             match job_rx.recv()? {
                 RenderThreadMessage::Render(prepared_frame, frame_in_flight) => {
-                    #[cfg(feature = "profile-with-tracy")]
-                    profiling::tracy_client::start_noncontinuous_frame!("Render Frame");
+                    profiling::scope!("Render Frame");
 
                     log::trace!("kick off render");
                     let resource_lock = render_resources.lock().unwrap();
                     let result = prepared_frame.render_async(frame_in_flight, &*resource_lock);
                     result_tx.send(result).unwrap();
-
-                    #[cfg(feature = "profile-with-tracy")]
-                    profiling::tracy_client::finish_continuous_frame!("Render Frame");
                 }
                 RenderThreadMessage::Finish => {
                     log::trace!("finishing render thread");
