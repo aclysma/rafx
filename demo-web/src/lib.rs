@@ -176,15 +176,17 @@ pub fn update_loop(
             .unwrap();
 
         upload_command_buffer.begin().unwrap();
-        upload_command_buffer.cmd_copy_buffer_to_texture(
-            &texture_staging_buffer,
-            &texture,
-            &RafxCmdCopyBufferToTextureParams {
-                mip_level: 0,
-                array_layer: 0,
-                buffer_offset: 0,
-            },
-        ).unwrap();
+        upload_command_buffer
+            .cmd_copy_buffer_to_texture(
+                &texture_staging_buffer,
+                &texture,
+                &RafxCmdCopyBufferToTextureParams {
+                    mip_level: 0,
+                    array_layer: 0,
+                    buffer_offset: 0,
+                },
+            )
+            .unwrap();
         upload_command_buffer.end().unwrap();
         graphics_queue
             .submit(&[&upload_command_buffer], &[], &[], None)
