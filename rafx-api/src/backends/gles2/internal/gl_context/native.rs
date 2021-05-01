@@ -6,8 +6,8 @@ use crate::gles2::gles2_bindings::types::{GLboolean, GLint};
 use crate::gles2::{
     ActiveUniformInfo, BufferId, FramebufferId, ProgramId, RenderbufferId, ShaderId, TextureId,
 };
+use crate::internal_shared::gl_window;
 use crate::{RafxError, RafxResult};
-use raw_gl_context::GlConfig;
 use raw_window_handle::HasRawWindowHandle;
 use std::ffi::{CStr, CString};
 
@@ -17,7 +17,7 @@ pub struct LocationId(u32);
 pub struct GetActiveUniformMaxNameLengthHint(i32);
 
 pub struct GlContext {
-    context: raw_gl_context::GlContext,
+    context: gl_window::GlContext,
     gles2: Gles2,
     window_hash: WindowHash,
 
@@ -59,12 +59,12 @@ impl GlContext {
     ) -> RafxResult<Self> {
         let window_hash = super::calculate_window_hash(window);
 
-        let mut config = GlConfig::default();
-        config.profile = raw_gl_context::Profile::Core;
+        let mut config = gl_window::GlConfig::default();
+        config.profile = gl_window::Profile::Core;
         config.version = (3, 2);
 
         let context =
-            raw_gl_context::GlContext::create(window, config, share.map(|x| x.context())).unwrap();
+            gl_window::GlContext::create(window, config, share.map(|x| x.context())).unwrap();
         context.make_current();
         let gles2 = Gles2::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
@@ -92,7 +92,7 @@ impl GlContext {
         self.window_hash
     }
 
-    pub fn context(&self) -> &raw_gl_context::GlContext {
+    pub fn context(&self) -> &gl_window::GlContext {
         &self.context
     }
 
