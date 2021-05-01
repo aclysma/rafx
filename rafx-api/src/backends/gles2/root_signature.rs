@@ -387,46 +387,6 @@ impl RafxRootSignatureGles2 {
                 Some(sampler_descriptor_index);
         }
 
-        // // Make a lookup of all samplers by gl_name
-        // for descriptor in &descriptors {
-        //     if descriptor.resource_type == RafxResourceType::SAMPLER {
-        //         let old = samplers.insert(descriptor.gl_name.clone(), descriptor.descriptor_index);
-        //         assert!(old.is_none());
-        //     }
-        // }
-        //
-        // // Match textures with their samplers and set sampler_descriptor
-        // for resource in &merged_resources {
-        //     if resource.resource_type.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE) {
-        //         let texture_descriptor_index = layouts[resource.set_index as usize].binding_to_descriptor_index[&resource.binding];
-        //         let texture_descriptor = &mut descriptors[texture_descriptor_index as usize];
-        //
-        //         let sampler_descriptor_index = *samplers.get(resource.gles2_sampler_name.as_ref().unwrap())
-        //             .ok_or(format!(
-        //                 "Could not find sampler with matching gl_name {:?} for texture set={}, binding={}",
-        //                 texture_descriptor.gl_name,
-        //                 texture_descriptor.set_index,
-        //                 texture_descriptor.binding
-        //             ))?;
-        //
-        //         texture_descriptor.sampler_descriptor_index = Some(sampler_descriptor_index);
-        //     }
-        // }
-
-        // for descriptor in &mut descriptors {
-        //     if descriptor.resource_type.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE) {
-        //         let sampler_descriptor_index = *samplers.get(&descriptor.gl_sampler_name)
-        //             .ok_or(format!(
-        //                 "Could not find sampler with matching gl_name {:?} for texture set={}, binding={}",
-        //                 descriptor.gl_name,
-        //                 descriptor.set_index,
-        //                 descriptor.binding
-        //             ))?;
-        //
-        //         descriptor.sampler_descriptor_index = Some(sampler_descriptor_index);
-        //     }
-        // }
-
         let inner = RafxRootSignatureGles2Inner {
             device_context: device_context.clone(),
             pipeline_type,
