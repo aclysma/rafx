@@ -62,7 +62,7 @@ impl RafxSamplerGles2 {
         let gl_compare_op = sampler_def.compare_op.gles2_compare_op();
 
         //TODO: address_mode_w, mip_lod_bias, max_anisotropy, ClampToBorder
-        //TODO: sampler objects
+        //TODO: sampler objects (ES3 only)
 
         let inner = RafxSamplerGles2Inner {
             device_context: device_context.clone(),

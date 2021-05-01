@@ -1091,6 +1091,17 @@ impl GlContext {
         }
     }
 
+    pub fn gl_pixel_storei(
+        &self,
+        pname: GLenum,
+        param: i32,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles2.PixelStorei(pname, param);
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_bind_texture(
         &self,
         target: GLenum,

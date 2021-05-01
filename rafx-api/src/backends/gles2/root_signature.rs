@@ -86,9 +86,7 @@ pub(crate) struct RafxRootSignatureGles2Inner {
     pub(crate) descriptors: Vec<DescriptorInfo>,
     pub(crate) name_to_descriptor_index: FnvHashMap<String, RafxDescriptorIndex>,
     //
-    // // --- gl-specific ---
-    // // Keeps them in scope so they don't drop
-    // //TODO: Can potentially remove, they are held in DescriptorInfo too
+    // --- gl-specific ---
     pub(crate) immutable_samplers: Vec<ImmutableSampler>,
     pub(crate) uniform_reflection: UniformReflectionData,
     pub(crate) root_signature_id: u32,

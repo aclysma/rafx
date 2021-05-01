@@ -47,7 +47,6 @@ pub struct BufferDescriptorState {
 
 #[derive(Clone)]
 pub struct TextureDescriptorState {
-    //TODO: does this really need to be a RafxTexture?
     pub(crate) texture: RafxTextureGles2,
 }
 

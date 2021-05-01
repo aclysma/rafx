@@ -126,7 +126,7 @@ impl RafxPipelineGles2 {
 
             let gl_type = attribute
                 .format
-                .gl_type()
+                .gles2_type()
                 .ok_or_else(|| format!("Unsupported format {:?}", attribute.format))?;
 
             let buffer = &pipeline_def.vertex_layout.buffers[attribute.buffer_index as usize];
@@ -160,10 +160,6 @@ impl RafxPipelineGles2 {
             uniform_field_locations
                 .push(gl_context.gl_get_uniform_location(program_id, &field.name)?);
         }
-
-        //TODO: set up textures?
-        //gl_context.gl_use_program(program)?;
-        //gl_context.gl_use_program(NONE_PROGRAM)?;
 
         let gl_topology = pipeline_def
             .primitive_topology

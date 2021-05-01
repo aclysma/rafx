@@ -2,7 +2,7 @@ use crate::gles2::{
     gles2_bindings, BufferId, GlContext, ProgramId, RafxTextureGles2, NONE_BUFFER, NONE_PROGRAM,
     NONE_TEXTURE,
 };
-use crate::{RafxDeviceInfo, RafxResult};
+use crate::RafxResult;
 use std::ffi::CString;
 
 pub(crate) struct FullscreenQuad {
@@ -62,7 +62,6 @@ impl FullscreenQuad {
     pub(crate) fn draw(
         &self,
         gl_context: &GlContext,
-        device_info: &RafxDeviceInfo,
         texture: &RafxTextureGles2,
     ) -> RafxResult<()> {
         gl_context.gl_disable(gles2_bindings::DEPTH_TEST)?;
@@ -75,10 +74,6 @@ impl FullscreenQuad {
 
         gl_context.gl_vertex_attrib_pointer(1, 2, gles2_bindings::FLOAT, false, 16, 8)?;
         gl_context.gl_enable_vertex_attrib_array(1)?;
-
-        for i in 2..device_info.max_vertex_attribute_count {
-            gl_context.gl_disable_vertex_attrib_array(i)?;
-        }
 
         gl_context.gl_active_texture(0)?;
         gl_context.gl_bind_texture(
@@ -110,6 +105,9 @@ impl FullscreenQuad {
         gl_context.gl_bind_buffer(gles2_bindings::ARRAY_BUFFER, NONE_BUFFER)?;
         gl_context.gl_bind_texture(gles2_bindings::TEXTURE_2D, NONE_TEXTURE)?;
         gl_context.gl_use_program(NONE_PROGRAM)?;
+
+        gl_context.gl_disable_vertex_attrib_array(0)?;
+        gl_context.gl_disable_vertex_attrib_array(1)?;
 
         Ok(())
     }

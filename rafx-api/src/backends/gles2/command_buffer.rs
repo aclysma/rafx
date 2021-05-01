@@ -1,6 +1,6 @@
 use crate::gles2::{
-    BoundDescriptorSet, CommandPoolGles2State, CommandPoolGles2StateInner, DescriptorSetArrayData,
-    GlContext, Gles2PipelineInfo, RafxBufferGles2, RafxCommandPoolGles2,
+    AttributeEnabledBits, BoundDescriptorSet, CommandPoolGles2State, CommandPoolGles2StateInner,
+    DescriptorSetArrayData, GlContext, Gles2PipelineInfo, RafxBufferGles2, RafxCommandPoolGles2,
     RafxDescriptorSetArrayGles2, RafxDescriptorSetHandleGles2, RafxPipelineGles2, RafxQueueGles2,
     RafxRootSignatureGles2, RafxTextureGles2, NONE_BUFFER, NONE_TEXTURE,
 };
@@ -51,6 +51,11 @@ impl RafxCommandBufferGles2 {
         assert!(state.is_started);
         assert!(state.surface_size.is_none());
 
+        let gl_context = self.queue.device_context().gl_context();
+        Self::update_vertex_attributes_in_use(gl_context, &mut *state, 0)?;
+
+        assert_eq!(state.vertex_attribute_enabled_bits, 0);
+
         state.is_started = false;
         state.current_gl_pipeline_info = None;
         state.stencil_reference_value = 0;
@@ -58,7 +63,6 @@ impl RafxCommandBufferGles2 {
         for offset in &mut state.vertex_buffer_byte_offsets {
             *offset = 0;
         }
-
         state.clear_bindings();
 
         Ok(())
@@ -118,7 +122,7 @@ impl RafxCommandBufferGles2 {
 
         //TODO: Handle array slice/mip level
         //TODO: MSAA/resolving
-        //TODO: glInvalidateFramebuffer
+        //TODO: glInvalidateFramebuffer (ES3 only)
         //TODO: Cache FBOs instead of re-create per frame
         if color_targets.is_empty() && depth_target.is_none() {
             Err("No color or depth target supplied to cmd_begin_render_pass")?;
@@ -276,7 +280,6 @@ impl RafxCommandBufferGles2 {
     }
 
     pub fn cmd_end_render_pass(&self) -> RafxResult<()> {
-        //TODO: Unbind anything? (like gl_enable_vertex_attrib_array)
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
 
@@ -425,15 +428,6 @@ impl RafxCommandBufferGles2 {
         let gl_context = self.queue.device_context().gl_context();
         gl_context.gl_use_program(pipeline.gl_program_id())?;
 
-        let max_attribs = self
-            .queue
-            .device_context()
-            .device_info()
-            .max_vertex_attribute_count;
-        for i in 0..max_attribs {
-            gl_context.gl_disable_vertex_attrib_array(i)?;
-        }
-
         if gl_rasterizer_state.cull_mode != gles2_bindings::NONE {
             gl_context.gl_enable(gles2_bindings::CULL_FACE)?;
             gl_context.gl_cull_face(gl_rasterizer_state.cull_mode)?;
@@ -522,6 +516,8 @@ impl RafxCommandBufferGles2 {
         let gl_pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap().clone();
         let gl_context = self.queue.device_context().gl_context();
 
+        let mut attributes_in_use = 0;
+
         let mut binding_index = first_binding;
         for binding in bindings {
             let gl_buffer = binding.buffer.gles2_buffer().unwrap();
@@ -547,13 +543,33 @@ impl RafxCommandBufferGles2 {
                     byte_offset,
                 )?;
 
-                //TODO: UNBIND THESE?
-                gl_context.gl_enable_vertex_attrib_array(attribute.location)?;
+                attributes_in_use |= 1 << attribute.location;
             }
 
             binding_index += 1;
         }
 
+        Self::update_vertex_attributes_in_use(gl_context, &mut *state, attributes_in_use)
+    }
+
+    fn update_vertex_attributes_in_use(
+        gl_context: &GlContext,
+        state: &mut CommandPoolGles2StateInner,
+        desired: AttributeEnabledBits,
+    ) -> RafxResult<()> {
+        for i in 0..state.vertex_buffer_byte_offsets.len() as u32 {
+            let is_enabled = (1 << i) & state.vertex_attribute_enabled_bits;
+            let should_be_enabled = (1 << i) & desired;
+            if is_enabled != should_be_enabled {
+                if should_be_enabled != 0 {
+                    gl_context.gl_enable_vertex_attrib_array(i)?;
+                } else {
+                    gl_context.gl_disable_vertex_attrib_array(i)?;
+                }
+            }
+        }
+
+        state.vertex_attribute_enabled_bits = desired;
         Ok(())
     }
 
@@ -778,7 +794,7 @@ impl RafxCommandBufferGles2 {
                             gl_context.gl_active_texture(descriptor.texture_index.unwrap())?;
                             let target = texture.gl_target();
                             //TODO: handle cube map
-                            //TODO: Handle specific mip levels/array slices
+                            //TODO: Handle specific mip levels/array slices (GL_TEXTURE_BASE_LEVEL and GL_TEXTURE_MAX_LEVEL on sampler, ES3 only)
                             gl_context.gl_bind_texture(
                                 target,
                                 texture.gl_raw_image().gl_texture_id().unwrap(),

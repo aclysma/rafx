@@ -12,6 +12,8 @@ use std::sync::Arc;
 
 static NEXT_COMMAND_POOL_STATE_ID: AtomicU32 = AtomicU32::new(0);
 
+pub(crate) type AttributeEnabledBits = u32;
+
 pub(crate) struct BoundDescriptorSet {
     pub(crate) data: Arc<TrustCell<DescriptorSetArrayData>>,
     pub(crate) array_index: u32,
@@ -30,6 +32,7 @@ pub(crate) struct CommandPoolGles2StateInner {
     pub(crate) descriptor_sets_update_index: [u64; MAX_DESCRIPTOR_SET_LAYOUTS],
 
     // One per possible bound vertex buffer (could be 1 per attribute!)
+    pub(crate) vertex_attribute_enabled_bits: AttributeEnabledBits,
     pub(crate) vertex_buffer_byte_offsets: Vec<u32>,
     pub(crate) index_buffer_byte_offset: u32,
     pub(crate) framebuffer_id: FramebufferId,
@@ -98,6 +101,7 @@ impl CommandPoolGles2State {
             surface_size: None,
             current_gl_pipeline_info: None,
             stencil_reference_value: 0,
+            vertex_attribute_enabled_bits: 0,
             vertex_buffer_byte_offsets: vec![
                 0;
                 device_context.device_info().max_vertex_attribute_count

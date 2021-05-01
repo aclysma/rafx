@@ -864,7 +864,7 @@ pub struct GlTextureFormatInfo {
 #[rustfmt::skip]
 #[cfg(feature = "rafx-gles2")]
 impl RafxFormat {
-    pub fn gl_type(self) -> Option<GLenum> {
+    pub fn gles2_type(self) -> Option<GLenum> {
         use crate::gles2::gles2_bindings as gl;
         match self {
             RafxFormat::R4G4_UNORM_PACK8 => Some(gl::UNSIGNED_SHORT_4_4_4_4),
@@ -1055,7 +1055,7 @@ impl RafxFormat {
         }
     }
 
-    pub fn gl_texture_format_info(self) -> Option<GlTextureFormatInfo> {
+    pub fn gles2_texture_format_info(self) -> Option<GlTextureFormatInfo> {
         use crate::gles2::gles2_bindings as gl;
         #[rustfmt::skip]
         let formats = match self {
@@ -1247,7 +1247,7 @@ impl RafxFormat {
             _ => None,
         };
 
-        let gl_type = self.gl_type()?;
+        let gl_type = self.gles2_type()?;
         formats.map(|(gl_format, gl_internal_format)| GlTextureFormatInfo {
             gl_format,
             gl_type,

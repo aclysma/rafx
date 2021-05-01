@@ -135,18 +135,18 @@ impl RafxTextureGles2 {
 
         let format_info = texture_def
             .format
-            .gl_texture_format_info()
+            .gles2_texture_format_info()
             .ok_or_else(|| format!("Format {:?} not supported", texture_def.format))?;
 
         let image = if let Some(existing_image) = existing_image {
             existing_image
         } else {
-            //TODO: glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            //TODO: glTexStorage2D/3D
+            //TODO: glTexStorage2D/3D (ES3 only)
             //multisample support
             //TODO: Mipmaps
             let gl_context = device_context.gl_context();
             let texture_id = gl_context.gl_create_texture()?;
+            gl_context.gl_pixel_storei(gles2_bindings::UNPACK_ALIGNMENT, 1)?;
             gl_context.gl_bind_texture(gl_target, texture_id)?;
             gl_context.gl_tex_image_2d(
                 gl_target,
