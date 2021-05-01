@@ -142,6 +142,7 @@ impl RafxRootSignatureGles2 {
         &self.inner.uniform_reflection
     }
 
+    #[allow(dead_code)]
     pub(crate) fn uniform_index(
         &self,
         descriptor_index: RafxDescriptorIndex,

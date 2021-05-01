@@ -23,6 +23,7 @@ pub fn is_uniform_buffer_field_type(gl_type: GLenum) -> bool {
     }
 }
 
+#[allow(dead_code)]
 pub fn byte_size_of_type(gl_type: GLenum) -> u32 {
     match gl_type {
         gles2_bindings::INT | gles2_bindings::BOOL | gles2_bindings::FLOAT => 4,
