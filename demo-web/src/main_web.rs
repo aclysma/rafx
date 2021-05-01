@@ -31,36 +31,4 @@ pub fn start() -> Result<(), JsValue> {
     log::error!("Returned with result {:?}", result);
 
     Ok(())
-
-    // let mut i = 0;
-    // event_loop.run(move |event, _, control_flow| {
-    //     *control_flow = ControlFlow::Poll;
-    //
-    //     match event {
-    //         Event::WindowEvent {
-    //             event: WindowEvent::CloseRequested,
-    //             window_id,
-    //         } if window_id == window.id() => *control_flow = ControlFlow::Exit,
-    //         Event::MainEventsCleared => {
-    //             window.request_redraw();
-    //         },
-    //         Event::WindowEvent {
-    //             event: window_event,
-    //             window_id: _
-    //         } => {
-    //             match window_event {
-    //                 WindowEvent::KeyboardInput { .. } | WindowEvent::MouseInput { .. } => {
-    //                     log::debug!("{:?}", window_event);
-    //                 }
-    //                 _ => {}
-    //             }
-    //         },
-    //         Event::RedrawRequested(_) => {
-    //             i += 1;
-    //             ctx.gl_clear_color((i as f32 / 50.0).sin() * 0.5 + 0.5, 0.0, 1.0, 1.0);
-    //             ctx.gl_clear(crate::gles20::COLOR_BUFFER_BIT);
-    //         }
-    //         _ => (),
-    //     }
-    // });
 }

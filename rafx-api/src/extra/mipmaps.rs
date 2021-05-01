@@ -61,12 +61,12 @@ fn generate_mipmaps_metal(
     return Ok(());
 }
 
-// This custom path for metal can be removed after I implement cmd_blit
 #[cfg(feature = "rafx-gles2")]
 fn generate_mipmaps_gles2(
     _command_buffer: &RafxCommandBufferGles2,
     _texture: &RafxTexture,
 ) -> RafxResult<()> {
+    //TODO: Implement mipmaps for GL
     unimplemented!();
 }
 

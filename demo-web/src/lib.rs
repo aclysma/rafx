@@ -8,18 +8,7 @@ mod main_web;
 #[cfg(target_arch = "wasm32")]
 pub use main_web::*;
 
-use rafx::api::{
-    RafxApi, RafxBufferDef, RafxCmdCopyBufferToTextureParams, RafxColorClearValue,
-    RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxCommandPoolDef, RafxDescriptorElements,
-    RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxExtents3D, RafxFormat,
-    RafxGlUniformMember, RafxGraphicsPipelineDef, RafxImmutableSamplerKey, RafxImmutableSamplers,
-    RafxLoadOp, RafxPrimitiveTopology, RafxQueueType, RafxResourceState, RafxResourceType,
-    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDef,
-    RafxShaderModuleDefGles2, RafxShaderResource, RafxShaderStageDef, RafxShaderStageFlags,
-    RafxShaderStageReflection, RafxStoreOp, RafxSwapchainDef, RafxSwapchainHelper,
-    RafxTextureBarrier, RafxTextureDef, RafxVertexAttributeRate, RafxVertexBufferBinding,
-    RafxVertexLayout, RafxVertexLayoutAttribute, RafxVertexLayoutBuffer,
-};
+use rafx::api::*;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::ControlFlow,
@@ -78,11 +67,6 @@ pub fn update_loop(
         // Some default data we can render
         //
         #[rustfmt::skip]
-        //     let vertex_data = [
-        //     0.0f32, 0.5, 1.0, 0.0, 0.0,
-        //     -0.5, -0.5, 0.0, 1.0, 0.0,
-        //     0.5, 0.5, 0.0, 0.0, 1.0,
-        // ];
         let vertex_data = [
             -0.5f32, -0.5, 0.0, 1.0,
             -0.5, 0.5, 0.0, 0.0,
@@ -404,43 +388,16 @@ pub fn update_loop(
                 Event::RedrawRequested(_) => {
                     let elapsed_seconds = start_time.elapsed().as_secs_f32();
 
-                    // #[rustfmt::skip]
-                    // let vertex_data = [
-                    //     0.0f32, 0.5, 1.0, 0.0,
-                    //     0.0, 0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0,
-                    //     1.0, 0.0, -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5,
-                    //     0.0f32, 0.5, 1.0, 0.0,
-                    //     0.0, 0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0,
-                    //     1.0, 0.0, -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5,
-                    // ];
-
                     let m = elapsed_seconds.cos();
 
+                    #[rustfmt::skip]
                     let vertex_data = [
-                        m * -0.5,
-                        -0.5,
-                        0.0,
-                        1.0,
-                        m * -0.5,
-                        0.5,
-                        0.0,
-                        0.0,
-                        m * 0.5,
-                        0.5,
-                        1.0,
-                        0.0,
-                        m * -0.5,
-                        -0.5,
-                        0.0,
-                        1.0,
-                        m * 0.5,
-                        0.5,
-                        1.0,
-                        0.0,
-                        m * 0.5,
-                        -0.5,
-                        1.0,
-                        1.0,
+                        m * -0.5, -0.5, 0.0, 1.0,
+                        m * -0.5, 0.5, 0.0, 0.0,
+                        m * 0.5, 0.5, 1.0, 0.0,
+                        m * -0.5, -0.5, 0.0, 1.0,
+                        m * 0.5, 0.5, 1.0, 0.0,
+                        m * 0.5, -0.5, 1.0, 1.0,
                     ];
 
                     //
