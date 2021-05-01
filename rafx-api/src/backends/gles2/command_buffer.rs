@@ -16,7 +16,7 @@ use rafx_base::trust_cell::TrustCell;
 use crate::gles2::conversions::Gles2DepthStencilState;
 use crate::gles2::gles2_bindings;
 
-use crate::backends::gles2::RafxRawImageGles2;
+use crate::backends::gles2::{RafxRawImageGles2, RafxSamplerIndexGles2};
 use crate::gles2::gl_type_util;
 use crate::gles2::gles2_bindings::types::GLenum;
 use std::sync::Arc;
@@ -715,123 +715,109 @@ impl RafxCommandBufferGles2 {
             let descriptor = &root_signature.inner.descriptors[descriptor_index.0 as usize];
 
             match descriptor.resource_type {
-                RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE => {
-                    unimplemented!();
-                    // let data_offset = descriptor.descriptor_data_offset_in_set.unwrap();
-                    // for i in 0..descriptor.element_count {
-                    //     let buffer_state = data.buffer_states[(data_offset + i) as usize]
-                    //         .as_ref()
-                    //         .unwrap();
-                    //
-                    //     // let base_offset = buffer_state.offset;
-                    //     // let data = unsafe {
-                    //     //     buffer_state.buffer_contents.as_ref().unwrap().as_slice()
-                    //     // };
-                    //     //
-                    //     // let location = root_signature.resource_location(program_index, descriptor.descriptor_index);
-                    //     // if let Some(location) = location {
-                    //     //     gl_type_util::set_uniform(gl_context, location, data, descriptor.gl_type, descriptor.element_count)?;
-                    //     // }
-                    //     unimplemented!()
-                    // }
-                }
                 RafxResourceType::SAMPLER => {
                     // do nothing, we handle this when dealing with textures
                 }
                 RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
-                    //TODO: one location per descriptor might not work
                     if let Some(location) =
                         pipeline_info.resource_location(descriptor.descriptor_index)
                     {
-                        // Find where the buffers states begin for this resource in this descriptor set
+                        // Find where the texture states begin for this resource in this descriptor set
                         let base_image_state_index = array_index * data.texture_states_per_set
                             + descriptor.descriptor_data_offset_in_set.unwrap();
 
-                        // Find the sampler associated with this texture
-                        let sampler_descriptor_index = descriptor.sampler_descriptor_index.unwrap();
-                        let sampler_descriptor =
-                            root_signature.descriptor(sampler_descriptor_index).unwrap();
-                        let base_sampler_state_index = array_index * data.sampler_states_per_set
-                            + sampler_descriptor.descriptor_data_offset_in_set.unwrap();
+                        //
+                        // The samplers are either within the RafxDescriptorSetArray's data or,
+                        // if it's an immutable sampler, in the root signature itself
+                        //
+                        // We need to find a sampler here because GL ES 2.0 expects sampler state
+                        // to be set per-texture
+                        //
+                        let mut immutable_samplers = None;
+                        let mut mutable_samplers = None;
+                        match descriptor.sampler_descriptor_index.unwrap() {
+                            RafxSamplerIndexGles2::Immutable(immutable_index) => {
+                                immutable_samplers = Some(
+                                    &root_signature.inner.immutable_samplers
+                                        [immutable_index as usize],
+                                )
+                            }
+                            RafxSamplerIndexGles2::Mutable(sampler_descriptor_index) => {
+                                // Find the descriptor with the relevant sampler
+                                let sampler_descriptor =
+                                    root_signature.descriptor(sampler_descriptor_index).unwrap();
+                                // Find the samplers within the descriptor set's flattened array of
+                                // all samplers
+                                let first = (array_index * data.sampler_states_per_set
+                                    + sampler_descriptor.descriptor_data_offset_in_set.unwrap())
+                                    as usize;
+                                let last = first + descriptor.element_count as usize;
+                                mutable_samplers = Some(&data.sampler_states[first..last]);
+                            }
+                        }
 
                         for i in 0..descriptor.element_count {
                             let image_state_index = base_image_state_index + i;
-                            let image_state = data.texture_states[image_state_index as usize]
+                            let texture = &data.texture_states[image_state_index as usize]
                                 .as_ref()
-                                .unwrap();
-                            let sampler_state_index = base_sampler_state_index + i;
-                            let sampler_state = data.sampler_states[sampler_state_index as usize]
-                                .as_ref()
-                                .unwrap();
+                                .expect("Tried to use unbound texture")
+                                .texture;
 
-                            if let Some(texture) = &image_state.texture {
-                                gl_context.gl_active_texture(descriptor.texture_index.unwrap())?;
-                                let target = texture.gl_target();
-                                //TODO: handle cube map
-                                //TODO: Handle specific mip levels/array slices
-                                gl_context.gl_bind_texture(
-                                    target,
-                                    texture.gl_raw_image().gl_texture_id().unwrap(),
-                                )?;
-
-                                if let Some(sampler) = &sampler_state.sampler {
-                                    gl_type_util::set_uniform(
-                                        gl_context,
-                                        location,
-                                        &descriptor.texture_index.unwrap(),
-                                        gles2_bindings::SAMPLER_2D,
-                                        1,
-                                    )?;
-
-                                    let min_filter = if texture.texture_def().mip_count > 1 {
-                                        sampler.inner.gl_mip_map_mode
-                                    } else {
-                                        sampler.inner.gl_min_filter
-                                    };
-
-                                    gl_context.gl_tex_parameteri(
-                                        target,
-                                        gles2_bindings::TEXTURE_MIN_FILTER,
-                                        min_filter as _,
-                                    )?;
-                                    gl_context.gl_tex_parameteri(
-                                        target,
-                                        gles2_bindings::TEXTURE_MAG_FILTER,
-                                        sampler.inner.gl_mag_filter as _,
-                                    )?;
-                                    gl_context.gl_tex_parameteri(
-                                        target,
-                                        gles2_bindings::TEXTURE_WRAP_S,
-                                        sampler.inner.gl_address_mode_s as _,
-                                    )?;
-                                    gl_context.gl_tex_parameteri(
-                                        target,
-                                        gles2_bindings::TEXTURE_WRAP_T,
-                                        sampler.inner.gl_address_mode_t as _,
-                                    )?;
-                                } else {
-                                    gl_context.gl_tex_parameteri(
-                                        target,
-                                        gles2_bindings::TEXTURE_MIN_FILTER,
-                                        gles2_bindings::LINEAR as _,
-                                    )?;
-                                    gl_context.gl_tex_parameteri(
-                                        target,
-                                        gles2_bindings::TEXTURE_MAG_FILTER,
-                                        gles2_bindings::LINEAR as _,
-                                    )?;
-                                    gl_context.gl_tex_parameteri(
-                                        target,
-                                        gles2_bindings::TEXTURE_WRAP_S,
-                                        gles2_bindings::CLAMP_TO_EDGE as _,
-                                    )?;
-                                    gl_context.gl_tex_parameteri(
-                                        target,
-                                        gles2_bindings::TEXTURE_WRAP_T,
-                                        gles2_bindings::CLAMP_TO_EDGE as _,
-                                    )?;
+                            let sampler = match descriptor.sampler_descriptor_index.unwrap() {
+                                RafxSamplerIndexGles2::Immutable(_) => {
+                                    &immutable_samplers.unwrap().samplers[i as usize]
                                 }
-                            }
+                                RafxSamplerIndexGles2::Mutable(_) => {
+                                    &mutable_samplers.unwrap()[i as usize]
+                                        .as_ref()
+                                        .expect("Tried to use unbound sampler")
+                                        .sampler
+                                }
+                            };
+
+                            gl_context.gl_active_texture(descriptor.texture_index.unwrap())?;
+                            let target = texture.gl_target();
+                            //TODO: handle cube map
+                            //TODO: Handle specific mip levels/array slices
+                            gl_context.gl_bind_texture(
+                                target,
+                                texture.gl_raw_image().gl_texture_id().unwrap(),
+                            )?;
+
+                            gl_type_util::set_uniform(
+                                gl_context,
+                                location,
+                                &descriptor.texture_index.unwrap(),
+                                gles2_bindings::SAMPLER_2D,
+                                1,
+                            )?;
+
+                            let min_filter = if texture.texture_def().mip_count > 1 {
+                                sampler.inner.gl_mip_map_mode
+                            } else {
+                                sampler.inner.gl_min_filter
+                            };
+
+                            gl_context.gl_tex_parameteri(
+                                target,
+                                gles2_bindings::TEXTURE_MIN_FILTER,
+                                min_filter as _,
+                            )?;
+                            gl_context.gl_tex_parameteri(
+                                target,
+                                gles2_bindings::TEXTURE_MAG_FILTER,
+                                sampler.inner.gl_mag_filter as _,
+                            )?;
+                            gl_context.gl_tex_parameteri(
+                                target,
+                                gles2_bindings::TEXTURE_WRAP_S,
+                                sampler.inner.gl_address_mode_s as _,
+                            )?;
+                            gl_context.gl_tex_parameteri(
+                                target,
+                                gles2_bindings::TEXTURE_WRAP_T,
+                                sampler.inner.gl_address_mode_t as _,
+                            )?;
                         }
                     }
                 }
@@ -877,6 +863,9 @@ impl RafxCommandBufferGles2 {
                             }
                         }
                     }
+                }
+                RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE => {
+                    unimplemented!("SSBOs are not supported in GL ES 2.0")
                 }
                 _ => unimplemented!("Unrecognized descriptor type in do_bind_descriptor_set"),
             }
@@ -960,7 +949,7 @@ impl RafxCommandBufferGles2 {
         _group_count_y: u32,
         _group_count_z: u32,
     ) -> RafxResult<()> {
-        unimplemented!("Compute shaders not supported in GL ES");
+        unimplemented!("Compute shaders not supported in GL ES 2.0");
     }
 
     pub fn cmd_resource_barrier(

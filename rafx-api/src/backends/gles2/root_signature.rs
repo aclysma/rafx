@@ -1,5 +1,5 @@
 use crate::gles2::reflection::{UniformIndex, UniformReflectionData};
-use crate::gles2::{ProgramId, RafxDeviceContextGles2};
+use crate::gles2::{ProgramId, RafxDeviceContextGles2, RafxSamplerGles2};
 use crate::{
     RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
@@ -11,16 +11,21 @@ use std::sync::Arc;
 
 static NEXT_ROOT_SIGNATURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
-//TODO: Immutable sampler support
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum RafxSamplerIndexGles2 {
+    // Use the immutable sampler in RafxRootSignatureGles2Inner::immutable_samplers
+    Immutable(u32),
 
-// #[derive(Debug)]
-// pub(crate) struct ImmutableSampler {
-//     //pub(crate) binding: u32,
-//     pub(crate) samplers: Vec<RafxSamplerGl>,
-//
-//     pub(crate) argument_buffer_id: NSUInteger,
-// }
-//
+    // Use the sampler within the given descriptor
+    Mutable(RafxDescriptorIndex),
+}
+
+#[derive(Debug)]
+pub(crate) struct ImmutableSampler {
+    pub(crate) samplers: Vec<RafxSamplerGles2>,
+    pub(crate) gl_name: CString,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct DescriptorInfo {
     pub(crate) name: Option<String>,
@@ -52,7 +57,7 @@ pub(crate) struct DescriptorInfo {
     // A 0..n number, one assigned for every unique texture
     pub(crate) texture_index: Option<u32>,
     // A quick lookup to get the sampler associated with a texture
-    pub(crate) sampler_descriptor_index: Option<RafxDescriptorIndex>,
+    pub(crate) sampler_descriptor_index: Option<RafxSamplerIndexGles2>,
 
     pub(crate) gl_name: CString,
 }
@@ -66,7 +71,7 @@ pub(crate) struct DescriptorSetLayoutInfo {
 
     // // --- gl-specific ---
     // // Now embedded by spirv_cross in the shader
-    // //pub(crate) immutable_samplers: Vec<ImmutableSampler>,
+    //pub(crate) immutable_samplers: Vec<ImmutableSampler>,
     // // pub(crate) sampler_count: u32,
     pub(crate) texture_descriptor_state_count: u32,
     pub(crate) sampler_descriptor_state_count: u32,
@@ -84,7 +89,7 @@ pub(crate) struct RafxRootSignatureGles2Inner {
     // // --- gl-specific ---
     // // Keeps them in scope so they don't drop
     // //TODO: Can potentially remove, they are held in DescriptorInfo too
-    // //immutable_samplers: Vec<RafxSampler>,
+    pub(crate) immutable_samplers: Vec<ImmutableSampler>,
     pub(crate) uniform_reflection: UniformReflectionData,
     pub(crate) root_signature_id: u32,
 }
@@ -161,11 +166,7 @@ impl RafxRootSignatureGles2 {
         // If we update this constant, update the arrays in this function
         assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
 
-        if !root_signature_def.immutable_samplers.is_empty() {
-            unimplemented!();
-        }
-
-        // let mut immutable_samplers = vec![];
+        let mut immutable_samplers = vec![];
         // for sampler_list in root_signature_def.immutable_samplers {
         //     for sampler in sampler_list.samplers {
         //         immutable_samplers.push(sampler.clone());
@@ -227,18 +228,17 @@ impl RafxRootSignatureGles2 {
                     Some(next_descriptor_data_sampler_offset[resource.set_index as usize]);
                 next_descriptor_data_sampler_offset[resource.set_index as usize] +=
                     resource.element_count_normalized();
-            } else if resource.resource_type.intersects(
-                RafxResourceType::BUFFER
-                    | RafxResourceType::BUFFER_READ_WRITE
-                    | RafxResourceType::UNIFORM_BUFFER,
-            ) {
+            } else if resource
+                .resource_type
+                .intersects(RafxResourceType::UNIFORM_BUFFER)
+            {
                 descriptor_data_offset_in_set =
                     Some(next_descriptor_data_buffer_offset[resource.set_index as usize]);
                 next_descriptor_data_buffer_offset[resource.set_index as usize] +=
                     resource.element_count_normalized();
             } else {
                 return Err(format!(
-                    "Resource type {:?} not supporrted by GL ES",
+                    "Resource type {:?} not supporrted by GL ES 2.0",
                     resource.resource_type
                 ))?;
             }
@@ -258,7 +258,7 @@ impl RafxRootSignatureGles2 {
             assert_ne!(resource.resource_type, RafxResourceType::ROOT_CONSTANT);
 
             // Verify set index is valid
-            let immutable_sampler = crate::internal_shared::find_immutable_sampler_index(
+            let immutable_sampler_def_index = crate::internal_shared::find_immutable_sampler_index(
                 root_signature_def.immutable_samplers,
                 &resource.name,
                 resource.set_index,
@@ -266,9 +266,9 @@ impl RafxRootSignatureGles2 {
             );
 
             // Check that if an immutable sampler is set, the array size matches the resource element count
-            if let Some(immutable_sampler_index) = immutable_sampler {
+            if let Some(immutable_sampler_def_index) = immutable_sampler_def_index {
                 if resource.element_count_normalized() as usize
-                    != root_signature_def.immutable_samplers[immutable_sampler_index]
+                    != root_signature_def.immutable_samplers[immutable_sampler_def_index]
                         .samplers
                         .len()
                 {
@@ -278,32 +278,44 @@ impl RafxRootSignatureGles2 {
                         resource.binding,
                         resource.name,
                         resource.element_count_normalized(),
-                        root_signature_def.immutable_samplers[immutable_sampler_index].samplers.len()
+                        root_signature_def.immutable_samplers[immutable_sampler_def_index].samplers.len()
                     ))?;
                 }
             }
 
             let layout: &mut DescriptorSetLayoutInfo = &mut layouts[resource.set_index as usize];
 
-            if let Some(_immutable_sampler_index) = immutable_sampler {
-                // This is now embedded by spirv_cross in the shader
-                // let samplers = root_signature_def
-                //     .immutable_samplers[immutable_sampler_index]
-                //     .samplers
-                //     .iter()
-                //     .map(|x| x.gl_sampler().unwrap().clone())
-                //     .collect();
-                //
-                // layout.immutable_samplers.push(ImmutableSampler {
-                //     //binding: resource.binding,
-                //     samplers,
-                //     argument_buffer_id: argument_buffer_id as _
-                // });
+            let gl_name = resource.gles2_name.as_ref().unwrap();
+            let gl_name_cstr = CString::new(gl_name.as_str()).unwrap();
+
+            if let Some(immutable_sampler_def_index) = immutable_sampler_def_index {
+                assert!(resource.resource_type.intersects(RafxResourceType::SAMPLER));
+
+                let samplers = root_signature_def.immutable_samplers[immutable_sampler_def_index]
+                    .samplers
+                    .iter()
+                    .map(|x| x.gles2_sampler().unwrap().clone())
+                    .collect();
+
+                let immutable_sampler_index = immutable_samplers.len();
+
+                immutable_samplers.push(ImmutableSampler {
+                    samplers,
+                    gl_name: gl_name_cstr,
+                });
+
+                let old = sampler_by_gl_name.insert(
+                    resource.gles2_name.as_ref().unwrap(),
+                    RafxSamplerIndexGles2::Immutable(immutable_sampler_index as u32),
+                );
+                if old.is_some() {
+                    Err(format!(
+                        "The sampler name {:?} was used by multiple samplers",
+                        resource.gles2_name
+                    ))?;
+                }
             } else {
                 let descriptor_index = RafxDescriptorIndex(descriptors.len() as u32);
-
-                let gl_name = resource.gles2_name.as_ref().unwrap();
-                let gl_name_cstr = CString::new(gl_name.as_str()).unwrap();
 
                 let uniform_index = if resource.resource_type == RafxResourceType::UNIFORM_BUFFER {
                     // May be none if the variable is not active in any shader
@@ -349,8 +361,16 @@ impl RafxRootSignatureGles2 {
                 }
 
                 if resource.resource_type.intersects(RafxResourceType::SAMPLER) {
-                    sampler_by_gl_name
-                        .insert(resource.gles2_name.as_ref().unwrap(), descriptor_index);
+                    let old = sampler_by_gl_name.insert(
+                        resource.gles2_name.as_ref().unwrap(),
+                        RafxSamplerIndexGles2::Mutable(descriptor_index),
+                    );
+                    if old.is_some() {
+                        Err(format!(
+                            "The sampler name {:?} was used by multiple samplers",
+                            resource.gles2_name
+                        ))?;
+                    }
                 }
             }
         }
@@ -417,6 +437,7 @@ impl RafxRootSignatureGles2 {
             name_to_descriptor_index,
             uniform_reflection,
             root_signature_id,
+            immutable_samplers,
         };
 
         Ok(RafxRootSignatureGles2 {

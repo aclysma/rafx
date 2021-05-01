@@ -1,5 +1,5 @@
 use rafx_api::{
-    RafxShaderPackage, RafxShaderPackageGl, RafxShaderPackageMetal, RafxShaderPackageVulkan,
+    RafxShaderPackage, RafxShaderPackageGles2, RafxShaderPackageMetal, RafxShaderPackageVulkan,
 };
 use rafx_framework::CookedShaderPackage;
 use rafx_framework::{ReflectedEntryPoint, ShaderModuleHash};
@@ -19,7 +19,7 @@ pub(crate) fn cook_shader(
         // API so will need to figure out how to compile the shader programmatically.)
         metal: metal_source.map(|x| RafxShaderPackageMetal::Src(x)),
 
-        gles2: gles2_source.map(|x| RafxShaderPackageGl::Src(x)),
+        gles2: gles2_source.map(|x| RafxShaderPackageGles2::Src(x)),
     };
 
     let cooked_shader = CookedShaderPackage {

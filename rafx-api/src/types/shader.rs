@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 /// It is a struct rather than an enum because these are not mutually exclusive
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
-pub enum RafxShaderPackageGl {
-    /// Raw uncompiled OpenGL ES source code. Will be compiled at runtime.
+pub enum RafxShaderPackageGles2 {
+    /// Raw uncompiled OpenGL ES 2.0 source code. Will be compiled at runtime.
     Src(String),
 }
 
@@ -51,19 +51,19 @@ pub enum RafxShaderPackageEmpty {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxShaderPackage {
-    pub gles2: Option<RafxShaderPackageGl>,
+    pub gles2: Option<RafxShaderPackageGles2>,
     pub metal: Option<RafxShaderPackageMetal>,
     pub vk: Option<RafxShaderPackageVulkan>,
 }
 
 impl RafxShaderPackage {
     /// Create a shader module def for use with a GL RafxDevice. Returns none if the package does
-    /// not contain data necessary for GL (not GL ES)
+    /// not contain data necessary for GL ES 2.0
     #[cfg(feature = "rafx-gles2")]
     pub fn gles2_module_def(&self) -> Option<RafxShaderModuleDefGles2> {
         if let Some(gl) = self.gles2.as_ref() {
             Some(match gl {
-                RafxShaderPackageGl::Src(src) => RafxShaderModuleDefGles2::GlSrc(src),
+                RafxShaderPackageGles2::Src(src) => RafxShaderModuleDefGles2::GlSrc(src),
             })
         } else {
             None

@@ -6,7 +6,9 @@ use crate::gles2::{RafxDeviceContextGles2, RafxDeviceContextGles2Inner};
 
 /// Gl-specific configuration
 #[derive(Default)]
-pub struct RafxApiDefGles2 {}
+pub struct RafxApiDefGles2 {
+    pub validate_shaders: bool,
+}
 
 pub struct RafxApiGles2 {
     device_context: Option<RafxDeviceContextGles2>,
@@ -26,9 +28,9 @@ impl RafxApiGles2 {
     pub fn new(
         window: &dyn HasRawWindowHandle,
         _api_def: &RafxApiDef,
-        _gl_api_def: &RafxApiDefGles2,
+        gl_api_def: &RafxApiDefGles2,
     ) -> RafxResult<Self> {
-        let inner = Arc::new(RafxDeviceContextGles2Inner::new(window)?);
+        let inner = Arc::new(RafxDeviceContextGles2Inner::new(window, gl_api_def)?);
         let device_context = RafxDeviceContextGles2::new(inner)?;
 
         Ok(RafxApiGles2 {

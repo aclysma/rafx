@@ -12,13 +12,13 @@ use rafx::api::{
     RafxApi, RafxBufferDef, RafxCmdCopyBufferToTextureParams, RafxColorClearValue,
     RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxCommandPoolDef, RafxDescriptorElements,
     RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxExtents3D, RafxFormat,
-    RafxGlUniformMember, RafxGraphicsPipelineDef, RafxLoadOp, RafxPrimitiveTopology, RafxQueueType,
-    RafxResourceState, RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount,
-    RafxSamplerDef, RafxShaderModuleDef, RafxShaderModuleDefGles2, RafxShaderResource,
-    RafxShaderStageDef, RafxShaderStageFlags, RafxShaderStageReflection, RafxStoreOp,
-    RafxSwapchainDef, RafxSwapchainHelper, RafxTextureBarrier, RafxTextureDef,
-    RafxVertexAttributeRate, RafxVertexBufferBinding, RafxVertexLayout, RafxVertexLayoutAttribute,
-    RafxVertexLayoutBuffer,
+    RafxGlUniformMember, RafxGraphicsPipelineDef, RafxImmutableSamplerKey, RafxImmutableSamplers,
+    RafxLoadOp, RafxPrimitiveTopology, RafxQueueType, RafxResourceState, RafxResourceType,
+    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDef,
+    RafxShaderModuleDefGles2, RafxShaderResource, RafxShaderStageDef, RafxShaderStageFlags,
+    RafxShaderStageReflection, RafxStoreOp, RafxSwapchainDef, RafxSwapchainHelper,
+    RafxTextureBarrier, RafxTextureDef, RafxVertexAttributeRate, RafxVertexBufferBinding,
+    RafxVertexLayout, RafxVertexLayoutAttribute, RafxVertexLayoutBuffer,
 };
 use winit::{
     event::{Event, WindowEvent},
@@ -294,7 +294,10 @@ pub fn update_loop(
         log::trace!("Creating root signature");
         let root_signature = device_context.create_root_signature(&RafxRootSignatureDef {
             shaders: &[shader.clone()],
-            immutable_samplers: &[],
+            immutable_samplers: &[RafxImmutableSamplers {
+                key: RafxImmutableSamplerKey::Name("smp"),
+                samplers: &[sampler],
+            }],
         })?;
 
         //
@@ -328,15 +331,6 @@ pub fn update_loop(
                     descriptor_key: RafxDescriptorKey::Name("tex"),
                     elements: RafxDescriptorElements {
                         textures: Some(&[&texture]),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-                RafxDescriptorUpdate {
-                    array_index: i as u32,
-                    descriptor_key: RafxDescriptorKey::Name("smp"),
-                    elements: RafxDescriptorElements {
-                        samplers: Some(&[&sampler]),
                         ..Default::default()
                     },
                     ..Default::default()

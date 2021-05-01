@@ -46,7 +46,8 @@ impl RafxSwapchainGles2 {
             .gl_context_manager()
             .create_surface_context(raw_window_handle)?;
 
-        //TODO: set GL swap interval (vsync)
+        //TODO: set GL swap interval (vsync). Doesn't seem to be a good cross-platform way to do
+        // this. And some platforms don't respect it even if a configuration method is present.
 
         let swapchain_image = Self::create_swapchain_image(device_context, swapchain_def)?;
 

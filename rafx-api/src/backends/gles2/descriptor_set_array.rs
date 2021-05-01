@@ -48,12 +48,12 @@ pub struct BufferDescriptorState {
 #[derive(Clone)]
 pub struct TextureDescriptorState {
     //TODO: does this really need to be a RafxTexture?
-    pub(crate) texture: Option<RafxTextureGles2>,
+    pub(crate) texture: RafxTextureGles2,
 }
 
 #[derive(Clone)]
 pub struct SamplerDescriptorState {
-    pub(crate) sampler: Option<RafxSamplerGles2>,
+    pub(crate) sampler: RafxSamplerGles2,
 }
 
 #[derive(Clone)]
@@ -231,7 +231,7 @@ impl RafxDescriptorSetArrayGles2 {
                 for sampler in samplers {
                     descriptor_set_data.sampler_states[next_index as usize] =
                         Some(SamplerDescriptorState {
-                            sampler: Some(sampler.gles2_sampler().unwrap().clone()),
+                            sampler: sampler.gles2_sampler().unwrap().clone(),
                         });
 
                     next_index += 1;
@@ -254,7 +254,7 @@ impl RafxDescriptorSetArrayGles2 {
                 for texture in textures {
                     descriptor_set_data.texture_states[next_index as usize] =
                         Some(TextureDescriptorState {
-                            texture: Some(texture.gles2_texture().unwrap().clone()),
+                            texture: texture.gles2_texture().unwrap().clone(),
                         });
 
                     next_index += 1;

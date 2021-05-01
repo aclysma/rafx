@@ -56,7 +56,7 @@ impl Gles2PipelineInfo {
 #[derive(Debug)]
 pub struct RafxPipelineGles2 {
     pipeline_type: RafxPipelineType,
-    // It's a RafxRootSignatureGl, but stored as RafxRootSignature so we can return refs to it
+    // It's a RafxRootSignatureGles2, but stored as RafxRootSignature so we can return refs to it
     root_signature: RafxRootSignature,
     shader: RafxShaderGles2,
     gl_pipeline_info: Arc<Gles2PipelineInfo>,
@@ -143,7 +143,10 @@ impl RafxPipelineGles2 {
         }
 
         gl_context.link_shader_program(program_id)?;
-        //TODO: validate?
+
+        if device_context.inner.validate_shaders {
+            gl_context.validate_shader_program(program_id)?;
+        }
 
         let mut resource_locations = Vec::with_capacity(gl_root_signature.inner.descriptors.len());
         for resource in &gl_root_signature.inner.descriptors {

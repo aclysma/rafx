@@ -1,8 +1,8 @@
 use crate::{
-    RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext,
-    RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxResourceType,
-    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDefGles2,
-    RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
+    RafxApiDefGles2, RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef,
+    RafxDeviceContext, RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType,
+    RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef,
+    RafxShaderModuleDefGles2, RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
@@ -30,6 +30,7 @@ pub struct RafxDeviceContextGles2Inner {
     gl_context_manager: GlContextManager,
     gl_context: Arc<GlContext>,
     destroyed: AtomicBool,
+    pub(crate) validate_shaders: bool,
 
     pub(crate) fullscreen_quad: FullscreenQuad,
 
@@ -55,7 +56,10 @@ impl Drop for RafxDeviceContextGles2Inner {
 }
 
 impl RafxDeviceContextGles2Inner {
-    pub fn new(window: &dyn HasRawWindowHandle) -> RafxResult<Self> {
+    pub fn new(
+        window: &dyn HasRawWindowHandle,
+        gl_api_def: &RafxApiDefGles2,
+    ) -> RafxResult<Self> {
         log::debug!("Initializing GL backend");
         let gl_context_manager = super::internal::GlContextManager::new(window)?;
         // GL requires a window for initialization
@@ -86,8 +90,6 @@ impl RafxDeviceContextGles2Inner {
 
         let fullscreen_quad = FullscreenQuad::new(&gl_context)?;
 
-        //TODO: Support extensions?
-
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
         let all_contexts = {
@@ -103,6 +105,7 @@ impl RafxDeviceContextGles2Inner {
             gl_context,
             fullscreen_quad,
             destroyed: AtomicBool::new(false),
+            validate_shaders: gl_api_def.validate_shaders,
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
@@ -306,7 +309,7 @@ impl RafxDeviceContextGles2 {
     ) -> Option<RafxFormat> {
         // OpenGL doesn't provide a great way to determine if a texture is natively available
         for &candidate in candidates {
-            // For now we don't support compressed textures for GL ES at all (but we probably could)
+            // For now we don't support compressed textures for GL ES 2.0 at all (but we probably could)
             if !candidate.is_compressed() {
                 return Some(candidate);
             }
