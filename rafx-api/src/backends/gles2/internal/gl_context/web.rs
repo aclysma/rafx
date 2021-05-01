@@ -1061,10 +1061,8 @@ impl GlContext {
         &self,
         i: u32,
     ) -> RafxResult<()> {
-        unsafe {
-            self.context.active_texture(gles2_bindings::TEXTURE0 + i);
-            self.check_for_error()
-        }
+        self.context.active_texture(gles2_bindings::TEXTURE0 + i);
+        self.check_for_error()
     }
 
     pub fn gl_bind_texture(
@@ -1111,9 +1109,7 @@ impl GlContext {
         pname: GLenum,
         param: i32,
     ) -> RafxResult<()> {
-        unsafe {
-            self.context.tex_parameteri(target, pname, param);
-            self.check_for_error()
-        }
+        self.context.tex_parameteri(target, pname, param);
+        self.check_for_error()
     }
 }

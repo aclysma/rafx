@@ -184,7 +184,7 @@ pub fn update_loop(
                 array_layer: 0,
                 buffer_offset: 0,
             },
-        );
+        ).unwrap();
         upload_command_buffer.end().unwrap();
         graphics_queue
             .submit(&[&upload_command_buffer], &[], &[], None)
