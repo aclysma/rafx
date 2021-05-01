@@ -5,9 +5,9 @@ use crate::gles2::{
     RafxRootSignatureGles2, RafxTextureGles2, NONE_BUFFER, NONE_TEXTURE,
 };
 use crate::{
-    RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
-    RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D,
-    RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxResourceType, RafxResult,
+    RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorFlags,
+    RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding,
+    RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxResourceType, RafxResult,
     RafxTextureBarrier, RafxVertexBufferBinding, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
@@ -493,6 +493,13 @@ impl RafxCommandBufferGles2 {
         } else {
             gl_context.gl_disable(gles2_bindings::BLEND)?;
         }
+
+        gl_context.gl_color_mask(
+            gl_blend_state.color_flags.intersects(RafxColorFlags::RED),
+            gl_blend_state.color_flags.intersects(RafxColorFlags::GREEN),
+            gl_blend_state.color_flags.intersects(RafxColorFlags::BLUE),
+            gl_blend_state.color_flags.intersects(RafxColorFlags::ALPHA),
+        )?;
 
         Ok(())
     }

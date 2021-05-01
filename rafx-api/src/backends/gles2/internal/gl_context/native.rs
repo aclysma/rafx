@@ -806,6 +806,20 @@ impl GlContext {
         }
     }
 
+    pub fn gl_color_mask(
+        &self,
+        r: bool,
+        g: bool,
+        b: bool,
+        a: bool,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles2
+                .ColorMask(to_gl_bool(r), to_gl_bool(g), to_gl_bool(b), to_gl_bool(a));
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_bind_attrib_location(
         &self,
         program_id: ProgramId,

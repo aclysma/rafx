@@ -757,6 +757,17 @@ impl GlContext {
         self.check_for_error()
     }
 
+    pub fn gl_color_mask(
+        &self,
+        r: bool,
+        g: bool,
+        b: bool,
+        a: bool,
+    ) -> RafxResult<()> {
+        self.context.color_mask(r, g, b, a);
+        self.check_for_error()
+    }
+
     pub fn gl_bind_attrib_location(
         &self,
         program_id: ProgramId,

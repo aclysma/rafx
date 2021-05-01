@@ -1,9 +1,9 @@
 use crate::gles2::gles2_bindings;
 use crate::gles2::gles2_bindings::types::GLenum;
 use crate::{
-    RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxBlendState, RafxCompareOp, RafxCullMode,
-    RafxDepthState, RafxFilterType, RafxFrontFace, RafxMemoryUsage, RafxPrimitiveTopology,
-    RafxRasterizerState, RafxResult, RafxStencilOp,
+    RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxBlendState, RafxColorFlags, RafxCompareOp,
+    RafxCullMode, RafxDepthState, RafxFilterType, RafxFrontFace, RafxMemoryUsage,
+    RafxPrimitiveTopology, RafxRasterizerState, RafxResult, RafxStencilOp,
 };
 
 impl RafxFilterType {
@@ -195,7 +195,6 @@ impl RafxBlendOp {
     }
 }
 
-//TODO: Some fields in RafxBlendState are not handled!
 #[derive(Debug)]
 pub struct Gles2BlendState {
     pub enabled: bool,
@@ -205,6 +204,7 @@ pub struct Gles2BlendState {
     pub dst_factor_alpha: GLenum,
     pub blend_op: GLenum,
     pub blend_op_alpha: GLenum,
+    pub color_flags: RafxColorFlags,
 }
 
 impl RafxBlendState {
@@ -235,6 +235,7 @@ impl RafxBlendState {
                     rt_state.blend_op
                 )
             })?,
+            color_flags: rt_state.masks,
         };
 
         Ok(blend_state)
