@@ -1,10 +1,10 @@
 use crate::gles2::{
     BufferId, DescriptorInfo, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2,
-    RafxSamplerGles2, RafxTextureGles2, TextureId,
+    RafxSamplerGles2, RafxTextureGles2,
 };
 use crate::{
     RafxDescriptorKey, RafxDescriptorSetArrayDef, RafxDescriptorUpdate, RafxResourceType,
-    RafxResult, RafxRootSignature, RafxTexture, RafxTextureBindType,
+    RafxResult, RafxRootSignature,
 };
 
 use rafx_base::trust_cell::TrustCell;

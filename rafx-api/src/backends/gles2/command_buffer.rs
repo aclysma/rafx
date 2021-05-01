@@ -716,23 +716,24 @@ impl RafxCommandBufferGles2 {
 
             match descriptor.resource_type {
                 RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE => {
-                    let data_offset = descriptor.descriptor_data_offset_in_set.unwrap();
-                    for i in 0..descriptor.element_count {
-                        let buffer_state = data.buffer_states[(data_offset + i) as usize]
-                            .as_ref()
-                            .unwrap();
-
-                        // let base_offset = buffer_state.offset;
-                        // let data = unsafe {
-                        //     buffer_state.buffer_contents.as_ref().unwrap().as_slice()
-                        // };
-                        //
-                        // let location = root_signature.resource_location(program_index, descriptor.descriptor_index);
-                        // if let Some(location) = location {
-                        //     gl_type_util::set_uniform(gl_context, location, data, descriptor.gl_type, descriptor.element_count)?;
-                        // }
-                        unimplemented!()
-                    }
+                    unimplemented!();
+                    // let data_offset = descriptor.descriptor_data_offset_in_set.unwrap();
+                    // for i in 0..descriptor.element_count {
+                    //     let buffer_state = data.buffer_states[(data_offset + i) as usize]
+                    //         .as_ref()
+                    //         .unwrap();
+                    //
+                    //     // let base_offset = buffer_state.offset;
+                    //     // let data = unsafe {
+                    //     //     buffer_state.buffer_contents.as_ref().unwrap().as_slice()
+                    //     // };
+                    //     //
+                    //     // let location = root_signature.resource_location(program_index, descriptor.descriptor_index);
+                    //     // if let Some(location) = location {
+                    //     //     gl_type_util::set_uniform(gl_context, location, data, descriptor.gl_type, descriptor.element_count)?;
+                    //     // }
+                    //     unimplemented!()
+                    // }
                 }
                 RafxResourceType::SAMPLER => {
                     // do nothing, we handle this when dealing with textures
@@ -751,7 +752,7 @@ impl RafxCommandBufferGles2 {
                         let sampler_descriptor =
                             root_signature.descriptor(sampler_descriptor_index).unwrap();
                         let base_sampler_state_index = array_index * data.sampler_states_per_set
-                            + descriptor.descriptor_data_offset_in_set.unwrap();
+                            + sampler_descriptor.descriptor_data_offset_in_set.unwrap();
 
                         for i in 0..descriptor.element_count {
                             let image_state_index = base_image_state_index + i;
@@ -759,7 +760,7 @@ impl RafxCommandBufferGles2 {
                                 .as_ref()
                                 .unwrap();
                             let sampler_state_index = base_sampler_state_index + i;
-                            let sampler_state = data.sampler_states[image_state_index as usize]
+                            let sampler_state = data.sampler_states[sampler_state_index as usize]
                                 .as_ref()
                                 .unwrap();
 
@@ -780,7 +781,7 @@ impl RafxCommandBufferGles2 {
                                         &descriptor.texture_index.unwrap(),
                                         gles2_bindings::SAMPLER_2D,
                                         1,
-                                    );
+                                    )?;
 
                                     let min_filter = if texture.texture_def().mip_count > 1 {
                                         sampler.inner.gl_mip_map_mode
