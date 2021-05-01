@@ -1,6 +1,10 @@
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(
+        feature = "rafx-metal",
+        feature = "rafx-vulkan",
+        feature = "rafx-gles2"
+    ))
 ))]
 use crate::empty::{RafxDescriptorSetArrayEmpty, RafxDescriptorSetHandleEmpty};
 #[cfg(feature = "rafx-gles2")]
@@ -33,7 +37,11 @@ pub enum RafxDescriptorSetHandle {
     Gles2(RafxDescriptorSetHandleGles2),
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     Empty(RafxDescriptorSetHandleEmpty),
 }
@@ -50,7 +58,11 @@ impl RafxDescriptorSetHandle {
             RafxDescriptorSetHandle::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetHandle::Empty(_) => None,
         }
@@ -67,7 +79,11 @@ impl RafxDescriptorSetHandle {
             RafxDescriptorSetHandle::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetHandle::Empty(_) => None,
         }
@@ -84,7 +100,11 @@ impl RafxDescriptorSetHandle {
             RafxDescriptorSetHandle::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetHandle::Empty(_) => None,
         }
@@ -92,7 +112,11 @@ impl RafxDescriptorSetHandle {
 
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     pub fn empty_descriptor_set_handle(&self) -> Option<&RafxDescriptorSetHandleEmpty> {
         match self {
@@ -104,7 +128,11 @@ impl RafxDescriptorSetHandle {
             RafxDescriptorSetHandle::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetHandle::Empty(inner) => Some(inner),
         }
@@ -142,7 +170,11 @@ pub enum RafxDescriptorSetArray {
     Gles2(RafxDescriptorSetArrayGles2),
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     Empty(RafxDescriptorSetArrayEmpty),
 }
@@ -167,7 +199,11 @@ impl RafxDescriptorSetArray {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetArray::Empty(inner) => {
                 RafxDescriptorSetHandle::Empty(inner.handle(index)?)
@@ -186,7 +222,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Gles2(inner) => inner.root_signature(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetArray::Empty(inner) => inner.root_signature(),
         }
@@ -207,7 +247,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Gles2(inner) => inner.update_descriptor_set(params),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetArray::Empty(inner) => inner.update_descriptor_set(params),
         }
@@ -231,7 +275,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Gles2(inner) => inner.queue_descriptor_set_update(update),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetArray::Empty(inner) => inner.queue_descriptor_set_update(update),
         }
@@ -248,7 +296,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Gles2(inner) => inner.flush_descriptor_set_updates(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetArray::Empty(inner) => inner.flush_descriptor_set_updates(),
         }
@@ -267,7 +319,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetArray::Empty(_) => None,
         }
@@ -286,7 +342,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetArray::Empty(_) => None,
         }
@@ -305,7 +365,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetArray::Empty(_) => None,
         }
@@ -315,7 +379,11 @@ impl RafxDescriptorSetArray {
     /// metal objects.
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     pub fn empty_descriptor_set_array(&self) -> Option<&RafxDescriptorSetArrayEmpty> {
         match self {
@@ -327,7 +395,11 @@ impl RafxDescriptorSetArray {
             RafxDescriptorSetArray::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDescriptorSetArray::Empty(inner) => Some(inner),
         }

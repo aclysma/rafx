@@ -105,7 +105,11 @@ impl RafxShaderPackage {
     /// does not contain data necessary for vulkan
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     #[doc(hidden)]
     pub fn empty_module_def(&self) -> Option<RafxShaderModuleDefEmpty> {
@@ -122,7 +126,11 @@ impl RafxShaderPackage {
             vk: self.vulkan_module_def(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             #[doc(hidden)]
             empty: self.empty_module_def(),
@@ -166,7 +174,11 @@ pub enum RafxShaderModuleDefVulkan<'a> {
 
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(
+        feature = "rafx-metal",
+        feature = "rafx-vulkan",
+        feature = "rafx-gles2"
+    ))
 ))]
 #[derive(Copy, Clone, Hash)]
 #[doc(hidden)]
@@ -187,7 +199,11 @@ pub struct RafxShaderModuleDef<'a> {
     pub vk: Option<RafxShaderModuleDefVulkan<'a>>,
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     #[doc(hidden)]
     pub empty: Option<RafxShaderModuleDefEmpty<'a>>,

@@ -1,6 +1,10 @@
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(
+        feature = "rafx-metal",
+        feature = "rafx-vulkan",
+        feature = "rafx-gles2"
+    ))
 ))]
 use crate::empty::RafxSamplerEmpty;
 #[cfg(feature = "rafx-gles2")]
@@ -23,7 +27,11 @@ pub enum RafxSampler {
     Gles2(RafxSamplerGles2),
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     Empty(RafxSamplerEmpty),
 }
@@ -42,7 +50,11 @@ impl RafxSampler {
             RafxSampler::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxSampler::Empty(_) => None,
         }
@@ -61,7 +73,11 @@ impl RafxSampler {
             RafxSampler::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxSampler::Empty(_) => None,
         }
@@ -80,7 +96,11 @@ impl RafxSampler {
             RafxSampler::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxSampler::Empty(_) => None,
         }
@@ -90,7 +110,11 @@ impl RafxSampler {
     /// metal objects.
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     pub fn empty_sampler(&self) -> Option<&RafxSamplerEmpty> {
         match self {
@@ -102,7 +126,11 @@ impl RafxSampler {
             RafxSampler::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxSampler::Empty(inner) => Some(inner),
         }

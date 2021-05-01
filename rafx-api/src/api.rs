@@ -1,6 +1,10 @@
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(
+        feature = "rafx-metal",
+        feature = "rafx-vulkan",
+        feature = "rafx-gles2"
+    ))
 ))]
 use crate::empty::RafxApiEmpty;
 #[cfg(feature = "rafx-gles2")]
@@ -32,7 +36,11 @@ pub enum RafxApi {
     Gles2(RafxApiGles2),
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     Empty(RafxApiEmpty),
 }
@@ -135,7 +143,11 @@ impl RafxApi {
             RafxApi::Gles2(inner) => RafxDeviceContext::Gles2(inner.device_context().clone()),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxApi::Empty(inner) => RafxDeviceContext::Empty(inner.device_context().clone()),
         }
@@ -156,7 +168,11 @@ impl RafxApi {
             RafxApi::Gles2(inner) => inner.destroy(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxApi::Empty(inner) => inner.destroy(),
         }
@@ -175,7 +191,11 @@ impl RafxApi {
             RafxApi::Gles2(inner) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxApi::Empty(_) => None,
         }
@@ -194,7 +214,11 @@ impl RafxApi {
             RafxApi::Gles2(inner) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxApi::Empty(_) => None,
         }
@@ -213,7 +237,11 @@ impl RafxApi {
             RafxApi::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxApi::Empty(_) => None,
         }
@@ -223,7 +251,11 @@ impl RafxApi {
     /// metal objects.
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     pub fn empty_api(&self) -> Option<&RafxApiEmpty> {
         match self {
@@ -235,7 +267,11 @@ impl RafxApi {
             RafxApi::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxApi::Empty(inner) => Some(inner),
         }

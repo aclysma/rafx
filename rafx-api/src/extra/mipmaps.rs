@@ -38,7 +38,11 @@ pub fn generate_mipmaps(
         RafxCommandBuffer::Gles2(inner) => generate_mipmaps_gles2(inner, _texture),
         #[cfg(any(
             feature = "rafx-empty",
-            not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+            not(any(
+                feature = "rafx-metal",
+                feature = "rafx-vulkan",
+                feature = "rafx-gles2"
+            ))
         ))]
         RafxCommandBuffer::Empty(_) => unimplemented!(),
     }

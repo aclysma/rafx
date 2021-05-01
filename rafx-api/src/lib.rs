@@ -247,7 +247,11 @@ pub use backends::gles2::RafxApiDefGles2;
 
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(
+        feature = "rafx-metal",
+        feature = "rafx-vulkan",
+        feature = "rafx-gles2"
+    ))
 ))]
 pub use backends::empty;
 

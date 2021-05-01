@@ -1,6 +1,10 @@
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(
+        feature = "rafx-metal",
+        feature = "rafx-vulkan",
+        feature = "rafx-gles2"
+    ))
 ))]
 use crate::empty::RafxQueueEmpty;
 #[cfg(feature = "rafx-gles2")]
@@ -36,7 +40,11 @@ pub enum RafxQueue {
     Gles2(RafxQueueGles2),
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     Empty(RafxQueueEmpty),
 }
@@ -52,7 +60,11 @@ impl RafxQueue {
             RafxQueue::Gles2(inner) => RafxDeviceContext::Gles2(inner.device_context().clone()),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => RafxDeviceContext::Empty(inner.device_context().clone()),
         }
@@ -70,7 +82,11 @@ impl RafxQueue {
             RafxQueue::Gles2(inner) => inner.queue_id(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => inner.queue_id(),
         }
@@ -87,7 +103,11 @@ impl RafxQueue {
             RafxQueue::Gles2(inner) => inner.queue_type(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => inner.queue_type(),
         }
@@ -113,7 +133,11 @@ impl RafxQueue {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => {
                 RafxCommandPool::Empty(inner.create_command_pool(command_pool_def)?)
@@ -199,7 +223,11 @@ impl RafxQueue {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => {
                 let command_buffers: Vec<_> = command_buffers
@@ -272,7 +300,11 @@ impl RafxQueue {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => {
                 let wait_semaphores: Vec<_> = wait_semaphores
@@ -299,7 +331,11 @@ impl RafxQueue {
             RafxQueue::Gles2(inner) => inner.wait_for_queue_idle(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => inner.wait_for_queue_idle(),
         }
@@ -318,7 +354,11 @@ impl RafxQueue {
             RafxQueue::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(_) => None,
         }
@@ -337,7 +377,11 @@ impl RafxQueue {
             RafxQueue::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => None,
         }
@@ -356,7 +400,11 @@ impl RafxQueue {
             RafxQueue::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(_) => None,
         }
@@ -366,7 +414,11 @@ impl RafxQueue {
     /// metal objects.
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     pub fn empty_queue(&self) -> Option<&RafxQueueEmpty> {
         match self {
@@ -378,7 +430,11 @@ impl RafxQueue {
             RafxQueue::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => Some(inner),
         }

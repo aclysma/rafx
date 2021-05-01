@@ -9,7 +9,7 @@ pub mod gles2;
 
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(feature = "rafx-metal", feature = "rafx-vulkan", feature = "rafx-gles2"))
 ))]
 #[doc(hidden)]
 #[rustfmt::skip]

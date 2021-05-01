@@ -1,6 +1,10 @@
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(
+        feature = "rafx-metal",
+        feature = "rafx-vulkan",
+        feature = "rafx-gles2"
+    ))
 ))]
 use crate::empty::RafxRootSignatureEmpty;
 #[cfg(feature = "rafx-gles2")]
@@ -25,7 +29,11 @@ pub enum RafxRootSignature {
     Gles2(RafxRootSignatureGles2),
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     Empty(RafxRootSignatureEmpty),
 }
@@ -42,7 +50,11 @@ impl RafxRootSignature {
             RafxRootSignature::Gles2(inner) => inner.pipeline_type(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxRootSignature::Empty(inner) => inner.pipeline_type(),
         }
@@ -61,7 +73,11 @@ impl RafxRootSignature {
             RafxRootSignature::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxRootSignature::Empty(_) => None,
         }
@@ -80,7 +96,11 @@ impl RafxRootSignature {
             RafxRootSignature::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxRootSignature::Empty(_) => None,
         }
@@ -99,7 +119,11 @@ impl RafxRootSignature {
             RafxRootSignature::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxRootSignature::Empty(_) => None,
         }
@@ -109,7 +133,11 @@ impl RafxRootSignature {
     /// metal objects.
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     pub fn empty_root_signature(&self) -> Option<&RafxRootSignatureEmpty> {
         match self {
@@ -121,7 +149,11 @@ impl RafxRootSignature {
             RafxRootSignature::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxRootSignature::Empty(inner) => Some(inner),
         }

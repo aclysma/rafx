@@ -1,6 +1,10 @@
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(
+        feature = "rafx-metal",
+        feature = "rafx-vulkan",
+        feature = "rafx-gles2"
+    ))
 ))]
 use crate::backends::empty::RafxDeviceContextEmpty;
 #[cfg(feature = "rafx-gles2")]
@@ -26,7 +30,11 @@ pub enum RafxDeviceContext {
     Gles2(RafxDeviceContextGles2),
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     Empty(RafxDeviceContextEmpty),
 }
@@ -43,7 +51,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(inner) => inner.device_info(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => inner.device_info(),
         }
@@ -67,7 +79,11 @@ impl RafxDeviceContext {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => {
                 inner.find_supported_format(candidates, resource_type)
@@ -88,7 +104,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(inner) => inner.find_supported_sample_count(candidates),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => inner.find_supported_sample_count(candidates),
         }
@@ -108,7 +128,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(inner) => RafxQueue::Gles2(inner.create_queue(queue_type)?),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => RafxQueue::Empty(inner.create_queue(queue_type)?),
         })
@@ -125,7 +149,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(inner) => RafxFence::Gles2(inner.create_fence()?),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => RafxFence::Empty(inner.create_fence()?),
         })
@@ -142,7 +170,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(inner) => RafxSemaphore::Gles2(inner.create_semaphore()?),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => RafxSemaphore::Empty(inner.create_semaphore()?),
         })
@@ -169,7 +201,11 @@ impl RafxDeviceContext {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => {
                 RafxSwapchain::Empty(inner.create_swapchain(raw_window_handle, swapchain_def)?)
@@ -201,7 +237,11 @@ impl RafxDeviceContext {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => {
                 let fences: Vec<_> = fences.iter().map(|x| x.empty_fence().unwrap()).collect();
@@ -228,7 +268,11 @@ impl RafxDeviceContext {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => {
                 RafxSampler::Empty(inner.create_sampler(sampler_def)?)
@@ -254,7 +298,11 @@ impl RafxDeviceContext {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => {
                 RafxTexture::Empty(inner.create_texture(texture_def)?)
@@ -276,7 +324,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(inner) => RafxBuffer::Gles2(inner.create_buffer(buffer_def)?),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => RafxBuffer::Empty(inner.create_buffer(buffer_def)?),
         })
@@ -302,7 +354,11 @@ impl RafxDeviceContext {
             ),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => RafxShaderModule::Empty(
                 inner.create_shader_module(shader_module_def.empty.unwrap())?,
@@ -325,7 +381,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(inner) => RafxShader::Gles2(inner.create_shader(stages)?),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => RafxShader::Empty(inner.create_shader(stages)?),
         })
@@ -351,7 +411,11 @@ impl RafxDeviceContext {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => {
                 RafxRootSignature::Empty(inner.create_root_signature(root_signature_def)?)
@@ -379,7 +443,11 @@ impl RafxDeviceContext {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => {
                 RafxPipeline::Empty(inner.create_graphics_pipeline(pipeline_def)?)
@@ -407,7 +475,11 @@ impl RafxDeviceContext {
             }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => {
                 RafxPipeline::Empty(inner.create_compute_pipeline(pipeline_def)?)
@@ -435,7 +507,11 @@ impl RafxDeviceContext {
             ),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => RafxDescriptorSetArray::Empty(
                 inner.create_descriptor_set_array(descriptor_set_array_def)?,
@@ -456,7 +532,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(_) => None,
         }
@@ -475,7 +555,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => None,
         }
@@ -494,7 +578,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(inner) => Some(inner),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(_) => None,
         }
@@ -504,7 +592,11 @@ impl RafxDeviceContext {
     /// metal objects.
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     pub fn empty_device_context(&self) -> Option<&RafxDeviceContextEmpty> {
         match self {
@@ -516,7 +608,11 @@ impl RafxDeviceContext {
             RafxDeviceContext::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxDeviceContext::Empty(inner) => Some(inner),
         }
