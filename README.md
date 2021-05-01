@@ -15,8 +15,26 @@ This crate contains several layers:
    
 Rafx also provides tools for building shaders and packing assets.
 
-Rafx supports most mainstream platforms via `vulkan` and `metal` backends. Proprietary platforms can be supported by
-adding an additional backend.
+### Current Support:
+
+Rafx supports most mainstream platforms. Proprietary platforms can be supported by adding an additional backend.
+
+| Platform | Vulkan   | Metal | GL ES 2.0 (4) |
+| -------- | -------- | ----- | ------------- |
+| Windows  |   ✅     |       |      ✅       |
+| macOS    |   ✅     |  ✅   |      ✅       |
+| Linux    |   🟨 (1) |       |      🟨 (1)   |
+| iOS      |   ✅     |  ✅   |      🟥 (3)   |
+| Android  |   🟨 (2) |       |      🟥 (3)   |
+| WebGL    |          |       |      ✅       |
+
+**Caveats**: 
+ 1. Linux reported working but not regularly tested. Some driver/window manager combinations might not work, especially
+    with vulkan.
+ 2. Android might work with vulkan but has not been tested. (It likely can be made to work) 
+ 3. Mobile OpenGL devices might work but may need improvements to create the initial OpenGL graphics context.
+ 4. Limitations in the OpenGL ES 2.0 API prevent full implementation. The main demo does not work in 
+GL ES 2.0.
 
 Please keep in mind, this crate is still in pre-0.1.0 status!
 
@@ -41,7 +59,7 @@ Please keep in mind, this crate is still in pre-0.1.0 status!
 
  * The API of `rafx-api` is unlikely to change significantly
  * Other higher level crates are being refactored/improved based on demo improvements and dogfooding in
-   other projects   
+   other projects
  * For the near-term future, the focus will be on:
      * Improvements to the framework (visibility, multithreading, API ergonomics)
      * Exploring options that would allow adding rendering features in a modular way, letting end-users
