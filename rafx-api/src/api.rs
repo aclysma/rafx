@@ -188,7 +188,7 @@ impl RafxApi {
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
-            RafxApi::Gles2(inner) => None,
+            RafxApi::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
@@ -211,7 +211,7 @@ impl RafxApi {
             #[cfg(feature = "rafx-metal")]
             RafxApi::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxApi::Gles2(inner) => None,
+            RafxApi::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
@@ -232,7 +232,7 @@ impl RafxApi {
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxApi::Metal(inner) => None,
+            RafxApi::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxApi::Gles2(inner) => Some(inner),
             #[cfg(any(

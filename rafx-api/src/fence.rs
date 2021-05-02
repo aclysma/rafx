@@ -125,7 +125,7 @@ impl RafxFence {
             #[cfg(feature = "rafx-metal")]
             RafxFence::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
-            RafxFence::Gles2(inner) => None,
+            RafxFence::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
@@ -134,7 +134,7 @@ impl RafxFence {
                     feature = "rafx-gles2"
                 ))
             ))]
-            RafxFence::Empty(inner) => None,
+            RafxFence::Empty(_) => None,
         }
     }
 

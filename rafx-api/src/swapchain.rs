@@ -201,7 +201,7 @@ impl RafxSwapchain {
             RafxSwapchain::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
             RafxSwapchain::Metal(_) => None,
-            #[cfg(feature = "rafx-metal")]
+            #[cfg(feature = "rafx-gles2")]
             RafxSwapchain::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",

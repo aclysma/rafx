@@ -561,7 +561,7 @@ impl RafxDeviceContext {
                     feature = "rafx-gles2"
                 ))
             ))]
-            RafxDeviceContext::Empty(inner) => None,
+            RafxDeviceContext::Empty(_) => None,
         }
     }
 

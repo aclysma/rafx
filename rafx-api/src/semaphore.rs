@@ -83,7 +83,7 @@ impl RafxSemaphore {
                     feature = "rafx-gles2"
                 ))
             ))]
-            RafxSemaphore::Empty(inner) => None,
+            RafxSemaphore::Empty(_) => None,
         }
     }
 

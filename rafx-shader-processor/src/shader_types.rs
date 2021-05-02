@@ -816,8 +816,8 @@ fn verify_layout(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::codegen::{create_builtin_type_lookup, create_user_type_lookup};
     use crate::parse_source::FileToProcess;
+    use crate::shader_types::{create_builtin_type_lookup, create_user_type_lookup};
 
     fn verify_all_binding_layouts_in_test(
         reflect_data: spirv_reflect::ShaderModule,

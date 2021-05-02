@@ -383,7 +383,7 @@ impl RafxQueue {
                     feature = "rafx-gles2"
                 ))
             ))]
-            RafxQueue::Empty(inner) => None,
+            RafxQueue::Empty(_) => None,
         }
     }
 
