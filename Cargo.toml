@@ -42,6 +42,6 @@ split-debuginfo = "unpacked"
 #distill = { path = "distill" }
 
 [patch.crates-io]
-#raw-gl-context = { git = "https://github.com/aclysma/raw-gl-context.git", branch = "rafx" }
+raw-gl-context = { git = "https://github.com/aclysma/raw-gl-context.git", branch = "rafx" }
 #basis-universal = { path = "../basis-universal-rs/basis-universal" }
 #basis-universal-sys = { path = "../basis-universal-rs/basis-universal-sys" }
