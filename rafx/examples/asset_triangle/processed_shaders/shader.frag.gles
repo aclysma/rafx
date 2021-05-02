@@ -1,0 +1,18 @@
+#version 100
+precision mediump float;
+precision highp int;
+
+struct PerViewData
+{
+    highp vec4 uniform_color;
+};
+
+uniform PerViewData uniform_data;
+
+varying highp vec4 interface_var_0;
+
+void main()
+{
+    gl_FragData[0] = uniform_data.uniform_color;
+}
+

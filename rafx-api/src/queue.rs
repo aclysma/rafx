@@ -1,8 +1,14 @@
 #[cfg(any(
     feature = "rafx-empty",
-    not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+    not(any(
+        feature = "rafx-metal",
+        feature = "rafx-vulkan",
+        feature = "rafx-gles2"
+    ))
 ))]
 use crate::empty::RafxQueueEmpty;
+#[cfg(feature = "rafx-gles2")]
+use crate::gles2::RafxQueueGles2;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxQueueMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -30,9 +36,15 @@ pub enum RafxQueue {
     Vk(RafxQueueVulkan),
     #[cfg(feature = "rafx-metal")]
     Metal(RafxQueueMetal),
+    #[cfg(feature = "rafx-gles2")]
+    Gles2(RafxQueueGles2),
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     Empty(RafxQueueEmpty),
 }
@@ -44,9 +56,15 @@ impl RafxQueue {
             RafxQueue::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
             #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(inner) => RafxDeviceContext::Metal(inner.device_context().clone()),
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(inner) => RafxDeviceContext::Gles2(inner.device_context().clone()),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => RafxDeviceContext::Empty(inner.device_context().clone()),
         }
@@ -60,9 +78,15 @@ impl RafxQueue {
             RafxQueue::Vk(inner) => inner.queue_id(),
             #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(inner) => inner.queue_id(),
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(inner) => inner.queue_id(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => inner.queue_id(),
         }
@@ -75,9 +99,15 @@ impl RafxQueue {
             RafxQueue::Vk(inner) => inner.queue_type(),
             #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(inner) => inner.queue_type(),
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(inner) => inner.queue_type(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => inner.queue_type(),
         }
@@ -97,9 +127,17 @@ impl RafxQueue {
             RafxQueue::Metal(inner) => {
                 RafxCommandPool::Metal(inner.create_command_pool(command_pool_def)?)
             }
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(inner) => {
+                RafxCommandPool::Gles2(inner.create_command_pool(command_pool_def)?)
+            }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => {
                 RafxCommandPool::Empty(inner.create_command_pool(command_pool_def)?)
@@ -162,9 +200,34 @@ impl RafxQueue {
                     signal_fence.map(|x| x.metal_fence().unwrap()),
                 )
             }
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(inner) => {
+                let command_buffers: Vec<_> = command_buffers
+                    .iter()
+                    .map(|x| x.gles2_command_buffer().unwrap())
+                    .collect();
+                let wait_semaphores: Vec<_> = wait_semaphores
+                    .iter()
+                    .map(|x| x.gles2_semaphore().unwrap())
+                    .collect();
+                let signal_semaphores: Vec<_> = signal_semaphores
+                    .iter()
+                    .map(|x| x.gles2_semaphore().unwrap())
+                    .collect();
+                inner.submit(
+                    &command_buffers,
+                    &wait_semaphores,
+                    &signal_semaphores,
+                    signal_fence.map(|x| x.gles2_fence().unwrap()),
+                )
+            }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => {
                 let command_buffers: Vec<_> = command_buffers
@@ -223,9 +286,25 @@ impl RafxQueue {
                     image_index,
                 )
             }
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(inner) => {
+                let wait_semaphores: Vec<_> = wait_semaphores
+                    .iter()
+                    .map(|x| x.gles2_semaphore().unwrap())
+                    .collect();
+                inner.present(
+                    swapchain.gles2_swapchain().unwrap(),
+                    &wait_semaphores,
+                    image_index,
+                )
+            }
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => {
                 let wait_semaphores: Vec<_> = wait_semaphores
@@ -248,9 +327,15 @@ impl RafxQueue {
             RafxQueue::Vk(inner) => inner.wait_for_queue_idle(),
             #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(inner) => inner.wait_for_queue_idle(),
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(inner) => inner.wait_for_queue_idle(),
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => inner.wait_for_queue_idle(),
         }
@@ -264,12 +349,18 @@ impl RafxQueue {
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
-            RafxQueue::Metal(_inner) => None,
+            RafxQueue::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
-            RafxQueue::Empty(_inner) => None,
+            RafxQueue::Empty(_) => None,
         }
     }
 
@@ -279,14 +370,43 @@ impl RafxQueue {
     pub fn metal_queue(&self) -> Option<&RafxQueueMetal> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxQueue::Vk(_inner) => None,
+            RafxQueue::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
             RafxQueue::Metal(inner) => Some(inner),
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
-            RafxQueue::Empty(inner) => None,
+            RafxQueue::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gles2")]
+    pub fn gles2_queue(&self) -> Option<&RafxQueueGles2> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxQueue::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxQueue::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
+            ))]
+            RafxQueue::Empty(_) => None,
         }
     }
 
@@ -294,17 +414,27 @@ impl RafxQueue {
     /// metal objects.
     #[cfg(any(
         feature = "rafx-empty",
-        not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+        not(any(
+            feature = "rafx-metal",
+            feature = "rafx-vulkan",
+            feature = "rafx-gles2"
+        ))
     ))]
     pub fn empty_queue(&self) -> Option<&RafxQueueEmpty> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxQueue::Vk(_inner) => None,
+            RafxQueue::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
-            RafxQueue::Metal(inner) => None,
+            RafxQueue::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
-                not(any(feature = "rafx-metal", feature = "rafx-vulkan"))
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2"
+                ))
             ))]
             RafxQueue::Empty(inner) => Some(inner),
         }

@@ -11,6 +11,7 @@ members = [
     "demo",
     "demo/shaders",
     "demo/cli",
+    "demo-web"
 ]
 
 exclude = [
@@ -29,6 +30,10 @@ opt-level = 2
 [profile.dev.build-override]
 opt-level = 2
 
+# faster macOS builds
+[profile.dev]
+split-debuginfo = "unpacked"
+
 # Required for https://github.com/gltf-rs/gltf/pull/288
 #[patch.crates-io]
 #gltf = { path = "gltf" }
@@ -36,6 +41,7 @@ opt-level = 2
 #[patch."https://github.com/amethyst/distill"]
 #distill = { path = "distill" }
 
-#[patch.crates-io]
+[patch.crates-io]
+#raw-gl-context = { git = "https://github.com/aclysma/raw-gl-context.git", branch = "rafx" }
 #basis-universal = { path = "../basis-universal-rs/basis-universal" }
 #basis-universal-sys = { path = "../basis-universal-rs/basis-universal-sys" }

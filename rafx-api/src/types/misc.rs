@@ -43,7 +43,9 @@ pub struct RafxDeviceInfo {
 
     // Requires iOS 14.0, macOS 10.12
     pub supports_clamp_to_border_color: bool,
-    // max_vertex_input_binding_count: u32,
+
+    pub max_vertex_attribute_count: u32,
+    //max_vertex_input_binding_count: u32,
     // max_root_signature_dwords: u32,
     // wave_lane_count: u32,
     // wave_ops_support_flags: u32,
@@ -135,6 +137,15 @@ pub struct RafxExtents3D {
     pub depth: u32,
 }
 
+impl RafxExtents3D {
+    pub fn to_2d(self) -> RafxExtents2D {
+        RafxExtents2D {
+            width: self.width,
+            height: self.height,
+        }
+    }
+}
+
 /// Number of MSAA samples to use. 1xMSAA and 4xMSAA are most broadly supported
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
@@ -216,6 +227,10 @@ impl RafxResourceType {
         self.intersects(
             RafxResourceType::RENDER_TARGET_COLOR | RafxResourceType::RENDER_TARGET_DEPTH_STENCIL,
         )
+    }
+
+    pub fn is_texture(self) -> bool {
+        self.intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE)
     }
 }
 
@@ -396,7 +411,7 @@ pub enum RafxPrimitiveTopology {
 }
 
 /// The size of index buffer elements
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RafxIndexType {
     Uint32,
     Uint16,

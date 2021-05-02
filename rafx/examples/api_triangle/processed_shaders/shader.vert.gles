@@ -1,0 +1,12 @@
+#version 100
+
+varying vec4 interface_var_0;
+attribute vec4 in_color;
+attribute vec4 pos;
+
+void main()
+{
+    interface_var_0 = in_color;
+    gl_Position = pos;
+}
+

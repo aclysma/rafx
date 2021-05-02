@@ -1,0 +1,32 @@
+[package]
+name = "demo-web"
+version = "0.0.10"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+# This is a demo crate, we shouldn't publish it
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+rafx = { path = "../rafx", features = ["rafx-gles2"] }
+raw-window-handle = "0.3.3"
+log = "0.4.14"
+image = { version = "0.23.12", features = ["jpeg"], default-features = false }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+winit = "0.24"
+instant = { version = "0.1" }
+env_logger = "0.6"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.72"
+web-sys = { version = "0.3.4", features = ["Document", "Element", "HtmlCanvasElement", "WebGlBuffer", "WebGlRenderingContext", "WebGlProgram", "WebGlShader", "Window", "WebGlUniformLocation", "WebGlActiveInfo"] }
+console_log = { version = "0.2" }
+winit = { version = "0.24", features = ["web-sys"] }
+instant = { version = "0.1", features = ["wasm-bindgen"] }
+
+[features]

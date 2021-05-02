@@ -462,6 +462,7 @@ pub struct DescriptorSetLayoutKey {
 pub struct MaterialPassVertexInput {
     pub semantic: String,
     pub location: u32,
+    pub gl_attribute_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

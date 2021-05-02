@@ -35,6 +35,7 @@ vk-mem = { version = "0.2", optional = true }
 ash-window = { version = "0.6.0", optional = true }
 
 # metal
+[target.'cfg(target_os="macos")'.dependencies]
 metal_rs = { package = "metal", version = "0.21", optional = true }
 objc = { version = "0.2.4", features = ["exception"], optional = true }
 raw-window-metal = { version = "0.1.1", optional = true }
@@ -43,11 +44,31 @@ dispatch = { version = "0.2", optional = true }
 foreign-types-shared = { version = "0.1", optional = true }
 block = { version = "0.1.6", optional = true }
 
+# gl (windows)
+[target.'cfg(all(not(target_arch = "wasm32"), target_os="windows"))'.dependencies]
+winapi = { version = "0.3.8", features = ["libloaderapi", "minwindef", "windef", "wingdi", "winuser"], optional = true }
+
+# gl (macOS)
+[target.'cfg(all(not(target_arch = "wasm32"), target_os="macos"))'.dependencies]
+cocoa = { version = "0.24.0", optional = true }
+objc = { version = "0.2.7", optional = true }
+core-foundation = { version = "0.9.1", optional = true }
+
+# gl (linux)
+[target.'cfg(all(not(target_arch = "wasm32"), target_os="linux"))'.dependencies]
+x11 = { version = "2.3", features = ["xlib", "glx"], optional = true }
+
+# gl (wasm)
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.72"
+web-sys = { version = "0.3.4", features = ["Document", "Element", "HtmlCanvasElement", "WebGlBuffer", "WebGlTexture", "WebGlRenderingContext", "WebGlProgram", "WebGlShader", "WebGlRenderbuffer", "Window", "WebGlFramebuffer"] }
+
 [features]
 default = []
 rafx-empty = []
 rafx-vulkan = ["ash", "vk-mem", "ash-window"]
 rafx-metal = ["metal_rs", "objc", "raw-window-metal", "cocoa-foundation", "dispatch", "foreign-types-shared", "block"]
+rafx-gles2 = ["winapi", "cocoa", "objc", "core-foundation", "x11"]
 static-vulkan = []
 serde-support = ["serde", "serde_bytes"]
 track-device-contexts = ["backtrace"]

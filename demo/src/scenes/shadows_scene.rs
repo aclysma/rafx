@@ -132,20 +132,16 @@ impl ShadowsScene {
             };
 
             let mut rng = thread_rng();
-            for i in 0..1000 {
+            for i in 0..250 {
                 let position = Vec3::new(((i / 9) * 3) as f32, ((i % 9) * 3) as f32, 0.0);
                 let mesh_render_node = example_meshes[i % example_meshes.len()].clone();
                 let asset_handle = &mesh_render_nodes.get(&mesh_render_node).unwrap().mesh;
 
-                let rand_scale_z = rng.gen_range(0.8, 1.2);
-                let offset = rand_scale_z - 1.;
+                let rand_scale = rng.gen_range(0.8, 1.2);
+                let offset = rand_scale - 1.;
                 let transform_component = TransformComponent {
                     translation: position + Vec3::new(0., 0., offset),
-                    scale: Vec3::new(
-                        rng.gen_range(0.8, 1.2),
-                        rng.gen_range(0.8, 1.2),
-                        rand_scale_z,
-                    ),
+                    scale: Vec3::new(rand_scale, rand_scale, rand_scale),
                     ..Default::default()
                 };
 

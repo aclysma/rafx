@@ -32,6 +32,12 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-check-test-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install XCB and GL dependencies
+        run: |
+          sudo apt update
+          sudo apt install libx11-xcb-dev libgl1-mesa-dev
+        if: contains(matrix.os, 'ubuntu')
+
       - name: Build
         run: cargo check --features "rafx-vulkan" --manifest-path demo/Cargo.toml
         env:

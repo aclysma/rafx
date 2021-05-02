@@ -412,12 +412,7 @@ impl RafxSwapchainVulkanInstance {
 
             let format: RafxFormat = self.swapchain_info.surface_format.format.into();
 
-            let mut resource_type = RafxResourceType::TEXTURE;
-            if format.has_depth_or_stencil() {
-                resource_type |= RafxResourceType::RENDER_TARGET_DEPTH_STENCIL;
-            } else {
-                resource_type |= RafxResourceType::RENDER_TARGET_COLOR;
-            }
+            let resource_type = RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR;
 
             let texture = RafxTextureVulkan::from_existing(
                 &self.device_context,
@@ -431,7 +426,7 @@ impl RafxSwapchainVulkanInstance {
                     array_length: 1,
                     mip_count: 1,
                     format,
-                    resource_type: resource_type,
+                    resource_type,
                     //clear_value,
                     sample_count: RafxSampleCount::SampleCount1,
                     //sample_quality
