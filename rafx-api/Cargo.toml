@@ -22,7 +22,7 @@ fnv = "1.0"
 serde = { version = "1", features = ["serde_derive"], optional = true }
 serde_bytes = { version = "0.11", optional = true }
 bitflags = "1.2"
-profiling = "1.0"
+profiling = "1.0.1"
 
 # Used for debug-only tracking of resources
 backtrace = { version = "0.3", optional = true }
@@ -43,11 +43,21 @@ dispatch = { version = "0.2", optional = true }
 foreign-types-shared = { version = "0.1", optional = true }
 block = { version = "0.1.6", optional = true }
 
+# gl
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+raw-gl-context = { git = "https://github.com/aclysma/raw-gl-context.git", branch = "rafx", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+#js-sys = "0.3.49"
+wasm-bindgen = "0.2.72"
+web-sys = { version = "0.3.4", features = ["Document", "Element", "HtmlCanvasElement", "WebGlBuffer", "WebGlTexture", "WebGlRenderingContext", "WebGlProgram", "WebGlShader", "WebGlRenderbuffer", "Window", "WebGlFramebuffer"] }
+
 [features]
 default = []
 rafx-empty = []
 rafx-vulkan = ["ash", "vk-mem", "ash-window"]
 rafx-metal = ["metal_rs", "objc", "raw-window-metal", "cocoa-foundation", "dispatch", "foreign-types-shared", "block"]
+rafx-gles2 = ["raw-gl-context"]
 static-vulkan = []
 serde-support = ["serde", "serde_bytes"]
 track-device-contexts = ["backtrace"]
