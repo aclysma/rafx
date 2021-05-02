@@ -183,6 +183,13 @@ fn run() -> RafxResult<()> {
 
         let start_time = std::time::Instant::now();
 
+        let best_sample_count = device_context
+            .find_supported_sample_count(&[
+                RafxSampleCount::SampleCount4,
+                RafxSampleCount::SampleCount1,
+            ])
+            .unwrap();
+
         //
         // SDL2 window pumping
         //
@@ -237,9 +244,9 @@ fn run() -> RafxResult<()> {
             let color_attachment = graph_builder.create_color_attachment(
                 node,
                 0,
-                Some(RafxColorClearValue([0.0, 0.0, 0.0, 0.0])),
+                Some(RafxColorClearValue([0.2, 0.2, 0.2, 1.0])),
                 RenderGraphImageConstraint {
-                    samples: Some(RafxSampleCount::SampleCount4),
+                    samples: Some(best_sample_count),
                     format: Some(swapchain_helper.format()),
                     ..Default::default()
                 },

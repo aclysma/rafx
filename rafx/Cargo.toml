@@ -26,7 +26,7 @@ legion = { version = "0.4.0", default-features = false }
 sdl2 = { version = ">=0.34", features = ["raw-window-handle"] }
 ash = ">=0.32"
 glam = "0.13.1"
-profiling = "1.0"
+profiling = "1.0.1"
 bincode = "1.3.1"
 
 [features]
@@ -38,6 +38,7 @@ default = []
 rafx-empty = ["rafx-api/rafx-empty"]
 rafx-vulkan = ["rafx-api/rafx-vulkan"]
 rafx-metal = ["rafx-api/rafx-metal"]
+rafx-gles2 = ["rafx-api/rafx-gles2"]
 
 # Vulkan-specific feature, use statically-linked vulkan instead of dynamically loading it
 static-vulkan = ["rafx-api/static-vulkan"]

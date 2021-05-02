@@ -142,12 +142,16 @@ fn run() -> RafxResult<()> {
             &processed_shaders_base_path,
             "shader.vert.metal",
             "shader.vert.spv",
+            "shader.vert.gles",
+            "shader.vert.gles",
         )?;
 
         let frag_shader_package = load_shader_packages(
             &processed_shaders_base_path,
             "shader.frag.metal",
             "shader.frag.spv",
+            "shader.frag.gles",
+            "shader.frag.gles",
         )?;
 
         let vert_shader_module =
@@ -168,6 +172,8 @@ fn run() -> RafxResult<()> {
             set_index: 0,
             binding: 0,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
+            gles2_name: Some("uniform_data".to_string()),
+            gles2_uniform_members: vec![RafxGlUniformMember::new("uniform_data.uniform_color", 0)],
             ..Default::default()
         };
 
@@ -242,12 +248,14 @@ fn run() -> RafxResult<()> {
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
+                    gl_attribute_name: Some("pos".to_string()),
                 },
                 RafxVertexLayoutAttribute {
                     format: RafxFormat::R32G32B32_SFLOAT,
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
+                    gl_attribute_name: Some("in_color".to_string()),
                 },
             ],
             buffers: vec![RafxVertexLayoutBuffer {
@@ -285,17 +293,16 @@ fn run() -> RafxResult<()> {
                 break 'running;
             }
 
-            let current_time = std::time::Instant::now();
-            let seconds = (current_time - start_time).as_secs_f32();
+            let elapsed_seconds = start_time.elapsed().as_secs_f32();
 
             #[rustfmt::skip]
             let vertex_data = [
                 0.0f32, 0.5, 1.0, 0.0, 0.0,
-                0.5 - (seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
-                -0.5 + (seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
+                0.5 - (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 1.0, 0.0,
+                -0.5 + (elapsed_seconds.cos() / 2. + 0.5), -0.5, 0.0, 0.0, 1.0,
             ];
 
-            let color = (seconds.cos() + 1.0) / 2.0;
+            let color = (elapsed_seconds.cos() + 1.0) / 2.0;
             let uniform_data = [color, 0.0, 1.0 - color, 1.0];
 
             //
@@ -343,7 +350,7 @@ fn run() -> RafxResult<()> {
                     store_op: RafxStoreOp::Store,
                     array_slice: None,
                     mip_slice: None,
-                    clear_value: RafxColorClearValue([0.0, 0.0, 0.0, 0.0]),
+                    clear_value: RafxColorClearValue([0.2, 0.2, 0.2, 1.0]),
                     resolve_target: None,
                     resolve_store_op: RafxStoreOp::DontCare,
                     resolve_mip_slice: None,
@@ -467,6 +474,8 @@ fn load_shader_packages(
     _base_path: &Path,
     _metal_src_file: &str,
     _vk_spv_file: &str,
+    _gl_src_file: &str,
+    _gles2_src_file: &str,
 ) -> RafxResult<RafxShaderPackage> {
     let mut _package = RafxShaderPackage::default();
 
@@ -482,6 +491,13 @@ fn load_shader_packages(
         let vk_path = _base_path.join(_vk_spv_file);
         let vk_bytes = std::fs::read(vk_path)?;
         _package.vk = Some(RafxShaderPackageVulkan::SpvBytes(vk_bytes));
+    }
+
+    #[cfg(feature = "rafx-gles2")]
+    {
+        let gles2_path = _base_path.join(_gles2_src_file);
+        let gles2_src = std::fs::read_to_string(gles2_path)?;
+        _package.gles2 = Some(RafxShaderPackageGles2::Src(gles2_src));
     }
 
     Ok(_package)
