@@ -30,8 +30,8 @@ impl RafxShaderModuleMetal {
             RafxShaderModuleDefMetal::MetalLibBytes(bytes) => {
                 RafxShaderModuleMetal::new_from_lib_bytes(device_context, bytes)
             }
-            RafxShaderModuleDefMetal::MetalSrc(spv) => {
-                RafxShaderModuleMetal::new_from_src(device_context, spv)
+            RafxShaderModuleDefMetal::MetalSrc(src) => {
+                RafxShaderModuleMetal::new_from_src(device_context, src)
             }
         }
     }
