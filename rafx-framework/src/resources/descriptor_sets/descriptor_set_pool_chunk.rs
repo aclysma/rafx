@@ -172,6 +172,7 @@ fn copy_data_to_buffer<T: Copy>(
         descriptor_set_index,
         offset
     );
+
     buffer
         .buffer
         .copy_to_host_visible_buffer_with_offset(&data, offset as u64)

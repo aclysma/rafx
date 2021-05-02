@@ -476,6 +476,7 @@ impl GraphicsPipelineCache {
                             byte_offset: member.byte_offset as u32,
                             buffer_index: member.binding as u32,
                             format: member.format,
+                            gl_attribute_name: Some(vertex_input.gl_attribute_name.clone()),
                         });
                     }
 

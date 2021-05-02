@@ -113,6 +113,7 @@ impl ReflectedShader {
                     .map(|x| MaterialPassVertexInput {
                         semantic: x.semantic.clone(),
                         location: x.location,
+                        gl_attribute_name: x.name.clone(),
                     })
                     .collect();
 
