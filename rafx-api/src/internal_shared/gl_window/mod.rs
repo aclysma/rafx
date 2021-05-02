@@ -11,7 +11,7 @@ use win as platform;
 #[cfg(target_os = "linux")]
 mod x11;
 #[cfg(target_os = "linux")]
-use crate::x11 as platform;
+use x11 as platform;
 
 #[cfg(target_os = "macos")]
 mod macos;
