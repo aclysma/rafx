@@ -148,6 +148,7 @@ impl GlContext {
         unsafe {
             let pool = NSAutoreleasePool::new(nil);
             self.context.flushBuffer();
+            self.context.update();
             let _: () = msg_send![pool, release];
         }
     }

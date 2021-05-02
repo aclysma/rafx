@@ -18,7 +18,6 @@ log = "0.4.14"
 image = { version = "0.23.12", features = ["jpeg"], default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-raw-gl-context = "0.1.2"
 winit = "0.24"
 instant = { version = "0.1" }
 env_logger = "0.6"
