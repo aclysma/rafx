@@ -50,7 +50,8 @@ where
     ResourceT: Clone,
 {
     fn drop(&mut self) {
-        self.drop_tx.send(self.resource.clone()).unwrap();
+        self.drop_tx.send(self.resource.clone())
+            .expect("A resource was dropped after the resource manager was destroyed, it might not clean up properly");
     }
 }
 
