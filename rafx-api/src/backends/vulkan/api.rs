@@ -95,14 +95,17 @@ impl RafxApiVulkan {
         let (require_validation_layers_present, validation_layer_debug_report_flags) =
             match vk_api_def.validation_mode {
                 RafxValidationMode::Disabled => {
-                    (false, vk::DebugUtilsMessengerCreateFlagsEXT::empty())
+                    (false, vk::DebugUtilsMessageSeverityFlagsEXT::empty())
                 }
                 RafxValidationMode::EnabledIfAvailable => {
-                    (false, vk::DebugUtilsMessengerCreateFlagsEXT::all())
+                    (false, vk::DebugUtilsMessageSeverityFlagsEXT::all())
                 }
-                RafxValidationMode::Enabled => (true, vk::DebugUtilsMessengerCreateFlagsEXT::all()),
+                RafxValidationMode::Enabled => {
+                    (true, vk::DebugUtilsMessageSeverityFlagsEXT::all())
+                },
             };
 
+        log::info!("Validation mode: {:?}", vk_api_def.validation_mode);
         log::info!("Link method for vulkan: {:?}", link_method);
         let entry = match link_method {
             VulkanLinkMethod::Dynamic => VkEntry::new_dynamic(),

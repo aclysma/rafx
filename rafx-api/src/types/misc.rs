@@ -7,7 +7,7 @@ use std::hash::{Hash, Hasher};
 
 /// Controls if validation is enabled or not. The requirements/behaviors of validation is
 /// API-specific.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum RafxValidationMode {
     /// Do not enable validation. Even if validation is turned on through external means, do not
     /// intentionally fail initialization

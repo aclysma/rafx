@@ -4,7 +4,7 @@ use rafx_assets::{AssetManager, GpuImageData};
 use rafx_framework::nodes::{
     ExtractJobSet, ExtractResources, FramePacketBuilder, RenderJobExtractContext, RenderViewSet,
 };
-use rafx_framework::visibility::VisibilityRegion;
+use rafx_framework::visibility::{VisibilityRegion, VisibilityConfig};
 use rafx_framework::{DynResourceAllocatorSet, RenderResources};
 use rafx_framework::{ImageViewResource, ResourceArc};
 use std::sync::{Arc, Mutex};
@@ -18,6 +18,11 @@ use rafx_api::{
     RafxSwapchainHelper,
 };
 use rafx_assets::image_upload::ImageUploadParams;
+
+#[derive(Default, Copy, Clone, Debug)]
+pub struct RendererConfigResource {
+    pub visibility_config: VisibilityConfig
+}
 
 #[derive(Clone)]
 pub struct InvalidResources {
@@ -242,6 +247,11 @@ impl Renderer {
             .lock()
             .unwrap();
 
+        let renderer_config = extract_resources
+            .try_fetch::<RendererConfigResource>()
+            .map(|x| *x)
+            .unwrap_or_default();
+
         //
         // Swapchain Status
         //
@@ -299,7 +309,7 @@ impl Renderer {
         {
             profiling::scope!("Update visibility");
             // After these jobs end, user calls functions to start jobs that extract data
-            frame_packet_builder.query_visibility_and_add_results(&main_view, &visibility_region);
+            frame_packet_builder.query_visibility_and_add_results(&main_view, &visibility_region, &renderer_config.visibility_config);
             render_views.push(main_view.clone());
             for plugin in &*renderer_inner.plugins {
                 plugin.add_render_views(

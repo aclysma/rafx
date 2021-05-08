@@ -14,7 +14,7 @@ use crate::scenes::SceneManager;
 use crate::time::TimeState;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::nodes::ExtractResources;
-use rafx::renderer::ViewportsResource;
+use rafx::renderer::{ViewportsResource, RendererConfigResource};
 use rafx::renderer::{AssetSource, Renderer};
 use rafx::visibility::VisibilityRegion;
 
@@ -33,6 +33,7 @@ use crate::assets::font::FontAsset;
 use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
 pub use demo_plugin::DemoRendererPlugin;
+use rafx::framework::RenderResources;
 
 #[cfg(all(
     feature = "profile-with-tracy-memory",
@@ -144,6 +145,7 @@ pub struct RenderOptions {
     pub show_shadows: bool,
     pub blur_pass_count: usize,
     pub tonemapper_type: TonemapperType,
+    pub freeze_visibility: bool,
 }
 
 impl RenderOptions {
@@ -159,6 +161,7 @@ impl RenderOptions {
             show_feature_toggles: false,
             blur_pass_count: 0,
             tonemapper_type: TonemapperType::None,
+            freeze_visibility: false,
         }
     }
 
@@ -174,6 +177,7 @@ impl RenderOptions {
             show_feature_toggles: true,
             blur_pass_count: 5,
             tonemapper_type: TonemapperType::LogDerivative,
+            freeze_visibility: false,
         }
     }
 }
@@ -241,6 +245,8 @@ impl RenderOptions {
             combo.end(ui);
             self.tonemapper_type = current_tonemapper_type.into();
         }
+
+        ui.checkbox(imgui::im_str!("freeze visibility"), &mut self.freeze_visibility);
     }
 }
 
@@ -311,16 +317,6 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
     'running: loop {
         profiling::scope!("Main Loop");
 
-        {
-            let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
-            let (width, height) = sdl2_systems.window.vulkan_drawable_size();
-            viewports_resource.main_window_size = RafxExtents2D { width, height }
-        }
-
-        {
-            scene_manager.try_create_next_scene(&mut world, &resources);
-        }
-
         let t0 = std::time::Instant::now();
 
         //
@@ -345,6 +341,23 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         }
 
         //
+        // Process input
+        //
+        if !process_input(&mut scene_manager, &mut world, &resources, &mut event_pump) {
+            break 'running;
+        }
+
+        {
+            let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
+            let (width, height) = sdl2_systems.window.vulkan_drawable_size();
+            viewports_resource.main_window_size = RafxExtents2D { width, height };
+        }
+
+        {
+            scene_manager.try_create_next_scene(&mut world, &resources);
+        }
+
+        //
         // Update assets
         //
         {
@@ -363,12 +376,6 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             asset_manager.update_asset_loaders().unwrap();
         }
 
-        //
-        // Process input
-        //
-        if !process_input(&mut scene_manager, &mut world, &resources, &mut event_pump) {
-            break 'running;
-        }
         //
         // Notify imgui of frame begin
         //
@@ -485,6 +492,9 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                     profiler_ui.window(ui);
                 }
             });
+
+            let mut render_config_resource = resources.get_mut::<RendererConfigResource>().unwrap();
+            render_config_resource.visibility_config.enable_visibility_update = !render_options.freeze_visibility;
         }
 
         //
@@ -530,6 +540,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             add_to_extract_resources!(AssetManager);
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
+            add_to_extract_resources!(RendererConfigResource);
             add_to_extract_resources!(TileLayerResource);
             add_to_extract_resources!(
                 crate::features::sprite::SpriteRenderNodeSet,

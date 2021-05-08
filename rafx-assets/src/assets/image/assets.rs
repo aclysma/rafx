@@ -188,9 +188,9 @@ impl ImageAssetData {
                 let mut compressor = basis_universal::Compressor::new(4);
                 unsafe {
                     compressor.init(&compressor_params);
-                    println!("compressing");
+                    log::debug!("Compressing texture");
                     compressor.process().unwrap();
-                    println!("compressed");
+                    log::debug!("Compressed texture");
                 }
                 let compressed_basis_data = compressor.basis_file();
 

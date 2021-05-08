@@ -9,6 +9,7 @@ use rafx_visibility::{
 };
 use slotmap::SlotMap;
 use std::sync::Arc;
+use crate::visibility::VisibilityConfig;
 
 #[derive(Clone)]
 pub struct ViewFrustumArc {
@@ -100,13 +101,15 @@ impl ViewFrustumArc {
         self
     }
 
-    pub fn query_visibility(&mut self) -> RafxResult<RwLockReadGuard<VisibilityQuery>> {
+    pub fn query_visibility(&mut self, visibility_config: &VisibilityConfig) -> RafxResult<RwLockReadGuard<VisibilityQuery>> {
         let mut results = self.inner.visibility_query.write();
 
         results.objects.clear();
         results.volumes.clear();
 
-        self.inner.visibility_world.update();
+        if visibility_config.enable_visibility_update {
+            self.inner.visibility_world.update();
+        }
 
         let storage = self.inner.storage.read();
 
