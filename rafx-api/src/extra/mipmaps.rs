@@ -67,11 +67,20 @@ fn generate_mipmaps_metal(
 
 #[cfg(feature = "rafx-gles2")]
 fn generate_mipmaps_gles2(
-    _command_buffer: &RafxCommandBufferGles2,
-    _texture: &RafxTexture,
+    command_buffer: &RafxCommandBufferGles2,
+    texture: &RafxTexture,
 ) -> RafxResult<()> {
+    use crate::gles2::NONE_TEXTURE;
     //TODO: Implement mipmaps for GL
-    unimplemented!();
+
+    let texture = texture.gles2_texture().unwrap();
+    let target = texture.gl_target();
+    let texture_id = texture.gl_raw_image().gl_texture_id().unwrap();
+    let gl_context = command_buffer.queue().device_context().gl_context();
+    gl_context.gl_bind_texture(target, texture_id)?;
+    gl_context.gl_generate_mipmap(target)?;
+    gl_context.gl_bind_texture(target, NONE_TEXTURE)?;
+    Ok(())
 }
 
 #[cfg(feature = "rafx-vulkan")]

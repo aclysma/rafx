@@ -1,5 +1,5 @@
 use crate::gles2::{
-    BufferId, DescriptorInfo, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2,
+    DescriptorInfo, DescriptorSetLayoutInfo, Gles2BufferContents, RafxDeviceContextGles2,
     RafxSamplerGles2, RafxTextureGles2,
 };
 use crate::{
@@ -39,7 +39,6 @@ impl RafxDescriptorSetHandleGles2 {
 
 #[derive(Clone)]
 pub struct BufferDescriptorState {
-    pub(crate) buffer_id: Option<BufferId>,
     pub(crate) buffer_contents: Option<Gles2BufferContents>,
     pub(crate) offset: u64,
     //range: u32,
@@ -369,8 +368,7 @@ impl RafxDescriptorSetArrayGles2 {
                     let gl_buffer = buffer.gles2_buffer().unwrap();
                     descriptor_set_data.buffer_states[next_index as usize] =
                         Some(BufferDescriptorState {
-                            buffer_contents: gl_buffer.buffer_contents().clone(),
-                            buffer_id: gl_buffer.gl_buffer_id(),
+                            buffer_contents: Some(gl_buffer.buffer_contents().clone()),
                             offset,
                         });
 

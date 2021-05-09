@@ -9,30 +9,67 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 // This struct exists so that descriptor sets can (somewhat) safely point at the contents of a buffer
-#[derive(Debug, Clone)]
+#[derive(Debug)]
+pub(crate) struct Gles2BufferContentsInner {
+    data: Option<TrustCell<Box<[u8]>>>,
+    id: Option<BufferId>,
+    allocation_size: u64,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct Gles2BufferContents {
-    data: Arc<TrustCell<Box<[u8]>>>,
+    inner: Arc<Gles2BufferContentsInner>,
 }
 
 impl Gles2BufferContents {
-    pub fn new(data: Vec<u8>) -> Self {
+    pub fn new(
+        data: Option<Vec<u8>>,
+        id: Option<BufferId>,
+        allocation_size: u64,
+    ) -> Self {
+        let inner = Gles2BufferContentsInner {
+            data: data.map(|x| TrustCell::new(x.into_boxed_slice())),
+            id,
+            allocation_size,
+        };
+
         Gles2BufferContents {
-            data: Arc::new(TrustCell::new(data.into_boxed_slice())),
+            inner: Arc::new(inner),
         }
     }
 
-    // Get the ptr, this should be considered a raw FFI pointer that may or may not actually be
-    // a unique reference
-    pub unsafe fn as_ptr(&self) -> *const u8 {
-        self.data.borrow().as_ptr()
+    #[allow(dead_code)]
+    pub fn as_buffer_id(&self) -> BufferId {
+        self.inner.id.unwrap()
     }
 
-    pub unsafe fn as_mut_ptr(&self) -> *mut u8 {
-        self.data.borrow_mut().as_mut_ptr()
+    pub fn is_cpu_visible(&self) -> bool {
+        self.inner.data.is_some()
     }
 
-    pub unsafe fn as_slice(&self) -> &[u8] {
-        self.data.borrow().value
+    pub unsafe fn try_as_ptr(&self) -> Option<*const u8> {
+        Some(self.inner.data.as_ref()?.borrow().as_ptr())
+    }
+
+    pub unsafe fn try_as_mut_ptr(&self) -> Option<*mut u8> {
+        Some(self.inner.data.as_ref()?.borrow_mut().as_mut_ptr())
+    }
+
+    #[allow(dead_code)]
+    pub unsafe fn try_as_slice(&self) -> Option<&[u8]> {
+        Some(self.inner.data.as_ref()?.borrow().value)
+    }
+
+    pub unsafe fn try_as_slice_with_offset(
+        &self,
+        offset: u64,
+    ) -> Option<&[u8]> {
+        Some(&self.inner.data.as_ref()?.borrow().value[offset as _..])
+    }
+
+    #[allow(dead_code)]
+    pub fn allocation_size(&self) -> u64 {
+        self.inner.allocation_size
     }
 }
 
@@ -41,7 +78,7 @@ pub struct RafxBufferGles2 {
     device_context: RafxDeviceContextGles2,
     buffer_def: RafxBufferDef,
     buffer_id: Option<BufferId>,
-    buffer_contents: Option<Gles2BufferContents>,
+    buffer_contents: Gles2BufferContents,
     mapped_count: AtomicU32,
     target: GLenum, // may be gles20::NONE
 }
@@ -71,14 +108,19 @@ impl RafxBufferGles2 {
         self.target
     }
 
-    pub(crate) fn buffer_contents(&self) -> &Option<Gles2BufferContents> {
+    pub(crate) fn buffer_contents(&self) -> &Gles2BufferContents {
         &self.buffer_contents
     }
 
     pub fn map_buffer(&self) -> RafxResult<*mut u8> {
         self.mapped_count.fetch_add(1, Ordering::Acquire);
         assert_ne!(self.buffer_def.memory_usage, RafxMemoryUsage::GpuOnly);
-        unsafe { Ok(self.buffer_contents.as_ref().unwrap().as_mut_ptr()) }
+        unsafe {
+            Ok(self
+                .buffer_contents
+                .try_as_mut_ptr()
+                .expect("Buffer must be CPU-visible to be mapped"))
+        }
     }
 
     pub fn unmap_buffer(&self) -> RafxResult<()> {
@@ -87,8 +129,17 @@ impl RafxBufferGles2 {
         if self.target != gles2_bindings::NONE {
             let gl_context = self.device_context.gl_context();
             gl_context.gl_bind_buffer(self.target, self.buffer_id.unwrap())?;
-            let ptr = unsafe { self.buffer_contents.as_ref().unwrap().as_ptr() };
-            gl_context.gl_buffer_sub_data(self.target, 0, self.buffer_def.size, ptr)?;
+            let ptr = unsafe {
+                self.buffer_contents
+                    .try_as_ptr()
+                    .expect("Buffer must be CPU-visible to be unmapped")
+            };
+            gl_context.gl_buffer_sub_data(
+                self.target,
+                0,
+                self.buffer_contents.inner.allocation_size as u64,
+                ptr,
+            )?;
             gl_context.gl_bind_buffer(self.target, NONE_BUFFER)?;
         }
 
@@ -98,9 +149,7 @@ impl RafxBufferGles2 {
 
     pub fn mapped_memory(&self) -> Option<*mut u8> {
         if self.mapped_count.load(Ordering::Relaxed) > 0 {
-            self.buffer_contents
-                .as_ref()
-                .map(|x| unsafe { x.as_mut_ptr() })
+            unsafe { self.buffer_contents.try_as_mut_ptr() }
         } else {
             None
         }
@@ -119,7 +168,9 @@ impl RafxBufferGles2 {
         buffer_byte_offset: u64,
     ) -> RafxResult<()> {
         let data_size_in_bytes = rafx_base::memory::slice_size_in_bytes(data) as u64;
-        assert!(buffer_byte_offset + data_size_in_bytes <= self.buffer_def.size);
+        assert!(
+            buffer_byte_offset + data_size_in_bytes <= self.buffer_contents.inner.allocation_size
+        );
 
         let src = data.as_ptr() as *const u8;
 
@@ -146,17 +197,19 @@ impl RafxBufferGles2 {
         let mut buffer_id = None;
         let mut buffer_contents = None;
         let target;
+
+        let mut allocation_size = buffer_def.size;
         if buffer_def
             .resource_type
             .intersects(RafxResourceType::INDEX_BUFFER | RafxResourceType::VERTEX_BUFFER)
         {
             target = if buffer_def
                 .resource_type
-                .contains(RafxResourceType::INDEX_BUFFER)
+                .contains(RafxResourceType::VERTEX_BUFFER)
             {
-                gles2_bindings::ELEMENT_ARRAY_BUFFER
-            } else {
                 gles2_bindings::ARRAY_BUFFER
+            } else {
+                gles2_bindings::ELEMENT_ARRAY_BUFFER
             };
 
             buffer_id = Some(device_context.gl_context().gl_create_buffer()?);
@@ -168,7 +221,7 @@ impl RafxBufferGles2 {
             if usage != gles2_bindings::NONE {
                 device_context.gl_context().gl_buffer_data(
                     target,
-                    buffer_def.size,
+                    allocation_size,
                     std::ptr::null(),
                     usage,
                 )?;
@@ -179,10 +232,9 @@ impl RafxBufferGles2 {
                 .gl_bind_buffer(target, NONE_BUFFER)?;
 
             if buffer_def.memory_usage != RafxMemoryUsage::GpuOnly {
-                buffer_contents = Some(vec![0_u8; buffer_def.size as _]);
+                buffer_contents = Some(vec![0_u8; allocation_size as _]);
             }
         } else {
-            let mut allocation_size = buffer_def.size;
             if buffer_def
                 .resource_type
                 .intersects(RafxResourceType::UNIFORM_BUFFER)
@@ -200,11 +252,13 @@ impl RafxBufferGles2 {
             target = gles2_bindings::NONE;
         }
 
+        let buffer_contents = Gles2BufferContents::new(buffer_contents, buffer_id, allocation_size);
+
         Ok(RafxBufferGles2 {
             device_context: device_context.clone(),
             buffer_def: buffer_def.clone(),
             buffer_id,
-            buffer_contents: buffer_contents.map(|x| Gles2BufferContents::new(x)),
+            buffer_contents,
             mapped_count: AtomicU32::new(0),
             target,
         })

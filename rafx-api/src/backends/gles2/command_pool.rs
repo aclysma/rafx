@@ -1,10 +1,10 @@
 use crate::gles2::{
-    DescriptorSetArrayData, FramebufferId, Gles2PipelineInfo, RafxCommandBufferGles2,
-    RafxDeviceContextGles2, RafxQueueGles2, RafxRootSignatureGles2,
+    BufferId, DescriptorSetArrayData, FramebufferId, Gles2Attribute, Gles2PipelineInfo,
+    RafxCommandBufferGles2, RafxDeviceContextGles2, RafxQueueGles2, RafxRootSignatureGles2,
 };
 use crate::{
     RafxCommandBufferDef, RafxCommandPoolDef, RafxExtents2D, RafxQueueType, RafxResult,
-    MAX_DESCRIPTOR_SET_LAYOUTS,
+    MAX_DESCRIPTOR_SET_LAYOUTS, MAX_VERTEX_INPUT_BINDINGS,
 };
 use rafx_base::trust_cell::TrustCell;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -19,9 +19,19 @@ pub(crate) struct BoundDescriptorSet {
     pub(crate) array_index: u32,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct BoundVertexBuffer {
+    pub(crate) buffer_id: BufferId,
+    pub(crate) byte_offset: u32,
+    pub(crate) attribute_enabled_bits: AttributeEnabledBits,
+}
+
 pub(crate) struct CommandPoolGles2StateInner {
     device_context: RafxDeviceContextGles2,
     pub(crate) id: u32,
+    // Owned by command pool
+    pub(crate) framebuffer_id: FramebufferId,
+
     pub(crate) is_started: bool,
     pub(crate) surface_size: Option<RafxExtents2D>,
     pub(crate) current_gl_pipeline_info: Option<Arc<Gles2PipelineInfo>>,
@@ -33,9 +43,13 @@ pub(crate) struct CommandPoolGles2StateInner {
 
     // One per possible bound vertex buffer (could be 1 per attribute!)
     pub(crate) vertex_attribute_enabled_bits: AttributeEnabledBits,
-    pub(crate) vertex_buffer_byte_offsets: Vec<u32>,
+    // Holds the currently bound attribute metadata
+    pub(crate) vertex_attributes: Vec<Option<Gles2Attribute>>,
+    // Vertex count offset per bindable vertex buffer (specified in cmd_draw_indexed(), presumed to be 0 for cmd_draw())
+    pub(crate) currently_bound_vertex_offset: [Option<i32>; MAX_VERTEX_INPUT_BINDINGS],
+    pub(crate) bound_vertex_buffers: [Option<BoundVertexBuffer>; MAX_VERTEX_INPUT_BINDINGS],
+    // Byte offset of the index buffer binding
     pub(crate) index_buffer_byte_offset: u32,
-    pub(crate) framebuffer_id: FramebufferId,
 }
 
 impl Drop for CommandPoolGles2StateInner {
@@ -66,10 +80,7 @@ impl std::fmt::Debug for CommandPoolGles2StateInner {
             .field("surface_size", &self.surface_size)
             .field("current_gl_pipeline_info", &self.current_gl_pipeline_info)
             .field("stencil_reference_value", &self.stencil_reference_value)
-            .field(
-                "vertex_buffer_byte_offsets",
-                &self.vertex_buffer_byte_offsets,
-            )
+            .field("bound_vertex_buffers", &self.bound_vertex_buffers)
             .field("index_buffer_byte_offset", &self.index_buffer_byte_offset)
             .finish()
     }
@@ -94,6 +105,8 @@ impl CommandPoolGles2State {
     fn new(device_context: &RafxDeviceContextGles2) -> RafxResult<Self> {
         let framebuffer_id = device_context.gl_context().gl_create_framebuffer()?;
 
+        let attribute_count = device_context.device_info().max_vertex_attribute_count as usize;
+
         let inner = CommandPoolGles2StateInner {
             device_context: device_context.clone(),
             id: NEXT_COMMAND_POOL_STATE_ID.fetch_add(1, Ordering::Relaxed),
@@ -102,11 +115,9 @@ impl CommandPoolGles2State {
             current_gl_pipeline_info: None,
             stencil_reference_value: 0,
             vertex_attribute_enabled_bits: 0,
-            vertex_buffer_byte_offsets: vec![
-                0;
-                device_context.device_info().max_vertex_attribute_count
-                    as usize
-            ],
+            vertex_attributes: vec![None; attribute_count],
+            currently_bound_vertex_offset: [None; MAX_VERTEX_INPUT_BINDINGS],
+            bound_vertex_buffers: [None; MAX_VERTEX_INPUT_BINDINGS],
             index_buffer_byte_offset: 0,
             bound_descriptor_sets: Default::default(),
             bound_descriptor_sets_root_signature: None,

@@ -11,7 +11,7 @@ use crate::{
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Gles2Attribute {
     pub(crate) buffer_index: u32,
     pub(crate) location: u32,

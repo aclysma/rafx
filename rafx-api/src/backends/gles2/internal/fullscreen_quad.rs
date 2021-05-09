@@ -64,6 +64,7 @@ impl FullscreenQuad {
         gl_context: &GlContext,
         texture: &RafxTextureGles2,
     ) -> RafxResult<()> {
+        gl_context.gl_disable(gles2_bindings::BLEND)?;
         gl_context.gl_disable(gles2_bindings::DEPTH_TEST)?;
         gl_context.gl_use_program(self.program_id)?;
 

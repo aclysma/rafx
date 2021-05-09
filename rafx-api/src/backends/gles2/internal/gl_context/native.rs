@@ -8,6 +8,7 @@ use crate::gles2::{
 };
 use crate::internal_shared::gl_window;
 use crate::{RafxError, RafxResult};
+use fnv::FnvHashSet;
 use raw_window_handle::HasRawWindowHandle;
 use std::ffi::{CStr, CString};
 
@@ -20,6 +21,7 @@ pub struct GlContext {
     context: gl_window::GlContext,
     gles2: Gles2,
     window_hash: WindowHash,
+    extensions: FnvHashSet<String>,
 
     // GL ES 2.0 does not support VAO, but desktop GL core profile *requires* one to be bound. So
     // we bind a single global VAO at startup if the APIs to do so are available. This allows
@@ -68,6 +70,32 @@ impl GlContext {
         context.make_current();
         let gles2 = Gles2::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 
+        // The correct way to get extensions differs between platforms:
+        // GL ES 2.0: gl_get_string(gles2_bindings::EXTENSIONS) returns a space-delimited string
+        // Desktop: gl_get_integerv(gles2_bindings::NUM_EXTENSIONS), then call
+        //          gl_get_stringi(gles2_bindings::EXTENSIONS, i)
+        // GL ES 3.0: I think either work fine
+        let mut extensions = FnvHashSet::default();
+        if gles2.GetStringi.is_loaded() {
+            // GL ES 3.0/Desktop path. Bindings are 2.0 only, so specify the constant for this here
+            const NUM_EXTENSIONS: u32 = 0x821D;
+            let extension_count = gl_get_integerv(&gles2, NUM_EXTENSIONS) as u32;
+            for i in 0..extension_count {
+                let extension = gl_get_stringi(&gles2, gles2_bindings::EXTENSIONS, i);
+                log::debug!("Extension: {}", extension);
+                extensions.insert(extension);
+            }
+        } else {
+            // GL ES 2.0 Path
+            let extensions_str = gl_get_string(&gles2, gles2_bindings::EXTENSIONS);
+            for extension in extensions_str.split(" ") {
+                log::debug!("Extension: {}", extension);
+                extensions.insert(extension.to_string());
+            }
+        }
+
+        // Create a "default" VAO that we will use everywhere. This is not supported in ES 2.0 and a
+        // single global VAO is used instead. Desktop GL *requires* VAOs to be created explicitly
         let mut global_vao = 0;
         if gles2.GenVertexArrays.is_loaded() {
             unsafe {
@@ -84,6 +112,7 @@ impl GlContext {
             context,
             gles2,
             window_hash,
+            extensions,
             global_vao,
         })
     }
@@ -124,32 +153,25 @@ impl GlContext {
         check_for_error(&self.gles2)
     }
 
+    pub fn has_extension(
+        &self,
+        name: &str,
+    ) -> bool {
+        self.extensions.contains(name)
+    }
+
     pub fn gl_get_integerv(
         &self,
         pname: u32,
     ) -> i32 {
-        unsafe {
-            let mut value = 0;
-            self.gles2.GetIntegerv(pname, &mut value);
-            value
-        }
+        gl_get_integerv(&self.gles2, pname)
     }
 
     pub fn gl_get_string(
         &self,
         pname: u32,
     ) -> String {
-        unsafe {
-            let str = self.gles2.GetString(pname);
-            if str.is_null() {
-                return "".to_string();
-            }
-
-            std::ffi::CStr::from_ptr(str as _)
-                .to_str()
-                .unwrap()
-                .to_string()
-        }
+        gl_get_string(&self.gles2, pname)
     }
 
     pub fn gl_viewport(
@@ -325,7 +347,7 @@ impl GlContext {
         type_: GLenum,
         normalized: bool,
         stride: u32,
-        byte_offset: u32,
+        byte_offset: i32,
     ) -> RafxResult<()> {
         unsafe {
             let ptr = byte_offset as *const std::ffi::c_void;
@@ -1167,6 +1189,16 @@ impl GlContext {
             self.check_for_error()
         }
     }
+
+    pub fn gl_generate_mipmap(
+        &self,
+        target: GLenum,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles2.GenerateMipmap(target);
+            self.check_for_error()
+        }
+    }
 }
 
 fn to_gl_bool(value: bool) -> GLboolean {
@@ -1185,5 +1217,57 @@ pub fn check_for_error(gles2: &Gles2) -> RafxResult<()> {
         } else {
             Ok(())
         }
+    }
+}
+
+pub fn gl_get_integerv(
+    gles2: &Gles2,
+    pname: u32,
+) -> i32 {
+    unsafe {
+        let mut value = 0;
+        gles2.GetIntegerv(pname, &mut value);
+        value
+    }
+}
+
+pub fn gl_get_string(
+    gles2: &Gles2,
+    pname: u32,
+) -> String {
+    unsafe {
+        let str = gles2.GetString(pname);
+        if str.is_null() {
+            return "".to_string();
+        }
+
+        std::ffi::CStr::from_ptr(str as _)
+            .to_str()
+            .unwrap()
+            .to_string()
+    }
+}
+
+// This is not public because it is not supported in ES 2.0. However we need it internally so it's
+// defined here.
+fn gl_get_stringi(
+    gles2: &Gles2,
+    pname: u32,
+    index: u32,
+) -> String {
+    if !gles2.GetStringi.is_loaded() {
+        panic!("This function is not supported in base GL ES 2.0. Must verify that it is loaded before calling it!");
+    }
+
+    unsafe {
+        let str = gles2.GetStringi(pname, index);
+        if str.is_null() {
+            return "".to_string();
+        }
+
+        std::ffi::CStr::from_ptr(str as _)
+            .to_str()
+            .unwrap()
+            .to_string()
     }
 }

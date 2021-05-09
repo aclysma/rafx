@@ -19,10 +19,7 @@ use crate::gles2::GlContext;
 
 use crate::gles2::fullscreen_quad::FullscreenQuad;
 
-#[cfg(debug_assertions)]
-#[cfg(feature = "track-device-contexts")]
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 pub struct RafxDeviceContextGles2Inner {
     pub(crate) device_info: RafxDeviceInfo,
@@ -33,6 +30,7 @@ pub struct RafxDeviceContextGles2Inner {
     pub(crate) validate_shaders: bool,
 
     pub(crate) fullscreen_quad: FullscreenQuad,
+    pub(crate) gl_finish_call_count: AtomicU64,
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
@@ -106,6 +104,7 @@ impl RafxDeviceContextGles2Inner {
             fullscreen_quad,
             destroyed: AtomicBool::new(false),
             validate_shaders: gl_api_def.validate_shaders,
+            gl_finish_call_count: AtomicU64::new(0),
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
@@ -198,6 +197,15 @@ impl RafxDeviceContextGles2 {
 
     pub fn gl_context_manager(&self) -> &GlContextManager {
         &self.inner.gl_context_manager
+    }
+
+    // Used internally to support polling fences
+    pub fn gl_finish(&self) -> RafxResult<()> {
+        self.gl_context().gl_finish()?;
+        self.inner
+            .gl_finish_call_count
+            .fetch_add(1, Ordering::Relaxed);
+        Ok(())
     }
 
     pub fn new(inner: Arc<RafxDeviceContextGles2Inner>) -> RafxResult<Self> {
@@ -305,14 +313,18 @@ impl RafxDeviceContextGles2 {
     pub fn find_supported_format(
         &self,
         candidates: &[RafxFormat],
-        _resource_type: RafxResourceType,
+        resource_type: RafxResourceType,
     ) -> Option<RafxFormat> {
-        // OpenGL doesn't provide a great way to determine if a texture is natively available
-        for &candidate in candidates {
-            // For now we don't support compressed textures for GL ES 2.0 at all (but we probably could)
-            if !candidate.is_compressed() {
-                return Some(candidate);
+        if resource_type.intersects(RafxResourceType::RENDER_TARGET_DEPTH_STENCIL)
+            || resource_type.intersects(RafxResourceType::RENDER_TARGET_COLOR)
+        {
+            for &candidate in candidates {
+                if candidate.gles2_texture_format_info().is_some() {
+                    return Some(candidate);
+                }
             }
+
+            return None;
         }
 
         None

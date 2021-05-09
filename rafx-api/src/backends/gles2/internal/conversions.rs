@@ -241,3 +241,20 @@ impl RafxBlendState {
         Ok(blend_state)
     }
 }
+
+pub const GL_CUBE_MAP_TARGETS: [GLenum; 6] = [
+    gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_X,
+    gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_X,
+    gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_Y,
+    gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_Y,
+    gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_Z,
+    gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_Z,
+];
+
+pub fn array_layer_to_cube_map_target(array_layer: u16) -> GLenum {
+    if array_layer > 5 {
+        unimplemented!("GL ES 2.0 does not support more than 6 images for a cubemap")
+    }
+
+    GL_CUBE_MAP_TARGETS[array_layer as usize]
+}

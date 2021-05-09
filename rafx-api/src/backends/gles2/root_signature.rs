@@ -22,7 +22,7 @@ pub(crate) enum RafxSamplerIndexGles2 {
 
 #[derive(Debug)]
 pub(crate) struct ImmutableSampler {
-    pub(crate) samplers: Vec<RafxSamplerGles2>,
+    pub(crate) sampler: RafxSamplerGles2,
     pub(crate) gl_name: CString,
 }
 
@@ -289,16 +289,26 @@ impl RafxRootSignatureGles2 {
             if let Some(immutable_sampler_def_index) = immutable_sampler_def_index {
                 assert!(resource.resource_type.intersects(RafxResourceType::SAMPLER));
 
-                let samplers = root_signature_def.immutable_samplers[immutable_sampler_def_index]
+                if root_signature_def.immutable_samplers[immutable_sampler_def_index]
                     .samplers
-                    .iter()
-                    .map(|x| x.gles2_sampler().unwrap().clone())
-                    .collect();
+                    .len()
+                    > 1
+                {
+                    unimplemented!(
+                        "GLES 2.0 backend does not support an array of immutable samplers"
+                    );
+                }
+
+                let sampler = root_signature_def.immutable_samplers[immutable_sampler_def_index]
+                    .samplers[0]
+                    .gles2_sampler()
+                    .unwrap()
+                    .clone();
 
                 let immutable_sampler_index = immutable_samplers.len();
 
                 immutable_samplers.push(ImmutableSampler {
-                    samplers,
+                    sampler,
                     gl_name: gl_name_cstr,
                 });
 

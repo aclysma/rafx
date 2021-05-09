@@ -1,3 +1,4 @@
+use crate::gles2::conversions::GL_CUBE_MAP_TARGETS;
 use crate::gles2::gles2_bindings::types::GLenum;
 use crate::gles2::{gles2_bindings, RafxDeviceContextGles2, TextureId, NONE_TEXTURE};
 use crate::{
@@ -128,6 +129,9 @@ impl RafxTextureGles2 {
             .resource_type
             .contains(RafxResourceType::TEXTURE_CUBE)
         {
+            if texture_def.array_length != 6 {
+                unimplemented!("GL ES 2.0 does not support cube map arrays");
+            }
             gles2_bindings::TEXTURE_CUBE_MAP
         } else {
             gles2_bindings::TEXTURE_2D
@@ -147,18 +151,33 @@ impl RafxTextureGles2 {
             let gl_context = device_context.gl_context();
             let texture_id = gl_context.gl_create_texture()?;
             gl_context.gl_pixel_storei(gles2_bindings::UNPACK_ALIGNMENT, 1)?;
+
+            // If it's a cubemap, the gl_tex_image_2d() call takes a different target enum than the
+            // gl_bind_texture() call
+            let subtargets = if gl_target == gles2_bindings::TEXTURE_CUBE_MAP {
+                &GL_CUBE_MAP_TARGETS[..]
+            } else {
+                &[gles2_bindings::TEXTURE_2D]
+            };
+
             gl_context.gl_bind_texture(gl_target, texture_id)?;
-            gl_context.gl_tex_image_2d(
-                gl_target,
-                0,
-                format_info.gl_internal_format,
-                texture_def.extents.width,
-                texture_def.extents.height,
-                0,
-                format_info.gl_format,
-                format_info.gl_type,
-                None,
-            )?;
+            for &subtarget in subtargets {
+                //TODO: Compressed texture support?
+
+                for mip_level in 0..texture_def.mip_count {
+                    gl_context.gl_tex_image_2d(
+                        subtarget,
+                        mip_level as u8,
+                        format_info.gl_internal_format,
+                        texture_def.extents.width >> mip_level,
+                        texture_def.extents.height >> mip_level,
+                        0,
+                        format_info.gl_format,
+                        format_info.gl_type,
+                        None,
+                    )?;
+                }
+            }
             gl_context.gl_bind_texture(gl_target, NONE_TEXTURE)?;
 
             RafxRawImageGles2::Texture(texture_id)

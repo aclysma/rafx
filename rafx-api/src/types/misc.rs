@@ -271,7 +271,7 @@ pub enum RafxMemoryUsage {
 }
 
 /// Indicates the result of presenting a swapchain image
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RafxPresentSuccessResult {
     /// The image was shown and the swapchain can continue to be used.
     Success,
@@ -291,7 +291,7 @@ pub enum RafxPresentSuccessResult {
 }
 
 /// Indicates the current state of a fence.
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RafxFenceStatus {
     /// The fence was submitted to the command buffer and signaled as completed by the GPU
     Complete,

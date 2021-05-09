@@ -298,6 +298,8 @@ pub const MAX_DESCRIPTOR_SET_LAYOUTS: usize = 4;
 /// The maximum number of simultaneously attached render targets
 // In sync with RafxBlendStateTargets
 pub const MAX_RENDER_TARGET_ATTACHMENTS: usize = 8;
+// Vulkan guarantees up to 16
+pub const MAX_VERTEX_INPUT_BINDINGS: usize = 16;
 
 //
 // Exported public API
