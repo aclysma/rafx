@@ -98,12 +98,19 @@ impl ShadowMapResource {
         for render_view in &self.shadow_map_render_views {
             match render_view {
                 ShadowMapRenderView::Single(view) => {
-                    frame_packet_builder.query_visibility_and_add_results(&view, visibility_region, visibility_config);
+                    frame_packet_builder.query_visibility_and_add_results(
+                        &view,
+                        visibility_region,
+                        visibility_config,
+                    );
                 }
                 ShadowMapRenderView::Cube(views) => {
                     for view in views {
-                        frame_packet_builder
-                            .query_visibility_and_add_results(&view, visibility_region, visibility_config);
+                        frame_packet_builder.query_visibility_and_add_results(
+                            &view,
+                            visibility_region,
+                            visibility_config,
+                        );
                     }
                 }
             }

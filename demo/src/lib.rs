@@ -14,8 +14,8 @@ use crate::scenes::SceneManager;
 use crate::time::TimeState;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::nodes::ExtractResources;
-use rafx::renderer::{ViewportsResource, RendererConfigResource};
 use rafx::renderer::{AssetSource, Renderer};
+use rafx::renderer::{RendererConfigResource, ViewportsResource};
 use rafx::visibility::VisibilityRegion;
 
 pub mod assets;
@@ -246,7 +246,10 @@ impl RenderOptions {
             self.tonemapper_type = current_tonemapper_type.into();
         }
 
-        ui.checkbox(imgui::im_str!("freeze visibility"), &mut self.freeze_visibility);
+        ui.checkbox(
+            imgui::im_str!("freeze visibility"),
+            &mut self.freeze_visibility,
+        );
     }
 }
 
@@ -494,7 +497,9 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             });
 
             let mut render_config_resource = resources.get_mut::<RendererConfigResource>().unwrap();
-            render_config_resource.visibility_config.enable_visibility_update = !render_options.freeze_visibility;
+            render_config_resource
+                .visibility_config
+                .enable_visibility_update = !render_options.freeze_visibility;
         }
 
         //

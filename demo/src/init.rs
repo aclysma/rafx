@@ -15,8 +15,8 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::framework::visibility::VisibilityRegion;
 use rafx::nodes::{ExtractResources, RenderRegistry};
-use rafx::renderer::{ViewportsResource, RendererConfigResource};
 use rafx::renderer::{AssetSource, Renderer, RendererBuilder, SwapchainHandler};
+use rafx::renderer::{RendererConfigResource, ViewportsResource};
 
 pub struct Sdl2Systems {
     pub context: sdl2::Sdl,

@@ -8,9 +8,9 @@ use ash::vk;
 use crate::vulkan::VkCreateInstanceError::VkError;
 use crate::vulkan::{VkDebugReporter, VkEntry};
 use ash::extensions::ext::DebugUtils;
+use ash::vk::DebugUtilsMessageTypeFlagsEXT;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
-use ash::vk::DebugUtilsMessageTypeFlagsEXT;
 
 /// Create one of these at startup. It never gets lost/destroyed.
 pub struct VkInstance {

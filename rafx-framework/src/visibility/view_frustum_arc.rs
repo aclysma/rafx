@@ -1,4 +1,5 @@
 use crate::visibility::visibility_object_allocator::{SlotMapArc, ViewFrustumObjectId};
+use crate::visibility::VisibilityConfig;
 use crate::RafxResult;
 use crossbeam_channel::Sender;
 use glam::Vec3;
@@ -9,7 +10,6 @@ use rafx_visibility::{
 };
 use slotmap::SlotMap;
 use std::sync::Arc;
-use crate::visibility::VisibilityConfig;
 
 #[derive(Clone)]
 pub struct ViewFrustumArc {
@@ -101,7 +101,10 @@ impl ViewFrustumArc {
         self
     }
 
-    pub fn query_visibility(&mut self, visibility_config: &VisibilityConfig) -> RafxResult<RwLockReadGuard<VisibilityQuery>> {
+    pub fn query_visibility(
+        &mut self,
+        visibility_config: &VisibilityConfig,
+    ) -> RafxResult<RwLockReadGuard<VisibilityQuery>> {
         let mut results = self.inner.visibility_query.write();
 
         results.objects.clear();

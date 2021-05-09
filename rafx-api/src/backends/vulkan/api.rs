@@ -100,9 +100,7 @@ impl RafxApiVulkan {
                 RafxValidationMode::EnabledIfAvailable => {
                     (false, vk::DebugUtilsMessageSeverityFlagsEXT::all())
                 }
-                RafxValidationMode::Enabled => {
-                    (true, vk::DebugUtilsMessageSeverityFlagsEXT::all())
-                },
+                RafxValidationMode::Enabled => (true, vk::DebugUtilsMessageSeverityFlagsEXT::all()),
             };
 
         log::info!("Validation mode: {:?}", vk_api_def.validation_mode);

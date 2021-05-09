@@ -4,8 +4,8 @@ use super::{MeshExtractJob, MeshRenderFeature, MeshRenderNodeSet, ShadowMapResou
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::nodes::{FramePacketBuilder, RenderView, RenderViewSet};
-use rafx::visibility::VisibilityRegion;
 use rafx::renderer::RendererConfigResource;
+use rafx::visibility::VisibilityRegion;
 
 pub struct MeshStaticResources {
     pub depth_material: Handle<MaterialAsset>,
@@ -61,7 +61,10 @@ impl RendererPlugin for MeshRendererPlugin {
     ) {
         let mut shadow_map_resource = render_resources.fetch_mut::<ShadowMapResource>();
         let visibility_region = extract_resources.fetch::<VisibilityRegion>();
-        let renderer_config = extract_resources.try_fetch::<RendererConfigResource>().map(|x| *x).unwrap_or_default();
+        let renderer_config = extract_resources
+            .try_fetch::<RendererConfigResource>()
+            .map(|x| *x)
+            .unwrap_or_default();
 
         shadow_map_resource.recalculate_shadow_map_views(
             &render_view_set,
