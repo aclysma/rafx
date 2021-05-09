@@ -144,7 +144,7 @@ pub struct RenderOptions {
     pub show_shadows: bool,
     pub blur_pass_count: usize,
     pub tonemapper_type: TonemapperType,
-    pub freeze_visibility: bool,
+    pub enable_visibility_update: bool,
 }
 
 impl RenderOptions {
@@ -160,7 +160,7 @@ impl RenderOptions {
             show_feature_toggles: false,
             blur_pass_count: 0,
             tonemapper_type: TonemapperType::None,
-            freeze_visibility: false,
+            enable_visibility_update: true,
         }
     }
 
@@ -176,7 +176,7 @@ impl RenderOptions {
             show_feature_toggles: true,
             blur_pass_count: 5,
             tonemapper_type: TonemapperType::LogDerivative,
-            freeze_visibility: false,
+            enable_visibility_update: true,
         }
     }
 }
@@ -246,8 +246,8 @@ impl RenderOptions {
         }
 
         ui.checkbox(
-            imgui::im_str!("freeze visibility"),
-            &mut self.freeze_visibility,
+            imgui::im_str!("enable_visibility_update"),
+            &mut self.enable_visibility_update,
         );
     }
 }
@@ -498,7 +498,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             let mut render_config_resource = resources.get_mut::<RendererConfigResource>().unwrap();
             render_config_resource
                 .visibility_config
-                .enable_visibility_update = !render_options.freeze_visibility;
+                .enable_visibility_update = render_options.enable_visibility_update;
         }
 
         //

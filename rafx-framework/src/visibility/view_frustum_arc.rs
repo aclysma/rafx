@@ -105,30 +105,28 @@ impl ViewFrustumArc {
         &mut self,
         visibility_config: &VisibilityConfig,
     ) -> RafxResult<RwLockReadGuard<VisibilityQuery>> {
-        let mut results = self.inner.visibility_query.write();
-
-        results.objects.clear();
-        results.volumes.clear();
+        self.inner.visibility_world.update();
 
         if visibility_config.enable_visibility_update {
-            self.inner.visibility_world.update();
+            let mut results = self.inner.visibility_query.write();
+
+            results.objects.clear();
+            results.volumes.clear();
+
+            let storage = self.inner.storage.read();
+
+            if let Some(static_view_frustum) =
+                self.view_frustum(&self.inner.static_view_frustum, &storage)
+            {
+                static_view_frustum.query_visibility(&mut results)?;
+            }
+
+            if let Some(dynamic_view_frustum) =
+                self.view_frustum(&self.inner.dynamic_view_frustum, &storage)
+            {
+                dynamic_view_frustum.query_visibility(&mut results)?;
+            }
         }
-
-        let storage = self.inner.storage.read();
-
-        if let Some(static_view_frustum) =
-            self.view_frustum(&self.inner.static_view_frustum, &storage)
-        {
-            static_view_frustum.query_visibility(&mut results)?;
-        }
-
-        if let Some(dynamic_view_frustum) =
-            self.view_frustum(&self.inner.dynamic_view_frustum, &storage)
-        {
-            dynamic_view_frustum.query_visibility(&mut results)?;
-        }
-
-        std::mem::drop(results);
 
         Ok(self.inner.visibility_query.read())
     }
