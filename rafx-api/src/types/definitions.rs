@@ -192,6 +192,10 @@ impl RafxTextureDef {
         assert!(self.mip_count > 0);
         assert!(self.mip_count < 2 || self.sample_count == RafxSampleCount::SampleCount1);
 
+        if self.resource_type.contains(RafxResourceType::TEXTURE_CUBE) {
+            assert_eq!(self.array_length % 6, 0);
+        }
+
         // we support only one or the other
         assert!(
             !(self.resource_type.contains(

@@ -309,6 +309,7 @@ fn process_glsl_shader(
     let mut reflected_data = if rs_file.is_some()
         || cooked_shader_file.is_some()
         || metal_generated_src_file.is_some()
+        || gles2_generated_src_file.is_some()
     {
         log::trace!("{:?}: generate reflection data", glsl_file);
         let require_semantics = cooked_shader_file.is_some();
@@ -432,16 +433,13 @@ fn process_glsl_shader(
                 Err(format!("The texture {} is being read by multiple samplers. This is not supported in GL ES 2.0", texture_name))?;
             }
 
-            if let Some(reflected_data) = &mut reflected_data {
-                reflected_data.set_gl_sampler_name(&texture_name, &sampler_name);
-            }
+            reflected_data
+                .as_mut()
+                .unwrap()
+                .set_gl_sampler_name(&texture_name, &sampler_name);
 
             //let new_name = format!("combined_{}_{}", sampler_name, texture_name);
             gles2_ast.set_name(remap.combined_id, &texture_name)?
-        }
-
-        if let Some(reflected_data) = &reflected_data {
-            println!("{:#?}", reflected_data.reflection);
         }
 
         let shader_resources = gles2_ast.get_shader_resources()?;

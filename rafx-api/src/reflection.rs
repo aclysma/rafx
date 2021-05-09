@@ -175,6 +175,23 @@ impl RafxShaderResource {
             ))?;
         }
 
+        if self.gles2_name != other.gles2_name {
+            Err(format!(
+                "Pass is using shaders in different stages with different gles2_name (set={} binding={})",
+                self.set_index, self.binding
+            ))?;
+        }
+
+        if self.gles2_sampler_name.is_some()
+            && other.gles2_sampler_name.is_some()
+            && self.gles2_sampler_name != other.gles2_sampler_name
+        {
+            Err(format!(
+                "Pass is using shaders in different stages with different non-None gles2_sampler_name (set={} binding={})",
+                self.set_index, self.binding
+            ))?;
+        }
+
         Ok(())
     }
 }
@@ -275,6 +292,9 @@ impl RafxPipelineReflection {
                     resource.used_in_shader_stages,
                 );
                 existing_resource.used_in_shader_stages |= resource.used_in_shader_stages;
+                if existing_resource.gles2_sampler_name.is_none() {
+                    existing_resource.gles2_sampler_name = resource.gles2_sampler_name.clone();
+                }
             } else {
                 // insert it
                 log::trace!(

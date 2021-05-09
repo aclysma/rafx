@@ -1,5 +1,6 @@
 use crate::gles2::RafxDeviceContextGles2;
 use crate::{RafxFenceStatus, RafxResult};
+use rafx_base::trust_cell::TrustCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 //TODO: GL ES 3.0 has some sync primitives
@@ -9,6 +10,7 @@ pub struct RafxFenceGles2 {
     // Set to true when an operation is scheduled to signal this fence
     // Cleared when an operation is scheduled to consume this fence
     submitted: AtomicBool,
+    gl_finish_call_count: TrustCell<u64>,
 }
 
 impl RafxFenceGles2 {
@@ -18,6 +20,7 @@ impl RafxFenceGles2 {
         Ok(RafxFenceGles2 {
             device_context: device_context.clone(),
             submitted: AtomicBool::new(false),
+            gl_finish_call_count: Default::default(),
         })
     }
 
@@ -27,7 +30,7 @@ impl RafxFenceGles2 {
 
     pub fn wait(&self) -> RafxResult<()> {
         if self.submitted() {
-            self.device_context.gl_context().gl_finish()?;
+            self.device_context.gl_finish()?;
         }
 
         self.set_submitted(false);
@@ -41,7 +44,7 @@ impl RafxFenceGles2 {
         let mut finish_called = false;
         for fence in fences {
             if fence.submitted() {
-                fence.device_context.gl_context().gl_finish()?;
+                fence.device_context.gl_finish()?;
                 finish_called = true;
                 break;
             }
@@ -60,6 +63,15 @@ impl RafxFenceGles2 {
         &self,
         available: bool,
     ) {
+        if available {
+            // Set the call count to the global device count. If it increments past the cached count,
+            // we will know that finish was called since this fence was submitted
+            *self.gl_finish_call_count.borrow_mut() = self
+                .device_context
+                .inner
+                .gl_finish_call_count
+                .load(Ordering::Relaxed);
+        }
         self.submitted.store(available, Ordering::Relaxed);
     }
 
@@ -67,7 +79,18 @@ impl RafxFenceGles2 {
         if !self.submitted() {
             Ok(RafxFenceStatus::Unsubmitted)
         } else {
-            Ok(RafxFenceStatus::Incomplete)
+            if *self.gl_finish_call_count.borrow()
+                >= self
+                    .device_context
+                    .inner
+                    .gl_finish_call_count
+                    .load(Ordering::Relaxed)
+            {
+                self.set_submitted(false);
+                Ok(RafxFenceStatus::Complete)
+            } else {
+                Ok(RafxFenceStatus::Incomplete)
+            }
         }
     }
 }

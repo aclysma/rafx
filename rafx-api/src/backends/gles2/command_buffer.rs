@@ -1,8 +1,9 @@
 use crate::gles2::{
-    AttributeEnabledBits, BoundDescriptorSet, CommandPoolGles2State, CommandPoolGles2StateInner,
-    DescriptorSetArrayData, GlContext, Gles2PipelineInfo, RafxBufferGles2, RafxCommandPoolGles2,
-    RafxDescriptorSetArrayGles2, RafxDescriptorSetHandleGles2, RafxPipelineGles2, RafxQueueGles2,
-    RafxRootSignatureGles2, RafxTextureGles2, NONE_BUFFER, NONE_TEXTURE,
+    AttributeEnabledBits, BoundDescriptorSet, BoundVertexBuffer, CommandPoolGles2State,
+    CommandPoolGles2StateInner, DescriptorSetArrayData, GlContext, Gles2PipelineInfo,
+    RafxBufferGles2, RafxCommandPoolGles2, RafxDescriptorSetArrayGles2,
+    RafxDescriptorSetHandleGles2, RafxPipelineGles2, RafxQueueGles2, RafxRootSignatureGles2,
+    RafxTextureGles2, NONE_BUFFER, NONE_FRAMEBUFFER, NONE_TEXTURE,
 };
 use crate::{
     RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorFlags,
@@ -13,7 +14,7 @@ use crate::{
 
 use rafx_base::trust_cell::TrustCell;
 
-use crate::gles2::conversions::Gles2DepthStencilState;
+use crate::gles2::conversions::{array_layer_to_cube_map_target, Gles2DepthStencilState};
 use crate::gles2::gles2_bindings;
 
 use crate::backends::gles2::{RafxRawImageGles2, RafxSamplerIndexGles2};
@@ -28,6 +29,9 @@ pub struct RafxCommandBufferGles2 {
 }
 
 impl RafxCommandBufferGles2 {
+    pub(crate) fn queue(&self) -> &RafxQueueGles2 {
+        &self.queue
+    }
     pub fn new(
         command_pool: &RafxCommandPoolGles2,
         _command_buffer_def: &RafxCommandBufferDef,
@@ -49,21 +53,26 @@ impl RafxCommandBufferGles2 {
     pub fn end(&self) -> RafxResult<()> {
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
-        assert!(state.surface_size.is_none());
 
         let gl_context = self.queue.device_context().gl_context();
-        Self::update_vertex_attributes_in_use(gl_context, &mut *state, 0)?;
-
-        assert_eq!(state.vertex_attribute_enabled_bits, 0);
 
         state.is_started = false;
+        assert!(state.surface_size.is_none());
         state.current_gl_pipeline_info = None;
         state.stencil_reference_value = 0;
-        state.index_buffer_byte_offset = 0;
-        for offset in &mut state.vertex_buffer_byte_offsets {
-            *offset = 0;
-        }
         state.clear_bindings();
+        Self::update_vertex_attributes_in_use(gl_context, &mut *state, 0)?;
+        assert_eq!(state.vertex_attribute_enabled_bits, 0);
+        for attribute in &mut state.vertex_attributes {
+            *attribute = None;
+        }
+        for vertex_offset in &mut state.currently_bound_vertex_offset {
+            *vertex_offset = None;
+        }
+        for bound_vertex_buffer in &mut state.bound_vertex_buffers {
+            *bound_vertex_buffer = None;
+        }
+        state.index_buffer_byte_offset = 0;
 
         Ok(())
     }
@@ -282,6 +291,9 @@ impl RafxCommandBufferGles2 {
     pub fn cmd_end_render_pass(&self) -> RafxResult<()> {
         let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
+
+        let gl_context = self.queue.device_context().gl_context();
+        gl_context.gl_bind_framebuffer(gles2_bindings::FRAMEBUFFER, NONE_FRAMEBUFFER)?;
 
         state.surface_size = None;
         Ok(())
@@ -523,35 +535,63 @@ impl RafxCommandBufferGles2 {
         let gl_pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap().clone();
         let gl_context = self.queue.device_context().gl_context();
 
-        let mut attributes_in_use = 0;
+        // All currently enabled attributes, we may need to clear previously bound attributes and enable
+        // newly bound attributes
+        let mut attributes_in_use = state.vertex_attribute_enabled_bits;
 
         let mut binding_index = first_binding;
         for binding in bindings {
+            // First, clear the attributes_in_use flags that were previously used with this binding
+            // and the attribute metadata
+            if let Some(bound_vertex_buffer) = &state.bound_vertex_buffers[binding_index as usize] {
+                let bound_attribute_bits = bound_vertex_buffer.attribute_enabled_bits;
+                for (i, attribute) in state.vertex_attributes.iter_mut().enumerate() {
+                    if (bound_attribute_bits & (1 << i)) != 0 {
+                        *attribute = None;
+                    }
+                }
+
+                attributes_in_use = attributes_in_use & !bound_attribute_bits;
+            }
+
+            // Check that the buffer is declared as a vertex buffer
             let gl_buffer = binding.buffer.gles2_buffer().unwrap();
-            assert_eq!(gl_buffer.gl_target(), gles2_bindings::ARRAY_BUFFER);
+            if !gl_buffer
+                .buffer_def()
+                .resource_type
+                .intersects(RafxResourceType::VERTEX_BUFFER)
+            {
+                Err("Buffers provided to cmd_bind_vertex_buffer must be vertex buffers")?;
+            }
 
-            // Bind the vertex buffer
-            gl_context.gl_bind_buffer(gl_buffer.gl_target(), gl_buffer.gl_buffer_id().unwrap())?;
-            state.vertex_buffer_byte_offsets[binding_index as usize] = binding.byte_offset as u32;
-
-            // Setup all the attributes associated with this vertex buffer
+            // Store all the attributes associated with this vertex buffer, they will be set up
+            // when we try to draw by calling ensure_vertex_bindings_up_to_date(). This is deferred
+            // to support vertex offsets in cmd_draw_index()
+            let mut attributes_in_use_per_binding = 0;
             for attribute in &gl_pipeline_info.gl_attributes {
                 if attribute.buffer_index != binding_index {
+                    // Skip attributes that don't belong to this buffer
                     continue;
                 }
 
-                let byte_offset = binding.byte_offset as u32 + attribute.byte_offset;
-                gl_context.gl_vertex_attrib_pointer(
-                    attribute.location,
-                    attribute.channel_count as _,
-                    attribute.gl_type,
-                    attribute.is_normalized,
-                    attribute.stride,
-                    byte_offset,
-                )?;
+                // Cache the attribute metadata
+                state.vertex_attributes[attribute.location as usize] = Some(attribute.clone());
 
+                // Enable the flag for this attribute
                 attributes_in_use |= 1 << attribute.location;
+                attributes_in_use_per_binding |= 1 << attribute.location;
             }
+
+            // Cache the flags of all enabled attributes
+            state.bound_vertex_buffers[binding_index as usize] = Some(BoundVertexBuffer {
+                buffer_id: gl_buffer.gl_buffer_id().unwrap(),
+                byte_offset: binding.byte_offset as u32,
+                attribute_enabled_bits: attributes_in_use_per_binding,
+            });
+
+            // Since we've changed the vertex buffer and not bound it, clear the currently bound
+            // vertex offset. (update_vertex_attributes_in_use() below will deactivate unused attributes)
+            state.currently_bound_vertex_offset[binding_index as usize] = None;
 
             binding_index += 1;
         }
@@ -559,12 +599,65 @@ impl RafxCommandBufferGles2 {
         Self::update_vertex_attributes_in_use(gl_context, &mut *state, attributes_in_use)
     }
 
+    fn ensure_vertex_bindings_up_to_date(
+        gl_context: &GlContext,
+        state: &mut CommandPoolGles2StateInner,
+        vertex_offset: i32,
+    ) -> RafxResult<()> {
+        let mut unbind_buffer = false;
+
+        // Check all vertex buffers have been bound with the given offset
+        for (vertex_buffer_index, bound_vertex_buffer) in
+            state.bound_vertex_buffers.iter_mut().enumerate()
+        {
+            if let Some(bound_vertex_buffer) = bound_vertex_buffer {
+                // The buffer is bound correctly, skip it
+                if state.currently_bound_vertex_offset[vertex_buffer_index] == Some(vertex_offset) {
+                    continue;
+                }
+
+                // Bind the buffer and set up any attributes that should be pulled from it
+                gl_context
+                    .gl_bind_buffer(gles2_bindings::ARRAY_BUFFER, bound_vertex_buffer.buffer_id)?;
+                for i in 0..state.vertex_attributes.len() {
+                    if bound_vertex_buffer.attribute_enabled_bits & (1 << i) != 0 {
+                        let attribute = state.vertex_attributes[i].as_ref().unwrap();
+                        debug_assert!(attribute.buffer_index == vertex_buffer_index as u32);
+                        debug_assert!((1 << i) & state.vertex_attribute_enabled_bits != 0);
+                        let byte_offset = bound_vertex_buffer.byte_offset as i32
+                            + attribute.byte_offset as i32
+                            + (attribute.stride as i32 * vertex_offset);
+                        gl_context.gl_vertex_attrib_pointer(
+                            attribute.location,
+                            attribute.channel_count as _,
+                            attribute.gl_type,
+                            attribute.is_normalized,
+                            attribute.stride,
+                            byte_offset,
+                        )?;
+                    }
+                }
+                unbind_buffer = true;
+
+                // Either the attributes are unbound or we need to rebind them with a different offset
+                // Store the offset this buffer is configured with
+                state.currently_bound_vertex_offset[vertex_buffer_index] = Some(vertex_offset);
+            }
+        }
+
+        if unbind_buffer {
+            gl_context.gl_bind_buffer(gles2_bindings::ARRAY_BUFFER, NONE_BUFFER)?;
+        }
+
+        Ok(())
+    }
+
     fn update_vertex_attributes_in_use(
         gl_context: &GlContext,
         state: &mut CommandPoolGles2StateInner,
         desired: AttributeEnabledBits,
     ) -> RafxResult<()> {
-        for i in 0..state.vertex_buffer_byte_offsets.len() as u32 {
+        for i in 0..state.vertex_attributes.len() as u32 {
             let is_enabled = (1 << i) & state.vertex_attribute_enabled_bits;
             let should_be_enabled = (1 << i) & desired;
             if is_enabled != should_be_enabled {
@@ -594,7 +687,11 @@ impl RafxCommandBufferGles2 {
         }
 
         let buffer = binding.buffer.gles2_buffer().unwrap();
-        if buffer.gl_target() != gles2_bindings::ELEMENT_ARRAY_BUFFER {
+        if !buffer
+            .buffer_def()
+            .resource_type
+            .intersects(RafxResourceType::INDEX_BUFFER)
+        {
             Err("Buffers provided to cmd_bind_index_buffer must be index buffers")?;
         }
 
@@ -756,14 +853,10 @@ impl RafxCommandBufferGles2 {
                         // We need to find a sampler here because GL ES 2.0 expects sampler state
                         // to be set per-texture
                         //
-                        let mut immutable_samplers = None;
-                        let mut mutable_samplers = None;
-                        match descriptor.sampler_descriptor_index.unwrap() {
+                        let sampler = match descriptor.sampler_descriptor_index.unwrap() {
                             RafxSamplerIndexGles2::Immutable(immutable_index) => {
-                                immutable_samplers = Some(
-                                    &root_signature.inner.immutable_samplers
-                                        [immutable_index as usize],
-                                )
+                                &root_signature.inner.immutable_samplers[immutable_index as usize]
+                                    .sampler
                             }
                             RafxSamplerIndexGles2::Mutable(sampler_descriptor_index) => {
                                 // Find the descriptor with the relevant sampler
@@ -771,13 +864,12 @@ impl RafxCommandBufferGles2 {
                                     root_signature.descriptor(sampler_descriptor_index).unwrap();
                                 // Find the samplers within the descriptor set's flattened array of
                                 // all samplers
-                                let first = (array_index * data.sampler_states_per_set
+                                let sampler_index = (array_index * data.sampler_states_per_set
                                     + sampler_descriptor.descriptor_data_offset_in_set.unwrap())
                                     as usize;
-                                let last = first + descriptor.element_count as usize;
-                                mutable_samplers = Some(&data.sampler_states[first..last]);
+                                &data.sampler_states[sampler_index].as_ref().unwrap().sampler
                             }
-                        }
+                        };
 
                         for i in 0..descriptor.element_count {
                             let image_state_index = base_image_state_index + i;
@@ -785,18 +877,6 @@ impl RafxCommandBufferGles2 {
                                 .as_ref()
                                 .expect("Tried to use unbound texture")
                                 .texture;
-
-                            let sampler = match descriptor.sampler_descriptor_index.unwrap() {
-                                RafxSamplerIndexGles2::Immutable(_) => {
-                                    &immutable_samplers.unwrap().samplers[i as usize]
-                                }
-                                RafxSamplerIndexGles2::Mutable(_) => {
-                                    &mutable_samplers.unwrap()[i as usize]
-                                        .as_ref()
-                                        .expect("Tried to use unbound sampler")
-                                        .sampler
-                                }
-                            };
 
                             gl_context.gl_active_texture(descriptor.texture_index.unwrap())?;
                             let target = texture.gl_target();
@@ -862,7 +942,8 @@ impl RafxCommandBufferGles2 {
                                     .buffer_contents
                                     .as_ref()
                                     .unwrap()
-                                    .as_ptr()
+                                    .try_as_ptr()
+                                    .expect("bound uniform buffer must be CPU-visible")
                                     .add(buffer_state.offset as usize)
                             };
 
@@ -902,12 +983,13 @@ impl RafxCommandBufferGles2 {
         vertex_count: u32,
         first_vertex: u32,
     ) -> RafxResult<()> {
-        let state = self.command_pool_state.borrow();
+        let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
 
         let gl_context = self.queue.device_context().gl_context();
-        let pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap();
         Self::ensure_pipeline_bindings_up_to_date(gl_context, &*state)?;
+        Self::ensure_vertex_bindings_up_to_date(gl_context, &mut *state, 0)?;
+        let pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap();
 
         gl_context.gl_draw_arrays(
             pipeline_info.gl_topology,
@@ -934,24 +1016,24 @@ impl RafxCommandBufferGles2 {
         first_index: u32,
         vertex_offset: i32,
     ) -> RafxResult<()> {
-        let state = self.command_pool_state.borrow();
+        let mut state = self.command_pool_state.borrow_mut();
         assert!(state.is_started);
 
         let gl_context = self.queue.device_context().gl_context();
-        let pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap();
         Self::ensure_pipeline_bindings_up_to_date(gl_context, &*state)?;
+        // glDrawElementsBaseVertex not supported in ES until 3.2
+        Self::ensure_vertex_bindings_up_to_date(gl_context, &mut *state, vertex_offset)?;
+        let pipeline_info = state.current_gl_pipeline_info.as_ref().unwrap();
 
-        if vertex_offset > 0 {
-            unimplemented!("GL ES 2.0 does not support vertex offsets during glDrawElements");
-        }
-
-        let offset = first_index * (std::mem::size_of::<gles2_bindings::types::GLushort>() as u32)
+        let index_byte_offset = first_index
+            * (std::mem::size_of::<gles2_bindings::types::GLushort>() as u32)
             + state.index_buffer_byte_offset;
+
         gl_context.gl_draw_elements(
             pipeline_info.gl_topology,
             index_count as _,
             gles2_bindings::UNSIGNED_SHORT,
-            offset,
+            index_byte_offset,
         )
     }
 
@@ -997,17 +1079,17 @@ impl RafxCommandBufferGles2 {
 
         let gl_context = self.queue.device_context().gl_context();
 
-        gl_context.gl_bind_buffer(dst_buffer.gl_target(), dst_buffer.gl_buffer_id().unwrap())?;
+        let gl_target = dst_buffer.gl_target();
+        gl_context.gl_bind_buffer(gl_target, dst_buffer.gl_buffer_id().unwrap())?;
         let src_data = unsafe {
             src_buffer
                 .buffer_contents()
-                .as_ref()
-                .unwrap()
-                .as_ptr()
+                .try_as_ptr()
+                .expect("src buffer must be CPU-visible in cmd_copy_buffer_to_buffer")
                 .add(src_offset as usize)
         };
-        gl_context.gl_buffer_sub_data(dst_buffer.gl_target(), dst_offset as _, size, src_data)?;
-        gl_context.gl_bind_buffer(dst_buffer.gl_target(), NONE_BUFFER)
+        gl_context.gl_buffer_sub_data(gl_target, dst_offset as _, size, src_data)?;
+        gl_context.gl_bind_buffer(gl_target, NONE_BUFFER)
     }
 
     pub fn cmd_copy_buffer_to_texture(
@@ -1024,36 +1106,29 @@ impl RafxCommandBufferGles2 {
         let width = 1.max(dst_texture.texture_def().extents.width >> params.mip_level);
         let height = 1.max(dst_texture.texture_def().extents.height >> params.mip_level);
 
-        let mut target = dst_texture.gl_target();
-        if target == gles2_bindings::TEXTURE_CUBE_MAP {
-            match params.array_layer {
-                0 => target = gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_X,
-                1 => target = gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_X,
-                2 => target = gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_Y,
-                3 => target = gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_Y,
-                4 => target = gles2_bindings::TEXTURE_CUBE_MAP_POSITIVE_Z,
-                5 => target = gles2_bindings::TEXTURE_CUBE_MAP_NEGATIVE_Z,
-                _ => unimplemented!("GL ES 2.0 does not support more than 6 images for a cubemap"),
-            }
+        let mut subtarget = dst_texture.gl_target();
+        if subtarget == gles2_bindings::TEXTURE_CUBE_MAP {
+            subtarget = array_layer_to_cube_map_target(params.array_layer);
         }
 
         let format_info = dst_texture.gl_format_info();
 
-        //TODO: Compressed texture support?
         let texture_id = dst_texture
             .gl_raw_image()
             .gl_texture_id()
             .ok_or("Cannot use cmd_copy_buffer_to_texture with swapchain image in GL ES 2.0")?;
 
-        let buffer_contents = src_buffer
-            .buffer_contents()
-            .as_ref()
-            .ok_or("Buffer used by cmd_copy_buffer_to_texture in GL ES 2.0 must be CPU-visible")?;
-        let buffer_ptr = unsafe { buffer_contents.as_slice() };
+        let buffer_ptr = unsafe {
+            src_buffer
+                .buffer_contents()
+                .try_as_slice_with_offset(params.buffer_offset)
+                .expect("src buffer must be CPU-visible in cmd_copy_buffer_to_texture")
+        };
 
-        gl_context.gl_bind_texture(target, texture_id)?;
+        gl_context.gl_bind_texture(dst_texture.gl_target(), texture_id)?;
+        //TODO: Compressed texture support?
         gl_context.gl_tex_image_2d(
-            target,
+            subtarget,
             params.mip_level as _,
             format_info.gl_internal_format,
             width,
@@ -1061,8 +1136,8 @@ impl RafxCommandBufferGles2 {
             0,
             format_info.gl_format,
             format_info.gl_type,
-            Some(buffer_ptr),
+            Some(&buffer_ptr),
         )?;
-        gl_context.gl_bind_texture(target, NONE_TEXTURE)
+        gl_context.gl_bind_texture(dst_texture.gl_target(), NONE_TEXTURE)
     }
 }

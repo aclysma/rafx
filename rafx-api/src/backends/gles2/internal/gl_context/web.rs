@@ -5,7 +5,7 @@ use crate::gles2::{
     NONE_RENDERBUFFER, NONE_TEXTURE,
 };
 use crate::{RafxError, RafxResult};
-use fnv::FnvHashMap;
+use fnv::{FnvHashMap, FnvHashSet};
 use raw_window_handle::HasRawWindowHandle;
 use std::ffi::{CStr, CString};
 use std::sync::atomic::Ordering;
@@ -46,6 +46,7 @@ fn convert_js_to_i32(value: &JsValue) -> Option<i32> {
 pub struct GlContext {
     context: WebGlRenderingContext,
     window_hash: WindowHash,
+    extensions: FnvHashSet<String>,
     textures: Mutex<FnvHashMap<TextureId, WebGlTexture>>,
     buffers: Mutex<FnvHashMap<BufferId, WebGlBuffer>>,
     shaders: Mutex<FnvHashMap<ShaderId, WebGlShader>>,
@@ -99,9 +100,19 @@ impl GlContext {
 
         let window_hash = super::calculate_window_hash(window);
 
+        let mut extensions = FnvHashSet::default();
+
+        let c = context.get_supported_extensions();
+        for extension in c.unwrap().iter() {
+            let str = extension.as_string().unwrap();
+            log::debug!("Extension: {}", str);
+            extensions.insert(str);
+        }
+
         Ok(GlContext {
             context,
             window_hash,
+            extensions,
             textures: Default::default(),
             buffers: Default::default(),
             shaders: Default::default(),
@@ -138,6 +149,13 @@ impl GlContext {
         } else {
             Ok(())
         }
+    }
+
+    pub fn has_extension(
+        &self,
+        name: &str,
+    ) -> bool {
+        self.extensions.contains(name)
     }
 
     pub fn gl_get_integerv(
@@ -331,7 +349,7 @@ impl GlContext {
         type_: GLenum,
         normalized: bool,
         stride: u32,
-        byte_offset: u32,
+        byte_offset: i32,
     ) -> RafxResult<()> {
         self.context.vertex_attrib_pointer_with_i32(
             index,
@@ -1130,6 +1148,14 @@ impl GlContext {
         param: i32,
     ) -> RafxResult<()> {
         self.context.tex_parameteri(target, pname, param);
+        self.check_for_error()
+    }
+
+    pub fn gl_generate_mipmap(
+        &self,
+        target: GLenum,
+    ) -> RafxResult<()> {
+        self.context.generate_mipmap(target);
         self.check_for_error()
     }
 }
