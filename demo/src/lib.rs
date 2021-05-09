@@ -33,7 +33,6 @@ use crate::assets::font::FontAsset;
 use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
 pub use demo_plugin::DemoRendererPlugin;
-use rafx::framework::RenderResources;
 
 #[cfg(all(
     feature = "profile-with-tracy-memory",
