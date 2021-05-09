@@ -43,10 +43,6 @@ impl Gles2BufferContents {
         self.inner.id.unwrap()
     }
 
-    pub fn is_cpu_visible(&self) -> bool {
-        self.inner.data.is_some()
-    }
-
     pub unsafe fn try_as_ptr(&self) -> Option<*const u8> {
         Some(self.inner.data.as_ref()?.borrow().as_ptr())
     }
