@@ -15,8 +15,8 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::framework::visibility::VisibilityRegion;
 use rafx::nodes::{ExtractResources, RenderRegistry};
-use rafx::renderer::ViewportsResource;
 use rafx::renderer::{AssetSource, Renderer, RendererBuilder, SwapchainHandler};
+use rafx::renderer::{RendererConfigResource, ViewportsResource};
 
 pub struct Sdl2Systems {
     pub context: sdl2::Sdl,
@@ -109,7 +109,7 @@ pub fn rendering_init(
         )
     }?;
 
-    let (width, height) = sdl2_window.vulkan_drawable_size();
+    let (width, height) = sdl2_window.size();
     let swapchain_helper = SwapchainHandler::create_swapchain(
         &mut renderer_builder_result.asset_manager,
         &mut renderer_builder_result.renderer,
@@ -131,6 +131,7 @@ pub fn rendering_init(
     );
     resources.insert(renderer_builder_result.asset_manager);
     resources.insert(renderer_builder_result.renderer);
+    resources.insert(RendererConfigResource::default());
 
     Ok(())
 }

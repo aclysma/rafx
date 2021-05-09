@@ -17,3 +17,6 @@ pub use entity_id::EntityId;
 
 mod visibility_region;
 pub use visibility_region::VisibilityRegion;
+
+mod visibility_config;
+pub use visibility_config::VisibilityConfig;

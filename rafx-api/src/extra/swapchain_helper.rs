@@ -126,7 +126,7 @@ impl RafxPresentableFrame {
         queue: &RafxQueue,
         error: RafxError,
     ) {
-        log::trace!(
+        log::warn!(
             "Calling RafxPresentableFrame::present_with_error {:?}",
             error
         );
@@ -165,12 +165,11 @@ impl RafxPresentableFrame {
             Some(frame_fence),
         )?;
 
-        let wait_semaphores = [&shared_state.image_available_semaphores[sync_frame_index]];
         let swapchain = shared_state.swapchain.lock().unwrap();
 
         let result = queue.present(
             &*swapchain,
-            &wait_semaphores,
+            &signal_semaphores,
             self.swapchain_image.swapchain_image_index,
         )?;
 

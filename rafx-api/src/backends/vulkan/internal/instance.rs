@@ -8,6 +8,7 @@ use ash::vk;
 use crate::vulkan::VkCreateInstanceError::VkError;
 use crate::vulkan::{VkDebugReporter, VkEntry};
 use ash::extensions::ext::DebugUtils;
+use ash::vk::DebugUtilsMessageTypeFlagsEXT;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
@@ -64,7 +65,7 @@ impl VkInstance {
         window: &dyn HasRawWindowHandle,
         app_name: &CString,
         require_validation_layers_present: bool,
-        validation_layer_debug_report_flags: vk::DebugUtilsMessengerCreateFlagsEXT,
+        validation_layer_debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
     ) -> Result<VkInstance, VkCreateInstanceError> {
         // Determine the supported version of vulkan that's available
         let vulkan_version = match entry.try_enumerate_instance_version()? {
@@ -215,11 +216,12 @@ impl VkInstance {
     fn setup_vulkan_debug_callback<E: EntryV1_0, I: InstanceV1_0>(
         entry: &E,
         instance: &I,
-        debug_report_flags: vk::DebugUtilsMessengerCreateFlagsEXT,
+        debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
     ) -> VkResult<VkDebugReporter> {
         log::info!("Seting up vulkan debug callback");
         let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
-            .flags(debug_report_flags)
+            .message_severity(debug_report_flags)
+            .message_type(DebugUtilsMessageTypeFlagsEXT::all())
             .pfn_user_callback(Some(super::debug_reporter::vulkan_debug_callback));
 
         let debug_report_loader = ash::extensions::ext::DebugUtils::new(entry, instance);

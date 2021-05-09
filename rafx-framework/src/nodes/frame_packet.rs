@@ -1,7 +1,7 @@
 use super::registry::RenderFeatureCount;
 use super::render_nodes::RenderNodeIndex;
 use super::{GenericRenderNodeHandle, RenderFeatureIndex, RenderRegistry, RenderView};
-use crate::visibility::{EntityId, VisibilityObjectId, VisibilityRegion};
+use crate::visibility::{EntityId, VisibilityConfig, VisibilityObjectId, VisibilityRegion};
 use fnv::FnvHashMap;
 use slotmap::KeyData;
 use std::sync::Mutex;
@@ -186,6 +186,7 @@ impl FramePacketBuilder {
         &self,
         view: &RenderView,
         visibility_region: &VisibilityRegion,
+        visibility_config: &VisibilityConfig,
     ) {
         let feature_count = RenderRegistry::registered_feature_count();
 
@@ -193,7 +194,7 @@ impl FramePacketBuilder {
         let view_packet_builder = ViewPacketBuilder::new(feature_count);
 
         let mut view_frustum = view.view_frustum();
-        let visibility_results = view_frustum.query_visibility().unwrap();
+        let visibility_results = view_frustum.query_visibility(visibility_config).unwrap();
 
         let mut guard = self.inner.lock().unwrap();
 

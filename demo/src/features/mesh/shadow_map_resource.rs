@@ -16,7 +16,7 @@ use rafx::nodes::{
 use rafx::rafx_visibility::{
     DepthRange, OrthographicParameters, PerspectiveParameters, Projection,
 };
-use rafx::visibility::ViewFrustumArc;
+use rafx::visibility::{ViewFrustumArc, VisibilityConfig};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum LightId {
@@ -80,6 +80,7 @@ impl ShadowMapResource {
         render_view_set: &RenderViewSet,
         extract_resources: &ExtractResources,
         visibility_region: &VisibilityRegion,
+        visibility_config: &VisibilityConfig,
         frame_packet_builder: &FramePacketBuilder,
     ) {
         self.clear();
@@ -97,12 +98,19 @@ impl ShadowMapResource {
         for render_view in &self.shadow_map_render_views {
             match render_view {
                 ShadowMapRenderView::Single(view) => {
-                    frame_packet_builder.query_visibility_and_add_results(&view, visibility_region);
+                    frame_packet_builder.query_visibility_and_add_results(
+                        &view,
+                        visibility_region,
+                        visibility_config,
+                    );
                 }
                 ShadowMapRenderView::Cube(views) => {
                     for view in views {
-                        frame_packet_builder
-                            .query_visibility_and_add_results(&view, visibility_region);
+                        frame_packet_builder.query_visibility_and_add_results(
+                            &view,
+                            visibility_region,
+                            visibility_config,
+                        );
                     }
                 }
             }
