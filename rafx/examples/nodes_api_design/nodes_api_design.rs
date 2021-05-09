@@ -245,7 +245,7 @@ fn main() {
             // future critical-path work (to reduce latency). The bungie talk took a volume of possible camera
             // positions instead of a single position
             {
-                let _ = main_camera_view_frustum.query_visibility().unwrap();
+                let _ = main_camera_view_frustum.query_visibility(&Default::default()).unwrap();
             }
 
             //
@@ -288,10 +288,12 @@ fn main() {
                 FramePacketBuilder::new()
             };
 
+            let visibility_config = VisibilityConfig::default();
+
             // After these jobs end, user calls functions to start jobs that extract data
-            frame_packet_builder.query_visibility_and_add_results(&main_view, &visibility_region);
+            frame_packet_builder.query_visibility_and_add_results(&main_view, &visibility_region, &visibility_config);
             frame_packet_builder
-                .query_visibility_and_add_results(&minimap_view, &visibility_region);
+                .query_visibility_and_add_results(&minimap_view, &visibility_region, &visibility_config);
 
             let render_views = vec![main_view.clone(), minimap_view.clone()];
 
