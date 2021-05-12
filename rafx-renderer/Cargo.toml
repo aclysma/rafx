@@ -22,6 +22,7 @@ glam = { version = "0.13.1", features = [ "serde" ] }
 crossbeam-channel = "0.5"
 log = "0.4"
 profiling = "1.0.1"
+fnv = "1.0"
 
 [features]
 no-render-thread = []

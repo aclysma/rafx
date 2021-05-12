@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec3};
 use rafx_api::RafxExtents2D;
-use rafx_framework::nodes::{RenderFeatureMask, RenderPhaseMask, RenderViewDepthRange};
+use rafx_framework::render_features::{RenderFeatureMask, RenderPhaseMask, RenderViewDepthRange};
 use rafx_framework::visibility::ViewFrustumArc;
 
 // Very bare-bones for now, in the future this could support multiple windows, multiple viewports

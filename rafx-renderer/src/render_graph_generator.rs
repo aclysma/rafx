@@ -1,6 +1,6 @@
 use rafx_assets::AssetManager;
 use rafx_framework::graph::PreparedRenderGraph;
-use rafx_framework::nodes::{ExtractResources, RenderView};
+use rafx_framework::render_features::{ExtractResources, RenderView};
 use rafx_framework::{ImageViewResource, RafxResult, RenderResources, ResourceArc};
 
 pub trait RenderGraphGenerator: 'static + Send {

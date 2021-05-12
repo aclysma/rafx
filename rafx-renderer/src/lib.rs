@@ -1,5 +1,8 @@
-mod renderer_plugin;
-pub use renderer_plugin::RendererPlugin;
+mod render_feature_plugin;
+pub use render_feature_plugin::RenderFeaturePlugin;
+
+mod renderer_asset_plugin;
+pub use renderer_asset_plugin::RendererAssetPlugin;
 
 mod render_graph_generator;
 pub use render_graph_generator::RenderGraphGenerator;
@@ -15,12 +18,14 @@ mod swapchain_resources;
 pub use swapchain_resources::SwapchainResources;
 
 mod render_frame_job;
-use render_frame_job::RenderFrameJob;
+pub use render_frame_job::RenderFrameJob;
 
 mod renderer_builder;
 pub use renderer_builder::AssetSource;
 pub use renderer_builder::RendererBuilder;
 pub use renderer_builder::RendererBuilderResult;
+
+mod renderer_thread_pool_none;
 
 //TODO: Find a way to not expose this
 mod swapchain_handling;
@@ -28,5 +33,8 @@ pub use swapchain_handling::SwapchainHandler;
 
 mod renderer;
 pub use renderer::*;
+
+mod renderer_thread_pool;
+pub use renderer_thread_pool::*;
 
 pub mod daemon;

@@ -4,13 +4,9 @@ use rafx_assets::distill::daemon::AssetDaemon;
 use rafx_assets::distill_impl::AssetResource;
 use rafx_assets::AssetManager;
 use rafx_base::resource_map::ResourceMap;
-use rafx_framework::nodes::{
-    ExtractJob, ExtractResources, FramePacketBuilder, RenderRegistryBuilder, RenderView,
-    RenderViewSet,
-};
-use rafx_framework::RenderResources;
+use rafx_framework::render_features::{ExtractResources, RenderRegistryBuilder};
 
-pub trait RendererPlugin: Send + Sync {
+pub trait RendererAssetPlugin: Send + Sync {
     // If the daemon is not running in-process, this will not be called
     fn configure_asset_daemon(
         &self,
@@ -42,37 +38,5 @@ pub trait RendererPlugin: Send + Sync {
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         Ok(())
-    }
-
-    // fn swapchain_created(
-    //     &self,
-    //     _extract_resources: &ExtractResources,
-    // ) -> RafxResult<()> {
-    //     Ok(())
-    // }
-    //
-    // fn swapchain_destroyed(
-    //     &self,
-    //     _extract_resources: &ExtractResources,
-    // ) -> RafxResult<()> {
-    //     Ok(())
-    // }
-
-    fn add_render_views(
-        &self,
-        _extract_resources: &ExtractResources,
-        _render_resources: &RenderResources,
-        _render_view_set: &RenderViewSet,
-        _frame_packet_builder: &FramePacketBuilder,
-        _render_views: &mut Vec<RenderView>,
-    ) {
-    }
-
-    fn add_extract_jobs(
-        &self,
-        _extract_resources: &ExtractResources,
-        _render_resources: &RenderResources,
-        _extract_jobs: &mut Vec<Box<dyn ExtractJob>>,
-    ) {
     }
 }
