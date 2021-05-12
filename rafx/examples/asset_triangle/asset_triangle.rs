@@ -4,14 +4,15 @@ use rafx::api::*;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::MaterialAsset;
 use rafx::distill::loader::{storage::DefaultIndirectionResolver, Loader, RpcIO};
-use rafx::framework::{DescriptorSetBindings, VertexDataLayout};
+use rafx::framework::render_features::{RenderJobWriteContext, SubmitNodeBlocks};
+use rafx::framework::{DescriptorSetBindings, RenderResources, VertexDataLayout};
 use rafx::graph::{
     PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphQueue, SwapchainSurfaceInfo,
 };
-use rafx::nodes::RenderPhaseIndex;
-use rafx::nodes::SubmitNode;
-use rafx::nodes::{PreparedRenderData, RenderPhase};
+use rafx::render_features::RenderFeatureSubmitNode;
+use rafx::render_features::RenderPhaseIndex;
+use rafx::render_features::{PreparedRenderData, RenderPhase};
 use std::sync::Arc;
 
 const WINDOW_WIDTH: u32 = 900;
@@ -109,7 +110,7 @@ fn run() -> RafxResult<()> {
         // (Multiple "features" can render in a single "phase". Sorting behavior for draw calls
         // across those features is defined by the phase)
         //
-        let render_registry = rafx::nodes::RenderRegistryBuilder::default()
+        let render_registry = rafx::render_features::RenderRegistryBuilder::default()
             .register_render_phase::<OpaqueRenderPhase>("Opaque")
             .build();
 
@@ -422,12 +423,22 @@ fn run() -> RafxResult<()> {
                 &swapchain_surface_info,
             )?;
 
+            let submit_node_blocks = SubmitNodeBlocks::default();
+
+            let render_resources = RenderResources::default();
+
+            let write_context =
+                RenderJobWriteContext::new(resource_context.clone(), &render_resources);
+
+            let prepared_render_data =
+                PreparedRenderData::new(&submit_node_blocks, Vec::default(), write_context);
+
             //
             // Execute the graph. This will write out command buffer(s). This demo doesn't use the
             // job system, so pass an empty PreparedRenderData
             //
             let command_buffers =
-                prepared_graph.execute_graph(PreparedRenderData::empty(), &graphics_queue)?;
+                prepared_graph.execute_graph(prepared_render_data, &graphics_queue)?;
 
             //
             // Submit the command buffers to the GPU
@@ -464,15 +475,13 @@ rafx::declare_render_phase!(
 );
 
 #[profiling::function]
-fn opaque_render_phase_sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
+fn opaque_render_phase_sort_submit_nodes(submit_nodes: &mut Vec<RenderFeatureSubmitNode>) {
     // Sort by feature
     log::trace!(
         "Sort phase {}",
         OpaqueRenderPhase::render_phase_debug_name()
     );
     submit_nodes.sort_unstable_by(|a, b| a.feature_index().cmp(&b.feature_index()));
-
-    submit_nodes
 }
 
 //

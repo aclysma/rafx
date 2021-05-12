@@ -77,7 +77,9 @@ pub mod render_feature_renderer_prelude {
 }
 #[cfg(feature = "framework")]
 pub mod render_feature_mod_prelude {
-    pub use rafx_framework::render_features::{RenderFeature, RenderFeatureIndex};
+    pub use rafx_framework::render_features::{
+        RenderFeature, RenderFeatureDebugConstants, RenderFeatureIndex,
+    };
     pub use std::convert::TryInto;
 }
 #[cfg(feature = "framework")]

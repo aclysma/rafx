@@ -2,13 +2,14 @@ use log::LevelFilter;
 
 use rafx::api::*;
 use rafx::framework::{
-    CookedShaderPackage, DescriptorSetBindings, FixedFunctionState, VertexDataLayout,
+    CookedShaderPackage, DescriptorSetBindings, FixedFunctionState, RenderResources,
+    VertexDataLayout,
 };
 use rafx::graph::{
     PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageExtents,
     RenderGraphImageSpecification, RenderGraphQueue, SwapchainSurfaceInfo,
 };
-use rafx::nodes::{PreparedRenderData, SubmitNode};
+use rafx::render_features::{PreparedRenderData, RenderFeatureSubmitNode};
 use std::sync::Arc;
 
 const WINDOW_WIDTH: u32 = 900;
@@ -84,7 +85,7 @@ fn run() -> RafxResult<()> {
         // (Multiple "features" can render in a single "phase". Sorting behavior for draw calls
         // across those features is defined by the phase)
         //
-        let render_registry = rafx::nodes::RenderRegistryBuilder::default()
+        let render_registry = rafx::render_features::RenderRegistryBuilder::default()
             .register_render_phase::<OpaqueRenderPhase>("Opaque")
             .build();
 
@@ -408,11 +409,20 @@ fn run() -> RafxResult<()> {
                 &swapchain_surface_info,
             )?;
 
+            let submit_node_blocks = SubmitNodeBlocks::default();
+
+            let render_resources = RenderResources::default();
+
+            let write_context =
+                RenderJobWriteContext::new(resource_context.clone(), &render_resources);
+
+            let prepared_render_data =
+                PreparedRenderData::new(&submit_node_blocks, Vec::default(), write_context);
+
             //
             // Execute the graph. This will write out command buffer(s)
             //
-            let command_buffers =
-                executor.execute_graph(PreparedRenderData::empty(), &graphics_queue)?;
+            let command_buffers = executor.execute_graph(prepared_render_data, &graphics_queue)?;
 
             //
             // Submit the command buffers to the GPU
@@ -436,8 +446,9 @@ fn run() -> RafxResult<()> {
 // A phase combines renderables that may come from different features. This example doesnt't use
 // render nodes fully, but the pipeline cache uses it to define which renderpass/material pairs
 //
-use rafx::nodes::RenderPhase;
-use rafx::nodes::RenderPhaseIndex;
+use rafx::framework::render_features::{RenderJobWriteContext, SubmitNodeBlocks};
+use rafx::render_features::RenderPhase;
+use rafx::render_features::RenderPhaseIndex;
 use rafx_framework::MaterialPass;
 use std::path::Path;
 
@@ -448,15 +459,13 @@ rafx::declare_render_phase!(
 );
 
 #[profiling::function]
-fn opaque_render_phase_sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
+fn opaque_render_phase_sort_submit_nodes(submit_nodes: &mut Vec<RenderFeatureSubmitNode>) {
     // Sort by feature
     log::trace!(
         "Sort phase {}",
         OpaqueRenderPhase::render_phase_debug_name()
     );
     submit_nodes.sort_unstable_by(|a, b| a.feature_index().cmp(&b.feature_index()));
-
-    submit_nodes
 }
 
 //

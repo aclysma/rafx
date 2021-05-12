@@ -66,9 +66,9 @@ no-render-thread = [
 #
 
 [[example]]
-name = "nodes_api_design"
-path = "../rafx/examples/nodes_api_design/nodes_api_design.rs"
-required-features = ["framework"]
+name = "renderer_triangle"
+path = "../rafx/examples/renderer_triangle/renderer_triangle.rs"
+required-features = ["renderer"]
 
 [[example]]
 name = "api_triangle"
