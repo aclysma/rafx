@@ -7,7 +7,7 @@ use crate::{
 };
 
 use crate::graph::RenderGraphCache;
-use crate::nodes::RenderRegistry;
+use crate::render_features::RenderRegistry;
 use crate::resources::descriptor_sets::DescriptorSetAllocatorManager;
 use crate::resources::dyn_commands::DynCommandPoolAllocator;
 use crate::resources::dyn_resources::{

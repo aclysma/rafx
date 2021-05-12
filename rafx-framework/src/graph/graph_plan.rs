@@ -3,7 +3,7 @@ use super::{RenderGraphImageSpecification, RenderGraphOutputImageId};
 use crate::graph::graph_image::{PhysicalImageId, RenderGraphImageUser, VirtualImageId};
 use crate::graph::graph_node::RenderGraphNodeId;
 use crate::graph::{RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageUsageId};
-use crate::nodes::RenderPhaseIndex;
+use crate::render_features::RenderPhaseIndex;
 use crate::{BufferResource, GraphicsPipelineRenderTargetMeta};
 use crate::{ImageViewResource, ResourceArc};
 use fnv::{FnvHashMap, FnvHashSet};

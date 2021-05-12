@@ -1,7 +1,7 @@
 use super::registry::{RenderPhaseMaskInnerType, MAX_RENDER_PHASE_COUNT};
 use super::{RenderPhase, RenderPhaseIndex};
-use crate::nodes::registry::{RenderFeatureMaskInnerType, MAX_RENDER_FEATURE_COUNT};
-use crate::nodes::{RenderFeature, RenderFeatureIndex};
+use crate::render_features::registry::{RenderFeatureMaskInnerType, MAX_RENDER_FEATURE_COUNT};
+use crate::render_features::{RenderFeature, RenderFeatureIndex};
 use crate::visibility::ViewFrustumArc;
 use glam::{Mat4, Vec3};
 use rafx_visibility::{DepthRange, Projection};
@@ -36,6 +36,7 @@ impl RenderPhaseMask {
         self.is_included_index(RenderPhaseT::render_phase_index())
     }
 
+    #[inline(always)]
     pub fn is_included_index(
         &self,
         index: RenderPhaseIndex,
@@ -74,11 +75,12 @@ impl RenderFeatureMask {
         self.is_included_index(RenderFeatureT::feature_index())
     }
 
+    #[inline(always)]
     pub fn is_included_index(
         &self,
         index: RenderFeatureIndex,
     ) -> bool {
-        // If this asserts, a render phase was not registered
+        // If this asserts, a render feature was not registered
         assert!(index < MAX_RENDER_FEATURE_COUNT);
         (self.0 & 1 << index) != 0
     }
@@ -223,6 +225,11 @@ impl RenderViewDepthRange {
     }
 }
 
+/// The `Renderer` processes `RenderView`s during the execution of the `RenderGraph`. Each
+/// `RenderView` is associated with a specific `ViewFrustum` in the game world. The `RenderView`
+/// may be registered for specific `RenderFeature`s by a `RenderFeatureMask` or `RenderPhase`s by
+/// the `RenderPhaseMask`. If a `RenderView` is not registered for a `RenderFeature` or `RenderPhase`
+/// then it will not be processed by that feature or phase.
 #[derive(Clone)]
 pub struct RenderView {
     inner: Arc<RenderViewInner>,

@@ -1,11 +1,14 @@
-use super::SubmitNode;
+use super::RenderFeatureSubmitNode;
+use crate::render_features::SubmitNodeSortFunction;
 use fnv::FnvHashMap;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
+/// The `ID` of a registered `RenderFeature`.
 pub type RenderFeatureIndex = u32;
-pub type RenderFeatureCount = u32;
+
+/// The `ID` of a registered `RenderPhase`.
 pub type RenderPhaseIndex = u32;
 
 pub type RenderFeatureMaskInnerType = u64;
@@ -14,26 +17,46 @@ pub const MAX_RENDER_FEATURE_COUNT: u32 = 64;
 pub type RenderPhaseMaskInnerType = u32;
 pub const MAX_RENDER_PHASE_COUNT: u32 = 32;
 
+pub struct RenderFeatureDebugConstants {
+    pub feature_name: &'static str,
+
+    pub begin_per_frame_extract: &'static str,
+    pub extract_render_object_instance: &'static str,
+    pub extract_render_object_instance_per_view: &'static str,
+    pub end_per_view_extract: &'static str,
+    pub end_per_frame_extract: &'static str,
+
+    pub begin_per_frame_prepare: &'static str,
+    pub prepare_render_object_instance: &'static str,
+    pub prepare_render_object_instance_per_view: &'static str,
+    pub end_per_view_prepare: &'static str,
+    pub end_per_frame_prepare: &'static str,
+
+    pub on_begin_execute_graph: &'static str,
+    pub render_submit_node: &'static str,
+    pub apply_setup: &'static str,
+    pub revert_setup: &'static str,
+}
+
 pub trait RenderFeature {
     fn set_feature_index(index: RenderFeatureIndex);
     fn feature_index() -> RenderFeatureIndex;
 
     fn feature_debug_name() -> &'static str;
+    fn feature_debug_constants() -> &'static RenderFeatureDebugConstants;
 }
 
 pub trait RenderPhase {
     fn set_render_phase_index(index: RenderPhaseIndex);
     fn render_phase_index() -> RenderPhaseIndex;
 
-    fn sort_submit_nodes(submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode>;
+    fn sort_submit_nodes(submit_nodes: &mut Vec<RenderFeatureSubmitNode>);
 
     fn render_phase_debug_name() -> &'static str;
 }
 
-type SortCallback = fn(Vec<SubmitNode>) -> Vec<SubmitNode>;
-
 pub struct RegisteredPhase {
-    sort_submit_nodes_callback: SortCallback,
+    sort_submit_nodes_callback: SubmitNodeSortFunction,
 }
 
 impl RegisteredPhase {
@@ -122,11 +145,10 @@ impl RenderRegistry {
         self.inner.phase_name_to_index.get(name).copied()
     }
 
-    pub fn sort_submit_nodes(
+    pub fn submit_node_sort_function(
         &self,
         render_phase_index: RenderPhaseIndex,
-        submit_nodes: Vec<SubmitNode>,
-    ) -> Vec<SubmitNode> {
-        (self.inner.registered_phases[&render_phase_index].sort_submit_nodes_callback)(submit_nodes)
+    ) -> SubmitNodeSortFunction {
+        self.inner.registered_phases[&render_phase_index].sort_submit_nodes_callback
     }
 }

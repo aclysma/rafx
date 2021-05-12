@@ -8,7 +8,7 @@ use crate::graph::{
     RenderGraphBufferUsageId, RenderGraphBuilder, RenderGraphImageUsageId,
     RenderGraphNodeVisitNodeCallback,
 };
-use crate::nodes::{PreparedRenderData, RenderJobBeginExecuteGraphContext};
+use crate::render_features::{PreparedRenderData, RenderJobBeginExecuteGraphContext};
 use crate::resources::DynCommandBuffer;
 use crate::{BufferResource, GraphicsPipelineRenderTargetMeta, ImageResource};
 use crate::{ImageViewResource, ResourceArc, ResourceContext};
@@ -27,12 +27,12 @@ pub struct SwapchainSurfaceInfo {
 }
 
 #[derive(Copy, Clone)]
-pub struct RenderGraphContext<'a> {
-    prepared_render_graph: &'a PreparedRenderGraph,
-    prepared_render_data: &'a PreparedRenderData,
+pub struct RenderGraphContext<'graph, 'write> {
+    prepared_render_graph: &'graph PreparedRenderGraph,
+    prepared_render_data: &'graph PreparedRenderData<'write>,
 }
 
-impl<'a> RenderGraphContext<'a> {
+impl<'graph, 'write> RenderGraphContext<'graph, 'write> {
     pub fn buffer(
         &self,
         buffer: RenderGraphBufferUsageId,
@@ -55,25 +55,25 @@ impl<'a> RenderGraphContext<'a> {
         &self.prepared_render_graph.resource_context
     }
 
-    pub fn prepared_render_data(&self) -> &PreparedRenderData {
+    pub fn prepared_render_data(&self) -> &PreparedRenderData<'write> {
         &self.prepared_render_data
     }
 }
 
-pub struct OnBeginExecuteGraphArgs<'a> {
+pub struct OnBeginExecuteGraphArgs<'graph, 'write> {
     pub command_buffer: DynCommandBuffer,
-    pub graph_context: RenderGraphContext<'a>,
+    pub graph_context: RenderGraphContext<'graph, 'write>,
 }
 
-pub struct VisitComputeNodeArgs<'a> {
+pub struct VisitComputeNodeArgs<'graph, 'write> {
     pub command_buffer: DynCommandBuffer,
-    pub graph_context: RenderGraphContext<'a>,
+    pub graph_context: RenderGraphContext<'graph, 'write>,
 }
 
-pub struct VisitRenderpassNodeArgs<'a> {
+pub struct VisitRenderpassNodeArgs<'graph, 'write> {
     pub command_buffer: DynCommandBuffer,
     pub render_target_meta: GraphicsPipelineRenderTargetMeta,
-    pub graph_context: RenderGraphContext<'a>,
+    pub graph_context: RenderGraphContext<'graph, 'write>,
 }
 
 /// Encapsulates a render graph plan and all resources required to execute it
@@ -265,9 +265,9 @@ impl PreparedRenderGraph {
         Ok(())
     }
 
-    pub fn execute_graph(
-        &self,
-        prepared_render_data: PreparedRenderData,
+    pub fn execute_graph<'write>(
+        &'write self,
+        prepared_render_data: PreparedRenderData<'write>,
         queue: &RafxQueue,
     ) -> RafxResult<Vec<DynCommandBuffer>> {
         profiling::scope!("Execute Graph");

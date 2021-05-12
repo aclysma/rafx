@@ -40,7 +40,7 @@ macro_rules! declare_render_phase {
                 $atomic_constant_name.load(std::sync::atomic::Ordering::Acquire) as RenderPhaseIndex
             }
 
-            fn sort_submit_nodes(submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
+            fn sort_submit_nodes(submit_nodes: &mut Vec<RenderFeatureSubmitNode>) {
                 $sort_fn(submit_nodes)
             }
 
