@@ -2,11 +2,11 @@ use crate::assets::gltf::MeshAssetType;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;
-use rafx::renderer::RendererPlugin;
+use rafx::renderer::RendererAssetPlugin;
 
 pub struct GltfAssetTypeRendererPlugin;
 
-impl RendererPlugin for GltfAssetTypeRendererPlugin {
+impl RendererAssetPlugin for GltfAssetTypeRendererPlugin {
     //
     fn configure_asset_daemon(
         &self,

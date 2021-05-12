@@ -1,75 +1,64 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::{
-    TileLayerPrepareJob, TileLayerRenderFeature, TileLayerRenderNode, TileLayerRenderNodeSet,
-    TileLayerStaticResources,
-};
-use rafx::assets::AssetManagerRenderResource;
-use rafx::base::slab::RawSlabKey;
-use rafx::nodes::RenderFeature;
+use super::*;
+use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
+use rafx::base::resource_map::ReadBorrow;
+use rafx::distill::loader::handle::Handle;
 
-pub struct TileLayerExtractJob {}
+pub struct TileLayerExtractJob<'extract> {
+    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    tile_layer_material: Handle<MaterialAsset>,
+    render_objects: TileLayerRenderObjectSet,
+}
 
-impl TileLayerExtractJob {
-    pub fn new() -> Self {
-        Self {}
+impl<'extract> TileLayerExtractJob<'extract> {
+    pub fn new(
+        extract_context: &RenderJobExtractContext<'extract>,
+        frame_packet: Box<TileLayerFramePacket>,
+        tile_layer_material: Handle<MaterialAsset>,
+        render_objects: TileLayerRenderObjectSet,
+    ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
+        Arc::new(ExtractJob::new(
+            Self {
+                asset_manager: extract_context
+                    .render_resources
+                    .fetch::<AssetManagerRenderResource>(),
+                tile_layer_material,
+                render_objects,
+            },
+            frame_packet,
+        ))
     }
 }
 
-impl ExtractJob for TileLayerExtractJob {
-    fn extract(
-        self: Box<Self>,
-        extract_context: &RenderJobExtractContext,
-        frame_packet: &FramePacket,
-        _views: &[RenderView],
-    ) -> Box<dyn PrepareJob> {
-        profiling::scope!(super::EXTRACT_SCOPE_NAME);
-
-        let asset_manager = extract_context
-            .render_resources
-            .fetch::<AssetManagerRenderResource>();
-
-        let static_resources = extract_context
-            .render_resources
-            .fetch::<TileLayerStaticResources>();
-
-        let tile_layer_material = asset_manager
-            .committed_asset(&static_resources.tile_layer_material)
-            .unwrap()
-            .get_single_material_pass()
-            .unwrap();
-
-        let mut tile_layer_render_nodes = extract_context
-            .extract_resources
-            .fetch_mut::<TileLayerRenderNodeSet>();
-
-        tile_layer_render_nodes.update();
-
-        let mut visible_render_nodes = Vec::with_capacity(
-            frame_packet.frame_node_count(TileLayerRenderFeature::feature_index()) as usize,
-        );
-
-        for frame_node in frame_packet.frame_nodes(TileLayerRenderFeature::feature_index()) {
-            let render_node_handle =
-                RawSlabKey::<TileLayerRenderNode>::new(frame_node.render_node_index());
-            let render_node = tile_layer_render_nodes
-                .tile_layers
-                .get_raw(render_node_handle)
-                .unwrap();
-            visible_render_nodes.push(render_node.clone());
-        }
-
-        Box::new(TileLayerPrepareJob::new(
-            visible_render_nodes,
-            tile_layer_material,
-        ))
+impl<'extract> ExtractJobEntryPoints<'extract> for TileLayerExtractJob<'extract> {
+    fn begin_per_frame_extract(
+        &self,
+        context: &ExtractPerFrameContext<'extract, '_, Self>,
+    ) {
+        context
+            .frame_packet()
+            .per_frame_data()
+            .set(TileLayerPerFrameData {
+                tile_layer_material_pass: self
+                    .asset_manager
+                    .committed_asset(&self.tile_layer_material)
+                    .unwrap()
+                    .get_single_material_pass()
+                    .ok(),
+            });
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
         super::render_feature_index()
     }
+
+    type RenderObjectInstanceJobContextT = DefaultJobContext;
+    type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
+
+    type FramePacketDataT = TileLayerRenderFeatureTypes;
 }

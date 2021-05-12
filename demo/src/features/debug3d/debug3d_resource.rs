@@ -12,13 +12,13 @@ impl LineList3D {
     }
 }
 
-pub struct DebugDraw3DResource {
+pub struct Debug3DResource {
     line_lists: Vec<LineList3D>,
 }
 
-impl DebugDraw3DResource {
+impl Debug3DResource {
     pub fn new() -> Self {
-        DebugDraw3DResource { line_lists: vec![] }
+        Debug3DResource { line_lists: vec![] }
     }
 
     pub fn add_line_strip(

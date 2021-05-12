@@ -1,7 +1,7 @@
 use crate::phases::PostProcessRenderPhase;
 use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::graph::*;
-use rafx::nodes::RenderPhase;
+use rafx::render_features::RenderPhase;
 
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;

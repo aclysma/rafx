@@ -1,5 +1,7 @@
 mod jobs;
 use jobs::*;
+mod internal;
+use internal::*;
 
 use rafx::render_feature_mod_prelude::*;
 rafx::declare_render_feature!(TileLayerRenderFeature, TILE_LAYER_FEATURE_INDEX);
@@ -11,8 +13,8 @@ pub use plugin::*;
 
 pub use jobs::TileLayerVertex;
 
-mod tile_layer_render_node_set;
-pub use tile_layer_render_node_set::*;
+mod render_object;
+pub use render_object::*;
 
 mod tile_layer_resource;
 pub use tile_layer_resource::*;

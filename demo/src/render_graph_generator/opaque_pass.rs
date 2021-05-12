@@ -4,7 +4,7 @@ use rafx::graph::*;
 use super::RenderGraphContext;
 use super::ShadowMapImageResources;
 use rafx::api::RafxColorClearValue;
-use rafx::nodes::RenderJobWriteContext;
+use rafx::render_features::RenderJobCommandBufferContext;
 
 pub(super) struct OpaquePass {
     pub(super) node: RenderGraphNodeId,
@@ -70,15 +70,22 @@ pub(super) fn opaque_pass(
     let main_view = context.main_view.clone();
 
     context.graph.set_renderpass_callback(node, move |args| {
-        let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+        let mut write_context =
+            RenderJobCommandBufferContext::from_graph_visit_render_pass_args(&args);
 
-        args.graph_context
-            .prepared_render_data()
-            .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context)?;
+        {
+            profiling::scope!("Opaque Pass");
+            args.graph_context
+                .prepared_render_data()
+                .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context)?;
+        }
 
-        args.graph_context
-            .prepared_render_data()
-            .write_view_phase::<TransparentRenderPhase>(&main_view, &mut write_context)
+        {
+            profiling::scope!("Transparent Pass");
+            args.graph_context
+                .prepared_render_data()
+                .write_view_phase::<TransparentRenderPhase>(&main_view, &mut write_context)
+        }
     });
 
     OpaquePass {

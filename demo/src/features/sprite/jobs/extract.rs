@@ -1,105 +1,108 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::{
-    ExtractedSpriteData, SpritePrepareJob, SpriteRenderNode, SpriteRenderNodeSet,
-    SpriteStaticResources,
-};
+use super::*;
 use crate::components::TransformComponent;
 use legion::{EntityStore, World};
-use rafx::assets::AssetManagerRenderResource;
-use rafx::base::slab::RawSlabKey;
+use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
+use rafx::base::resource_map::ReadBorrow;
+use rafx::base::resource_ref_map::ResourceRefBorrow;
+use rafx::distill::loader::handle::Handle;
 
-pub struct SpriteExtractJob {}
+pub struct SpriteExtractJob<'extract> {
+    world: ResourceRefBorrow<'extract, World>,
+    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    sprite_material: Handle<MaterialAsset>,
+    render_objects: SpriteRenderObjectSet,
+}
 
-impl SpriteExtractJob {
-    pub fn new() -> Self {
-        Self {}
+impl<'extract> SpriteExtractJob<'extract> {
+    pub fn new(
+        extract_context: &RenderJobExtractContext<'extract>,
+        frame_packet: Box<SpriteFramePacket>,
+        sprite_material: Handle<MaterialAsset>,
+        render_objects: SpriteRenderObjectSet,
+    ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
+        Arc::new(ExtractJob::new(
+            Self {
+                world: extract_context.extract_resources.fetch::<World>(),
+                asset_manager: extract_context
+                    .render_resources
+                    .fetch::<AssetManagerRenderResource>(),
+                sprite_material,
+                render_objects,
+            },
+            frame_packet,
+        ))
     }
 }
 
-impl ExtractJob for SpriteExtractJob {
-    fn extract(
-        self: Box<Self>,
-        extract_context: &RenderJobExtractContext,
-        frame_packet: &FramePacket,
-        _views: &[RenderView],
-    ) -> Box<dyn PrepareJob> {
-        profiling::scope!(super::EXTRACT_SCOPE_NAME);
-
-        let asset_manager = extract_context
-            .render_resources
-            .fetch::<AssetManagerRenderResource>();
-
-        let legion_world = extract_context.extract_resources.fetch::<World>();
-        let world = &*legion_world;
-
-        // Update the mesh render nodes. This could be done earlier as part of a system
-        let mut sprite_render_nodes = extract_context
-            .extract_resources
-            .fetch_mut::<SpriteRenderNodeSet>();
-        sprite_render_nodes.update();
-
-        let mut extracted_frame_node_sprite_data =
-            Vec::<Option<ExtractedSpriteData>>::with_capacity(
-                frame_packet.frame_node_count(self.feature_index()) as usize,
-            );
-
-        {
-            profiling::scope!("per frame node");
-            for frame_node in frame_packet.frame_nodes(self.feature_index()) {
-                let entity_id = frame_node.entity_id();
-                let entry = world.entry_ref(entity_id.into()).unwrap();
-                let transform_component = entry.get_component::<TransformComponent>().unwrap();
-
-                let render_node_index = frame_node.render_node_index();
-                let render_node_handle = RawSlabKey::<SpriteRenderNode>::new(render_node_index);
-                let sprite_render_node = sprite_render_nodes
-                    .sprites
-                    .get_raw(render_node_handle)
-                    .unwrap();
-
-                let image_asset = asset_manager.committed_asset(&sprite_render_node.image);
-
-                let extracted_frame_node = image_asset.and_then(|image_asset| {
-                    let texture_extents = image_asset.image.get_raw().image.texture_def().extents;
-
-                    Some(ExtractedSpriteData {
-                        position: transform_component.translation,
-                        texture_size: glam::Vec2::new(
-                            texture_extents.width as f32,
-                            texture_extents.height as f32,
-                        ),
-                        scale: transform_component.scale,
-                        rotation: transform_component.rotation,
-                        color: sprite_render_node.tint.extend(sprite_render_node.alpha),
-                        image_view: image_asset.image_view.clone(),
-                    })
-                });
-
-                extracted_frame_node_sprite_data.push(extracted_frame_node);
-            }
-        }
-
-        let static_resources = extract_context
-            .render_resources
-            .fetch::<SpriteStaticResources>();
-
-        let sprite_material = asset_manager
-            .committed_asset(&static_resources.sprite_material)
-            .unwrap()
-            .get_single_material_pass()
-            .unwrap();
-
-        let prepare_impl = SpritePrepareJob::new(extracted_frame_node_sprite_data, sprite_material);
-
-        Box::new(prepare_impl)
+impl<'extract> ExtractJobEntryPoints<'extract> for SpriteExtractJob<'extract> {
+    fn begin_per_frame_extract(
+        &self,
+        context: &ExtractPerFrameContext<'extract, '_, Self>,
+    ) {
+        context
+            .frame_packet()
+            .per_frame_data()
+            .set(SpritePerFrameData {
+                sprite_material_pass: self
+                    .asset_manager
+                    .committed_asset(&self.sprite_material)
+                    .unwrap()
+                    .get_single_material_pass()
+                    .ok(),
+            });
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn extract_render_object_instance(
+        &self,
+        job_context: &mut RenderObjectsJobContext<'extract, SpriteRenderObject>,
+        context: &ExtractRenderObjectInstanceContext<'extract, '_, Self>,
+    ) {
+        let render_object_static_data = job_context
+            .render_objects
+            .get_id(context.render_object_id());
+
+        let image_asset = self
+            .asset_manager
+            .committed_asset(&render_object_static_data.image);
+
+        context.set_render_object_instance_data(image_asset.and_then(|image_asset| {
+            let entry = self.world.entry_ref(context.object_id().into()).unwrap();
+            let transform_component = entry.get_component::<TransformComponent>().unwrap();
+            let texture_extents = image_asset.image.get_raw().image.texture_def().extents;
+            Some(SpriteRenderObjectInstanceData {
+                position: transform_component.translation,
+                texture_size: glam::Vec2::new(
+                    texture_extents.width as f32,
+                    texture_extents.height as f32,
+                ),
+                scale: transform_component.scale,
+                rotation: transform_component.rotation,
+                color: render_object_static_data
+                    .tint
+                    .extend(render_object_static_data.alpha),
+                image_view: image_asset.image_view.clone(),
+            })
+        }));
+    }
+
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
         super::render_feature_index()
     }
+
+    fn new_render_object_instance_job_context(
+        &'extract self
+    ) -> Option<RenderObjectsJobContext<'extract, SpriteRenderObject>> {
+        Some(RenderObjectsJobContext::new(self.render_objects.read()))
+    }
+
+    type RenderObjectInstanceJobContextT = RenderObjectsJobContext<'extract, SpriteRenderObject>;
+    type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
+
+    type FramePacketDataT = SpriteRenderFeatureTypes;
 }

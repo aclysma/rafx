@@ -1,8 +1,11 @@
 use rafx::render_feature_write_job_prelude::*;
 
-use rafx::api::RafxPrimitiveTopology;
-use rafx::api::RafxVertexBufferBinding;
-use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+use super::*;
+use crate::phases::OpaqueRenderPhase;
+use rafx::api::{RafxPrimitiveTopology, RafxVertexBufferBinding};
+use rafx::framework::render_features::RenderPhase;
+use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use std::marker::PhantomData;
 
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy, Default)]
@@ -23,86 +26,58 @@ lazy_static::lazy_static! {
     };
 }
 
-use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{push_view_indexed_value, RenderViewIndex};
-
-#[derive(Debug)]
-pub struct Debug3DDrawCall {
-    first_element: u32,
-    count: u32,
+pub struct Debug3DWriteJob<'write> {
+    debug3d_material_pass: Option<ResourceArc<MaterialPassResource>>,
+    frame_packet: Box<Debug3DFramePacket>,
+    submit_packet: Box<Debug3DSubmitPacket>,
+    phantom: PhantomData<&'write ()>,
 }
 
-pub struct Debug3DWriteJob {
-    vertex_buffer: Option<ResourceArc<BufferResource>>,
-    draw_calls: Vec<Debug3DDrawCall>,
-    debug3d_material_pass: ResourceArc<MaterialPassResource>,
-    per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
-}
-
-impl Debug3DWriteJob {
+impl<'write> Debug3DWriteJob<'write> {
     pub fn new(
-        debug3d_material_pass: ResourceArc<MaterialPassResource>,
-        num_line_lists: usize,
-    ) -> Self {
-        Debug3DWriteJob {
-            vertex_buffer: Default::default(),
-            draw_calls: Vec::with_capacity(num_line_lists),
-            debug3d_material_pass,
-            per_view_descriptor_sets: Default::default(),
-        }
-    }
-
-    pub fn push_per_view_descriptor_set(
-        &mut self,
-        view_index: RenderViewIndex,
-        per_view_descriptor_set: DescriptorSetArc,
-    ) {
-        push_view_indexed_value(
-            &mut self.per_view_descriptor_sets,
-            view_index,
-            per_view_descriptor_set,
-        );
-    }
-
-    pub fn push_draw_call(
-        &mut self,
-        first_element: u32,
-        count: usize,
-    ) {
-        self.draw_calls.push(Debug3DDrawCall {
-            first_element,
-            count: count as u32,
-        });
-    }
-
-    pub fn set_vertex_buffer(
-        &mut self,
-        vertex_buffer: Option<ResourceArc<BufferResource>>,
-    ) {
-        self.vertex_buffer = vertex_buffer;
-    }
-
-    pub fn draw_calls(&self) -> &Vec<Debug3DDrawCall> {
-        &self.draw_calls
+        _write_context: &RenderJobWriteContext<'write>,
+        frame_packet: Box<Debug3DFramePacket>,
+        submit_packet: Box<Debug3DSubmitPacket>,
+    ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
+        Arc::new(Self {
+            debug3d_material_pass: {
+                frame_packet
+                    .per_frame_data()
+                    .get()
+                    .debug3d_material_pass
+                    .clone()
+            },
+            frame_packet,
+            submit_packet,
+            phantom: Default::default(),
+        })
     }
 }
 
-impl WriteJob for Debug3DWriteJob {
+impl<'write> RenderFeatureWriteJob<'write> for Debug3DWriteJob<'write> {
+    fn view_frame_index(
+        &self,
+        view: &RenderView,
+    ) -> ViewFrameIndex {
+        self.frame_packet.view_frame_index(view)
+    }
+
     fn apply_setup(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        write_context: &mut RenderJobCommandBufferContext,
+        view_frame_index: ViewFrameIndex,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
-        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().apply_setup);
+        let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
 
-        if let Some(vertex_buffer) = self.vertex_buffer.as_ref() {
+        if let Some(vertex_buffer) = per_frame_submit_data.vertex_buffer.as_ref() {
             let pipeline = write_context
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     render_phase_index,
-                    &self.debug3d_material_pass,
+                    self.debug3d_material_pass.as_ref().unwrap(),
                     &write_context.render_target_meta,
                     &*DEBUG_VERTEX_LAYOUT,
                 )?;
@@ -110,37 +85,45 @@ impl WriteJob for Debug3DWriteJob {
             let command_buffer = &write_context.command_buffer;
             command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
 
-            self.per_view_descriptor_sets[view.view_index() as usize]
-                .as_ref()
-                .unwrap()
-                .bind(command_buffer)?;
+            let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
+            if render_phase_index == OpaqueRenderPhase::render_phase_index() {
+                let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
 
-            command_buffer.cmd_bind_vertex_buffers(
-                0,
-                &[RafxVertexBufferBinding {
-                    buffer: &*vertex_buffer.get_raw().buffer,
-                    byte_offset: 0,
-                }],
-            )?;
+                per_view_submit_data
+                    .descriptor_set_arc
+                    .as_ref()
+                    .unwrap()
+                    .bind(command_buffer)?;
+
+                command_buffer.cmd_bind_vertex_buffers(
+                    0,
+                    &[RafxVertexBufferBinding {
+                        buffer: &*vertex_buffer.get_raw().buffer,
+                        byte_offset: 0,
+                    }],
+                )?;
+            }
         }
+
         Ok(())
     }
 
-    fn render_element(
+    fn render_submit_node(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
+        write_context: &mut RenderJobCommandBufferContext,
+        _view_frame_index: ViewFrameIndex,
         _render_phase_index: RenderPhaseIndex,
-        index: SubmitNodeId,
+        submit_node_id: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
         // The prepare phase emits a single node which will draw everything. In the future it might
         // emit a node per draw call that uses transparency
-        if index == 0 {
-            let command_buffer = &write_context.command_buffer;
+        if submit_node_id == 0 {
+            let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
 
-            for draw_call in &self.draw_calls {
+            let command_buffer = &write_context.command_buffer;
+            for draw_call in &per_frame_submit_data.draw_calls {
                 command_buffer.cmd_draw(draw_call.count as u32, draw_call.first_element as u32)?;
             }
         }
@@ -148,8 +131,8 @@ impl WriteJob for Debug3DWriteJob {
         Ok(())
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {

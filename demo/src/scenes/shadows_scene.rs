@@ -5,7 +5,7 @@ use crate::components::{
 use crate::components::{SpotLightComponent, VisibilityComponent};
 use crate::features::debug3d::Debug3DRenderFeature;
 use crate::features::imgui::ImGuiRenderFeature;
-use crate::features::mesh::{MeshRenderFeature, MeshRenderNode, MeshRenderNodeSet};
+use crate::features::mesh::{MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet};
 use crate::features::skybox::SkyboxRenderFeature;
 use crate::features::sprite::SpriteRenderFeature;
 use crate::features::text::TextRenderFeature;
@@ -21,10 +21,12 @@ use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
-use rafx::nodes::{RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange};
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
+use rafx::render_features::{
+    RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange,
+};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{CullModel, EntityId, ViewFrustumArc, VisibilityRegion};
+use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
 use rand::{thread_rng, Rng};
 
 pub(super) struct ShadowsScene {
@@ -42,7 +44,7 @@ impl ShadowsScene {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
 
-        let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
+        let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
@@ -58,14 +60,12 @@ impl ShadowsScene {
                 .wait_for_asset_to_load(asset_handle, &mut asset_resource, "")
                 .unwrap();
 
-            CullModel::VisibleBounds(
-                asset_manager
-                    .committed_asset(&floor_mesh_asset)
-                    .unwrap()
-                    .inner
-                    .asset_data
-                    .visible_bounds,
-            )
+            asset_manager
+                .committed_asset(asset_handle)
+                .unwrap()
+                .inner
+                .asset_data
+                .visible_bounds
         };
 
         //
@@ -74,9 +74,10 @@ impl ShadowsScene {
         {
             let position = Vec3::new(0.0, 0.0, -1.0);
 
-            let floor_mesh = mesh_render_nodes.register_mesh(MeshRenderNode {
-                mesh: floor_mesh_asset.clone(),
-            });
+            let floor_mesh_render_object =
+                mesh_render_objects.register_render_object(MeshRenderObject {
+                    mesh: floor_mesh_asset.clone(),
+                });
 
             let transform_component = TransformComponent {
                 translation: position,
@@ -84,23 +85,23 @@ impl ShadowsScene {
             };
 
             let mesh_component = MeshComponent {
-                render_node: floor_mesh.clone(),
+                render_object_handle: floor_mesh_render_object.clone(),
             };
 
             let entity = world.push((transform_component.clone(), mesh_component));
             let mut entry = world.entry(entity).unwrap();
             entry.add_component(VisibilityComponent {
-                handle: {
+                visibility_object_handle: {
                     let handle = visibility_region.register_static_object(
-                        EntityId::from(entity),
-                        load_visible_bounds(&floor_mesh_asset),
+                        ObjectId::from(entity),
+                        CullModel::VisibleBounds(load_visible_bounds(&floor_mesh_asset)),
                     );
                     handle.set_transform(
                         transform_component.translation,
                         transform_component.rotation,
                         transform_component.scale,
                     );
-                    handle.add_feature(floor_mesh.as_raw_generic_handle());
+                    handle.add_render_object(&floor_mesh_render_object);
                     handle
                 },
             });
@@ -114,28 +115,35 @@ impl ShadowsScene {
                 let mut meshes = Vec::default();
 
                 // container1
-                meshes.push(mesh_render_nodes.register_mesh(MeshRenderNode {
-                    mesh: container_1_asset,
-                }));
+                meshes.push(
+                    mesh_render_objects.register_render_object(MeshRenderObject {
+                        mesh: container_1_asset,
+                    }),
+                );
 
                 // container2
-                meshes.push(mesh_render_nodes.register_mesh(MeshRenderNode {
-                    mesh: container_2_asset,
-                }));
+                meshes.push(
+                    mesh_render_objects.register_render_object(MeshRenderObject {
+                        mesh: container_2_asset,
+                    }),
+                );
 
                 // blue icosphere - load by UUID since it's one of several meshes in the file
-                meshes.push(mesh_render_nodes.register_mesh(MeshRenderNode {
-                    mesh: blue_icosphere_asset,
-                }));
+                meshes.push(
+                    mesh_render_objects.register_render_object(MeshRenderObject {
+                        mesh: blue_icosphere_asset,
+                    }),
+                );
 
                 meshes
             };
 
+            let mesh_render_objects = mesh_render_objects.read();
             let mut rng = thread_rng();
             for i in 0..250 {
                 let position = Vec3::new(((i / 9) * 3) as f32, ((i % 9) * 3) as f32, 0.0);
-                let mesh_render_node = example_meshes[i % example_meshes.len()].clone();
-                let asset_handle = &mesh_render_nodes.get(&mesh_render_node).unwrap().mesh;
+                let mesh_render_object = example_meshes[i % example_meshes.len()].clone();
+                let asset_handle = &mesh_render_objects.get(&mesh_render_object).mesh;
 
                 let rand_scale = rng.gen_range(0.8, 1.2);
                 let offset = rand_scale - 1.;
@@ -146,23 +154,23 @@ impl ShadowsScene {
                 };
 
                 let mesh_component = MeshComponent {
-                    render_node: mesh_render_node.clone(),
+                    render_object_handle: mesh_render_object.clone(),
                 };
 
                 let entity = world.push((transform_component.clone(), mesh_component));
                 let mut entry = world.entry(entity).unwrap();
                 entry.add_component(VisibilityComponent {
-                    handle: {
+                    visibility_object_handle: {
                         let handle = visibility_region.register_dynamic_object(
-                            EntityId::from(entity),
-                            load_visible_bounds(&asset_handle),
+                            ObjectId::from(entity),
+                            CullModel::VisibleBounds(load_visible_bounds(asset_handle)),
                         );
                         handle.set_transform(
                             transform_component.translation,
                             transform_component.rotation,
                             transform_component.scale,
                         );
-                        handle.add_feature(mesh_render_node.as_raw_generic_handle());
+                        handle.add_render_object(&mesh_render_object);
                         handle
                     },
                 });
@@ -353,7 +361,7 @@ fn update_main_view_3d(
     );
 
     let aspect_ratio = viewports_resource.main_window_size.width as f32
-        / viewports_resource.main_window_size.height.max(1) as f32;
+        / viewports_resource.main_window_size.height as f32;
 
     let look_at = glam::Vec3::ZERO;
     let up = glam::Vec3::new(0.0, 0.0, 1.0);

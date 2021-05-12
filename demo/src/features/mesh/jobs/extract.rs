@@ -1,141 +1,144 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::{
-    ExtractedDirectionalLight, ExtractedFrameNodeMeshData, ExtractedPointLight, ExtractedSpotLight,
-    MeshPrepareJob, MeshRenderNode, MeshRenderNodeSet, MeshStaticResources,
-};
+use super::*;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
-use legion::*;
-use rafx::assets::AssetManagerRenderResource;
-use rafx::base::slab::RawSlabKey;
+use legion::{Entity, EntityStore, IntoQuery, Read, World};
+use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
+use rafx::base::resource_map::ReadBorrow;
+use rafx::base::resource_ref_map::ResourceRefBorrow;
+use rafx::distill::loader::handle::Handle;
 
-pub struct MeshExtractJob {}
+pub struct MeshExtractJob<'extract> {
+    world: ResourceRefBorrow<'extract, World>,
+    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    depth_material: Handle<MaterialAsset>,
+    render_objects: MeshRenderObjectSet,
+}
 
-impl MeshExtractJob {
-    pub fn new() -> Self {
-        Self {}
+impl<'extract> MeshExtractJob<'extract> {
+    pub fn new(
+        extract_context: &RenderJobExtractContext<'extract>,
+        frame_packet: Box<MeshFramePacket>,
+        depth_material: Handle<MaterialAsset>,
+        render_objects: MeshRenderObjectSet,
+    ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
+        Arc::new(ExtractJob::new(
+            Self {
+                world: extract_context.extract_resources.fetch::<World>(),
+                asset_manager: extract_context
+                    .render_resources
+                    .fetch::<AssetManagerRenderResource>(),
+                depth_material,
+                render_objects,
+            },
+            frame_packet,
+        ))
     }
 }
 
-impl ExtractJob for MeshExtractJob {
-    fn extract(
-        self: Box<Self>,
-        extract_context: &RenderJobExtractContext,
-        frame_packet: &FramePacket,
-        _views: &[RenderView],
-    ) -> Box<dyn PrepareJob> {
-        profiling::scope!(super::EXTRACT_SCOPE_NAME);
-
-        let legion_world = extract_context.extract_resources.fetch::<World>();
-        let world = &*legion_world;
-
-        let asset_manager = extract_context
-            .render_resources
-            .fetch::<AssetManagerRenderResource>();
-
-        //
-        // Update the mesh render nodes. This could be done earlier as part of a system
-        //
-        let mut mesh_render_nodes = extract_context
-            .extract_resources
-            .fetch_mut::<MeshRenderNodeSet>();
-        mesh_render_nodes.update();
-
-        //
-        // Get the position/mesh asset pairs we will draw
-        //
-        let mut extracted_frame_node_mesh_data =
-            Vec::<Option<ExtractedFrameNodeMeshData>>::with_capacity(
-                frame_packet.frame_node_count(self.feature_index()) as usize,
-            );
-
-        for frame_node in frame_packet.frame_nodes(self.feature_index()).iter() {
-            let entity_id = frame_node.entity_id();
-            let entry = world.entry_ref(entity_id.into()).unwrap();
-            let transform_component = entry.get_component::<TransformComponent>().unwrap();
-
-            let render_node_index = frame_node.render_node_index();
-            let render_node_handle = RawSlabKey::<MeshRenderNode>::new(render_node_index);
-
-            let mesh_render_node = mesh_render_nodes
-                .meshes
-                .get_raw(render_node_handle)
-                .unwrap();
-
-            let mesh_asset = asset_manager.committed_asset(&mesh_render_node.mesh);
-
-            let extracted_frame_node = mesh_asset.and_then(|mesh_asset| {
-                Some(ExtractedFrameNodeMeshData {
-                    mesh_asset: mesh_asset.clone(),
-                    world_transform: glam::Mat4::from_scale_rotation_translation(
-                        transform_component.scale,
-                        transform_component.rotation,
-                        transform_component.translation,
-                    ),
-                })
+impl<'extract> ExtractJobEntryPoints<'extract> for MeshExtractJob<'extract> {
+    fn begin_per_frame_extract(
+        &self,
+        context: &ExtractPerFrameContext<'extract, '_, Self>,
+    ) {
+        context
+            .frame_packet()
+            .per_frame_data()
+            .set(MeshPerFrameData {
+                depth_material_pass: self
+                    .asset_manager
+                    .committed_asset(&self.depth_material)
+                    .unwrap()
+                    .get_single_material_pass()
+                    .ok(),
             });
-
-            extracted_frame_node_mesh_data.push(extracted_frame_node);
-        }
-
-        //
-        // Get the lights
-        //
-        let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
-        let directional_lights = query
-            .iter(world)
-            .map(|(e, l)| ExtractedDirectionalLight {
-                entity: *e,
-                light: l.clone(),
-            })
-            .collect();
-
-        let mut query = <(Entity, Read<TransformComponent>, Read<PointLightComponent>)>::query();
-        let point_lights = query
-            .iter(world)
-            .map(|(e, p, l)| ExtractedPointLight {
-                entity: *e,
-                light: l.clone(),
-                position: p.clone(),
-            })
-            .collect();
-
-        let mut query = <(Entity, Read<TransformComponent>, Read<SpotLightComponent>)>::query();
-        let spot_lights = query
-            .iter(world)
-            .map(|(e, p, l)| ExtractedSpotLight {
-                entity: *e,
-                light: l.clone(),
-                position: p.clone(),
-            })
-            .collect();
-
-        let static_resources = extract_context
-            .render_resources
-            .fetch::<MeshStaticResources>();
-
-        let depth_material = asset_manager
-            .committed_asset(&static_resources.depth_material)
-            .unwrap()
-            .get_single_material_pass()
-            .unwrap();
-
-        Box::new(MeshPrepareJob::new(
-            depth_material,
-            extracted_frame_node_mesh_data,
-            directional_lights,
-            point_lights,
-            spot_lights,
-        ))
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn extract_render_object_instance(
+        &self,
+        job_context: &mut RenderObjectsJobContext<'extract, MeshRenderObject>,
+        context: &ExtractRenderObjectInstanceContext<'extract, '_, Self>,
+    ) {
+        let render_object_static_data = job_context
+            .render_objects
+            .get_id(context.render_object_id());
+
+        let mesh_asset = self
+            .asset_manager
+            .committed_asset(&render_object_static_data.mesh);
+
+        context.set_render_object_instance_data(mesh_asset.and_then(|mesh_asset| {
+            let entry = self.world.entry_ref(context.object_id().into()).unwrap();
+            let transform_component = entry.get_component::<TransformComponent>().unwrap();
+            Some(MeshRenderObjectInstanceData {
+                mesh_asset: mesh_asset.clone(),
+                translation: transform_component.translation,
+                rotation: transform_component.rotation,
+                scale: transform_component.scale,
+            })
+        }));
+    }
+
+    fn end_per_view_extract(
+        &self,
+        context: &ExtractPerViewContext<'extract, '_, Self>,
+    ) {
+        let world = &*self.world;
+        let mut per_view = MeshPerViewData::default();
+
+        let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
+        for light in query.iter(world).map(|(e, l)| ExtractedDirectionalLight {
+            object_id: ObjectId::from(*e),
+            light: l.clone(),
+        }) {
+            let next_index = per_view.num_directional_lights;
+            per_view.directional_lights[next_index as usize] = Some(light);
+            per_view.num_directional_lights += 1;
+        }
+
+        let mut query = <(Entity, Read<TransformComponent>, Read<PointLightComponent>)>::query();
+        for light in query.iter(world).map(|(e, p, l)| ExtractedPointLight {
+            object_id: ObjectId::from(*e),
+            light: l.clone(),
+            transform: p.clone(),
+        }) {
+            let next_index = per_view.num_point_lights;
+            per_view.point_lights[next_index as usize] = Some(light);
+            per_view.num_point_lights += 1;
+        }
+
+        let mut query = <(Entity, Read<TransformComponent>, Read<SpotLightComponent>)>::query();
+        for light in query.iter(world).map(|(e, p, l)| ExtractedSpotLight {
+            object_id: ObjectId::from(*e),
+            light: l.clone(),
+            transform: p.clone(),
+        }) {
+            let next_index = per_view.num_spot_lights;
+            per_view.spot_lights[next_index as usize] = Some(light);
+            per_view.num_spot_lights += 1;
+        }
+
+        context.view_packet().per_view_data().set(per_view);
+    }
+
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
         super::render_feature_index()
     }
+
+    fn new_render_object_instance_job_context(
+        &'extract self
+    ) -> Option<RenderObjectsJobContext<'extract, MeshRenderObject>> {
+        Some(RenderObjectsJobContext::new(self.render_objects.read()))
+    }
+
+    type RenderObjectInstanceJobContextT = RenderObjectsJobContext<'extract, MeshRenderObject>;
+    type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
+
+    type FramePacketDataT = MeshRenderFeatureTypes;
 }

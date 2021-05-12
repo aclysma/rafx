@@ -1,53 +1,69 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::{SkyboxPrepareJob, SkyboxStaticResources};
-use rafx::assets::AssetManagerRenderResource;
+use super::*;
+use rafx::assets::{AssetManagerRenderResource, ImageAsset, MaterialAsset};
+use rafx::base::resource_map::ReadBorrow;
+use rafx::distill::loader::handle::Handle;
+use std::sync::Arc;
 
-pub struct SkyboxExtractJob {}
+pub struct SkyboxExtractJob<'extract> {
+    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    skybox_material: Handle<MaterialAsset>,
+    skybox_texture: Handle<ImageAsset>,
+}
 
-impl SkyboxExtractJob {
-    pub fn new() -> Self {
-        SkyboxExtractJob {}
+impl<'extract> SkyboxExtractJob<'extract> {
+    pub fn new(
+        extract_context: &RenderJobExtractContext<'extract>,
+        frame_packet: Box<SkyboxFramePacket>,
+        skybox_material: Handle<MaterialAsset>,
+        skybox_texture: Handle<ImageAsset>,
+    ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
+        Arc::new(ExtractJob::new(
+            Self {
+                asset_manager: extract_context
+                    .render_resources
+                    .fetch::<AssetManagerRenderResource>(),
+                skybox_material,
+                skybox_texture,
+            },
+            frame_packet,
+        ))
     }
 }
 
-impl ExtractJob for SkyboxExtractJob {
-    fn extract(
-        self: Box<Self>,
-        extract_context: &RenderJobExtractContext,
-        _frame_packet: &FramePacket,
-        _views: &[RenderView],
-    ) -> Box<dyn PrepareJob> {
-        profiling::scope!(super::EXTRACT_SCOPE_NAME);
-
-        let asset_manager = extract_context
-            .render_resources
-            .fetch::<AssetManagerRenderResource>();
-
-        let static_resources = extract_context
-            .render_resources
-            .fetch::<SkyboxStaticResources>();
-
-        let skybox_material = asset_manager
-            .committed_asset(&static_resources.skybox_material)
-            .unwrap()
-            .get_single_material_pass()
-            .unwrap();
-
-        let skybox_texture = asset_manager
-            .committed_asset(&static_resources.skybox_texture)
-            .unwrap()
-            .image_view
-            .clone();
-
-        Box::new(SkyboxPrepareJob::new(skybox_material, skybox_texture))
+impl<'extract> ExtractJobEntryPoints<'extract> for SkyboxExtractJob<'extract> {
+    fn begin_per_frame_extract(
+        &self,
+        context: &ExtractPerFrameContext<'extract, '_, Self>,
+    ) {
+        context
+            .frame_packet()
+            .per_frame_data()
+            .set(SkyboxPerFrameData {
+                skybox_material_pass: self
+                    .asset_manager
+                    .committed_asset(&self.skybox_material)
+                    .unwrap()
+                    .get_single_material_pass()
+                    .ok(),
+                skybox_texture: self
+                    .asset_manager
+                    .committed_asset(&self.skybox_texture)
+                    .and_then(|x| Some(x.image_view.clone())),
+            });
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
         super::render_feature_index()
     }
+
+    type RenderObjectInstanceJobContextT = DefaultJobContext;
+    type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
+
+    type FramePacketDataT = SkyboxRenderFeatureTypes;
 }

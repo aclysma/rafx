@@ -1,8 +1,13 @@
 use rafx::render_feature_write_job_prelude::*;
 
-use rafx::api::RafxFormat;
-use rafx::api::RafxPrimitiveTopology;
-use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+use super::*;
+use rafx::api::{
+    RafxBarrierQueueTransition, RafxCmdCopyBufferToTextureParams, RafxFormat,
+    RafxIndexBufferBinding, RafxIndexType, RafxPrimitiveTopology, RafxResourceState,
+    RafxTextureBarrier, RafxVertexBufferBinding,
+};
+use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use std::marker::PhantomData;
 
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy, Default)]
@@ -23,107 +28,66 @@ lazy_static::lazy_static! {
     };
 }
 
-use super::TextImageUpdate;
-use rafx::api::{
-    RafxBarrierQueueTransition, RafxCmdCopyBufferToTextureParams, RafxIndexBufferBinding,
-    RafxIndexType, RafxResourceState, RafxTextureBarrier, RafxVertexBufferBinding,
-};
-use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{push_view_indexed_value, RenderJobBeginExecuteGraphContext, RenderViewIndex};
-
-#[derive(Debug)]
-pub struct TextDrawCallMeta {
-    pub font_descriptor_index: u32,
-    pub buffer_index: u32,
-    pub index_offset: u32,
-    pub index_count: u32,
-    pub z_position: f32,
+pub struct TextWriteJob<'write> {
+    text_material_pass: Option<ResourceArc<MaterialPassResource>>,
+    frame_packet: Box<TextFramePacket>,
+    submit_packet: Box<TextSubmitPacket>,
+    phantom: PhantomData<&'write ()>,
 }
 
-struct TextDrawCallBuffers {
-    pub vertex_buffer: ResourceArc<BufferResource>,
-    pub index_buffer: ResourceArc<BufferResource>,
-}
-
-pub struct TextWriteJob {
-    draw_call_buffers: Vec<TextDrawCallBuffers>,
-    draw_call_metas: Vec<TextDrawCallMeta>,
-    text_material_pass: ResourceArc<MaterialPassResource>,
-    per_font_descriptor_sets: Vec<DescriptorSetArc>,
-    per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
-    image_updates: Vec<TextImageUpdate>,
-}
-
-impl TextWriteJob {
+impl<'write> TextWriteJob<'write> {
     pub fn new(
-        text_material_pass: ResourceArc<MaterialPassResource>,
-        draw_call_metas: Vec<TextDrawCallMeta>,
-        image_updates: Vec<TextImageUpdate>,
-        num_draw_call_buffers: usize,
-    ) -> Self {
-        TextWriteJob {
-            draw_call_buffers: Vec::with_capacity(num_draw_call_buffers),
-            draw_call_metas,
-            text_material_pass,
-            per_font_descriptor_sets: Default::default(),
-            per_view_descriptor_sets: Default::default(),
-            image_updates,
-        }
-    }
-
-    pub fn push_buffers(
-        &mut self,
-        vertex_buffer: ResourceArc<BufferResource>,
-        index_buffer: ResourceArc<BufferResource>,
-    ) {
-        self.draw_call_buffers.push(TextDrawCallBuffers {
-            vertex_buffer,
-            index_buffer,
-        });
-    }
-
-    pub fn push_per_font_descriptor_set(
-        &mut self,
-        per_font_descriptor_set: DescriptorSetArc,
-    ) {
-        self.per_font_descriptor_sets.push(per_font_descriptor_set);
-    }
-
-    pub fn push_per_view_descriptor_set(
-        &mut self,
-        view_index: RenderViewIndex,
-        per_view_descriptor_set: DescriptorSetArc,
-    ) {
-        push_view_indexed_value(
-            &mut self.per_view_descriptor_sets,
-            view_index,
-            per_view_descriptor_set,
-        );
-    }
-
-    pub fn draw_call_metas(&self) -> &Vec<TextDrawCallMeta> {
-        &self.draw_call_metas
+        _write_context: &RenderJobWriteContext<'write>,
+        frame_packet: Box<TextFramePacket>,
+        submit_packet: Box<TextSubmitPacket>,
+    ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
+        Arc::new(Self {
+            text_material_pass: {
+                frame_packet
+                    .per_frame_data()
+                    .get()
+                    .text_material_pass
+                    .clone()
+            },
+            frame_packet,
+            submit_packet,
+            phantom: Default::default(),
+        })
     }
 }
 
-impl WriteJob for TextWriteJob {
+impl<'write> RenderFeatureWriteJob<'write> for TextWriteJob<'write> {
+    fn view_frame_index(
+        &self,
+        view: &RenderView,
+    ) -> ViewFrameIndex {
+        self.frame_packet.view_frame_index(view)
+    }
+
     fn on_begin_execute_graph(
         &self,
-        write_context: &mut RenderJobBeginExecuteGraphContext,
+        begin_execute_graph_context: &mut RenderJobBeginExecuteGraphContext,
     ) -> RafxResult<()> {
-        profiling::scope!(super::ON_BEGIN_EXECUTE_GRAPH_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().on_begin_execute_graph);
+        let image_updates = &self
+            .submit_packet
+            .per_frame_submit_data()
+            .get()
+            .image_updates;
 
-        for image_update in &self.image_updates {
+        for image_update in image_updates.iter() {
             let rafx_image = &image_update.upload_image.get_raw().image.get_raw().image;
 
-            write_context.command_buffer.cmd_resource_barrier(
-                &[],
-                &[RafxTextureBarrier::state_transition(
-                    rafx_image,
-                    RafxResourceState::SHADER_RESOURCE,
-                    RafxResourceState::COPY_DST,
-                )],
-            )?;
+            begin_execute_graph_context
+                .command_buffer
+                .cmd_resource_barrier(
+                    &[],
+                    &[RafxTextureBarrier::state_transition(
+                        rafx_image,
+                        RafxResourceState::SHADER_RESOURCE,
+                        RafxResourceState::COPY_DST,
+                    )],
+                )?;
 
             log::debug!(
                 "upload font atlas data {} bytes",
@@ -136,38 +100,58 @@ impl WriteJob for TextWriteJob {
             );
 
             // copy buffer to texture
-            write_context.command_buffer.cmd_copy_buffer_to_texture(
-                &image_update.upload_buffer.get_raw().buffer,
-                rafx_image,
-                &RafxCmdCopyBufferToTextureParams::default(),
-            )?;
+            begin_execute_graph_context
+                .command_buffer
+                .cmd_copy_buffer_to_texture(
+                    &image_update.upload_buffer.get_raw().buffer,
+                    rafx_image,
+                    &RafxCmdCopyBufferToTextureParams::default(),
+                )?;
 
             if rafx_image.texture_def().mip_count > 1 {
-                write_context.command_buffer.cmd_resource_barrier(
-                    &[],
-                    &[RafxTextureBarrier {
-                        texture: &rafx_image,
-                        src_state: RafxResourceState::COPY_DST,
-                        dst_state: RafxResourceState::COPY_SRC,
-                        queue_transition: RafxBarrierQueueTransition::None,
-                        array_slice: None,
-                        mip_slice: Some(0),
-                    }],
-                )?;
+                begin_execute_graph_context
+                    .command_buffer
+                    .cmd_resource_barrier(
+                        &[],
+                        &[RafxTextureBarrier {
+                            texture: &rafx_image,
+                            src_state: RafxResourceState::COPY_DST,
+                            dst_state: RafxResourceState::COPY_SRC,
+                            queue_transition: RafxBarrierQueueTransition::None,
+                            array_slice: None,
+                            mip_slice: Some(0),
+                        }],
+                    )?;
                 rafx::api::extra::mipmaps::generate_mipmaps(
-                    &*write_context.command_buffer,
+                    &*begin_execute_graph_context.command_buffer,
                     rafx_image,
                 )?;
-                write_context.command_buffer.cmd_resource_barrier(
-                    &[],
-                    &[RafxTextureBarrier::state_transition(
-                        rafx_image,
-                        RafxResourceState::COPY_SRC,
-                        RafxResourceState::SHADER_RESOURCE,
-                    )],
-                )?;
+                begin_execute_graph_context
+                    .command_buffer
+                    .cmd_resource_barrier(
+                        &[],
+                        &[RafxTextureBarrier::state_transition(
+                            rafx_image,
+                            RafxResourceState::COPY_SRC,
+                            RafxResourceState::SHADER_RESOURCE,
+                        )],
+                    )?;
             } else {
-                write_context.command_buffer.cmd_resource_barrier(
+                begin_execute_graph_context
+                    .command_buffer
+                    .cmd_resource_barrier(
+                        &[],
+                        &[RafxTextureBarrier::state_transition(
+                            rafx_image,
+                            RafxResourceState::COPY_DST,
+                            RafxResourceState::SHADER_RESOURCE,
+                        )],
+                    )?;
+            }
+
+            begin_execute_graph_context
+                .command_buffer
+                .cmd_resource_barrier(
                     &[],
                     &[RafxTextureBarrier::state_transition(
                         rafx_image,
@@ -175,7 +159,6 @@ impl WriteJob for TextWriteJob {
                         RafxResourceState::SHADER_RESOURCE,
                     )],
                 )?;
-            }
         }
 
         Ok(())
@@ -183,45 +166,56 @@ impl WriteJob for TextWriteJob {
 
     fn apply_setup(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
+        write_context: &mut RenderJobCommandBufferContext,
+        view_frame_index: ViewFrameIndex,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
-        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().apply_setup);
 
-        if !self.draw_call_metas.is_empty() {
-            let pipeline = write_context
-                .resource_context
-                .graphics_pipeline_cache()
-                .get_or_create_graphics_pipeline(
-                    render_phase_index,
-                    &self.text_material_pass,
-                    &write_context.render_target_meta,
-                    &*TEXT_VERTEX_LAYOUT,
-                )?;
+        if let Some(text_material_pass) = &self.text_material_pass {
+            let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
+            if !per_frame_submit_data.draw_call_metas.is_empty() {
+                let pipeline = write_context
+                    .resource_context
+                    .graphics_pipeline_cache()
+                    .get_or_create_graphics_pipeline(
+                        render_phase_index,
+                        &text_material_pass,
+                        &write_context.render_target_meta,
+                        &*TEXT_VERTEX_LAYOUT,
+                    )?;
 
-            let command_buffer = &write_context.command_buffer;
-            command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
+                let command_buffer = &write_context.command_buffer;
+                command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
 
-            self.per_view_descriptor_sets[view.view_index() as usize]
-                .as_ref()
-                .unwrap()
-                .bind(command_buffer)?;
+                let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
+                view_submit_packet
+                    .per_view_submit_data()
+                    .get()
+                    .descriptor_set_arc
+                    .as_ref()
+                    .unwrap()
+                    .bind(command_buffer)?;
+            }
         }
+
         Ok(())
     }
 
-    fn render_element(
+    fn render_submit_node(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
+        write_context: &mut RenderJobCommandBufferContext,
+        _view_frame_index: ViewFrameIndex,
         _render_phase_index: RenderPhaseIndex,
-        index: SubmitNodeId,
+        submit_node_id: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
-        let draw_call = &self.draw_call_metas[index as usize];
-        let buffers = &self.draw_call_buffers[draw_call.buffer_index as usize];
+        let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
+
+        let draw_call = &per_frame_submit_data.draw_call_metas[submit_node_id as usize];
+        let buffers = &per_frame_submit_data.draw_call_buffers[draw_call.buffer_index as usize];
+
         let command_buffer = &write_context.command_buffer;
         command_buffer.cmd_bind_vertex_buffers(
             0,
@@ -237,15 +231,16 @@ impl WriteJob for TextWriteJob {
             byte_offset: 0,
         })?;
 
-        self.per_font_descriptor_sets[draw_call.font_descriptor_index as usize]
+        per_frame_submit_data.per_font_descriptor_sets[draw_call.font_descriptor_index as usize]
             .bind(command_buffer)?;
 
         command_buffer.cmd_draw_indexed(draw_call.index_count, draw_call.index_offset, 0)?;
+
         Ok(())
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {

@@ -1,7 +1,11 @@
 use rafx::render_feature_write_job_prelude::*;
 
-use rafx::api::RafxPrimitiveTopology;
-use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+use super::*;
+use rafx::api::{
+    RafxIndexBufferBinding, RafxIndexType, RafxPrimitiveTopology, RafxVertexBufferBinding,
+};
+use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use std::marker::PhantomData;
 
 /// Vertex format for vertices sent to the GPU
 #[derive(Clone, Debug, Copy, Default)]
@@ -21,54 +25,52 @@ lazy_static::lazy_static! {
     };
 }
 
-use super::TileLayerRenderNode;
-use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
-use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{push_view_indexed_value, RenderViewIndex};
-
-pub struct TileLayerWriteJob {
-    visible_render_nodes: Vec<TileLayerRenderNode>,
-    per_view_descriptor_sets: Vec<Option<DescriptorSetArc>>,
-    tile_layer_material: ResourceArc<MaterialPassResource>,
+pub struct TileLayerWriteJob<'write> {
+    tile_layer_material_pass: Option<ResourceArc<MaterialPassResource>>,
+    render_objects: TileLayerRenderObjectSet,
+    frame_packet: Box<TileLayerFramePacket>,
+    submit_packet: Box<TileLayerSubmitPacket>,
+    phantom: PhantomData<&'write ()>,
 }
 
-impl TileLayerWriteJob {
+impl<'write> TileLayerWriteJob<'write> {
     pub fn new(
-        tile_layer_material: ResourceArc<MaterialPassResource>,
-        visible_render_nodes: Vec<TileLayerRenderNode>,
-    ) -> Self {
-        TileLayerWriteJob {
-            visible_render_nodes,
-            per_view_descriptor_sets: Default::default(),
-            tile_layer_material,
-        }
-    }
-
-    pub fn visible_render_nodes(&self) -> &Vec<TileLayerRenderNode> {
-        &self.visible_render_nodes
-    }
-
-    pub fn push_per_view_descriptor_set(
-        &mut self,
-        view_index: RenderViewIndex,
-        per_view_descriptor_set: DescriptorSetArc,
-    ) {
-        push_view_indexed_value(
-            &mut self.per_view_descriptor_sets,
-            view_index,
-            per_view_descriptor_set,
-        );
+        _write_context: &RenderJobWriteContext<'write>,
+        frame_packet: Box<TileLayerFramePacket>,
+        submit_packet: Box<TileLayerSubmitPacket>,
+        render_objects: TileLayerRenderObjectSet,
+    ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
+        Arc::new(Self {
+            tile_layer_material_pass: {
+                frame_packet
+                    .per_frame_data()
+                    .get()
+                    .tile_layer_material_pass
+                    .clone()
+            },
+            render_objects,
+            frame_packet,
+            submit_packet,
+            phantom: Default::default(),
+        })
     }
 }
 
-impl WriteJob for TileLayerWriteJob {
+impl<'write> RenderFeatureWriteJob<'write> for TileLayerWriteJob<'write> {
+    fn view_frame_index(
+        &self,
+        view: &RenderView,
+    ) -> ViewFrameIndex {
+        self.frame_packet.view_frame_index(view)
+    }
+
     fn apply_setup(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
+        write_context: &mut RenderJobCommandBufferContext,
+        _view_frame_index: ViewFrameIndex,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
-        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().apply_setup);
 
         let command_buffer = &write_context.command_buffer;
 
@@ -77,7 +79,7 @@ impl WriteJob for TileLayerWriteJob {
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
                 render_phase_index,
-                &self.tile_layer_material,
+                self.tile_layer_material_pass.as_ref().unwrap(),
                 &write_context.render_target_meta,
                 &TILE_LAYER_VERTEX_LAYOUT,
             )
@@ -88,44 +90,48 @@ impl WriteJob for TileLayerWriteJob {
         Ok(())
     }
 
-    fn render_element(
+    fn render_submit_node(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
-        index: SubmitNodeId,
+        write_context: &mut RenderJobCommandBufferContext,
+        view_frame_index: ViewFrameIndex,
+        render_phase_index: RenderPhaseIndex,
+        submit_node_id: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
         let command_buffer = &write_context.command_buffer;
 
+        let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
+
+        let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
+
         // Bind per-pass data (UBO with view/proj matrix, sampler)
-        self.per_view_descriptor_sets[view.view_index() as usize]
+        per_view_submit_data
+            .descriptor_set_arc
             .as_ref()
             .unwrap()
             .bind(command_buffer)?;
 
-        self.visible_render_nodes[index as usize]
+        let submit_node = view_submit_packet
+            .get_submit_node_data_from_render_phase(render_phase_index, submit_node_id);
+
+        let render_objects = self.render_objects.read();
+        let tile_layer_render_object = render_objects.get_id(&submit_node.render_object_id);
+        tile_layer_render_object
             .per_layer_descriptor_set
             .bind(command_buffer)?;
 
-        for draw_call in &self.visible_render_nodes[index as usize].draw_call_data {
+        for draw_call in &tile_layer_render_object.draw_call_data {
             command_buffer.cmd_bind_vertex_buffers(
                 0,
                 &[RafxVertexBufferBinding {
-                    buffer: &self.visible_render_nodes[index as usize]
-                        .vertex_buffer
-                        .get_raw()
-                        .buffer,
+                    buffer: &tile_layer_render_object.vertex_buffer.get_raw().buffer,
                     byte_offset: draw_call.vertex_data_offset_in_bytes as u64,
                 }],
             )?;
 
             command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
-                buffer: &self.visible_render_nodes[index as usize]
-                    .index_buffer
-                    .get_raw()
-                    .buffer,
+                buffer: &tile_layer_render_object.index_buffer.get_raw().buffer,
                 byte_offset: draw_call.index_data_offset_in_bytes as u64,
                 index_type: RafxIndexType::Uint16,
             })?;
@@ -136,8 +142,8 @@ impl WriteJob for TileLayerWriteJob {
         Ok(())
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {

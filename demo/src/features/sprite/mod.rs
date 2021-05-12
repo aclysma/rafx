@@ -1,5 +1,7 @@
 mod jobs;
 use jobs::*;
+mod internal;
+use internal::*;
 
 use rafx::render_feature_mod_prelude::*;
 rafx::declare_render_feature!(SpriteRenderFeature, SPRITE_FEATURE_INDEX);
@@ -9,5 +11,5 @@ rafx::declare_render_feature!(SpriteRenderFeature, SPRITE_FEATURE_INDEX);
 mod plugin;
 pub use plugin::*;
 
-mod sprite_render_node_set;
-pub use sprite_render_node_set::*;
+mod render_object;
+pub use render_object::*;

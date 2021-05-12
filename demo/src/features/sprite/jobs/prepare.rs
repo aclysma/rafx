@@ -1,15 +1,12 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{SpriteVertex, SpriteWriteJob};
-use crate::phases::OpaqueRenderPhase;
-use crate::phases::TransparentRenderPhase;
+use super::*;
+use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase};
 use fnv::FnvHashMap;
-use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
+use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 use rafx::base::DecimalF32;
-use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
-
-/// Per-pass "global" data
-pub type SpriteUniformBufferObject = shaders::sprite_vert::ArgsUniform;
+use rafx::framework::{ImageViewResource, ResourceArc, ResourceContext};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Used as static data to represent a quad
 #[derive(Clone, Debug, Copy)]
@@ -45,69 +42,67 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 /// Draw order of QUAD_VERTEX_LIST
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 1, 3];
 
-#[derive(Debug)]
-pub struct ExtractedSpriteData {
-    pub position: glam::Vec3,
-    pub texture_size: glam::Vec2,
-    pub scale: glam::Vec3,
-    pub rotation: glam::Quat,
-    pub color: glam::Vec4,
-    pub image_view: ResourceArc<ImageViewResource>,
-}
-
 pub struct SpritePrepareJob {
-    extracted_frame_node_sprite_data: Vec<Option<ExtractedSpriteData>>,
-    sprite_material: ResourceArc<MaterialPassResource>,
+    resource_context: ResourceContext,
+    device_context: RafxDeviceContext,
+    render_objects: SpriteRenderObjectSet,
 }
 
 impl SpritePrepareJob {
-    pub(super) fn new(
-        extracted_sprite_data: Vec<Option<ExtractedSpriteData>>,
-        sprite_material: ResourceArc<MaterialPassResource>,
-    ) -> Self {
-        SpritePrepareJob {
-            extracted_frame_node_sprite_data: extracted_sprite_data,
-            sprite_material,
-        }
+    pub fn new<'prepare>(
+        prepare_context: &RenderJobPrepareContext<'prepare>,
+        frame_packet: Box<SpriteFramePacket>,
+        submit_packet: Box<SpriteSubmitPacket>,
+        render_objects: SpriteRenderObjectSet,
+    ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
+        Arc::new(PrepareJob::new(
+            Self {
+                resource_context: prepare_context.resource_context.clone(),
+                device_context: prepare_context.device_context.clone(),
+                render_objects,
+            },
+            frame_packet,
+            submit_packet,
+        ))
     }
 }
 
-impl PrepareJob for SpritePrepareJob {
-    fn prepare(
-        self: Box<Self>,
-        prepare_context: &RenderJobPrepareContext,
-        frame_packet: &FramePacket,
-        views: &[RenderView],
-    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
-        profiling::scope!(super::PREPARE_SCOPE_NAME);
+impl<'prepare> PrepareJobEntryPoints<'prepare> for SpritePrepareJob {
+    fn end_per_view_prepare(
+        &self,
+        context: &PreparePerViewContext<'prepare, '_, Self>,
+    ) {
+        let per_frame_data = context.per_frame_data();
+        if per_frame_data.sprite_material_pass.is_none() {
+            return;
+        }
 
-        let mut writer = Box::new(SpriteWriteJob::new(self.sprite_material.clone()));
+        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
+        let dyn_resource_allocator_set = self.resource_context.create_dyn_resource_allocator_set();
 
-        let mut descriptor_set_allocator = prepare_context
-            .resource_context
-            .create_descriptor_set_allocator();
+        let sprite_material_pass = per_frame_data.sprite_material_pass.as_ref().unwrap();
+        let per_view_descriptor_set_layout = &sprite_material_pass.get_raw().descriptor_set_layouts
+            [shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
 
-        let descriptor_set_layouts = self.sprite_material.get_raw().descriptor_set_layouts;
+        let view = context.view();
+        let view_packet = context.view_packet();
+        let view_submit_packet = context.view_submit_packet();
 
-        //
-        // Create per-view descriptor sets
-        //
-        for view in views {
-            let layout = &self.sprite_material.get_raw().descriptor_set_layouts
-                [shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
-            let descriptor_set = descriptor_set_allocator
+        let per_view_descriptor_set = Some(
+            descriptor_set_allocator
                 .create_descriptor_set_with_writer(
-                    &*layout,
+                    per_view_descriptor_set_layout,
                     shaders::sprite_vert::DescriptorSet0Args {
                         uniform_buffer: &shaders::sprite_vert::ArgsUniform {
                             mvp: view.view_proj().to_cols_array_2d(),
                         },
                     },
                 )
-                .unwrap();
+                .unwrap(),
+        );
 
-            writer.push_per_view_descriptor_set(view.view_index(), descriptor_set);
-        }
+        let mut per_view_submit_data = SpritePerViewSubmitData::default();
+        per_view_submit_data.descriptor_set_arc = per_view_descriptor_set.clone();
 
         //
         // Create descriptor sets per distinct image/material. Also assign a batch index to each
@@ -117,7 +112,9 @@ impl PrepareJob for SpritePrepareJob {
 
         // Temporary lookup for material index. This allows us to create exactly one per texture we
         // render
+
         let mut material_lookup = FnvHashMap::<ResourceArc<ImageViewResource>, u32>::default();
+
         // List of all per material descriptor sets, indexed by material index
         let mut per_material_descriptor_sets = Vec::default();
 
@@ -142,14 +139,19 @@ impl PrepareJob for SpritePrepareJob {
         }
 
         // Batch index for every sprite frame node
+
         let mut batch_indices =
-            Vec::<Option<PerNodeData>>::with_capacity(self.extracted_frame_node_sprite_data.len());
+            Vec::<Option<PerNodeData>>::with_capacity(view_packet.render_object_instances().len());
 
         {
             profiling::scope!("batch assignment");
 
-            for sprite in &self.extracted_frame_node_sprite_data {
-                if let Some(sprite) = sprite {
+            for sprite in view_packet.render_object_instances().iter() {
+                if let Some(sprite) = context
+                    .render_object_instances_data()
+                    .get(sprite.render_object_instance_id as usize)
+                    .as_ref()
+                {
                     //
                     // First, get or create the descriptor set for the material
                     //
@@ -157,9 +159,11 @@ impl PrepareJob for SpritePrepareJob {
                     let material_index = *material_lookup
                         .entry(sprite.image_view.clone())
                         .or_insert_with(|| {
+                            profiling::scope!("allocate descriptor set");
+
                             let descriptor_set = descriptor_set_allocator
                                 .create_descriptor_set_with_writer(
-                                    &descriptor_set_layouts
+                                    &sprite_material_pass.get_raw().descriptor_set_layouts
                                         [shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX],
                                     shaders::sprite_frag::DescriptorSet1Args {
                                         tex: &sprite.image_view,
@@ -168,9 +172,7 @@ impl PrepareJob for SpritePrepareJob {
                                 .unwrap();
 
                             let material_index = per_material_descriptor_sets.len() as u32;
-
                             per_material_descriptor_sets.push(descriptor_set);
-
                             material_index
                         });
 
@@ -215,150 +217,158 @@ impl PrepareJob for SpritePrepareJob {
             }
         }
 
-        let mut submit_nodes = FeatureSubmitNodes::default();
         let mut vertex_data = Vec::<SpriteVertex>::default();
         let mut index_data = Vec::<u16>::default();
 
-        for view in views {
-            profiling::scope!("process view");
-            if let Some(view_nodes) = frame_packet.view_nodes(view, self.feature_index()) {
-                let mut sorted_view_nodes = Vec::with_capacity(
-                    frame_packet.view_node_count(view, self.feature_index()) as usize,
-                );
-                for view_node in view_nodes {
-                    if let Some(batch_index) = &batch_indices[view_node.frame_node_index() as usize]
+        let sorted_view_nodes = {
+            profiling::scope!("create sorted view nodes");
+
+            let mut sorted_view_nodes =
+                Vec::with_capacity(view_packet.render_object_instances().len());
+
+            for sprite in view_packet.render_object_instances().iter() {
+                let render_object_instance_id = sprite.render_object_instance_id;
+                if let Some(batch_index) = &batch_indices[render_object_instance_id as usize] {
+                    sorted_view_nodes.push((batch_index.batch_index, render_object_instance_id));
+                }
+            }
+
+            {
+                profiling::scope!("sort by key");
+                sorted_view_nodes.sort_by_key(|x| x.0);
+            }
+
+            sorted_view_nodes
+        };
+
+        let mut previous_batch_index = 0;
+        let mut last_submit_node: Option<(RenderPhaseIndex, SubmitNodeId)> = None;
+
+        {
+            profiling::scope!("create draw calls");
+
+            for (batch_index, frame_node_index) in sorted_view_nodes {
+                const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
+
+                if let Some(sprite) = context
+                    .render_object_instances_data()
+                    .get(frame_node_index as usize)
+                {
+                    //
+                    // If the vertex count exceeds what a u16 index buffer support, start a new draw call
+                    //
+                    let mut vertex_count = (last_submit_node
+                        .map(|x| {
+                            view_submit_packet.get_submit_node_data_from_render_phase(x.0, x.1)
+                        })
+                        .map(|submit_node| submit_node.index_count.load(Ordering::Relaxed))
+                        .unwrap_or(0)
+                        / 6)
+                        * 4;
+
+                    if last_submit_node.is_none()
+                        || vertex_count + 4 > u16::MAX as u32
+                        || batch_index != previous_batch_index
                     {
-                        sorted_view_nodes
-                            .push((batch_index.batch_index, view_node.frame_node_index()));
+                        let material_index = batch_indices[frame_node_index as usize]
+                            .as_ref()
+                            .unwrap()
+                            .material_index;
+
+                        let texture_descriptor_set =
+                            per_material_descriptor_sets[material_index as usize].clone();
+
+                        let index_count = AtomicU32::new(0); // This will be incremented as sprites are added.
+                        let vertex_data_offset_index = vertex_data.len() as u32;
+                        let index_data_offset_index = index_data.len() as u32;
+
+                        let submit_node_data = SpriteDrawCall {
+                            texture_descriptor_set: Some(texture_descriptor_set),
+                            vertex_data_offset_index,
+                            index_data_offset_index,
+                            index_count,
+                        };
+
+                        let (render_phase_index, distance) = if sprite.color.w >= 1.0 {
+                            // non-transparent can just batch by material
+                            (OpaqueRenderPhase::render_phase_index(), 0.)
+                        } else {
+                            // transparent must be ordered by distance
+                            let distance = (view.eye_position().z - sprite.position.z).abs();
+                            (TransparentRenderPhase::render_phase_index(), distance)
+                        };
+
+                        last_submit_node = Some((
+                            render_phase_index,
+                            view_submit_packet.push_submit_node_into_render_phase(
+                                render_phase_index,
+                                submit_node_data,
+                                batch_index,
+                                distance,
+                            ),
+                        ));
+
+                        previous_batch_index = batch_index;
+                        vertex_count = 0;
                     }
-                }
 
-                {
-                    profiling::scope!("sort view nodes");
-                    sorted_view_nodes.sort_by_key(|x| x.0);
-                }
+                    let matrix = glam::Mat4::from_scale_rotation_translation(
+                        glam::Vec3::new(
+                            sprite.texture_size.x * sprite.scale.x,
+                            sprite.texture_size.y * sprite.scale.y,
+                            1.0,
+                        ),
+                        sprite.rotation,
+                        sprite.position,
+                    );
 
-                let mut view_submit_nodes =
-                    ViewSubmitNodes::new(self.feature_index(), view.render_phase_mask());
+                    let color: [f32; 4] = sprite.color.into();
+                    let color_u8 = [
+                        (color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                        (color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                        (color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                        (color[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                    ];
 
-                {
-                    let mut previous_batch_index = 0;
-
-                    profiling::scope!("write buffer data");
-                    for (batch_index, frame_node_index) in sorted_view_nodes {
-                        const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
-                        let sprite =
-                            &self.extracted_frame_node_sprite_data[frame_node_index as usize];
-
-                        if let Some(sprite) = sprite {
-                            //
-                            // If the vertex count exceeds what a u16 index buffer support, start a new draw call
-                            //
-                            let mut vertex_count = (writer
-                                .draw_calls()
-                                .last()
-                                .map(|x| x.index_count)
-                                .unwrap_or(0)
-                                / 6)
-                                * 4;
-
-                            if writer.draw_calls().is_empty()
-                                || vertex_count + 4 > u16::MAX as u32
-                                || batch_index != previous_batch_index
-                            {
-                                let submit_node_id = writer.draw_calls().len() as u32;
-
-                                if sprite.color.w >= 1.0 {
-                                    // non-transparent can just batch by material
-                                    view_submit_nodes.add_submit_node::<OpaqueRenderPhase>(
-                                        submit_node_id,
-                                        batch_index,
-                                        0.0,
-                                    );
-                                } else {
-                                    // transparent must be ordered by distance
-                                    let distance =
-                                        (view.eye_position().z - sprite.position.z).abs();
-                                    view_submit_nodes.add_submit_node::<TransparentRenderPhase>(
-                                        submit_node_id,
-                                        batch_index,
-                                        distance,
-                                    );
-                                }
-
-                                let material_index = batch_indices[frame_node_index as usize]
-                                    .as_ref()
-                                    .unwrap()
-                                    .material_index;
-
-                                writer.push_draw_call(
-                                    vertex_data.len(),
-                                    index_data.len(),
-                                    per_material_descriptor_sets[material_index as usize].clone(),
-                                );
-
-                                previous_batch_index = batch_index;
-                                vertex_count = 0;
-                            }
-
-                            let current_draw_call_data =
-                                writer.draw_calls_mut().last_mut().unwrap();
-
-                            let matrix = glam::Mat4::from_scale_rotation_translation(
-                                glam::Vec3::new(
-                                    sprite.texture_size.x * sprite.scale.x,
-                                    sprite.texture_size.y * sprite.scale.y,
-                                    1.0,
-                                ),
-                                sprite.rotation,
-                                sprite.position,
-                            );
-
-                            let color: [f32; 4] = sprite.color.into();
-                            let color_u8 = [
-                                (color[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                                (color[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                                (color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                                (color[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-                            ];
-
-                            for vertex in &QUAD_VERTEX_LIST {
-                                let transformed_pos = matrix.transform_point3(vertex.pos.into());
-                                vertex_data.push(SpriteVertex {
-                                    pos: transformed_pos.into(),
-                                    tex_coord: vertex.tex_coord,
-                                    color: color_u8,
-                                });
-                            }
-
-                            for &index in &QUAD_INDEX_LIST {
-                                index_data.push(index + vertex_count as u16);
-                            }
-
-                            //
-                            // Update the draw call to include the new data
-                            //
-                            current_draw_call_data.index_count += 6;
-                        }
+                    for vertex in &QUAD_VERTEX_LIST {
+                        let transformed_pos = matrix.transform_point3(vertex.pos.into());
+                        vertex_data.push(SpriteVertex {
+                            pos: transformed_pos.into(),
+                            tex_coord: vertex.tex_coord,
+                            color: color_u8,
+                        });
                     }
-                }
 
-                submit_nodes.add_submit_nodes_for_view(&view, view_submit_nodes);
+                    for &index in &QUAD_INDEX_LIST {
+                        index_data.push(index + vertex_count as u16);
+                    }
+
+                    //
+                    // Update the draw call to include the new data
+                    //
+
+                    let current_draw_call_data = &last_submit_node
+                        .map(|x| {
+                            view_submit_packet.get_submit_node_data_from_render_phase(x.0, x.1)
+                        })
+                        .unwrap();
+
+                    current_draw_call_data
+                        .index_count
+                        .fetch_add(6, Ordering::Relaxed);
+                }
             }
         }
 
         //
         // If we have vertex data, create the vertex buffer
         //
-        let dyn_resource_allocator = prepare_context
-            .resource_context
-            .create_dyn_resource_allocator_set();
 
-        let vertex_buffer = if !writer.draw_calls().is_empty() {
+        let vertex_buffer = if !last_submit_node.is_none() {
             let vertex_buffer_size =
                 vertex_data.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
 
-            let vertex_buffer = prepare_context
+            let vertex_buffer = self
                 .device_context
                 .create_buffer(&RafxBufferDef {
                     size: vertex_buffer_size,
@@ -372,20 +382,20 @@ impl PrepareJob for SpritePrepareJob {
                 .copy_to_host_visible_buffer(vertex_data.as_slice())
                 .unwrap();
 
-            Some(dyn_resource_allocator.insert_buffer(vertex_buffer))
+            Some(dyn_resource_allocator_set.insert_buffer(vertex_buffer))
         } else {
             None
         };
 
-        writer.set_vertex_buffer(vertex_buffer);
+        per_view_submit_data.vertex_buffer = vertex_buffer.clone();
 
         //
         // If we have index data, create the index buffer
         //
-        let index_buffer = if !writer.draw_calls().is_empty() {
+        let index_buffer = if !last_submit_node.is_none() {
             let index_buffer_size = index_data.len() as u64 * std::mem::size_of::<u16>() as u64;
 
-            let index_buffer = prepare_context
+            let index_buffer = self
                 .device_context
                 .create_buffer(&RafxBufferDef {
                     size: index_buffer_size,
@@ -399,23 +409,29 @@ impl PrepareJob for SpritePrepareJob {
                 .copy_to_host_visible_buffer(index_data.as_slice())
                 .unwrap();
 
-            Some(dyn_resource_allocator.insert_buffer(index_buffer))
+            Some(dyn_resource_allocator_set.insert_buffer(index_buffer))
         } else {
             None
         };
 
-        writer.set_index_buffer(index_buffer);
+        per_view_submit_data.index_buffer = index_buffer.clone();
 
-        log::trace!("sprite draw calls: {}", writer.draw_calls().len());
-
-        (writer, submit_nodes)
+        view_submit_packet
+            .per_view_submit_data()
+            .set(per_view_submit_data);
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
         super::render_feature_index()
     }
+
+    type RenderObjectInstanceJobContextT = DefaultJobContext;
+    type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
+
+    type FramePacketDataT = SpriteRenderFeatureTypes;
+    type SubmitPacketDataT = SpriteRenderFeatureTypes;
 }

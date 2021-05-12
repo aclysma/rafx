@@ -1,86 +1,100 @@
 use rafx::render_feature_extract_job_predule::*;
 
-use super::{ImGuiPrepareJob, ImGuiStaticResources, ImGuiUniformBufferObject, Sdl2ImguiManager};
-use rafx::assets::AssetManagerRenderResource;
+use super::*;
+use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
+use rafx::base::resource_map::ReadBorrow;
+use rafx::base::resource_ref_map::ResourceRefBorrowMut;
+use rafx::distill::loader::handle::Handle;
 use rafx::graph::SwapchainSurfaceInfo;
 
-pub struct ImGuiExtractJob {}
+pub struct ImGuiExtractJob<'extract> {
+    sdl2_imgui_manager: TrustCell<ResourceRefBorrowMut<'extract, Sdl2ImguiManager>>,
+    swapchain_surface_info: ReadBorrow<'extract, SwapchainSurfaceInfo>,
+    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    imgui_material: Handle<MaterialAsset>,
+}
 
-impl ImGuiExtractJob {
-    pub fn new() -> Self {
-        Self {}
+impl<'extract> ImGuiExtractJob<'extract> {
+    pub fn new(
+        extract_context: &RenderJobExtractContext<'extract>,
+        frame_packet: Box<ImGuiFramePacket>,
+        imgui_material: Handle<MaterialAsset>,
+    ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
+        Arc::new(ExtractJob::new(
+            Self {
+                sdl2_imgui_manager: TrustCell::new(
+                    extract_context
+                        .extract_resources
+                        .fetch_mut::<Sdl2ImguiManager>(),
+                ),
+                swapchain_surface_info: extract_context
+                    .render_resources
+                    .fetch::<SwapchainSurfaceInfo>(),
+                asset_manager: extract_context
+                    .render_resources
+                    .fetch::<AssetManagerRenderResource>(),
+                imgui_material,
+            },
+            frame_packet,
+        ))
     }
 }
 
-impl ExtractJob for ImGuiExtractJob {
-    fn extract(
-        self: Box<Self>,
-        extract_context: &RenderJobExtractContext,
-        _frame_packet: &FramePacket,
-        _views: &[RenderView],
-    ) -> Box<dyn PrepareJob> {
-        profiling::scope!(super::EXTRACT_SCOPE_NAME);
+impl<'extract> ExtractJobEntryPoints<'extract> for ImGuiExtractJob<'extract> {
+    fn begin_per_frame_extract(
+        &self,
+        context: &ExtractPerFrameContext<'extract, '_, Self>,
+    ) {
+        let sdl2_imgui_manager_mut = &mut self.sdl2_imgui_manager.borrow_mut();
+        let imgui_draw_data = sdl2_imgui_manager_mut.copy_draw_data();
+        let view_ubo = {
+            let framebuffer_scale = match &imgui_draw_data {
+                Some(data) => data.framebuffer_scale,
+                None => [1.0, 1.0],
+            };
 
-        let asset_manager = extract_context
-            .render_resources
-            .fetch::<AssetManagerRenderResource>();
+            let top = 0.0;
+            let bottom = self.swapchain_surface_info.extents.height as f32 / framebuffer_scale[1];
 
-        let imgui_draw_data = extract_context
-            .extract_resources
-            .fetch::<Sdl2ImguiManager>()
-            .copy_draw_data();
+            let view_proj = glam::Mat4::orthographic_rh(
+                0.0,
+                self.swapchain_surface_info.extents.width as f32 / framebuffer_scale[0],
+                bottom,
+                top,
+                -100.0,
+                100.0,
+            );
 
-        let framebuffer_scale = match &imgui_draw_data {
-            Some(data) => data.framebuffer_scale,
-            None => [1.0, 1.0],
+            ImGuiUniformBufferObject {
+                mvp: view_proj.to_cols_array_2d(),
+            }
         };
 
-        let swapchain_info = extract_context
-            .render_resources
-            .fetch::<SwapchainSurfaceInfo>();
-
-        let top = 0.0;
-        let bottom = swapchain_info.extents.height as f32 / framebuffer_scale[1];
-
-        let view_proj = glam::Mat4::orthographic_rh(
-            0.0,
-            swapchain_info.extents.width as f32 / framebuffer_scale[0],
-            bottom,
-            top,
-            -100.0,
-            100.0,
-        );
-
-        let imgui_material = &extract_context
-            .render_resources
-            .fetch::<ImGuiStaticResources>()
-            .imgui_material;
-        let imgui_material_pass = asset_manager
-            .committed_asset(imgui_material)
-            .unwrap()
-            .get_single_material_pass()
-            .unwrap();
-
-        let static_resources = &extract_context
-            .render_resources
-            .fetch::<ImGuiStaticResources>();
-        let view_ubo = ImGuiUniformBufferObject {
-            mvp: view_proj.to_cols_array_2d(),
-        };
-
-        Box::new(ImGuiPrepareJob::new(
-            imgui_draw_data,
-            imgui_material_pass,
-            view_ubo,
-            static_resources.imgui_font_atlas_image_view.clone(),
-        ))
+        context
+            .frame_packet()
+            .per_frame_data()
+            .set(ImGuiPerFrameData {
+                imgui_draw_data,
+                imgui_material_pass: self
+                    .asset_manager
+                    .committed_asset(&self.imgui_material)
+                    .unwrap()
+                    .get_single_material_pass()
+                    .ok(),
+                view_ubo,
+            });
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
         super::render_feature_index()
     }
+
+    type RenderObjectInstanceJobContextT = DefaultJobContext;
+    type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
+
+    type FramePacketDataT = ImGuiRenderFeatureTypes;
 }
