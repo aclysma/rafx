@@ -31,6 +31,9 @@
 * rafx-assets
     * `distill` Architecture and Features
     * [Asset Triangle Example](../rafx/examples/asset_triangle/asset_triangle.rs)
+* rafx-renderer
+    * [Renderer Architecture](renderer/renderer_architecture.md)
+    * [Renderer Triangle Example](../rafx/examples/renderer_triangle/renderer_triangle.rs)
 * Shader Authoring with `rafx-shader-processor`
     * [Shader Processor](shaders/shader_processor.md)
     * [Custom Shader Markup](shaders/shader_annotation.md)
@@ -60,7 +63,8 @@
 * [Key crate dependencies](images/crate_dependencies.png)
 * [Pipelining](images/pipelining.png)
 * [Shader Processor](images/shader_processor.png)
-* [Visibility region](images/visibility_region.jpg)
+* [Visibility region](images/visibility_region.png)
+* [Extract, prepare, write](images/extract_prepare_write.png)
 
 ## Other Resources
 
