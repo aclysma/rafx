@@ -166,13 +166,13 @@ impl RenderOptions {
 
     fn default_3d() -> Self {
         RenderOptions {
-            enable_msaa: true,
+            enable_msaa: false,
             enable_hdr: true,
             enable_bloom: true,
             show_debug3d: true,
             show_text: true,
             show_skybox: true,
-            show_shadows: true,
+            show_shadows: false,
             show_feature_toggles: true,
             blur_pass_count: 5,
             tonemapper_type: TonemapperType::LogDerivative,

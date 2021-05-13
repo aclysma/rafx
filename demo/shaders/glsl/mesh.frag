@@ -59,9 +59,9 @@ const float SHADOW_MAP_BIAS_MAX = 0.01;
 const float SHADOW_MAP_BIAS_MIN = 0.0005;
 
 //#define PCF_DISABLED
-//#define PCF_SAMPLE_1
+#define PCF_SAMPLE_1
 //#define PCF_SAMPLE_9
-#define PCF_SAMPLE_25
+//#define PCF_SAMPLE_25
 
 #define PCF_CUBE_SAMPLE_1
 //#define PCF_CUBE_SAMPLE_8

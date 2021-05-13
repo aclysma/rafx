@@ -132,7 +132,7 @@ impl ShadowsScene {
             };
 
             let mut rng = thread_rng();
-            for i in 0..250 {
+            for i in 0..50 {
                 let position = Vec3::new(((i / 9) * 3) as f32, ((i % 9) * 3) as f32, 0.0);
                 let mesh_render_node = example_meshes[i % example_meshes.len()].clone();
                 let asset_handle = &mesh_render_nodes.get(&mesh_render_node).unwrap().mesh;
@@ -172,26 +172,26 @@ impl ShadowsScene {
         //
         // POINT LIGHT
         //
-        let view_frustums = [
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-        ];
-        super::add_point_light(
-            resources,
-            world,
-            //glam::Vec3::new(-3.0, 3.0, 2.0),
-            glam::Vec3::new(5.0, 5.0, 2.0),
-            PointLightComponent {
-                color: [0.0, 1.0, 0.0, 1.0].into(),
-                intensity: 50.0,
-                range: 25.0,
-                view_frustums,
-            },
-        );
+        // let view_frustums = [
+        //     visibility_region.register_view_frustum(),
+        //     visibility_region.register_view_frustum(),
+        //     visibility_region.register_view_frustum(),
+        //     visibility_region.register_view_frustum(),
+        //     visibility_region.register_view_frustum(),
+        //     visibility_region.register_view_frustum(),
+        // ];
+        // super::add_point_light(
+        //     resources,
+        //     world,
+        //     //glam::Vec3::new(-3.0, 3.0, 2.0),
+        //     glam::Vec3::new(5.0, 5.0, 2.0),
+        //     PointLightComponent {
+        //         color: [0.0, 1.0, 0.0, 1.0].into(),
+        //         intensity: 50.0,
+        //         range: 25.0,
+        //         view_frustums,
+        //     },
+        // );
 
         //
         // DIRECTIONAL LIGHT

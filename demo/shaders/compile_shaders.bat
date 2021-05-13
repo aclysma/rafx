@@ -8,5 +8,6 @@ cargo run --package rafx-shader-processor -- ^
 --metal-generated-src-path generated_msl ^
 --cooked-shaders-path ../assets/shaders ^
 --package-vk ^
---package-metal ^
-&& cargo fmt && cargo test --package shaders
+--package-metal
+
+cargo fmt && cargo test --package shaders

@@ -315,17 +315,8 @@ float do_calculate_percent_lit(thread const float3& normal_vs, thread const int&
     float3 surface_to_light_dir_vs = -light_dir_vs;
     float bias_angle_factor = 1.0 - dot(normal_vs, surface_to_light_dir_vs);
     float bias0 = fast::max(((0.00999999977648258209228515625 * bias_angle_factor) * bias_angle_factor) * bias_angle_factor, 0.0005000000237487256526947021484375) * bias_multiplier;
-    float shadow = 0.0;
-    float2 texelSize = float2(1.0) / float2(int2(shadow_map_images[index].get_width(), shadow_map_images[index].get_height()));
-    for (int x = -2; x <= 2; x++)
-    {
-        for (int y = -2; y <= 2; y++)
-        {
-            float3 _442 = float3(sample_location_uv + (float2(float(x), float(y)) * texelSize), depth_of_surface + bias0);
-            shadow += shadow_map_images[index].sample_compare(smp_depth, _442.xy, _442.z);
-        }
-    }
-    shadow /= 25.0;
+    float3 _404 = float3(sample_location_uv, depth_of_surface + bias0);
+    float shadow = shadow_map_images[index].sample_compare(smp_depth, _404.xy, _404.z);
     return shadow;
 }
 

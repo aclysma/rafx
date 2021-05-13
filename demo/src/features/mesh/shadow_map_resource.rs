@@ -190,7 +190,7 @@ fn calculate_shadow_map_views(
 
     //TODO: The look-at calls in this fn will fail if the light is pointed straight down
 
-    const SHADOW_MAP_RESOLUTION: u32 = 1024;
+    const SHADOW_MAP_RESOLUTION: u32 = 256;
 
     let mut query = <(Entity, Read<SpotLightComponent>, Read<TransformComponent>)>::query();
     for (entity, light, transform) in query.iter(world) {
