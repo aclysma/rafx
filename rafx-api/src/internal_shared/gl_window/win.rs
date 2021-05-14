@@ -26,6 +26,9 @@ const WGL_CONTEXT_MAJOR_VERSION_ARB: i32 = 0x2091;
 const WGL_CONTEXT_MINOR_VERSION_ARB: i32 = 0x2092;
 const WGL_CONTEXT_PROFILE_MASK_ARB: i32 = 0x9126;
 
+const WGL_CONTEXT_DEBUG_BIT_ARB: i32 = 0x00000001;
+const WGL_CONTEXT_FLAGS_ARB: i32 = 0x2094;
+
 const WGL_CONTEXT_CORE_PROFILE_BIT_ARB: i32 = 0x00000001;
 const WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB: i32 = 0x00000002;
 
@@ -235,11 +238,17 @@ impl GlContext {
                 Profile::Compatibility => WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
             };
 
+            let mut flags = 0;
+            if config.use_debug_context {
+                flags |= WGL_CONTEXT_DEBUG_BIT_ARB;
+            }
+
             #[rustfmt::skip]
             let ctx_attribs = [
                 WGL_CONTEXT_MAJOR_VERSION_ARB, config.version.0 as i32,
                 WGL_CONTEXT_MINOR_VERSION_ARB, config.version.1 as i32,
                 WGL_CONTEXT_PROFILE_MASK_ARB, profile_mask,
+                WGL_CONTEXT_FLAGS_ARB, flags,
                 0
             ];
 

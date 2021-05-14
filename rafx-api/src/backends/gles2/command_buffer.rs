@@ -3,7 +3,7 @@ use crate::gles2::{
     CommandPoolGles2StateInner, DescriptorSetArrayData, GlContext, Gles2PipelineInfo,
     RafxBufferGles2, RafxCommandPoolGles2, RafxDescriptorSetArrayGles2,
     RafxDescriptorSetHandleGles2, RafxPipelineGles2, RafxQueueGles2, RafxRootSignatureGles2,
-    RafxTextureGles2, NONE_BUFFER, NONE_FRAMEBUFFER, NONE_TEXTURE,
+    RafxTextureGles2, NONE_BUFFER, NONE_FRAMEBUFFER, NONE_PROGRAM, NONE_TEXTURE,
 };
 use crate::{
     RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorFlags,
@@ -32,6 +32,7 @@ impl RafxCommandBufferGles2 {
     pub(crate) fn queue(&self) -> &RafxQueueGles2 {
         &self.queue
     }
+
     pub fn new(
         command_pool: &RafxCommandPoolGles2,
         _command_buffer_def: &RafxCommandBufferDef,
@@ -55,6 +56,10 @@ impl RafxCommandBufferGles2 {
         assert!(state.is_started);
 
         let gl_context = self.queue.device_context().gl_context();
+
+        // We purposely do not clear framebuffer_color_bound, framebuffer_depth_bound, or
+        // framebuffer_stencil_bound. The framebuffer and tracking if a texture is bound should
+        // be persisted across frames. The state is private to the command pool.
 
         state.is_started = false;
         assert!(state.surface_size.is_none());
@@ -86,7 +91,8 @@ impl RafxCommandBufferGles2 {
         gl_context: &GlContext,
         texture: &RafxTextureGles2,
         attachment: GLenum,
-        mip_slice: Option<u8>,
+        array_slice: u16,
+        mip_slice: u8,
     ) -> RafxResult<()> {
         match texture.gl_raw_image() {
             // RafxRawImageGl::Renderbuffer(id) => {
@@ -104,21 +110,40 @@ impl RafxCommandBufferGles2 {
             //     gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
             // }
             RafxRawImageGles2::Texture(id) => {
-                //TODO: Handle cubemap
-                let texture_target = gles2_bindings::TEXTURE_2D;
-                gl_context.gl_bind_texture(texture_target, *id)?;
+                //TODO: texture array, cubemaps, mip levels. Requires ES 3.0, glFramebufferTextureLayer
+                let target = texture.gl_target();
+                gl_context.gl_bind_texture(target, *id)?;
+
+                let mut subtarget = target;
+                if subtarget == gles2_bindings::TEXTURE_CUBE_MAP {
+                    subtarget = array_layer_to_cube_map_target(array_slice);
+                }
+
                 gl_context.gl_framebuffer_texture(
                     gles2_bindings::FRAMEBUFFER,
                     attachment,
-                    texture_target,
+                    subtarget,
                     *id,
-                    mip_slice.unwrap_or(0),
+                    mip_slice,
                 )?;
-                gl_context.gl_bind_texture(texture_target, NONE_TEXTURE)?;
+                gl_context.gl_bind_texture(target, NONE_TEXTURE)?;
             }
         }
 
         Ok(())
+    }
+
+    fn unbind_framebuffer(
+        gl_context: &GlContext,
+        attachment: GLenum,
+    ) -> RafxResult<()> {
+        gl_context.gl_framebuffer_texture(
+            gles2_bindings::FRAMEBUFFER,
+            attachment,
+            gles2_bindings::TEXTURE_2D,
+            NONE_TEXTURE,
+            0,
+        )
     }
 
     pub fn cmd_begin_render_pass(
@@ -141,6 +166,7 @@ impl RafxCommandBufferGles2 {
         let mut clear_mask = 0;
         let mut extents = RafxExtents3D::default();
 
+        gl_context.gl_use_program(NONE_PROGRAM)?;
         gl_context.gl_bind_framebuffer(gles2_bindings::FRAMEBUFFER, state.framebuffer_id)?;
 
         for (index, render_target) in color_targets.iter().enumerate() {
@@ -148,113 +174,94 @@ impl RafxCommandBufferGles2 {
 
             let gl_texture = render_target.texture.gles2_texture().unwrap();
             let attachment = gles2_bindings::COLOR_ATTACHMENT0 + index as u32;
-            Self::bind_framebuffer(gl_context, gl_texture, attachment, render_target.mip_slice)?;
-
-            // match gl_texture.gl_raw_image() {
-            //     RafxRawImageGl::Renderbuffer(id) => {
-            //         gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, *id)?;
-            //         gl_context.gl_framebuffer_renderbuffer(gles20::FRAMEBUFFER, attachment, gles20::RENDERBUFFER, *id)?;
-            //         gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
-            //     }
-            //     RafxRawImageGl::Texture(id) => {
-            //         //TODO: Handle cubemap
-            //         let texture_target = gles20::TEXTURE_2D;
-            //         gl_context.gl_bind_texture(texture_target, *id)?;
-            //         gl_context.gl_framebuffer_texture(gles20::FRAMEBUFFER, attachment, gles20::TEXTURE_2D, *id, render_target.mip_slice.unwrap_or(0))?;
-            //         gl_context.gl_bind_texture(texture_target, NONE_TEXTURE)?;
-            //     }
-            // }
-
-            // let renderbuffer = gl_texture.gl_raw_image().gl_renderbuffer_id().unwrap();
-            // gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
-            // if renderbuffer != NONE_RENDERBUFFER {
-            //     gl_context.gl_framebuffer_renderbuffer(
-            //         gles20::FRAMEBUFFER,
-            //         attachment,
-            //         gles20::RENDERBUFFER,
-            //         renderbuffer,
-            //     )?;
-            // }
+            Self::bind_framebuffer(
+                gl_context,
+                gl_texture,
+                attachment,
+                render_target.array_slice.unwrap_or(0),
+                render_target.mip_slice.unwrap_or(0),
+            )?;
 
             if render_target.load_op == RafxLoadOp::Clear {
                 let c = &render_target.clear_value.0;
                 gl_context.gl_clear_color(c[0], c[1], c[2], c[3])?;
                 clear_mask |= gles2_bindings::COLOR_BUFFER_BIT;
             }
-
-            //gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
         }
 
+        for (i, is_bound) in state.framebuffer_color_bound.iter_mut().enumerate() {
+            if i < color_targets.len() {
+                *is_bound = true;
+            } else {
+                if *is_bound {
+                    Self::unbind_framebuffer(
+                        gl_context,
+                        gles2_bindings::COLOR_ATTACHMENT0 + i as u32,
+                    )?;
+                    *is_bound = false;
+                }
+            }
+        }
+
+        let mut has_depth = false;
+        let mut has_stencil = false;
         if let Some(depth_target) = depth_target {
             let format = depth_target.texture.texture_def().format;
             if format.has_depth() {
                 extents = depth_target.texture.texture_def().extents;
 
-                // let renderbuffer = depth_target
-                //     .texture
-                //     .gl_texture()
-                //     .unwrap()
-                //     .gl_raw_image()
-                //     .gl_renderbuffer_id()
-                //     .unwrap();
-                // gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
-                // if renderbuffer != NONE_RENDERBUFFER {
-                //     gl_context.gl_framebuffer_renderbuffer(
-                //         gles20::FRAMEBUFFER,
-                //         gles20::DEPTH_ATTACHMENT,
-                //         gles20::RENDERBUFFER,
-                //         renderbuffer,
-                //     )?;
-                // }
-
                 let gl_texture = depth_target.texture.gles2_texture().unwrap();
                 let attachment = gles2_bindings::DEPTH_ATTACHMENT;
-                Self::bind_framebuffer(gl_context, gl_texture, attachment, depth_target.mip_slice)?;
+                Self::bind_framebuffer(
+                    gl_context,
+                    gl_texture,
+                    attachment,
+                    depth_target.array_slice.unwrap_or(0),
+                    depth_target.mip_slice.unwrap_or(0),
+                )?;
 
                 if depth_target.depth_load_op == RafxLoadOp::Clear {
                     gl_context.gl_clear_depthf(depth_target.clear_value.depth)?;
                     clear_mask |= gles2_bindings::DEPTH_BUFFER_BIT;
                 }
 
-                //gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
+                has_depth = true;
             }
 
             if format.has_stencil() {
                 extents = depth_target.texture.texture_def().extents;
 
-                // let renderbuffer = depth_target
-                //     .texture
-                //     .gl_texture()
-                //     .unwrap()
-                //     .gl_raw_image()
-                //     .gl_renderbuffer_id()
-                //     .unwrap();
-                // gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, renderbuffer)?;
-                // if renderbuffer != NONE_RENDERBUFFER {
-                //     gl_context.gl_framebuffer_renderbuffer(
-                //         gles20::FRAMEBUFFER,
-                //         gles20::STENCIL_ATTACHMENT,
-                //         gles20::RENDERBUFFER,
-                //         renderbuffer,
-                //     )?;
-                // }
-
                 let gl_texture = depth_target.texture.gles2_texture().unwrap();
                 let attachment = gles2_bindings::STENCIL_ATTACHMENT;
-                Self::bind_framebuffer(gl_context, gl_texture, attachment, depth_target.mip_slice)?;
+                Self::bind_framebuffer(
+                    gl_context,
+                    gl_texture,
+                    attachment,
+                    depth_target.array_slice.unwrap_or(0),
+                    depth_target.mip_slice.unwrap_or(0),
+                )?;
 
                 if depth_target.stencil_load_op == RafxLoadOp::Clear {
                     gl_context.gl_clear_stencil(depth_target.clear_value.stencil as _)?;
                     clear_mask |= gles2_bindings::STENCIL_BUFFER_BIT;
                 }
 
-                //gl_context.gl_bind_renderbuffer(gles20::RENDERBUFFER, NONE_RENDERBUFFER)?;
+                has_stencil = true;
             }
+        }
+
+        if state.framebuffer_depth_bound && !has_depth {
+            Self::unbind_framebuffer(gl_context, gles2_bindings::DEPTH_ATTACHMENT)?;
+            state.framebuffer_depth_bound = false;
+        }
+
+        if state.framebuffer_stencil_bound && !has_stencil {
+            Self::unbind_framebuffer(gl_context, gles2_bindings::STENCIL_ATTACHMENT)?;
+            state.framebuffer_stencil_bound = false;
         }
 
         Self::do_set_viewport(
             gl_context,
-            extents.height as _,
             0,
             0,
             extents.width as _,
@@ -263,14 +270,7 @@ impl RafxCommandBufferGles2 {
             1.0,
         )?;
 
-        Self::do_cmd_set_scissor(
-            gl_context,
-            extents.height,
-            0,
-            0,
-            extents.width,
-            extents.height,
-        )?;
+        Self::do_cmd_set_scissor(gl_context, 0, 0, extents.width, extents.height)?;
 
         let result = gl_context.gl_check_framebuffer_status(gles2_bindings::FRAMEBUFFER)?;
         if result != gles2_bindings::FRAMEBUFFER_COMPLETE {
@@ -314,7 +314,6 @@ impl RafxCommandBufferGles2 {
         let gl_context = self.queue.device_context().gl_context();
         Self::do_set_viewport(
             gl_context,
-            state.surface_size.unwrap().height as _,
             x as _,
             y as _,
             width as _,
@@ -326,7 +325,6 @@ impl RafxCommandBufferGles2 {
 
     fn do_set_viewport(
         gl_context: &GlContext,
-        surface_height: i32,
         x: i32,
         y: i32,
         width: i32,
@@ -334,8 +332,7 @@ impl RafxCommandBufferGles2 {
         depth_min: f32,
         depth_max: f32,
     ) -> RafxResult<()> {
-        let y_offset = surface_height - y - height;
-        gl_context.gl_viewport(x, y_offset, width, height)?;
+        gl_context.gl_viewport(x, y, width, height)?;
         gl_context.gl_depth_rangef(depth_min, depth_max)
     }
 
@@ -350,27 +347,17 @@ impl RafxCommandBufferGles2 {
         assert!(state.is_started);
 
         let gl_context = self.queue.device_context().gl_context();
-        Self::do_cmd_set_scissor(
-            gl_context,
-            state.surface_size.unwrap().height as _,
-            x as _,
-            y as _,
-            width as _,
-            height as _,
-        )
+        Self::do_cmd_set_scissor(gl_context, x as _, y as _, width as _, height as _)
     }
 
     pub fn do_cmd_set_scissor(
         gl_context: &GlContext,
-        surface_height: u32,
         x: u32,
         y: u32,
         width: u32,
         height: u32,
     ) -> RafxResult<()> {
-        let y_offset = surface_height - y - height;
-
-        gl_context.gl_scissor(x as _, y_offset as _, width as _, height as _)
+        gl_context.gl_scissor(x as _, y as _, width as _, height as _)
     }
 
     pub fn cmd_set_stencil_reference_value(
@@ -839,49 +826,63 @@ impl RafxCommandBufferGles2 {
                     // do nothing, we handle this when dealing with textures
                 }
                 RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE => {
-                    if let Some(location) =
-                        pipeline_info.resource_location(descriptor.descriptor_index)
-                    {
-                        // Find where the texture states begin for this resource in this descriptor set
-                        let base_image_state_index = array_index * data.texture_states_per_set
-                            + descriptor.descriptor_data_offset_in_set.unwrap();
+                    // Find where the texture states begin for this resource in this descriptor set
+                    let base_image_state_index = array_index * data.texture_states_per_set
+                        + descriptor.descriptor_data_offset_in_set.unwrap();
 
-                        //
-                        // The samplers are either within the RafxDescriptorSetArray's data or,
-                        // if it's an immutable sampler, in the root signature itself
-                        //
-                        // We need to find a sampler here because GL ES 2.0 expects sampler state
-                        // to be set per-texture
-                        //
-                        let sampler = match descriptor.sampler_descriptor_index.unwrap() {
-                            RafxSamplerIndexGles2::Immutable(immutable_index) => {
-                                &root_signature.inner.immutable_samplers[immutable_index as usize]
-                                    .sampler
-                            }
-                            RafxSamplerIndexGles2::Mutable(sampler_descriptor_index) => {
-                                // Find the descriptor with the relevant sampler
-                                let sampler_descriptor =
-                                    root_signature.descriptor(sampler_descriptor_index).unwrap();
-                                // Find the samplers within the descriptor set's flattened array of
-                                // all samplers
-                                let sampler_index = (array_index * data.sampler_states_per_set
-                                    + sampler_descriptor.descriptor_data_offset_in_set.unwrap())
-                                    as usize;
-                                &data.sampler_states[sampler_index].as_ref().unwrap().sampler
-                            }
-                        };
+                    // May occur if the texture is dead code and never sampled
+                    if descriptor.sampler_descriptor_index.is_none() {
+                        continue;
+                    }
 
-                        for i in 0..descriptor.element_count {
+                    //
+                    // The samplers are either within the RafxDescriptorSetArray's data or,
+                    // if it's an immutable sampler, in the root signature itself
+                    //
+                    // We need to find a sampler here because GL ES 2.0 expects sampler state
+                    // to be set per-texture
+                    //
+                    let sampler = match descriptor.sampler_descriptor_index.unwrap() {
+                        RafxSamplerIndexGles2::Immutable(immutable_index) => {
+                            &root_signature.inner.immutable_samplers[immutable_index as usize]
+                                .sampler
+                        }
+                        RafxSamplerIndexGles2::Mutable(sampler_descriptor_index) => {
+                            // Find the descriptor with the relevant sampler
+                            let sampler_descriptor =
+                                root_signature.descriptor(sampler_descriptor_index).unwrap();
+                            // Find the samplers within the descriptor set's flattened array of
+                            // all samplers
+                            let sampler_index = (array_index * data.sampler_states_per_set
+                                + sampler_descriptor.descriptor_data_offset_in_set.unwrap())
+                                as usize;
+                            &data.sampler_states[sampler_index].as_ref().unwrap().sampler
+                        }
+                    };
+
+                    let layout = &root_signature.inner.layouts[set_index as usize];
+
+                    for i in 0..descriptor.element_count {
+                        if let Some(location) =
+                            pipeline_info.resource_location(descriptor.descriptor_index, i)
+                        {
                             let image_state_index = base_image_state_index + i;
                             let texture = &data.texture_states[image_state_index as usize]
                                 .as_ref()
                                 .expect("Tried to use unbound texture")
                                 .texture;
 
-                            gl_context.gl_active_texture(descriptor.texture_index.unwrap())?;
+                            let texture_unit_index: u32 = layout.texture_unit_offset
+                                + descriptor.descriptor_data_offset_in_set.unwrap()
+                                + i;
+
+                            //println!("texture unit {} for location {:?}", texture_unit_index, location);
+                            gl_context.gl_active_texture(texture_unit_index)?;
+
                             let target = texture.gl_target();
-                            //TODO: handle cube map
+
                             //TODO: Handle specific mip levels/array slices (GL_TEXTURE_BASE_LEVEL and GL_TEXTURE_MAX_LEVEL on sampler, ES3 only)
+
                             gl_context.gl_bind_texture(
                                 target,
                                 texture.gl_raw_image().gl_texture_id().unwrap(),
@@ -890,8 +891,8 @@ impl RafxCommandBufferGles2 {
                             gl_type_util::set_uniform(
                                 gl_context,
                                 location,
-                                &descriptor.texture_index.unwrap(),
-                                gles2_bindings::SAMPLER_2D,
+                                &texture_unit_index,
+                                gles2_bindings::INT,
                                 1,
                             )?;
 

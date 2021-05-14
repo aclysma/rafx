@@ -100,7 +100,7 @@ impl ReflectedShader {
         // We iterate through the entry points we will hit for each stage. Each stage may define
         // slightly different reflection data/bindings in use.
         for reflection_data in entry_points {
-            log::trace!("  Reflection data:\n{:#?}", reflection_data);
+            //log::trace!("  Reflection data:\n{:#?}", reflection_data);
 
             if reflection_data
                 .rafx_api_reflection

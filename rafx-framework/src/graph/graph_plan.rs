@@ -1145,7 +1145,7 @@ fn build_physical_passes(
                     stencil_load_op: RafxLoadOp::DontCare,
                     store_op: RafxStoreOp::DontCare,
                     stencil_store_op: RafxStoreOp::DontCare,
-                    clear_color: Default::default(),
+                    clear_color: None,
                     format: RafxFormat::UNDEFINED,
                     samples: RafxSampleCount::SampleCount1,
 

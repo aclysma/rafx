@@ -235,6 +235,61 @@ pub const CURRENT_PROGRAM: types::GLenum = 0x8B8D;
 pub const CURRENT_VERTEX_ATTRIB: types::GLenum = 0x8626;
 #[allow(dead_code, non_upper_case_globals)]
 pub const CW: types::GLenum = 0x0900;
+
+// Only available on desktop GL!
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_CALLBACK_FUNCTION: types::GLenum = 0x8244;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_CALLBACK_USER_PARAM: types::GLenum = 0x8245;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_GROUP_STACK_DEPTH: types::GLenum = 0x826D;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_LOGGED_MESSAGES: types::GLenum = 0x9145;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_NEXT_LOGGED_MESSAGE_LENGTH: types::GLenum = 0x8243;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_OUTPUT: types::GLenum = 0x92E0;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_OUTPUT_SYNCHRONOUS: types::GLenum = 0x8242;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SEVERITY_HIGH: types::GLenum = 0x9146;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SEVERITY_LOW: types::GLenum = 0x9148;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SEVERITY_MEDIUM: types::GLenum = 0x9147;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SEVERITY_NOTIFICATION: types::GLenum = 0x826B;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SOURCE_API: types::GLenum = 0x8246;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SOURCE_APPLICATION: types::GLenum = 0x824A;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SOURCE_OTHER: types::GLenum = 0x824B;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SOURCE_SHADER_COMPILER: types::GLenum = 0x8248;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SOURCE_THIRD_PARTY: types::GLenum = 0x8249;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_SOURCE_WINDOW_SYSTEM: types::GLenum = 0x8247;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_TYPE_DEPRECATED_BEHAVIOR: types::GLenum = 0x824D;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_TYPE_ERROR: types::GLenum = 0x824C;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_TYPE_MARKER: types::GLenum = 0x8268;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_TYPE_OTHER: types::GLenum = 0x8251;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_TYPE_PERFORMANCE: types::GLenum = 0x8250;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_TYPE_POP_GROUP: types::GLenum = 0x826A;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_TYPE_PORTABILITY: types::GLenum = 0x824F;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_TYPE_PUSH_GROUP: types::GLenum = 0x8269;
+#[allow(dead_code, non_upper_case_globals)]
+pub const DEBUG_TYPE_UNDEFINED_BEHAVIOR: types::GLenum = 0x824E;
+
 #[allow(dead_code, non_upper_case_globals)]
 pub const DECR: types::GLenum = 0x1E03;
 #[allow(dead_code, non_upper_case_globals)]
@@ -841,6 +896,11 @@ pub struct Gles2 {
     /// Fallbacks: CreateShaderObjectARB
     pub CreateShader: FnPtr,
     pub CullFace: FnPtr,
+
+    pub DebugMessageCallback: FnPtr,
+    pub DebugMessageControl: FnPtr,
+    pub DebugMessageInsert: FnPtr,
+
     /// Fallbacks: DeleteBuffersARB
     pub DeleteBuffers: FnPtr,
     /// Fallbacks: DeleteFramebuffersEXT
@@ -1113,6 +1173,20 @@ impl Gles2 {
             CreateProgram: FnPtr::new(metaloadfn("glCreateProgram", &["glCreateProgramObjectARB"])),
             CreateShader: FnPtr::new(metaloadfn("glCreateShader", &["glCreateShaderObjectARB"])),
             CullFace: FnPtr::new(metaloadfn("glCullFace", &[])),
+
+            DebugMessageCallback: FnPtr::new(metaloadfn(
+                "glDebugMessageCallback",
+                &["glDebugMessageCallbackARB", "glDebugMessageCallbackKHR"],
+            )),
+            DebugMessageControl: FnPtr::new(metaloadfn(
+                "glDebugMessageControl",
+                &["glDebugMessageControlARB", "glDebugMessageControlKHR"],
+            )),
+            DebugMessageInsert: FnPtr::new(metaloadfn(
+                "glDebugMessageInsert",
+                &["glDebugMessageInsertARB", "glDebugMessageInsertKHR"],
+            )),
+
             DeleteBuffers: FnPtr::new(metaloadfn("glDeleteBuffers", &["glDeleteBuffersARB"])),
             DeleteFramebuffers: FnPtr::new(metaloadfn(
                 "glDeleteFramebuffers",
@@ -1763,6 +1837,68 @@ impl Gles2 {
             mode,
         )
     }
+
+    #[allow(non_snake_case, unused_variables, dead_code)]
+    #[inline]
+    pub unsafe fn DebugMessageCallback(
+        &self,
+        callback: types::GLDEBUGPROC,
+        userParam: *const __gl_imports::raw::c_void,
+    ) -> () {
+        __gl_imports::mem::transmute::<
+            _,
+            extern "system" fn(types::GLDEBUGPROC, *const __gl_imports::raw::c_void) -> (),
+        >(self.DebugMessageCallback.f)(callback, userParam)
+    }
+
+    #[allow(non_snake_case, unused_variables, dead_code)]
+    #[inline]
+    pub unsafe fn DebugMessageControl(
+        &self,
+        source: types::GLenum,
+        type_: types::GLenum,
+        severity: types::GLenum,
+        count: types::GLsizei,
+        ids: *const types::GLuint,
+        enabled: types::GLboolean,
+    ) -> () {
+        __gl_imports::mem::transmute::<
+            _,
+            extern "system" fn(
+                types::GLenum,
+                types::GLenum,
+                types::GLenum,
+                types::GLsizei,
+                *const types::GLuint,
+                types::GLboolean,
+            ) -> (),
+        >(self.DebugMessageControl.f)(source, type_, severity, count, ids, enabled)
+    }
+
+    #[allow(non_snake_case, unused_variables, dead_code)]
+    #[inline]
+    pub unsafe fn DebugMessageInsert(
+        &self,
+        source: types::GLenum,
+        type_: types::GLenum,
+        id: types::GLuint,
+        severity: types::GLenum,
+        length: types::GLsizei,
+        buf: *const types::GLchar,
+    ) -> () {
+        __gl_imports::mem::transmute::<
+            _,
+            extern "system" fn(
+                types::GLenum,
+                types::GLenum,
+                types::GLuint,
+                types::GLenum,
+                types::GLsizei,
+                *const types::GLchar,
+            ) -> (),
+        >(self.DebugMessageInsert.f)(source, type_, id, severity, length, buf)
+    }
+
     #[allow(non_snake_case, unused_variables, dead_code)]
     #[inline]
     pub unsafe fn DeleteBuffers(

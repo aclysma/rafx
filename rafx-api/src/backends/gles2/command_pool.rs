@@ -4,7 +4,7 @@ use crate::gles2::{
 };
 use crate::{
     RafxCommandBufferDef, RafxCommandPoolDef, RafxExtents2D, RafxQueueType, RafxResult,
-    MAX_DESCRIPTOR_SET_LAYOUTS, MAX_VERTEX_INPUT_BINDINGS,
+    MAX_DESCRIPTOR_SET_LAYOUTS, MAX_RENDER_TARGET_ATTACHMENTS, MAX_VERTEX_INPUT_BINDINGS,
 };
 use rafx_base::trust_cell::TrustCell;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -31,6 +31,10 @@ pub(crate) struct CommandPoolGles2StateInner {
     pub(crate) id: u32,
     // Owned by command pool
     pub(crate) framebuffer_id: FramebufferId,
+
+    pub(crate) framebuffer_color_bound: [bool; MAX_RENDER_TARGET_ATTACHMENTS],
+    pub(crate) framebuffer_depth_bound: bool,
+    pub(crate) framebuffer_stencil_bound: bool,
 
     pub(crate) is_started: bool,
     pub(crate) surface_size: Option<RafxExtents2D>,
@@ -111,6 +115,9 @@ impl CommandPoolGles2State {
             device_context: device_context.clone(),
             id: NEXT_COMMAND_POOL_STATE_ID.fetch_add(1, Ordering::Relaxed),
             is_started: false,
+            framebuffer_color_bound: Default::default(),
+            framebuffer_depth_bound: false,
+            framebuffer_stencil_bound: false,
             surface_size: None,
             current_gl_pipeline_info: None,
             stencil_reference_value: 0,

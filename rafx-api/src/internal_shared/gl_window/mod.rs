@@ -31,6 +31,9 @@ pub struct GlConfig {
     pub srgb: bool,
     pub double_buffer: bool,
     pub vsync: bool,
+
+    // Not available on macOS
+    pub use_debug_context: bool,
 }
 
 impl Default for GlConfig {
@@ -48,6 +51,7 @@ impl Default for GlConfig {
             srgb: true,
             double_buffer: true,
             vsync: false,
+            use_debug_context: false,
         }
     }
 }

@@ -65,10 +65,20 @@ impl RafxCullMode {
 }
 
 impl RafxFrontFace {
-    pub fn gles2_front_face(self) -> GLenum {
-        match self {
-            RafxFrontFace::CounterClockwise => gles2_bindings::CCW,
-            RafxFrontFace::Clockwise => gles2_bindings::CW,
+    pub fn gles2_front_face(
+        self,
+        reversed: bool,
+    ) -> GLenum {
+        if reversed {
+            match self {
+                RafxFrontFace::CounterClockwise => gles2_bindings::CW,
+                RafxFrontFace::Clockwise => gles2_bindings::CCW,
+            }
+        } else {
+            match self {
+                RafxFrontFace::CounterClockwise => gles2_bindings::CCW,
+                RafxFrontFace::Clockwise => gles2_bindings::CW,
+            }
         }
     }
 }
@@ -115,7 +125,7 @@ impl From<&RafxRasterizerState> for Gles2RasterizerState {
     fn from(state: &RafxRasterizerState) -> Self {
         Gles2RasterizerState {
             cull_mode: state.cull_mode.gles2_cull_mode(),
-            front_face: state.front_face.gles2_front_face(),
+            front_face: state.front_face.gles2_front_face(false),
             scissor_test: state.scissor,
         }
     }

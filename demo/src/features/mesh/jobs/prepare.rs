@@ -237,12 +237,12 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
 
             for index in per_frame_submit_data.num_shadow_map_2d..MAX_SHADOW_MAPS_2D {
                 per_frame_submit_data.shadow_map_2d_image_views[index] =
-                    Some(invalid_resources.invalid_image.clone());
+                    Some(invalid_resources.invalid_image_depth.clone());
             }
 
             for index in per_frame_submit_data.num_shadow_map_cube..MAX_SHADOW_MAPS_CUBE {
                 per_frame_submit_data.shadow_map_cube_image_views[index] =
-                    Some(invalid_resources.invalid_cube_map_image.clone());
+                    Some(invalid_resources.invalid_cube_map_image_depth.clone());
             }
         }
 

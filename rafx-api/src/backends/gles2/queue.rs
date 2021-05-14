@@ -117,10 +117,11 @@ impl RafxQueueGles2 {
         let gl_context = self.device_context().gl_context();
         gl_context.gl_bind_framebuffer(gles2_bindings::FRAMEBUFFER, NONE_FRAMEBUFFER)?;
 
-        self.device_context()
-            .inner
-            .fullscreen_quad
-            .draw(gl_context, &swapchain.swapchain_image)?;
+        self.device_context().inner.fullscreen_quad.draw(
+            gl_context,
+            &swapchain.swapchain_image,
+            true,
+        )?;
 
         let surface_context = swapchain.surface_context();
         let gl_context_manager = self.device_context().gl_context_manager();

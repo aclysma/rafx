@@ -24,8 +24,10 @@ pub struct RendererConfigResource {
 
 #[derive(Clone)]
 pub struct InvalidResources {
-    pub invalid_image: ResourceArc<ImageViewResource>,
-    pub invalid_cube_map_image: ResourceArc<ImageViewResource>,
+    pub invalid_image_color: ResourceArc<ImageViewResource>,
+    pub invalid_image_depth: ResourceArc<ImageViewResource>,
+    pub invalid_cube_map_image_color: ResourceArc<ImageViewResource>,
+    pub invalid_cube_map_image_depth: ResourceArc<ImageViewResource>,
 }
 
 pub struct RendererInner {
@@ -68,7 +70,7 @@ impl Renderer {
             16 * 1024 * 1024,
         )?;
 
-        let invalid_image = Self::upload_image_data(
+        let invalid_image_color = Self::upload_image_data(
             &device_context,
             &mut upload,
             &dyn_resource_allocator,
@@ -77,7 +79,16 @@ impl Renderer {
         )
         .map_err(|x| Into::<RafxError>::into(x))?;
 
-        let invalid_cube_map_image = Self::upload_image_data(
+        let invalid_image_depth = Self::upload_image_data(
+            &device_context,
+            &mut upload,
+            &dyn_resource_allocator,
+            &GpuImageData::new_1x1_d32(0.0),
+            ImageUploadParams::default(),
+        )
+        .map_err(|x| Into::<RafxError>::into(x))?;
+
+        let invalid_cube_map_image_color = Self::upload_image_data(
             &device_context,
             &mut upload,
             &dyn_resource_allocator,
@@ -90,9 +101,24 @@ impl Renderer {
         )
         .map_err(|x| Into::<RafxError>::into(x))?;
 
+        let invalid_cube_map_image_depth = Self::upload_image_data(
+            &device_context,
+            &mut upload,
+            &dyn_resource_allocator,
+            &GpuImageData::new_1x1_d32(0.0),
+            ImageUploadParams {
+                generate_mips: false,
+                resource_type: RafxResourceType::TEXTURE_CUBE,
+                layer_swizzle: Some(&[0, 0, 0, 0, 0, 0]),
+            },
+        )
+        .map_err(|x| Into::<RafxError>::into(x))?;
+
         let invalid_resources = InvalidResources {
-            invalid_image,
-            invalid_cube_map_image,
+            invalid_image_color,
+            invalid_image_depth,
+            invalid_cube_map_image_color,
+            invalid_cube_map_image_depth,
         };
 
         let mut render_resources = RenderResources::default();

@@ -17,6 +17,60 @@ pub struct LocationId(u32);
 
 pub struct GetActiveUniformMaxNameLengthHint(i32);
 
+extern "system" fn debug_callback(
+    source: gles2_bindings::types::GLenum,
+    ty: gles2_bindings::types::GLenum,
+    _id: gles2_bindings::types::GLuint,
+    severity: gles2_bindings::types::GLenum,
+    _length: gles2_bindings::types::GLsizei,
+    message: *const gles2_bindings::types::GLchar,
+    _user_param: *mut std::ffi::c_void,
+) {
+    use gles2_bindings as gl;
+
+    let message =
+        unsafe { String::from_utf8(CStr::from_ptr(message).to_bytes().to_vec()).unwrap() };
+
+    let severity = match severity {
+        gl::DEBUG_SEVERITY_NOTIFICATION => log::Level::Info,
+        gl::DEBUG_SEVERITY_LOW => log::Level::Info,
+        gl::DEBUG_SEVERITY_MEDIUM => log::Level::Warn,
+        gl::DEBUG_SEVERITY_HIGH => log::Level::Error,
+        _ => unimplemented!(),
+    };
+
+    let source = match source {
+        gl::DEBUG_SOURCE_API => "Api",
+        gl::DEBUG_SOURCE_WINDOW_SYSTEM => "Window System",
+        gl::DEBUG_SOURCE_SHADER_COMPILER => "Shader Compiler",
+        gl::DEBUG_SOURCE_THIRD_PARTY => "Third Party",
+        gl::DEBUG_SOURCE_APPLICATION => "Application",
+        gl::DEBUG_SOURCE_OTHER => "Other",
+        _ => unimplemented!(),
+    };
+
+    let ty = match ty {
+        gl::DEBUG_TYPE_ERROR => "Error",
+        gl::DEBUG_TYPE_DEPRECATED_BEHAVIOR => "DeprecatedBehavior",
+        gl::DEBUG_TYPE_UNDEFINED_BEHAVIOR => "UndefinedBehavior",
+        gl::DEBUG_TYPE_PORTABILITY => "Portability",
+        gl::DEBUG_TYPE_PERFORMANCE => "Performance",
+        gl::DEBUG_TYPE_MARKER => "Marker",
+        gl::DEBUG_TYPE_PUSH_GROUP => "PushGroup",
+        gl::DEBUG_TYPE_POP_GROUP => "PopGroup",
+        gl::DEBUG_TYPE_OTHER => "Other",
+        _ => "Unknown",
+    };
+
+    log::log!(
+        severity,
+        "[GL DEBUG OUTPUT][{}][{}]: {}",
+        source,
+        ty,
+        message
+    );
+}
+
 pub struct GlContext {
     context: gl_window::GlContext,
     gles2: Gles2,
@@ -61,9 +115,12 @@ impl GlContext {
     ) -> RafxResult<Self> {
         let window_hash = super::calculate_window_hash(window);
 
+        let enable_debug = true;
+
         let mut config = gl_window::GlConfig::default();
         config.profile = gl_window::Profile::Core;
         config.version = (3, 2);
+        config.use_debug_context = enable_debug;
 
         let context =
             gl_window::GlContext::create(window, config, share.map(|x| x.context())).unwrap();
@@ -91,6 +148,35 @@ impl GlContext {
             for extension in extensions_str.split(" ") {
                 log::debug!("Extension: {}", extension);
                 extensions.insert(extension.to_string());
+            }
+        }
+
+        // Desktop-only debug functionality
+        if enable_debug && gles2.DebugMessageCallback.is_loaded() {
+            unsafe {
+                gles2.Enable(gles2_bindings::DEBUG_OUTPUT);
+                gles2.Enable(gles2_bindings::DEBUG_OUTPUT_SYNCHRONOUS);
+                gles2.DebugMessageCallback(Some(debug_callback), std::ptr::null());
+
+                // Enable all messages
+                gles2.DebugMessageControl(
+                    gles2_bindings::DONT_CARE,
+                    gles2_bindings::DONT_CARE,
+                    gles2_bindings::DONT_CARE,
+                    0,
+                    std::ptr::null(),
+                    gles2_bindings::TRUE,
+                );
+
+                // Disable notifications, they can be very noisy
+                gles2.DebugMessageControl(
+                    gles2_bindings::DONT_CARE,
+                    gles2_bindings::DONT_CARE,
+                    gles2_bindings::DEBUG_SEVERITY_NOTIFICATION,
+                    0,
+                    std::ptr::null(),
+                    gles2_bindings::FALSE,
+                );
             }
         }
 
