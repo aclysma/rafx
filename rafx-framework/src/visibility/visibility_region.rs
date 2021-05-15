@@ -3,7 +3,7 @@ use crate::visibility::visibility_object_allocator::{
     VisibilityObjectAllocator, VisibilityObjectId, VisibilityObjectRef,
 };
 use crate::visibility::visibility_object_arc::{CullModel, VisibilityObjectArc};
-use crate::visibility::EntityId;
+use crate::visibility::{ObjectId, VisibilityObjectLookup};
 use crossbeam_channel::Sender;
 use rafx_visibility::{AsyncCommand, VisibilityWorldArc, ZoneHandle};
 use std::sync::Arc;
@@ -52,10 +52,10 @@ impl VisibilityRegion {
     /// Most geometry in the world is static -- buildings, trees, rocks, grass, and so on.
     pub fn register_static_object(
         &self,
-        entity_id: EntityId,
+        object_id: ObjectId,
         cull_model: CullModel,
     ) -> VisibilityObjectArc {
-        self.register_object(entity_id, cull_model, self.static_zone)
+        self.register_object(object_id, cull_model, self.static_zone)
     }
 
     /// Returns a smart pointer to a handle representing a dynamic object.
@@ -63,19 +63,23 @@ impl VisibilityRegion {
     /// Characters, projectiles, vehicles, and moving platforms are examples of dynamic geometry.
     pub fn register_dynamic_object(
         &self,
-        entity_id: EntityId,
+        object_id: ObjectId,
         cull_model: CullModel,
     ) -> VisibilityObjectArc {
-        self.register_object(entity_id, cull_model, self.dynamic_zone)
+        self.register_object(object_id, cull_model, self.dynamic_zone)
     }
 
     fn register_object(
         &self,
-        entity_id: EntityId,
+        object_id: ObjectId,
         cull_model: CullModel,
         zone: ZoneHandle,
     ) -> VisibilityObjectArc {
-        self.allocator.new_object(entity_id, cull_model, Some(zone))
+        self.allocator.new_object(object_id, cull_model, Some(zone))
+    }
+
+    pub fn object_lookup(&self) -> VisibilityObjectLookup {
+        self.allocator.object_lookup()
     }
 
     pub fn object_ref(

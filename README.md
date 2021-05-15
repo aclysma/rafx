@@ -188,10 +188,9 @@ This tool currently is only useful for packing assets.
    * Nearly all assets are data-driven from serializable and hashable structures rather than hard-coded.
    * Buffers and images are asynchronously uploaded on dedicated transfer queue when available
    * Multi-pass material abstraction with bindable parameters
-   * Nodes/Render Jobs system - Inspired by the 2015 GDC talk "Destiny's Multithreaded Rendering Architecture."
+   * Render Features and Jobs system - Inspired by the 2015 GDC talk "Destiny's Multithreaded Rendering Architecture."
       * A job system with extract, prepare, and write phases
-      * Rendering is pipelined with simulation thread, and the job structure is intended to be highly parallel (not
-        actually executed parallel yet)
+      * Rendering is pipelined with simulation thread, and the job structure is parallelizable by the application
       * Handles multiple views and phases allowing advanced features like shadow mapping
       * Flexible sorting mechanism for interleaving and batching write commands from multiple rendering features
    * Visibility Region - Built on top of `rafx-visibility`

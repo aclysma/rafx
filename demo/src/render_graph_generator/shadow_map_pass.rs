@@ -4,7 +4,7 @@ use crate::features::mesh::ShadowMapResource;
 use crate::phases::ShadowMapRenderPhase;
 use rafx::api::{RafxDepthStencilClearValue, RafxResourceType};
 use rafx::graph::*;
-use rafx::nodes::{RenderJobWriteContext, RenderView};
+use rafx::render_features::{RenderJobCommandBufferContext, RenderView};
 
 pub(super) struct ShadowMapPass {
     pub(super) node: RenderGraphNodeId,
@@ -118,7 +118,10 @@ fn shadow_map_pass(
 
     let render_view = render_view.clone();
     context.graph.set_renderpass_callback(node, move |args| {
-        let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+        profiling::scope!("Shadow Map Pass");
+
+        let mut write_context =
+            RenderJobCommandBufferContext::from_graph_visit_render_pass_args(&args);
         args.graph_context
             .prepared_render_data()
             .write_view_phase::<ShadowMapRenderPhase>(&render_view, &mut write_context)

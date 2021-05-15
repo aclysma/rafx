@@ -1,7 +1,9 @@
 use rafx::render_feature_write_job_prelude::*;
 
+use super::*;
 use rafx::api::RafxPrimitiveTopology;
-use rafx::framework::VertexDataSetLayout;
+use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataSetLayout};
+use std::marker::PhantomData;
 
 lazy_static::lazy_static! {
     pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
@@ -9,84 +11,86 @@ lazy_static::lazy_static! {
     };
 }
 
-use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
-
-pub struct SkyboxWriteJob {
-    material_pass_resource: ResourceArc<MaterialPassResource>,
-    submit_nodes: Vec<SubmitNodeData>,
+pub struct SkyboxWriteJob<'write> {
+    skybox_material_pass: Option<ResourceArc<MaterialPassResource>>,
+    frame_packet: Box<SkyboxFramePacket>,
+    submit_packet: Box<SkyboxSubmitPacket>,
+    phantom: PhantomData<&'write ()>,
 }
 
-impl SkyboxWriteJob {
-    pub fn new(material_pass_resource: ResourceArc<MaterialPassResource>) -> Self {
-        SkyboxWriteJob {
-            material_pass_resource,
-            submit_nodes: Default::default(),
-        }
+impl<'write> SkyboxWriteJob<'write> {
+    pub fn new(
+        _write_context: &RenderJobWriteContext<'write>,
+        frame_packet: Box<SkyboxFramePacket>,
+        submit_packet: Box<SkyboxSubmitPacket>,
+    ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
+        Arc::new(Self {
+            skybox_material_pass: {
+                frame_packet
+                    .per_frame_data()
+                    .get()
+                    .skybox_material_pass
+                    .clone()
+            },
+            frame_packet,
+            submit_packet,
+            phantom: Default::default(),
+        })
     }
-
-    pub fn push_submit_node(
-        &mut self,
-        per_view_descriptor_set: DescriptorSetArc,
-    ) -> SubmitNodeId {
-        let idx = self.submit_nodes.len();
-        self.submit_nodes.push(SubmitNodeData {
-            per_view_descriptor_set,
-        });
-        return idx as SubmitNodeId;
-    }
 }
 
-struct SubmitNodeData {
-    per_view_descriptor_set: DescriptorSetArc,
-}
-
-impl WriteJob for SkyboxWriteJob {
-    fn apply_setup(
+impl<'write> RenderFeatureWriteJob<'write> for SkyboxWriteJob<'write> {
+    fn view_frame_index(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
+        view: &RenderView,
+    ) -> ViewFrameIndex {
+        self.frame_packet.view_frame_index(view)
+    }
+
+    fn render_submit_node(
+        &self,
+        write_context: &mut RenderJobCommandBufferContext,
+        view_frame_index: ViewFrameIndex,
         render_phase_index: RenderPhaseIndex,
+        _submit_node_id: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
-        let command_buffer = &write_context.command_buffer;
+        if let Some(skybox_material_pass) = &self.skybox_material_pass {
+            let command_buffer = &write_context.command_buffer;
 
-        let pipeline = write_context
-            .resource_context
-            .graphics_pipeline_cache()
-            .get_or_create_graphics_pipeline(
-                render_phase_index,
-                &self.material_pass_resource,
-                &write_context.render_target_meta,
-                &EMPTY_VERTEX_LAYOUT,
-            )?;
+            let pipeline = write_context
+                .resource_context
+                .graphics_pipeline_cache()
+                .get_or_create_graphics_pipeline(
+                    render_phase_index,
+                    &skybox_material_pass,
+                    &write_context.render_target_meta,
+                    &EMPTY_VERTEX_LAYOUT,
+                )?;
 
-        command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
+            command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
+
+            let view_submit_data = self
+                .submit_packet
+                .view_submit_packet(view_frame_index)
+                .per_view_submit_data()
+                .get();
+
+            view_submit_data
+                .descriptor_set_arc
+                .as_ref()
+                .unwrap()
+                .bind(command_buffer)?;
+
+            command_buffer.cmd_draw(3, 0)?;
+        }
 
         Ok(())
     }
 
-    fn render_element(
-        &self,
-        write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
-        _render_phase_index: RenderPhaseIndex,
-        index: SubmitNodeId,
-    ) -> RafxResult<()> {
-        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
-
-        let command_buffer = &write_context.command_buffer;
-
-        let submit_node = &self.submit_nodes[index as usize];
-        submit_node.per_view_descriptor_set.bind(command_buffer)?;
-
-        command_buffer.cmd_draw(3, 0)?;
-
-        Ok(())
-    }
-
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {

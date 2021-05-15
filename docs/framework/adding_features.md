@@ -1,6 +1,6 @@
 # Adding Features
 
-Features represent "things" that can be drawn. For example, the could be separate features for meshes, sprites, cloth,
+Features represent "things" that can be drawn. For example, the could be separate features for meshes, sprites, cloth, 
 debug draw, imgui, etc.
 
 ## Declare the Feature
@@ -8,8 +8,11 @@ debug draw, imgui, etc.
 You may either implement `RenderFeature` or use this macro
 
 ```rust
+use rafx::render_feature_mod_prelude::*;
 rafx::declare_render_feature!(Debug3DRenderFeature, DEBUG_3D_FEATURE_INDEX);
 ```
+
+When using `rafx-renderer`, you should implement `RenderFeaturePlugin`.
 
 ## Register the Feature
 
@@ -20,43 +23,26 @@ let render_registry = rafx::nodes::RenderRegistryBuilder::default()
     .register_feature::<MeshRenderFeature>();
 ```
 
-Features that have been registered are assign a unique index. For example, to get the feature index of 
-`MeshRenderFeature` call `MeshRenderFeature::feature_index()`.
+Features that have been registered are assign a unique index. For example, to get the feature index of `MeshRenderFeature` 
+call `MeshRenderFeature::feature_index()`.
 
-## Implement `RenderNodeSet` and add it to the frame packet
+If using a `RenderFeaturePlugin`, the call to `register_feature` should go into `configure_render_registry`. This will be called
+after the `RenderFeaturePlugin` is registered with the `Renderer`. A `RenderFeaturePlugin` can be registered with the `Renderer`
+by calling `add_render_feature` on the `RendererBuilder`.
 
-See the demo for examples implementing `RenderNodeSet`. (Maybe there should be a macro to provide a default impl).
+## Define the Frame Packet and Submit Packet
 
-Render nodes will be updated during the extract phase and will "belong" to the render thread until the next extract
-phase. 
+Each `RenderFeature` defines two data structures of packed arrays -- the `RenderFeatureFramePacket` and the `RenderFeatureSubmitPacket`. 
+- `RenderFeatureFramePacket` contains the data extracted from the game world.
+- `RenderFeatureSubmitPacket` contains data prepared for the GPU and a list of sortable submit nodes for the `RenderFeatureWriteJob`.
 
-```rust
-// Create a frame packet builder. It needs to know about all the render nodes and views.
-// (Setting views not shown here)
-let frame_packet_builder = {
-    let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
-    sprite_render_nodes.update();
-    let mut mesh_render_nodes = resources.get_mut::<MeshRenderNodeSet>().unwrap();
-    mesh_render_nodes.update();
-    let mut all_render_nodes = AllRenderNodes::default();
-    all_render_nodes.add_render_nodes(&*sprite_render_nodes);
-    all_render_nodes.add_render_nodes(&*mesh_render_nodes);
+See the demo for examples of features implementing the `FramePacket` and `SubmitPacket`.
 
-    FramePacketBuilder::new(&all_render_nodes)
-};
-```
+## Implement the `RenderFeatureExtractJob`, `RenderFeaturePrepareJob`, and `RenderFeatureWriteJob`
 
-## Implement `ExtractJob` and add it to an extract jobs set
+- `RenderFeatureExtractJob` queries data from the game world and copies it into the `RenderFeatureFramePacket`. 
+- `RenderFeaturePrepareJob` processes extracted data into GPU-friendly data and creates the list of sortable submit nodes in the 
+`RenderFeatureSubmitPacket`.
+- `RenderFeatureWriteJob` defines the GPU commands for rendering each submit node.
 
-See the demo for examples implementing `ExtractJob`.
-
-```rust
-// Create extract jobs for features we will render
-let mut extract_job_set = ExtractJobSet::new();
-extract_job_set.add_job(create_sprite_extract_job());
-extract_job_set.add_job(create_sprite_extract_job());
-
-// Kick off the extract
-let frame_packet = frame_packet_builder.build();
-extract_job_set.extract(&extract_context, &frame_packet, &extract_views)
-```
+See the demo for examples of features implementing the `RenderFeature` jobs.

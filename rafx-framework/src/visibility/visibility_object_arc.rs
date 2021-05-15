@@ -1,6 +1,6 @@
-use crate::nodes::GenericRenderNodeHandle;
+use crate::render_features::{RenderObjectHandle, RenderObjectId};
 use crate::visibility::visibility_object_allocator::{SlotMapArc, VisibilityObjectId};
-use crate::visibility::EntityId;
+use crate::visibility::ObjectId;
 use crossbeam_channel::Sender;
 use glam::{Quat, Vec3};
 use rafx_visibility::geometry::Transform;
@@ -68,23 +68,23 @@ impl VisibilityObjectArc {
         self
     }
 
-    pub fn add_feature(
+    pub fn add_render_object(
         &self,
-        feature: GenericRenderNodeHandle,
+        render_object: &RenderObjectHandle,
     ) -> &Self {
         let mut storage = self.inner.storage.write();
         let object = storage.get_mut(self.inner.id).unwrap();
-        object.add_feature(feature);
+        object.add_render_object(render_object);
         self
     }
 
-    pub fn remove_feature(
+    pub fn remove_render_object(
         &self,
-        feature: GenericRenderNodeHandle,
+        render_object: &RenderObjectHandle,
     ) -> &Self {
         let mut storage = self.inner.storage.write();
         let object = storage.get_mut(self.inner.id).unwrap();
-        object.remove_feature(feature);
+        object.remove_render_object(render_object);
         self
     }
 
@@ -129,21 +129,21 @@ impl Drop for RemoveObjectWhenDropped {
 pub struct VisibilityObject {
     commands: Sender<AsyncCommand>,
     handle: ObjectHandle,
-    features: Vec<GenericRenderNodeHandle>, // TODO(dvd): This might be better as a SmallVec.
-    entity_id: EntityId,
+    render_objects: Vec<RenderObjectId>, // TODO(dvd): This might be better as a SmallVec.
+    object_id: ObjectId,
 }
 
 impl VisibilityObject {
     pub fn new(
-        entity_id: EntityId,
+        object_id: ObjectId,
         handle: ObjectHandle,
         commands: Sender<AsyncCommand>,
     ) -> Self {
         Self {
             commands,
             handle,
-            entity_id,
-            features: Default::default(),
+            object_id,
+            render_objects: Default::default(),
         }
     }
 
@@ -158,30 +158,33 @@ impl VisibilityObject {
         self
     }
 
-    pub fn entity_id(&self) -> EntityId {
-        self.entity_id
+    #[inline(always)]
+    pub fn object_id(&self) -> ObjectId {
+        self.object_id
     }
 
-    pub fn features(&self) -> &[GenericRenderNodeHandle] {
-        &self.features
+    pub fn render_objects(&self) -> &[RenderObjectId] {
+        &self.render_objects
     }
 
-    pub fn add_feature(
+    pub fn add_render_object(
         &mut self,
-        feature: GenericRenderNodeHandle,
+        render_object: &RenderObjectHandle,
     ) -> &Self {
-        if !self.features.contains(&feature) {
-            self.features.push(feature);
+        let id = render_object.as_id();
+        if !self.render_objects.contains(&id) {
+            self.render_objects.push(id);
         }
         self
     }
 
-    pub fn remove_feature(
+    pub fn remove_render_object(
         &mut self,
-        feature: GenericRenderNodeHandle,
+        render_object: &RenderObjectHandle,
     ) -> &Self {
-        if let Some(index) = self.features.iter().position(|value| *value == feature) {
-            self.features.swap_remove(index);
+        let id = render_object.as_id();
+        if let Some(index) = self.render_objects.iter().position(|value| *value == id) {
+            self.render_objects.swap_remove(index);
         }
         self
     }

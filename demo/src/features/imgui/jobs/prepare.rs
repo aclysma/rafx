@@ -1,88 +1,77 @@
 use rafx::render_feature_prepare_job_predule::*;
 
-use super::{ImGuiDrawData, ImGuiWriteJob};
+use super::*;
 use crate::phases::UiRenderPhase;
-use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
-use rafx::framework::{ImageViewResource, MaterialPassResource, ResourceArc};
-
-/// Per-pass "global" data
-pub type ImGuiUniformBufferObject = shaders::imgui_vert::ArgsUniform;
+use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
+use rafx::framework::{ImageViewResource, ResourceArc, ResourceContext};
 
 pub struct ImGuiPrepareJob {
-    imgui_draw_data: Option<ImGuiDrawData>,
-    imgui_material_pass: ResourceArc<MaterialPassResource>,
-    view_ubo: ImGuiUniformBufferObject,
+    resource_context: ResourceContext,
+    device_context: RafxDeviceContext,
     font_atlas: ResourceArc<ImageViewResource>,
 }
 
 impl ImGuiPrepareJob {
-    pub(super) fn new(
-        imgui_draw_data: Option<ImGuiDrawData>,
-        imgui_material_pass: ResourceArc<MaterialPassResource>,
-        view_ubo: ImGuiUniformBufferObject,
+    pub fn new<'prepare>(
+        prepare_context: &RenderJobPrepareContext<'prepare>,
+        frame_packet: Box<ImGuiFramePacket>,
+        submit_packet: Box<ImGuiSubmitPacket>,
         font_atlas: ResourceArc<ImageViewResource>,
-    ) -> Self {
-        ImGuiPrepareJob {
-            imgui_draw_data,
-            imgui_material_pass,
-            view_ubo,
-            font_atlas,
-        }
+    ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
+        Arc::new(PrepareJob::new(
+            Self {
+                resource_context: prepare_context.resource_context.clone(),
+                device_context: prepare_context.device_context.clone(),
+                font_atlas,
+            },
+            frame_packet,
+            submit_packet,
+        ))
     }
 }
 
-impl PrepareJob for ImGuiPrepareJob {
-    fn prepare(
-        self: Box<Self>,
-        prepare_context: &RenderJobPrepareContext,
-        _frame_packet: &FramePacket,
-        views: &[RenderView],
-    ) -> (Box<dyn WriteJob>, FeatureSubmitNodes) {
-        profiling::scope!(super::PREPARE_SCOPE_NAME);
+impl<'prepare> PrepareJobEntryPoints<'prepare> for ImGuiPrepareJob {
+    fn begin_per_frame_prepare(
+        &self,
+        context: &PreparePerFrameContext<'prepare, '_, Self>,
+    ) {
+        let per_frame_data = context.per_frame_data();
+        let mut per_frame_submit_data = ImGuiPerFrameSubmitData::default();
 
-        let mut descriptor_set_allocator = prepare_context
-            .resource_context
-            .create_descriptor_set_allocator();
+        let descriptor_set_layouts = &per_frame_data
+            .imgui_material_pass
+            .as_ref()
+            .unwrap()
+            .get_raw()
+            .descriptor_set_layouts;
 
-        let dyn_resource_allocator = prepare_context
-            .resource_context
-            .create_dyn_resource_allocator_set();
+        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
+        let dyn_resource_allocator_set = self.resource_context.create_dyn_resource_allocator_set();
 
-        let descriptor_set_layouts = &self.imgui_material_pass.get_raw().descriptor_set_layouts;
-
-        let per_view_descriptor_set = descriptor_set_allocator
-            .create_descriptor_set(
+        per_frame_submit_data.per_view_descriptor_set = descriptor_set_allocator
+            .create_descriptor_set_with_writer(
                 &descriptor_set_layouts[shaders::imgui_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX],
                 shaders::imgui_vert::DescriptorSet0Args {
-                    uniform_buffer: &self.view_ubo,
+                    uniform_buffer: &per_frame_data.view_ubo,
                 },
             )
-            .unwrap();
+            .ok();
 
-        let per_font_descriptor_set = descriptor_set_allocator
-            .create_descriptor_set(
+        per_frame_submit_data.per_font_descriptor_set = descriptor_set_allocator
+            .create_descriptor_set_with_writer(
                 &descriptor_set_layouts[shaders::imgui_frag::TEX_DESCRIPTOR_SET_INDEX],
                 shaders::imgui_frag::DescriptorSet1Args {
                     tex: &self.font_atlas,
                 },
             )
-            .unwrap();
+            .ok();
 
-        let mut writer = Box::new(ImGuiWriteJob::new(
-            self.imgui_material_pass.clone(),
-            per_view_descriptor_set,
-            per_font_descriptor_set,
-            self.imgui_draw_data
-                .as_ref()
-                .map_or(0, |draw_data| draw_data.draw_lists().len()),
-        ));
-
-        if let Some(draw_data) = &self.imgui_draw_data {
+        if let Some(draw_data) = &per_frame_data.imgui_draw_data {
             for draw_list in draw_data.draw_lists() {
                 let vertex_buffer_size = draw_list.vertex_buffer().len() as u64
                     * std::mem::size_of::<imgui::DrawVert>() as u64;
 
-                let vertex_buffer = prepare_context
+                let vertex_buffer = self
                     .device_context
                     .create_buffer(&RafxBufferDef {
                         size: vertex_buffer_size,
@@ -96,12 +85,13 @@ impl PrepareJob for ImGuiPrepareJob {
                     .copy_to_host_visible_buffer(draw_list.vertex_buffer())
                     .unwrap();
 
-                let vertex_buffer = dyn_resource_allocator.insert_buffer(vertex_buffer);
+                let vertex_buffer = dyn_resource_allocator_set.insert_buffer(vertex_buffer);
+                per_frame_submit_data.vertex_buffers.push(vertex_buffer);
 
                 let index_buffer_size = draw_list.index_buffer().len() as u64
                     * std::mem::size_of::<imgui::DrawIdx>() as u64;
 
-                let index_buffer = prepare_context
+                let index_buffer = self
                     .device_context
                     .create_buffer(&RafxBufferDef {
                         size: index_buffer_size,
@@ -115,33 +105,47 @@ impl PrepareJob for ImGuiPrepareJob {
                     .copy_to_host_visible_buffer(draw_list.index_buffer())
                     .unwrap();
 
-                let index_buffer = dyn_resource_allocator.insert_buffer(index_buffer);
-
-                writer.push_buffers(vertex_buffer, index_buffer);
+                let index_buffer = dyn_resource_allocator_set.insert_buffer(index_buffer);
+                per_frame_submit_data.index_buffers.push(index_buffer);
             }
         }
 
-        writer.set_imgui_draw_data(self.imgui_draw_data);
+        context
+            .submit_packet()
+            .per_frame_submit_data()
+            .set(per_frame_submit_data);
+    }
+
+    fn end_per_view_prepare(
+        &self,
+        context: &PreparePerViewContext<'prepare, '_, Self>,
+    ) {
+        let per_frame_data = context.per_frame_data();
+        if per_frame_data.imgui_draw_data.is_none() || per_frame_data.imgui_material_pass.is_none()
+        {
+            return;
+        }
 
         //
         // Submit a single node for each view
         //
-        let mut submit_nodes = FeatureSubmitNodes::default();
-        for view in views {
-            let mut view_submit_nodes =
-                ViewSubmitNodes::new(super::render_feature_index(), view.render_phase_mask());
-            view_submit_nodes.add_submit_node::<UiRenderPhase>(0, 0, 0.0);
-            submit_nodes.add_submit_nodes_for_view(view, view_submit_nodes);
-        }
 
-        (writer, submit_nodes)
+        context
+            .view_submit_packet()
+            .push_submit_node::<UiRenderPhase>((), 0, 0.);
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {
         super::render_feature_index()
     }
+
+    type RenderObjectInstanceJobContextT = DefaultJobContext;
+    type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
+
+    type FramePacketDataT = ImGuiRenderFeatureTypes;
+    type SubmitPacketDataT = ImGuiRenderFeatureTypes;
 }

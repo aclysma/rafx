@@ -1,10 +1,10 @@
 use crate::assets::ldtk::LdtkProjectAsset;
 use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
 use crate::features::imgui::ImGuiRenderFeature;
-use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet};
+use crate::features::sprite::{SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet};
 use crate::features::text::TextRenderFeature;
 use crate::features::tile_layer::{
-    TileLayerRenderFeature, TileLayerRenderNodeSet, TileLayerResource,
+    TileLayerRenderFeature, TileLayerRenderObjectSet, TileLayerResource,
 };
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
@@ -16,10 +16,12 @@ use legion::{Resources, World};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ImageAsset};
 use rafx::distill::loader::handle::Handle;
-use rafx::nodes::{RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange};
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
+use rafx::render_features::{
+    RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange,
+};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{CullModel, EntityId, ViewFrustumArc, VisibilityRegion};
+use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
 
 pub(super) struct SpriteScene {
     ldtk_handle: Handle<LdtkProjectAsset>,
@@ -57,13 +59,14 @@ impl SpriteScene {
 
             let alpha = ((i / 5) as f32 * 0.1).min(1.0);
 
-            let mut sprite_render_nodes = resources.get_mut::<SpriteRenderNodeSet>().unwrap();
+            let mut sprite_render_objects = resources.get_mut::<SpriteRenderObjectSet>().unwrap();
 
-            let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
-                tint: glam::Vec3::new(1.0, 1.0, 1.0),
-                alpha,
-                image: sprite_image.clone(),
-            });
+            let sprite_render_object =
+                sprite_render_objects.register_render_object(SpriteRenderObject {
+                    tint: glam::Vec3::new(1.0, 1.0, 1.0),
+                    alpha,
+                    image: sprite_image.clone(),
+                });
 
             let transform_component = TransformComponent {
                 translation: position,
@@ -72,15 +75,15 @@ impl SpriteScene {
             };
 
             let sprite_component = SpriteComponent {
-                render_node: render_node.clone(),
+                render_object_handle: sprite_render_object.clone(),
             };
 
             let entity = world.push((transform_component.clone(), sprite_component));
             let mut entry = world.entry(entity).unwrap();
             entry.add_component(VisibilityComponent {
-                handle: {
+                visibility_object_handle: {
                     let handle = visibility_region.register_dynamic_object(
-                        EntityId::from(entity),
+                        ObjectId::from(entity),
                         CullModel::quad(800., 450.),
                     );
                     handle.set_transform(
@@ -88,7 +91,7 @@ impl SpriteScene {
                         transform_component.rotation,
                         transform_component.scale,
                     );
-                    handle.add_feature(render_node.as_raw_generic_handle());
+                    handle.add_render_object(&sprite_render_object);
                     handle
                 },
             });
@@ -132,7 +135,7 @@ impl super::TestScene for SpriteScene {
 
                 if asset.is_some() {
                     let mut tile_layer_render_nodes =
-                        resources.get_mut::<TileLayerRenderNodeSet>().unwrap();
+                        resources.get_mut::<TileLayerRenderObjectSet>().unwrap();
                     let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
                     tile_layer_resource.set_project(

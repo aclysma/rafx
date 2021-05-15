@@ -2,7 +2,7 @@ use super::RenderGraphContext;
 use crate::phases::DepthPrepassRenderPhase;
 use rafx::api::RafxDepthStencilClearValue;
 use rafx::graph::*;
-use rafx::nodes::RenderJobWriteContext;
+use rafx::render_features::RenderJobCommandBufferContext;
 
 pub(super) struct DepthPrepass {
     pub(super) node: RenderGraphNodeId,
@@ -36,7 +36,9 @@ pub(super) fn depth_prepass(context: &mut RenderGraphContext) -> DepthPrepass {
     let main_view = context.main_view.clone();
 
     context.graph.set_renderpass_callback(node, move |args| {
-        let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+        profiling::scope!("Depth Prepass");
+        let mut write_context =
+            RenderJobCommandBufferContext::from_graph_visit_render_pass_args(&args);
         args.graph_context
             .prepared_render_data()
             .write_view_phase::<DepthPrepassRenderPhase>(&main_view, &mut write_context)

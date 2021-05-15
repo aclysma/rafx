@@ -1,6 +1,6 @@
 use crate::visibility::view_frustum_arc::{ViewFrustumArc, ViewFrustumObject};
 use crate::visibility::visibility_object_arc::{CullModel, VisibilityObject, VisibilityObjectArc};
-use crate::visibility::EntityId;
+use crate::visibility::ObjectId;
 use parking_lot::{RwLock, RwLockReadGuard};
 use rafx_visibility::{ModelHandle, VisibilityWorldArc, ZoneHandle};
 use slotmap::SlotMap;
@@ -23,6 +23,19 @@ impl<'a> Deref for VisibilityObjectRef<'a> {
 
     fn deref(&self) -> &Self::Target {
         self.0.get(self.1).unwrap()
+    }
+}
+
+pub struct VisibilityObjectLookup<'a>(
+    RwLockReadGuard<'a, SlotMap<VisibilityObjectId, VisibilityObject>>,
+);
+
+impl<'a> VisibilityObjectLookup<'a> {
+    pub fn object_ref(
+        &self,
+        id: VisibilityObjectId,
+    ) -> &VisibilityObject {
+        self.0.get(id).unwrap()
     }
 }
 
@@ -66,7 +79,7 @@ impl VisibilityObjectAllocator {
 
     pub fn new_object(
         &self,
-        entity_id: EntityId,
+        object_id: ObjectId,
         cull_model: CullModel,
         zone: Option<ZoneHandle>,
     ) -> VisibilityObjectArc {
@@ -77,7 +90,7 @@ impl VisibilityObjectAllocator {
         let handle = inner.new_object();
 
         let id = self.objects.write().insert(VisibilityObject::new(
-            entity_id,
+            object_id,
             handle.clone(),
             self.visibility_world.new_async_command_sender(),
         ));
@@ -87,6 +100,11 @@ impl VisibilityObjectAllocator {
         inner.set_object_zone(handle, zone);
 
         VisibilityObjectArc::new(id, self.objects.clone())
+    }
+
+    pub fn object_lookup(&self) -> VisibilityObjectLookup {
+        let guard = self.objects.read();
+        VisibilityObjectLookup(guard)
     }
 
     pub fn object_ref(

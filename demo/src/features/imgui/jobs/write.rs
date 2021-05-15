@@ -1,7 +1,11 @@
 use rafx::render_feature_write_job_prelude::*;
 
-use rafx::api::RafxPrimitiveTopology;
-use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+use super::*;
+use rafx::api::{
+    RafxIndexBufferBinding, RafxIndexType, RafxPrimitiveTopology, RafxVertexBufferBinding,
+};
+use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use std::marker::PhantomData;
 
 lazy_static::lazy_static! {
     pub static ref IMGUI_VERTEX_LAYOUT : VertexDataSetLayout = {
@@ -21,69 +25,60 @@ lazy_static::lazy_static! {
     };
 }
 
-use super::{ImGuiDrawCmd, ImGuiDrawData};
-use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
-use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
-
-pub struct ImGuiWriteJob {
-    vertex_buffers: Vec<ResourceArc<BufferResource>>,
-    index_buffers: Vec<ResourceArc<BufferResource>>,
-    per_view_descriptor_set: DescriptorSetArc,
-    per_font_descriptor_set: DescriptorSetArc,
-    imgui_material_pass: ResourceArc<MaterialPassResource>,
-    imgui_draw_data: Option<ImGuiDrawData>,
+pub struct ImGuiWriteJob<'write> {
+    imgui_material_pass: Option<ResourceArc<MaterialPassResource>>,
+    frame_packet: Box<ImGuiFramePacket>,
+    submit_packet: Box<ImGuiSubmitPacket>,
+    phantom: PhantomData<&'write ()>,
 }
 
-impl ImGuiWriteJob {
+impl<'write> ImGuiWriteJob<'write> {
     pub fn new(
-        imgui_material_pass: ResourceArc<MaterialPassResource>,
-        per_view_descriptor_set: DescriptorSetArc,
-        per_font_descriptor_set: DescriptorSetArc,
-        num_draw_lists: usize,
-    ) -> Self {
-        ImGuiWriteJob {
-            vertex_buffers: Vec::with_capacity(num_draw_lists),
-            index_buffers: Vec::with_capacity(num_draw_lists),
-            per_view_descriptor_set,
-            per_font_descriptor_set,
-            imgui_material_pass,
-            imgui_draw_data: Default::default(),
-        }
-    }
-
-    pub fn push_buffers(
-        &mut self,
-        vertex_buffer: ResourceArc<BufferResource>,
-        index_buffer: ResourceArc<BufferResource>,
-    ) {
-        self.vertex_buffers.push(vertex_buffer);
-        self.index_buffers.push(index_buffer);
-    }
-
-    pub fn set_imgui_draw_data(
-        &mut self,
-        imgui_draw_data: Option<ImGuiDrawData>,
-    ) {
-        self.imgui_draw_data = imgui_draw_data;
+        _write_context: &RenderJobWriteContext<'write>,
+        frame_packet: Box<ImGuiFramePacket>,
+        submit_packet: Box<ImGuiSubmitPacket>,
+    ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
+        Arc::new(Self {
+            imgui_material_pass: {
+                frame_packet
+                    .per_frame_data()
+                    .get()
+                    .imgui_material_pass
+                    .clone()
+            },
+            frame_packet,
+            submit_packet,
+            phantom: Default::default(),
+        })
     }
 }
 
-impl WriteJob for ImGuiWriteJob {
+impl<'write> RenderFeatureWriteJob<'write> for ImGuiWriteJob<'write> {
+    fn view_frame_index(
+        &self,
+        view: &RenderView,
+    ) -> ViewFrameIndex {
+        self.frame_packet.view_frame_index(view)
+    }
+
     fn apply_setup(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
+        write_context: &mut RenderJobCommandBufferContext,
+        _view_frame_index: ViewFrameIndex,
         render_phase_index: RenderPhaseIndex,
     ) -> RafxResult<()> {
-        profiling::scope!(super::APPLY_SETUP_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().apply_setup);
 
-        if self.imgui_draw_data.is_some() {
+        let per_frame_data = self.frame_packet.per_frame_data().get();
+        let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
+
+        if per_frame_data.imgui_draw_data.is_some() {
             let pipeline = write_context
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     render_phase_index,
-                    &self.imgui_material_pass,
+                    self.imgui_material_pass.as_ref().unwrap(),
                     &write_context.render_target_meta,
                     &*IMGUI_VERTEX_LAYOUT,
                 )?;
@@ -91,40 +86,56 @@ impl WriteJob for ImGuiWriteJob {
             let command_buffer = &write_context.command_buffer;
             command_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
 
-            self.per_view_descriptor_set.bind(command_buffer)?; // view/projection
-            self.per_font_descriptor_set.bind(command_buffer)?; // font atlas
+            per_frame_submit_data
+                .per_view_descriptor_set
+                .as_ref()
+                .unwrap()
+                .bind(command_buffer)?; // view/projection
+
+            per_frame_submit_data
+                .per_font_descriptor_set
+                .as_ref()
+                .unwrap()
+                .bind(command_buffer)?; // font atlas
         }
 
         Ok(())
     }
 
-    fn render_element(
+    fn render_submit_node(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
+        write_context: &mut RenderJobCommandBufferContext,
+        _view_frame_index: ViewFrameIndex,
         _render_phase_index: RenderPhaseIndex,
-        index: SubmitNodeId,
+        submit_node_id: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
         // The prepare phase emits a single node which will draw everything. In the future it might
         // emit a node per draw call that uses transparency
-        if index == 0 {
+        if submit_node_id == 0 {
+            let per_frame_data = self.frame_packet.per_frame_data().get();
+            let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
+
             let command_buffer = &write_context.command_buffer;
 
             let mut draw_list_index = 0;
-            if let Some(draw_data) = &self.imgui_draw_data {
+            if let Some(draw_data) = &per_frame_data.imgui_draw_data {
                 for draw_list in draw_data.draw_lists() {
                     command_buffer.cmd_bind_vertex_buffers(
                         0, // first binding
                         &[RafxVertexBufferBinding {
-                            buffer: &self.vertex_buffers[draw_list_index].get_raw().buffer,
+                            buffer: &per_frame_submit_data.vertex_buffers[draw_list_index]
+                                .get_raw()
+                                .buffer,
                             byte_offset: 0,
                         }],
                     )?;
 
                     command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
-                        buffer: &self.index_buffers[draw_list_index].get_raw().buffer,
+                        buffer: &per_frame_submit_data.index_buffers[draw_list_index]
+                            .get_raw()
+                            .buffer,
                         byte_offset: 0,
                         index_type: RafxIndexType::Uint16,
                     })?;
@@ -184,11 +195,12 @@ impl WriteJob for ImGuiWriteJob {
                 }
             }
         }
+
         Ok(())
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {

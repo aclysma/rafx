@@ -8,8 +8,8 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ComputePipelineAsset, MaterialAsset};
 use rafx::base::resource_map::ResourceMap;
 use rafx::distill::loader::handle::Handle;
-use rafx::nodes::{ExtractResources, RenderRegistryBuilder};
-use rafx::renderer::RendererPlugin;
+use rafx::render_features::{ExtractResources, RenderRegistryBuilder};
+use rafx::renderer::RendererAssetPlugin;
 
 // A plugin that add demo-specific configuration
 
@@ -22,15 +22,15 @@ pub struct DemoStaticResources {
 
 pub struct DemoRendererPlugin;
 
-impl RendererPlugin for DemoRendererPlugin {
+impl RendererAssetPlugin for DemoRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry_builder: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
         render_registry_builder
             .register_render_phase::<DepthPrepassRenderPhase>("DepthPrepass")
-            .register_render_phase::<OpaqueRenderPhase>("Opaque")
             .register_render_phase::<ShadowMapRenderPhase>("ShadowMap")
+            .register_render_phase::<OpaqueRenderPhase>("Opaque")
             .register_render_phase::<TransparentRenderPhase>("Transparent")
             .register_render_phase::<PostProcessRenderPhase>("PostProcess")
             .register_render_phase::<UiRenderPhase>("Ui")

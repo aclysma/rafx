@@ -28,7 +28,7 @@ use rafx_framework::descriptor_sets::{
     DescriptorSetElementKey, DescriptorSetWriteElementBuffer, DescriptorSetWriteElementBufferData,
     DescriptorSetWriteElementImage,
 };
-use rafx_framework::nodes::RenderRegistry;
+use rafx_framework::render_features::RenderRegistry;
 use rafx_framework::DescriptorSetAllocator;
 use rafx_framework::DynCommandPoolAllocator;
 use rafx_framework::DynResourceAllocatorSetProvider;

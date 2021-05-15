@@ -6,7 +6,7 @@ pub use resources::*;
 
 pub mod graph;
 
-pub mod nodes;
+pub mod render_features;
 
 pub mod visibility;
 

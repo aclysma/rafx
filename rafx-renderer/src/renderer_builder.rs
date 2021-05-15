@@ -1,10 +1,13 @@
 use super::daemon::AssetDaemonOpt;
 use super::{daemon, Renderer};
-use super::{RenderGraphGenerator, RendererPlugin};
+use super::{RenderFeaturePlugin, RenderGraphGenerator};
+use crate::renderer_thread_pool_none::RendererThreadPoolNone;
+use crate::{RendererAssetPlugin, RendererThreadPool};
 use rafx_api::{RafxApi, RafxQueueType, RafxResult};
 use rafx_assets::distill_impl::AssetResource;
 use rafx_assets::{AssetManager, UploadQueueConfig};
-use rafx_framework::nodes::{ExtractResources, RenderRegistryBuilder};
+use rafx_framework::render_features::{ExtractResources, RenderRegistryBuilder};
+use std::sync::Arc;
 
 pub enum AssetSource {
     Packfile(std::path::PathBuf),
@@ -22,15 +25,24 @@ pub struct RendererBuilderResult {
 
 #[derive(Default)]
 pub struct RendererBuilder {
-    plugins: Vec<Box<dyn RendererPlugin>>,
+    feature_plugins: Vec<Arc<dyn RenderFeaturePlugin>>,
+    asset_plugins: Vec<Arc<dyn RendererAssetPlugin>>,
 }
 
 impl RendererBuilder {
-    pub fn add_plugin(
+    pub fn add_render_feature(
         mut self,
-        plugin: Box<dyn RendererPlugin>,
+        plugin: Arc<dyn RenderFeaturePlugin>,
     ) -> Self {
-        self.plugins.push(plugin);
+        self.feature_plugins.push(plugin);
+        self
+    }
+
+    pub fn add_asset(
+        mut self,
+        plugin: Arc<dyn RendererAssetPlugin>,
+    ) -> Self {
+        self.asset_plugins.push(plugin);
         self
     }
 
@@ -40,6 +52,7 @@ impl RendererBuilder {
         rafx_api: &RafxApi,
         asset_source: AssetSource,
         render_graph_generator: Box<dyn RenderGraphGenerator>,
+        renderer_thread_pool: Option<Box<dyn RendererThreadPool>>, // TODO(dvd): Change to threading type enum with options None, RenderThread, or ThreadPool.
     ) -> RafxResult<RendererBuilderResult> {
         let mut asset_resource = match asset_source {
             AssetSource::Packfile(packfile) => {
@@ -60,7 +73,7 @@ impl RendererBuilder {
                         .with_address(daemon_args.address)
                         .with_asset_dirs(daemon_args.asset_dirs);
 
-                    for plugin in &self.plugins {
+                    for plugin in &self.asset_plugins {
                         asset_daemon = plugin.configure_asset_daemon(asset_daemon);
                     }
 
@@ -78,7 +91,10 @@ impl RendererBuilder {
         };
 
         let mut render_registry_builder = RenderRegistryBuilder::default();
-        for plugin in &self.plugins {
+        for plugin in &self.feature_plugins {
+            render_registry_builder = plugin.configure_render_registry(render_registry_builder);
+        }
+        for plugin in &self.asset_plugins {
             render_registry_builder = plugin.configure_render_registry(render_registry_builder);
         }
 
@@ -103,7 +119,7 @@ impl RendererBuilder {
 
         asset_manager.register_default_asset_types(&mut asset_resource);
 
-        for plugin in &self.plugins {
+        for plugin in &self.asset_plugins {
             plugin.register_asset_types(&mut asset_manager, &mut asset_resource);
         }
 
@@ -113,8 +129,12 @@ impl RendererBuilder {
             &mut asset_manager,
             &graphics_queue,
             &transfer_queue,
-            self.plugins,
+            self.feature_plugins,
+            self.asset_plugins,
             render_graph_generator,
+            renderer_thread_pool
+                .or_else(|| Some(Box::new(RendererThreadPoolNone::new())))
+                .unwrap(),
         );
 
         match renderer {

@@ -11,6 +11,8 @@ use rafx_visibility::{
 use slotmap::SlotMap;
 use std::sync::Arc;
 
+pub type ViewFrustumId = (Option<ViewFrustumObjectId>, Option<ViewFrustumObjectId>);
+
 #[derive(Clone)]
 pub struct ViewFrustumArc {
     inner: Arc<RemoveViewFrustumWhenDropped>,
@@ -32,6 +34,13 @@ impl ViewFrustumArc {
                 visibility_query: Default::default(),
             }),
         }
+    }
+
+    pub fn view_frustum_id(&self) -> ViewFrustumId {
+        (
+            self.inner.static_view_frustum,
+            self.inner.dynamic_view_frustum,
+        )
     }
 
     #[allow(dead_code)]

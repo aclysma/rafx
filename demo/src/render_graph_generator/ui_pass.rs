@@ -2,7 +2,7 @@ use crate::phases::UiRenderPhase;
 use rafx::graph::*;
 
 use super::RenderGraphContext;
-use rafx::nodes::RenderJobWriteContext;
+use rafx::render_features::RenderJobCommandBufferContext;
 
 pub(super) struct UiPass {
     pub(super) node: RenderGraphNodeId,
@@ -38,8 +38,11 @@ pub(super) fn ui_pass(
     // buffer. Just add the draw calls.
     let main_view = context.main_view.clone();
     context.graph.set_renderpass_callback(node, move |args| {
+        profiling::scope!("UI Pass");
+
         // Kick the material system to emit all draw calls for the UiRenderPhase for the view
-        let mut write_context = RenderJobWriteContext::from_graph_visit_render_pass_args(&args);
+        let mut write_context =
+            RenderJobCommandBufferContext::from_graph_visit_render_pass_args(&args);
         args.graph_context
             .prepared_render_data()
             .write_view_phase::<UiRenderPhase>(&main_view, &mut write_context)

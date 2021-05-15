@@ -2,11 +2,11 @@ use crate::assets::ldtk::LdtkAssetType;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;
-use rafx::renderer::RendererPlugin;
+use rafx::renderer::RendererAssetPlugin;
 
 pub struct LdtkAssetTypeRendererPlugin;
 
-impl RendererPlugin for LdtkAssetTypeRendererPlugin {
+impl RendererAssetPlugin for LdtkAssetTypeRendererPlugin {
     //
     fn configure_asset_daemon(
         &self,

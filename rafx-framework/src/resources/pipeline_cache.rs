@@ -1,4 +1,6 @@
-use crate::nodes::{RenderPhase, RenderPhaseIndex, RenderRegistry, MAX_RENDER_PHASE_COUNT};
+use crate::render_features::{
+    RenderPhase, RenderPhaseIndex, RenderRegistry, MAX_RENDER_PHASE_COUNT,
+};
 use crate::resources::resource_arc::{ResourceId, WeakResourceArc};
 use crate::resources::vertex_data::{VertexDataSetLayout, VertexDataSetLayoutHash};
 use crate::{GraphicsPipelineResource, MaterialPassResource, ResourceArc, ResourceLookupSet};

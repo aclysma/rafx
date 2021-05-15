@@ -10,7 +10,7 @@ use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
     RafxError, RafxFillMode, RafxFrontFace, RafxRasterizerState, RafxResult, RafxSamplerDef,
 };
-use rafx_framework::nodes::{RenderPhase, RenderPhaseIndex};
+use rafx_framework::render_features::{RenderPhase, RenderPhaseIndex};
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{

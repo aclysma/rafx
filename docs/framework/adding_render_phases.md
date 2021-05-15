@@ -5,7 +5,7 @@ could be render phases for shadow maps, standard 3d drawing, or drawing 2d UI on
 
 Phases combine the draw calls from multiple features into a single pass by sorting them according to a function.
 
-## Declare the Feature
+## Declare the Render Phase
 
 You may either implement `RenderPhase` or use this macro to reduce boilerplate code.
 
@@ -21,19 +21,17 @@ rafx::declare_render_phase!(
     shadow_map_render_phase_sort_submit_nodes
 );
 
-fn shadow_map_render_phase_sort_submit_nodes(mut submit_nodes: Vec<SubmitNode>) -> Vec<SubmitNode> {
+fn shadow_map_render_phase_sort_submit_nodes(submit_nodes: &mut Vec<SubmitNode>) {
     // Sort by feature
     log::trace!(
         "Sort phase {}",
         ShadowMapRenderPhase::render_phase_debug_name()
     );
     submit_nodes.sort_unstable_by(|a, b| a.feature_index().cmp(&b.feature_index()));
-
-    submit_nodes
 }
 ```
 
-## Register the Feature
+## Register the Render Phase
 
 ```rust
 let render_registry = rafx::nodes::RenderRegistryBuilder::default()

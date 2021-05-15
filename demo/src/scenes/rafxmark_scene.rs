@@ -4,7 +4,7 @@ use crate::assets::font::FontAsset;
 use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::features::skybox::SkyboxRenderFeature;
-use crate::features::sprite::{SpriteRenderFeature, SpriteRenderNode, SpriteRenderNodeSet};
+use crate::features::sprite::{SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet};
 use crate::features::text::{TextRenderFeature, TextResource};
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
@@ -18,10 +18,12 @@ use legion::{IntoQuery, Read, Resources, Schedule, SystemBuilder, World, Write};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
-use rafx::nodes::{RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange};
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
+use rafx::render_features::{
+    RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange,
+};
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{CullModel, EntityId, ViewFrustumArc, VisibilityRegion};
+use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
 use sdl2::event::Event;
 use sdl2::mouse::MouseButton;
 
@@ -95,7 +97,7 @@ impl RafxmarkScene {
         let sprite_spawner_system = SystemBuilder::new("sprite_spawner")
             .read_resource::<TimeState>()
             .read_resource::<VisibilityRegion>()
-            .write_resource::<SpriteRenderNodeSet>()
+            .write_resource::<SpriteRenderObjectSet>()
             .with_query(<(
                 Read<InputComponent>,
                 Write<SpriteSpawnerComponent>,
@@ -166,7 +168,7 @@ impl RafxmarkScene {
                         body.velocity.y = -body.velocity.y;
                     }
 
-                    visibility.handle.set_transform(
+                    visibility.visibility_object_handle.set_transform(
                         transform.translation,
                         transform.rotation,
                         transform.scale,
@@ -257,7 +259,7 @@ fn add_sprites(
     sprite_spawner: &mut SpriteSpawnerComponent,
     commands: &mut CommandBuffer,
     time: &TimeState,
-    sprite_render_nodes: &mut SpriteRenderNodeSet,
+    sprite_render_objects: &mut SpriteRenderObjectSet,
     visibility_region: &VisibilityRegion,
 ) {
     let spawn_count = (SPRITES_PER_SECOND as f32 * time.previous_update_dt()) as usize;
@@ -281,11 +283,12 @@ fn add_sprites(
 
         let alpha = 0.8;
 
-        let render_node = sprite_render_nodes.register_sprite(SpriteRenderNode {
-            tint,
-            alpha,
-            image: sprite_spawner.sprite_image.clone(),
-        });
+        let sprite_render_object =
+            sprite_render_objects.register_render_object(SpriteRenderObject {
+                tint,
+                alpha,
+                image: sprite_spawner.sprite_image.clone(),
+            });
 
         let transform_component = TransformComponent {
             translation: position,
@@ -294,7 +297,7 @@ fn add_sprites(
         };
 
         let sprite_component = SpriteComponent {
-            render_node: render_node.clone(),
+            render_object_handle: sprite_render_object.clone(),
         };
 
         let body_component = BodyComponent { velocity };
@@ -308,15 +311,15 @@ fn add_sprites(
         commands.add_component(
             entity,
             VisibilityComponent {
-                handle: {
+                visibility_object_handle: {
                     let handle = visibility_region
-                        .register_dynamic_object(EntityId::from(entity), CullModel::quad(64., 64.));
+                        .register_dynamic_object(ObjectId::from(entity), CullModel::quad(64., 64.));
                     handle.set_transform(
                         transform_component.translation,
                         transform_component.rotation,
                         transform_component.scale,
                     );
-                    handle.add_feature(render_node.as_raw_generic_handle());
+                    handle.add_render_object(&sprite_render_object);
                     handle
                 },
             },

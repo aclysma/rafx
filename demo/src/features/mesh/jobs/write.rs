@@ -1,8 +1,13 @@
 use rafx::render_feature_write_job_prelude::*;
 
+use super::*;
+use crate::phases::OpaqueRenderPhase;
 use rafx::api::RafxPrimitiveTopology;
+use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
+use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
 
 /// Vertex format for vertices sent to the GPU
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Default)]
@@ -29,145 +34,128 @@ lazy_static::lazy_static! {
     };
 }
 
-use super::ExtractedFrameNodeMeshData;
-use rafx::api::{RafxIndexBufferBinding, RafxIndexType, RafxVertexBufferBinding};
-use rafx::framework::{DescriptorSetArc, MaterialPassResource, ResourceArc};
-use rafx::nodes::{FrameNodeIndex, PerViewNode};
-
-struct PreparedSubmitNodeMeshData {
-    material_pass_resource: ResourceArc<MaterialPassResource>,
-    per_view_descriptor_set: DescriptorSetArc,
-    per_material_descriptor_set: Option<DescriptorSetArc>,
-    per_instance_descriptor_set: DescriptorSetArc,
-    // we can get the mesh via the frame node index
-    frame_node_index: FrameNodeIndex,
-    mesh_part_index: usize,
+pub struct MeshWriteJob<'write> {
+    depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
+    mesh_part_descriptor_sets: Arc<AtomicOnceCellStack<MeshPartDescriptorSetPair>>,
+    frame_packet: Box<MeshFramePacket>,
+    submit_packet: Box<MeshSubmitPacket>,
+    phantom: PhantomData<&'write ()>,
 }
 
-impl std::fmt::Debug for PreparedSubmitNodeMeshData {
-    fn fmt(
+impl<'write> MeshWriteJob<'write> {
+    pub fn new(
+        _write_context: &RenderJobWriteContext<'write>,
+        frame_packet: Box<MeshFramePacket>,
+        submit_packet: Box<MeshSubmitPacket>,
+    ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
+        Arc::new(Self {
+            depth_material_pass: {
+                frame_packet
+                    .per_frame_data()
+                    .get()
+                    .depth_material_pass
+                    .clone()
+            },
+            mesh_part_descriptor_sets: {
+                submit_packet
+                    .per_frame_submit_data()
+                    .get()
+                    .mesh_part_descriptor_sets
+                    .clone()
+            },
+            frame_packet,
+            submit_packet,
+            phantom: Default::default(),
+        })
+    }
+}
+
+impl<'write> RenderFeatureWriteJob<'write> for MeshWriteJob<'write> {
+    fn view_frame_index(
         &self,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        f.debug_struct("PreparedSubmitNodeMeshData")
-            .field("frame_node_index", &self.frame_node_index)
-            .field("mesh_part_index", &self.mesh_part_index)
-            .finish()
-    }
-}
-
-pub struct MeshWriteJob {
-    extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
-    prepared_submit_node_mesh_data: Vec<PreparedSubmitNodeMeshData>,
-}
-
-impl MeshWriteJob {
-    pub fn new() -> Self {
-        MeshWriteJob {
-            extracted_frame_node_mesh_data: Default::default(),
-            prepared_submit_node_mesh_data: Default::default(),
-        }
+        view: &RenderView,
+    ) -> u32 {
+        self.frame_packet.view_frame_index(view)
     }
 
-    pub fn push_submit_node(
-        &mut self,
-        view_node: &PerViewNode,
-        per_view_descriptor_set: DescriptorSetArc,
-        per_material_descriptor_set: Option<DescriptorSetArc>,
-        per_instance_descriptor_set: DescriptorSetArc,
-        mesh_part_index: usize,
-        material_pass_resource: ResourceArc<MaterialPassResource>,
-    ) -> usize {
-        let submit_node_index = self.prepared_submit_node_mesh_data.len();
-        self.prepared_submit_node_mesh_data
-            .push(PreparedSubmitNodeMeshData {
-                material_pass_resource: material_pass_resource.clone(),
-                per_view_descriptor_set,
-                per_material_descriptor_set,
-                per_instance_descriptor_set,
-                frame_node_index: view_node.frame_node_index(),
-                mesh_part_index,
-            });
-        submit_node_index
-    }
-
-    pub fn set_extracted_frame_node_mesh_data(
-        &mut self,
-        extracted_frame_node_mesh_data: Vec<Option<ExtractedFrameNodeMeshData>>,
-    ) {
-        self.extracted_frame_node_mesh_data = extracted_frame_node_mesh_data;
-    }
-}
-
-impl WriteJob for MeshWriteJob {
-    fn render_element(
+    fn render_submit_node(
         &self,
-        write_context: &mut RenderJobWriteContext,
-        _view: &RenderView,
+        write_context: &mut RenderJobCommandBufferContext,
+        view_frame_index: ViewFrameIndex,
         render_phase_index: RenderPhaseIndex,
-        index: SubmitNodeId,
+        submit_node_id: SubmitNodeId,
     ) -> RafxResult<()> {
-        profiling::scope!(super::RENDER_ELEMENT_SCOPE_NAME);
+        profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
+        let is_opaque_render_phase = render_phase_index == OpaqueRenderPhase::render_phase_index();
+        let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
         let command_buffer = &write_context.command_buffer;
 
-        let render_node_data = &self.prepared_submit_node_mesh_data[index as usize];
-        let frame_node_data: &ExtractedFrameNodeMeshData = self.extracted_frame_node_mesh_data
-            [render_node_data.frame_node_index as usize]
+        let submit_node_data = view_submit_packet
+            .get_submit_node_data_from_render_phase(render_phase_index, submit_node_id);
+        let mesh_asset = &submit_node_data.mesh_asset;
+        let mesh_part_index = submit_node_data.mesh_part_index;
+        let mesh_part_descriptor_set_index = submit_node_data.mesh_part_descriptor_set_index;
+        let mesh_part = mesh_asset.inner.mesh_parts[mesh_part_index]
             .as_ref()
             .unwrap();
 
-        // Always valid, we don't generate render nodes for mesh parts that are None
-        let mesh_part = &frame_node_data.mesh_asset.inner.mesh_parts
-            [render_node_data.mesh_part_index]
-            .as_ref()
-            .unwrap();
+        // Bind the correct pipeline.
 
         let pipeline = write_context
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
                 render_phase_index,
-                &render_node_data.material_pass_resource,
+                if is_opaque_render_phase {
+                    &mesh_part.opaque_pass.material_pass_resource
+                } else {
+                    self.depth_material_pass.as_ref().unwrap()
+                },
                 &write_context.render_target_meta,
                 &*MESH_VERTEX_LAYOUT,
             )?;
 
         command_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
 
-        render_node_data
-            .per_view_descriptor_set
-            .bind(command_buffer)?;
+        let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
+        let per_instance_descriptor_sets = self
+            .mesh_part_descriptor_sets
+            .get(mesh_part_descriptor_set_index + mesh_part_index);
 
-        // frag shader material data, not present during shadow pass
-        if let Some(per_material_descriptor_set) = &render_node_data.per_material_descriptor_set {
-            per_material_descriptor_set.bind(command_buffer).unwrap();
+        if is_opaque_render_phase {
+            per_view_submit_data
+                .opaque_descriptor_set
+                .as_ref()
+                .unwrap()
+                .bind(command_buffer)?;
+            mesh_part
+                .opaque_material_descriptor_set
+                .bind(command_buffer)?;
+            per_instance_descriptor_sets
+                .opaque_descriptor_set
+                .bind(command_buffer)?;
+        } else {
+            per_view_submit_data
+                .depth_descriptor_set
+                .as_ref()
+                .unwrap()
+                .bind(command_buffer)?;
+            per_instance_descriptor_sets
+                .depth_descriptor_set
+                .bind(command_buffer)?;
         }
-
-        render_node_data
-            .per_instance_descriptor_set
-            .bind(command_buffer)?;
 
         command_buffer.cmd_bind_vertex_buffers(
             0,
             &[RafxVertexBufferBinding {
-                buffer: &frame_node_data
-                    .mesh_asset
-                    .inner
-                    .vertex_buffer
-                    .get_raw()
-                    .buffer,
+                buffer: &mesh_asset.inner.vertex_buffer.get_raw().buffer,
                 byte_offset: mesh_part.vertex_buffer_offset_in_bytes as u64,
             }],
         )?;
 
         command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
-            buffer: &frame_node_data
-                .mesh_asset
-                .inner
-                .index_buffer
-                .get_raw()
-                .buffer,
+            buffer: &mesh_asset.inner.index_buffer.get_raw().buffer,
             byte_offset: mesh_part.index_buffer_offset_in_bytes as u64,
             index_type: RafxIndexType::Uint16,
         })?;
@@ -177,11 +165,12 @@ impl WriteJob for MeshWriteJob {
             0,
             0,
         )?;
+
         Ok(())
     }
 
-    fn feature_debug_name(&self) -> &'static str {
-        super::render_feature_debug_name()
+    fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
+        super::render_feature_debug_constants()
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {

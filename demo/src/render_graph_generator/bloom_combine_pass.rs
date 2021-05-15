@@ -1,7 +1,7 @@
 use crate::{phases::PostProcessRenderPhase, RenderOptions};
 use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::graph::*;
-use rafx::nodes::RenderPhase;
+use rafx::render_features::RenderPhase;
 
 use super::BloomExtractPass;
 use super::RenderGraphContext;

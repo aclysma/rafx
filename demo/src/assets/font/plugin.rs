@@ -2,11 +2,11 @@ use crate::assets::font::FontAssetType;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;
-use rafx::renderer::RendererPlugin;
+use rafx::renderer::RendererAssetPlugin;
 
 pub struct FontAssetTypeRendererPlugin;
 
-impl RendererPlugin for FontAssetTypeRendererPlugin {
+impl RendererAssetPlugin for FontAssetTypeRendererPlugin {
     //
     fn configure_asset_daemon(
         &self,

@@ -1,7 +1,7 @@
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
-use crate::features::debug3d::DebugDraw3DResource;
+use crate::features::debug3d::Debug3DResource;
 use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World};
@@ -122,18 +122,28 @@ impl SceneManager {
         }
     }
 
+    pub fn has_next_scene(&self) -> bool {
+        self.next_scene.is_some()
+    }
+
+    pub fn try_cleanup_current_scene(
+        &mut self,
+        world: &mut World,
+        resources: &Resources,
+    ) {
+        if let Some(current_scene) = &mut self.current_scene {
+            current_scene.cleanup(world, resources);
+        }
+
+        world.clear();
+    }
+
     pub fn try_create_next_scene(
         &mut self,
         world: &mut World,
         resources: &Resources,
     ) {
         if let Some(next_scene_index) = self.next_scene.take() {
-            if let Some(current_scene) = &mut self.current_scene {
-                current_scene.cleanup(world, resources);
-            }
-
-            world.clear();
-
             let next_scene = ALL_SCENES[next_scene_index];
             log::info!("Load scene {:?}", next_scene);
             self.current_scene_index = next_scene_index;
@@ -157,7 +167,7 @@ fn add_light_debug_draw(
     resources: &Resources,
     world: &World,
 ) {
-    let mut debug_draw = resources.get_mut::<DebugDraw3DResource>().unwrap();
+    let mut debug_draw = resources.get_mut::<Debug3DResource>().unwrap();
 
     let mut query = <Read<DirectionalLightComponent>>::query();
     for light in query.iter(world) {

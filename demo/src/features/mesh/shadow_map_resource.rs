@@ -6,23 +6,22 @@ use crate::phases::ShadowMapRenderPhase;
 use crate::RenderOptions;
 use fnv::FnvHashMap;
 use legion::*;
-use rafx::framework::visibility::VisibilityRegion;
 use rafx::framework::{ImageViewResource, ResourceArc};
 use rafx::graph::{PreparedRenderGraph, RenderGraphImageUsageId};
-use rafx::nodes::{
-    ExtractResources, FramePacketBuilder, RenderFeatureMask, RenderFeatureMaskBuilder,
-    RenderPhaseMask, RenderPhaseMaskBuilder, RenderView, RenderViewDepthRange, RenderViewSet,
-};
 use rafx::rafx_visibility::{
     DepthRange, OrthographicParameters, PerspectiveParameters, Projection,
 };
-use rafx::visibility::{ViewFrustumArc, VisibilityConfig};
+use rafx::render_features::{
+    ExtractResources, RenderFeatureMask, RenderFeatureMaskBuilder, RenderPhaseMask,
+    RenderPhaseMaskBuilder, RenderView, RenderViewDepthRange, RenderViewSet,
+};
+use rafx::visibility::{ObjectId, ViewFrustumArc};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum LightId {
-    PointLight(legion::Entity), // u32 is a face index
-    SpotLight(legion::Entity),
-    DirectionalLight(legion::Entity),
+    PointLight(ObjectId), // u32 is a face index
+    SpotLight(ObjectId),
+    DirectionalLight(ObjectId),
 }
 
 #[derive(Clone)]
@@ -79,9 +78,6 @@ impl ShadowMapResource {
         &mut self,
         render_view_set: &RenderViewSet,
         extract_resources: &ExtractResources,
-        visibility_region: &VisibilityRegion,
-        visibility_config: &VisibilityConfig,
-        frame_packet_builder: &FramePacketBuilder,
     ) {
         self.clear();
 
@@ -94,27 +90,6 @@ impl ShadowMapResource {
         self.shadow_map_lookup = shadow_map_lookup;
         self.shadow_map_render_views = shadow_map_render_views;
         self.shadow_map_image_views.clear();
-
-        for render_view in &self.shadow_map_render_views {
-            match render_view {
-                ShadowMapRenderView::Single(view) => {
-                    frame_packet_builder.query_visibility_and_add_results(
-                        &view,
-                        visibility_region,
-                        visibility_config,
-                    );
-                }
-                ShadowMapRenderView::Cube(views) => {
-                    for view in views {
-                        frame_packet_builder.query_visibility_and_add_results(
-                            &view,
-                            visibility_region,
-                            visibility_config,
-                        );
-                    }
-                }
-            }
-        }
     }
 
     pub fn set_shadow_map_image_usage_ids(
@@ -231,7 +206,7 @@ fn calculate_shadow_map_views(
 
         let index = shadow_map_render_views.len();
         shadow_map_render_views.push(ShadowMapRenderView::Single(view));
-        let old = shadow_map_lookup.insert(LightId::SpotLight(*entity), index);
+        let old = shadow_map_lookup.insert(LightId::SpotLight(ObjectId::from(*entity)), index);
         assert!(old.is_none());
     }
 
@@ -278,7 +253,8 @@ fn calculate_shadow_map_views(
 
         let index = shadow_map_render_views.len();
         shadow_map_render_views.push(ShadowMapRenderView::Single(view));
-        let old = shadow_map_lookup.insert(LightId::DirectionalLight(*entity), index);
+        let old =
+            shadow_map_lookup.insert(LightId::DirectionalLight(ObjectId::from(*entity)), index);
         assert!(old.is_none());
     }
 
@@ -354,7 +330,7 @@ fn calculate_shadow_map_views(
 
         let index = shadow_map_render_views.len();
         shadow_map_render_views.push(ShadowMapRenderView::Cube(cube_map_views));
-        let old = shadow_map_lookup.insert(LightId::PointLight(*entity), index);
+        let old = shadow_map_lookup.insert(LightId::PointLight(ObjectId::from(*entity)), index);
         assert!(old.is_none());
     }
 

@@ -1,23 +1,22 @@
-use crate::features::mesh::MeshRenderNodeHandle;
-use crate::features::sprite::SpriteRenderNodeHandle;
 use glam::f32::Vec3;
 use glam::Quat;
 use rafx::framework::visibility::VisibilityObjectArc;
+use rafx::render_features::RenderObjectHandle;
 use rafx::visibility::ViewFrustumArc;
 
 #[derive(Clone)]
 pub struct MeshComponent {
-    pub render_node: MeshRenderNodeHandle,
+    pub render_object_handle: RenderObjectHandle,
 }
 
 #[derive(Clone)]
 pub struct SpriteComponent {
-    pub render_node: SpriteRenderNodeHandle,
+    pub render_object_handle: RenderObjectHandle,
 }
 
 #[derive(Clone)]
 pub struct VisibilityComponent {
-    pub handle: VisibilityObjectArc,
+    pub visibility_object_handle: VisibilityObjectArc,
 }
 
 #[derive(Clone, Copy)]
