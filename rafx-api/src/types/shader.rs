@@ -3,7 +3,7 @@ use std::hash::Hash;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-/// GL-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
+/// GL ES 2.0-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
 /// used to initialize a shader module GPU object
 ///
 /// It is a struct rather than an enum because these are not mutually exclusive
@@ -11,6 +11,17 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxShaderPackageGles2 {
     /// Raw uncompiled OpenGL ES 2.0 source code. Will be compiled at runtime.
+    Src(String),
+}
+
+/// GL ES 3.0-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
+/// used to initialize a shader module GPU object
+///
+/// It is a struct rather than an enum because these are not mutually exclusive
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub enum RafxShaderPackageGles3 {
+    /// Raw uncompiled OpenGL ES 3.0 source code. Will be compiled at runtime.
     Src(String),
 }
 
@@ -52,6 +63,7 @@ pub enum RafxShaderPackageEmpty {
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxShaderPackage {
     pub gles2: Option<RafxShaderPackageGles2>,
+    pub gles3: Option<RafxShaderPackageGles3>,
     pub metal: Option<RafxShaderPackageMetal>,
     pub vk: Option<RafxShaderPackageVulkan>,
 }
@@ -64,6 +76,19 @@ impl RafxShaderPackage {
         if let Some(gl) = self.gles2.as_ref() {
             Some(match gl {
                 RafxShaderPackageGles2::Src(src) => RafxShaderModuleDefGles2::GlSrc(src),
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Create a shader module def for use with a GL RafxDevice. Returns none if the package does
+    /// not contain data necessary for GL ES 2.0
+    #[cfg(feature = "rafx-gles3")]
+    pub fn gles3_module_def(&self) -> Option<RafxShaderModuleDefGles3> {
+        if let Some(gl) = self.gles3.as_ref() {
+            Some(match gl {
+                RafxShaderPackageGles3::Src(src) => RafxShaderModuleDefGles3::GlSrc(src),
             })
         } else {
             None
