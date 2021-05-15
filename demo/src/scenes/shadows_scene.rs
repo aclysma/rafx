@@ -5,13 +5,17 @@ use crate::components::{
 use crate::components::{SpotLightComponent, VisibilityComponent};
 use crate::features::debug3d::Debug3DRenderFeature;
 use crate::features::imgui::ImGuiRenderFeature;
-use crate::features::mesh::{MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet};
+use crate::features::mesh::{
+    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
+    MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
+};
 use crate::features::skybox::SkyboxRenderFeature;
 use crate::features::sprite::SpriteRenderFeature;
 use crate::features::text::TextRenderFeature;
 use crate::features::tile_layer::TileLayerRenderFeature;
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
+    WireframeRenderPhase,
 };
 use crate::time::TimeState;
 use crate::RenderOptions;
@@ -23,7 +27,8 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
 use rafx::render_features::{
-    RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange,
+    RenderFeatureFlagMaskBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
+    RenderViewDepthRange,
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
@@ -322,12 +327,12 @@ fn update_main_view_3d(
     main_view_frustum: &mut ViewFrustumArc,
     viewports_resource: &mut ViewportsResource,
 ) {
-    let phase_mask = RenderPhaseMaskBuilder::default()
+    let phase_mask_builder = RenderPhaseMaskBuilder::default()
         .add_render_phase::<DepthPrepassRenderPhase>()
         .add_render_phase::<OpaqueRenderPhase>()
         .add_render_phase::<TransparentRenderPhase>()
-        .add_render_phase::<UiRenderPhase>()
-        .build();
+        .add_render_phase::<WireframeRenderPhase>()
+        .add_render_phase::<UiRenderPhase>();
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
         .add_render_feature::<MeshRenderFeature>()
@@ -347,7 +352,27 @@ fn update_main_view_3d(
         feature_mask_builder = feature_mask_builder.add_render_feature::<SkyboxRenderFeature>();
     }
 
-    let main_camera_feature_mask = feature_mask_builder.build();
+    let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
+
+    if render_options.show_wireframes {
+        feature_flag_mask_builder =
+            feature_flag_mask_builder.add_render_feature_flag::<MeshWireframeRenderFeatureFlag>();
+    }
+
+    if !render_options.enable_lighting {
+        feature_flag_mask_builder =
+            feature_flag_mask_builder.add_render_feature_flag::<MeshUnlitRenderFeatureFlag>();
+    }
+
+    if !render_options.enable_textures {
+        feature_flag_mask_builder =
+            feature_flag_mask_builder.add_render_feature_flag::<MeshUntexturedRenderFeatureFlag>();
+    }
+
+    if !render_options.show_shadows {
+        feature_flag_mask_builder =
+            feature_flag_mask_builder.add_render_feature_flag::<MeshNoShadowsRenderFeatureFlag>();
+    }
 
     const CAMERA_XY_DISTANCE: f32 = 12.0;
     const CAMERA_Z: f32 = 6.0;
@@ -388,8 +413,9 @@ fn update_main_view_3d(
         view,
         proj: projection.as_rh_mat4(),
         depth_range: RenderViewDepthRange::from_projection(&projection),
-        render_phase_mask: phase_mask,
-        render_feature_mask: main_camera_feature_mask,
+        render_phase_mask: phase_mask_builder.build(),
+        render_feature_mask: feature_mask_builder.build(),
+        render_feature_flag_mask: feature_flag_mask_builder.build(),
         debug_name: "main".to_string(),
     });
 }

@@ -1,6 +1,8 @@
 use glam::{Mat4, Vec3};
 use rafx_api::RafxExtents2D;
-use rafx_framework::render_features::{RenderFeatureMask, RenderPhaseMask, RenderViewDepthRange};
+use rafx_framework::render_features::{
+    RenderFeatureFlagMask, RenderFeatureMask, RenderPhaseMask, RenderViewDepthRange,
+};
 use rafx_framework::visibility::ViewFrustumArc;
 
 // Very bare-bones for now, in the future this could support multiple windows, multiple viewports
@@ -16,6 +18,7 @@ pub struct RenderViewMeta {
     pub depth_range: RenderViewDepthRange,
     pub render_phase_mask: RenderPhaseMask,
     pub render_feature_mask: RenderFeatureMask,
+    pub render_feature_flag_mask: RenderFeatureFlagMask,
     pub debug_name: String,
 }
 

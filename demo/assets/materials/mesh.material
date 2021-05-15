@@ -1,7 +1,7 @@
 (
     passes: [
         (
-            name: Some("mesh opaque"),
+            name: Some("mesh textured"),
             phase: Some("Opaque"),
             fixed_function_state: (
                 depth_testing: ReadOnlyReverseZ,
@@ -11,12 +11,53 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh.vert.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_textured.vert.cookedshaderpackage",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/mesh.frag.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_textured.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+        (
+            name: Some("mesh untextured"),
+            fixed_function_state: (
+                depth_testing: ReadOnlyReverseZ,
+                cull_mode: Some(Back),
+                front_face: Some(CounterClockwise),
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/mesh_untextured.vert.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/mesh_untextured.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+        (
+            name: Some("mesh wireframe"),
+            phase: Some("Wireframe"),
+            fixed_function_state: (
+                depth_testing: Disabled,
+                alpha_blending: Enabled,
+                fill_mode: Some(Wireframe)
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/mesh_wireframe.vert.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/mesh_wireframe.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],

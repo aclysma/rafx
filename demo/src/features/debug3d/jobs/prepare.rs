@@ -1,7 +1,7 @@
 use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
-use crate::phases::OpaqueRenderPhase;
+use crate::phases::WireframeRenderPhase;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::ResourceContext;
 
@@ -122,7 +122,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for Debug3DPrepareJob {
 
         context
             .view_submit_packet()
-            .push_submit_node::<OpaqueRenderPhase>((), 0, 0.);
+            .push_submit_node::<WireframeRenderPhase>((), 0, 0.);
     }
 
     fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {

@@ -197,8 +197,8 @@ float do_calculate_percent_lit_cube(thread const float3& light_position_ws, thre
     float param_1 = near_plane;
     float param_2 = far_plane;
     float depth_of_surface = calculate_cubemap_equivalent_depth(param, param_1, param_2);
-    float4 _303 = float4(light_to_surface_ws, depth_of_surface + bias0);
-    float shadow = shadow_map_images_cube[index].sample_compare(smp_depth, _303.xyz, _303.w);
+    float4 _306 = float4(light_to_surface_ws, depth_of_surface + bias0);
+    float shadow = shadow_map_images_cube[index].sample_compare(smp_depth, _306.xyz, _306.w);
     return shadow;
 }
 
@@ -317,15 +317,15 @@ float do_calculate_percent_lit(thread const float3& normal_vs, thread const int&
     float bias0 = fast::max(((0.00999999977648258209228515625 * bias_angle_factor) * bias_angle_factor) * bias_angle_factor, 0.0005000000237487256526947021484375) * bias_multiplier;
     float shadow = 0.0;
     float2 texelSize = float2(1.0) / float2(int2(shadow_map_images[index].get_width(), shadow_map_images[index].get_height()));
-    for (int x = -2; x <= 2; x++)
+    for (int x = -1; x <= 1; x++)
     {
-        for (int y = -2; y <= 2; y++)
+        for (int y = -1; y <= 1; y++)
         {
-            float3 _442 = float3(sample_location_uv + (float2(float(x), float(y)) * texelSize), depth_of_surface + bias0);
-            shadow += shadow_map_images[index].sample_compare(smp_depth, _442.xy, _442.z);
+            float3 _443 = float3(sample_location_uv + (float2(float(x), float(y)) * texelSize), depth_of_surface + bias0);
+            shadow += shadow_map_images[index].sample_compare(smp_depth, _443.xy, _443.z);
         }
     }
-    shadow /= 25.0;
+    shadow /= 9.0;
     return shadow;
 }
 
@@ -472,6 +472,53 @@ float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& bas
     return float4(color, base_color.w);
 }
 
+static inline __attribute__((always_inline))
+float4 pbr_main(thread texture2d<float> normal_texture, thread sampler smp, constant PerViewData& per_view_data, thread float4& in_position_ws, thread float3& in_position_vs, thread float3& in_normal_vs, thread const array<depthcube<float>, 16> shadow_map_images_cube, thread sampler smp_depth, thread float3x3& in_model_view, thread const array<depth2d<float>, 32> shadow_map_images, constant MaterialDataUbo& per_material_data, thread texture2d<float> base_color_texture, thread float2& in_uv, thread texture2d<float> emissive_texture, thread texture2d<float> metallic_roughness_texture, thread float3& in_tangent_vs, thread float3& in_binormal_vs)
+{
+    float4 base_color = per_material_data.data.base_color_factor;
+    if (per_material_data.data.has_base_color_texture != 0u)
+    {
+        base_color *= base_color_texture.sample(smp, in_uv);
+    }
+    float4 emissive_color = float4(per_material_data.data.emissive_factor[0], per_material_data.data.emissive_factor[1], per_material_data.data.emissive_factor[2], 1.0);
+    if (per_material_data.data.has_emissive_texture != 0u)
+    {
+        emissive_color *= emissive_texture.sample(smp, in_uv);
+        base_color = float4(1.0, 1.0, 0.0, 1.0);
+    }
+    float metalness = per_material_data.data.metallic_factor;
+    float roughness = per_material_data.data.roughness_factor;
+    if (per_material_data.data.has_metallic_roughness_texture != 0u)
+    {
+        float4 sampled = metallic_roughness_texture.sample(smp, in_uv);
+        metalness *= sampled.x;
+        roughness *= sampled.y;
+    }
+    roughness = (roughness + 0.0) / 1.0;
+    float3 normal_vs;
+    if (per_material_data.data.has_normal_texture != 0u)
+    {
+        float3x3 tbn = float3x3(float3(in_tangent_vs), float3(in_binormal_vs), float3(in_normal_vs));
+        float3x3 param = tbn;
+        float2 param_1 = in_uv;
+        normal_vs = normal_map(param, param_1, normal_texture, smp).xyz;
+    }
+    else
+    {
+        normal_vs = normalize(float4(in_normal_vs, 0.0)).xyz;
+    }
+    float3 eye_position_vs = float3(0.0);
+    float3 surface_to_eye_vs = normalize(eye_position_vs - in_position_vs);
+    float3 param_2 = surface_to_eye_vs;
+    float4 param_3 = base_color;
+    float4 param_4 = emissive_color;
+    float param_5 = metalness;
+    float param_6 = roughness;
+    float3 param_7 = normal_vs;
+    float4 out_color = pbr_path(param_2, param_3, param_4, param_5, param_6, param_7, per_view_data, in_position_ws, in_position_vs, in_normal_vs, shadow_map_images_cube, smp_depth, in_model_view, shadow_map_images);
+    return out_color;
+}
+
 fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]], constant spvDescriptorSetBuffer2& spvDescriptorSet2 [[buffer(2)]])
 {
     constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
@@ -481,47 +528,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuff
     in_model_view[0] = in.in_model_view_0;
     in_model_view[1] = in.in_model_view_1;
     in_model_view[2] = in.in_model_view_2;
-    float4 base_color = (*spvDescriptorSet1.per_material_data).data.base_color_factor;
-    if ((*spvDescriptorSet1.per_material_data).data.has_base_color_texture != 0u)
-    {
-        base_color *= spvDescriptorSet1.base_color_texture.sample(smp, in.in_uv);
-    }
-    float4 emissive_color = float4((*spvDescriptorSet1.per_material_data).data.emissive_factor[0], (*spvDescriptorSet1.per_material_data).data.emissive_factor[1], (*spvDescriptorSet1.per_material_data).data.emissive_factor[2], 1.0);
-    if ((*spvDescriptorSet1.per_material_data).data.has_emissive_texture != 0u)
-    {
-        emissive_color *= spvDescriptorSet1.emissive_texture.sample(smp, in.in_uv);
-        base_color = float4(1.0, 1.0, 0.0, 1.0);
-    }
-    float metalness = (*spvDescriptorSet1.per_material_data).data.metallic_factor;
-    float roughness = (*spvDescriptorSet1.per_material_data).data.roughness_factor;
-    if ((*spvDescriptorSet1.per_material_data).data.has_metallic_roughness_texture != 0u)
-    {
-        float4 sampled = spvDescriptorSet1.metallic_roughness_texture.sample(smp, in.in_uv);
-        metalness *= sampled.x;
-        roughness *= sampled.y;
-    }
-    roughness = (roughness + 0.0) / 1.0;
-    float3 normal_vs;
-    if ((*spvDescriptorSet1.per_material_data).data.has_normal_texture != 0u)
-    {
-        float3x3 tbn = float3x3(float3(in.in_tangent_vs), float3(in.in_binormal_vs), float3(in.in_normal_vs));
-        float3x3 param = tbn;
-        float2 param_1 = in.in_uv;
-        normal_vs = normal_map(param, param_1, spvDescriptorSet1.normal_texture, smp).xyz;
-    }
-    else
-    {
-        normal_vs = normalize(float4(in.in_normal_vs, 0.0)).xyz;
-    }
-    float3 eye_position_vs = float3(0.0);
-    float3 surface_to_eye_vs = normalize(eye_position_vs - in.in_position_vs);
-    float3 param_2 = surface_to_eye_vs;
-    float4 param_3 = base_color;
-    float4 param_4 = emissive_color;
-    float param_5 = metalness;
-    float param_6 = roughness;
-    float3 param_7 = normal_vs;
-    out.out_color = pbr_path(param_2, param_3, param_4, param_5, param_6, param_7, (*spvDescriptorSet0.per_view_data), in.in_position_ws, in.in_position_vs, in.in_normal_vs, spvDescriptorSet0.shadow_map_images_cube, smp_depth, in_model_view, spvDescriptorSet0.shadow_map_images);
+    out.out_color = pbr_main(spvDescriptorSet1.normal_texture, smp, (*spvDescriptorSet0.per_view_data), in.in_position_ws, in.in_position_vs, in.in_normal_vs, spvDescriptorSet0.shadow_map_images_cube, smp_depth, in_model_view, spvDescriptorSet0.shadow_map_images, (*spvDescriptorSet1.per_material_data), spvDescriptorSet1.base_color_texture, in.in_uv, spvDescriptorSet1.emissive_texture, spvDescriptorSet1.metallic_roughness_texture, in.in_tangent_vs, in.in_binormal_vs);
     return out;
 }
 

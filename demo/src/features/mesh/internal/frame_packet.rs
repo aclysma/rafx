@@ -5,10 +5,7 @@ use crate::components::{
 };
 use glam::{Quat, Vec3};
 use rafx::framework::render_features::render_features_prelude::*;
-use rafx::framework::{
-    DescriptorSetArc, DescriptorSetLayoutResource, ImageViewResource, MaterialPassResource,
-    ResourceArc,
-};
+use rafx::framework::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
 use std::sync::Arc;
 
 pub struct MeshRenderFeatureTypes;
@@ -77,19 +74,21 @@ pub const MAX_SHADOW_MAPS_CUBE: usize = 16;
 
 pub struct MeshPartDescriptorSetPair {
     pub depth_descriptor_set: DescriptorSetArc,
-    pub opaque_descriptor_set: DescriptorSetArc,
+    pub textured_descriptor_set: Option<DescriptorSetArc>,
+    pub untextured_descriptor_set: Option<DescriptorSetArc>,
 }
 
 pub struct MeshPerFrameSubmitData {
     pub num_shadow_map_2d: usize,
-    pub shadow_map_2d_data: [shaders::mesh_frag::ShadowMap2DDataStd140; MAX_SHADOW_MAPS_2D],
+    pub shadow_map_2d_data:
+        [shaders::mesh_textured_frag::ShadowMap2DDataStd140; MAX_SHADOW_MAPS_2D],
     pub shadow_map_2d_image_views: [Option<ResourceArc<ImageViewResource>>; MAX_SHADOW_MAPS_2D],
     pub num_shadow_map_cube: usize,
-    pub shadow_map_cube_data: [shaders::mesh_frag::ShadowMapCubeDataStd140; MAX_SHADOW_MAPS_CUBE],
+    pub shadow_map_cube_data:
+        [shaders::mesh_textured_frag::ShadowMapCubeDataStd140; MAX_SHADOW_MAPS_CUBE],
     pub shadow_map_cube_image_views: [Option<ResourceArc<ImageViewResource>>; MAX_SHADOW_MAPS_CUBE],
     pub shadow_map_image_index_remap: [Option<usize>; MAX_SHADOW_MAPS_2D + MAX_SHADOW_MAPS_CUBE],
     pub mesh_part_descriptor_sets: Arc<AtomicOnceCellStack<MeshPartDescriptorSetPair>>,
-    pub opaque_per_view_descriptor_set_layout: Option<ResourceArc<DescriptorSetLayoutResource>>,
 }
 
 pub struct MeshRenderObjectInstanceSubmitData {

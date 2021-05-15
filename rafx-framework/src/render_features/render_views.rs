@@ -1,7 +1,7 @@
-use super::registry::{RenderPhaseMaskInnerType, MAX_RENDER_PHASE_COUNT};
-use super::{RenderPhase, RenderPhaseIndex};
-use crate::render_features::registry::{RenderFeatureMaskInnerType, MAX_RENDER_FEATURE_COUNT};
-use crate::render_features::{RenderFeature, RenderFeatureIndex};
+use crate::render_features::{
+    RenderFeature, RenderFeatureFlag, RenderFeatureFlagMask, RenderFeatureIndex, RenderFeatureMask,
+    RenderPhase, RenderPhaseIndex, RenderPhaseMask,
+};
 use crate::visibility::ViewFrustumArc;
 use glam::{Mat4, Vec3};
 use rafx_visibility::{DepthRange, Projection};
@@ -11,84 +11,6 @@ use std::sync::Arc;
 
 pub type RenderViewIndex = u32;
 pub type RenderViewCount = u32;
-
-#[derive(Default)]
-pub struct RenderPhaseMaskBuilder(RenderPhaseMaskInnerType);
-
-impl RenderPhaseMaskBuilder {
-    pub fn add_render_phase<RenderPhaseT: RenderPhase>(mut self) -> RenderPhaseMaskBuilder {
-        let index = RenderPhaseT::render_phase_index();
-        assert!(index < MAX_RENDER_PHASE_COUNT);
-        self.0 |= 1 << RenderPhaseT::render_phase_index();
-        self
-    }
-
-    pub fn build(self) -> RenderPhaseMask {
-        RenderPhaseMask(self.0)
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct RenderPhaseMask(RenderPhaseMaskInnerType);
-
-impl RenderPhaseMask {
-    pub fn is_included<RenderPhaseT: RenderPhase>(&self) -> bool {
-        self.is_included_index(RenderPhaseT::render_phase_index())
-    }
-
-    #[inline(always)]
-    pub fn is_included_index(
-        &self,
-        index: RenderPhaseIndex,
-    ) -> bool {
-        // If this asserts, a render phase was not registered
-        assert!(index < MAX_RENDER_PHASE_COUNT);
-        (self.0 & 1 << index) != 0
-    }
-
-    pub fn empty() -> Self {
-        RenderPhaseMask(0)
-    }
-}
-
-#[derive(Default)]
-pub struct RenderFeatureMaskBuilder(RenderFeatureMaskInnerType);
-
-impl RenderFeatureMaskBuilder {
-    pub fn add_render_feature<RenderFeatureT: RenderFeature>(mut self) -> RenderFeatureMaskBuilder {
-        let index = RenderFeatureT::feature_index();
-        assert!(index < MAX_RENDER_FEATURE_COUNT);
-        self.0 |= 1 << RenderFeatureT::feature_index();
-        self
-    }
-
-    pub fn build(self) -> RenderFeatureMask {
-        RenderFeatureMask(self.0)
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct RenderFeatureMask(RenderFeatureMaskInnerType);
-
-impl RenderFeatureMask {
-    pub fn is_included<RenderFeatureT: RenderFeature>(&self) -> bool {
-        self.is_included_index(RenderFeatureT::feature_index())
-    }
-
-    #[inline(always)]
-    pub fn is_included_index(
-        &self,
-        index: RenderFeatureIndex,
-    ) -> bool {
-        // If this asserts, a render feature was not registered
-        assert!(index < MAX_RENDER_FEATURE_COUNT);
-        (self.0 & 1 << index) != 0
-    }
-
-    pub fn empty() -> Self {
-        RenderFeatureMask(0)
-    }
-}
 
 #[derive(Default)]
 pub struct RenderViewSet {
@@ -106,6 +28,7 @@ impl RenderViewSet {
         depth_range: RenderViewDepthRange,
         render_phase_mask: RenderPhaseMask,
         render_feature_mask: RenderFeatureMask,
+        render_feature_flag_mask: RenderFeatureFlagMask,
         debug_name: String,
     ) -> RenderView {
         let view_index = self.view_count.fetch_add(1, Ordering::Release);
@@ -119,6 +42,7 @@ impl RenderViewSet {
             depth_range,
             render_phase_mask,
             render_feature_mask,
+            render_feature_flag_mask,
             debug_name,
         )
     }
@@ -142,6 +66,7 @@ pub struct RenderViewInner {
     depth_range: RenderViewDepthRange,
     render_phase_mask: RenderPhaseMask,
     render_feature_mask: RenderFeatureMask,
+    render_feature_flag_mask: RenderFeatureFlagMask,
     debug_name: String,
 }
 
@@ -246,6 +171,7 @@ impl RenderView {
         depth_range: RenderViewDepthRange,
         render_phase_mask: RenderPhaseMask,
         render_feature_mask: RenderFeatureMask,
+        render_feature_flag_mask: RenderFeatureFlagMask,
         debug_name: String,
     ) -> RenderView {
         let view_dir = glam::Vec3::new(view.x_axis.z, view.y_axis.z, view.z_axis.z) * -1.0;
@@ -263,6 +189,7 @@ impl RenderView {
             depth_range,
             render_phase_mask,
             render_feature_mask,
+            render_feature_flag_mask,
             debug_name,
         };
 
@@ -363,5 +290,24 @@ impl RenderView {
         feature_index: RenderFeatureIndex,
     ) -> bool {
         self.phase_index_is_relevant(phase_index) && self.feature_index_is_relevant(feature_index)
+    }
+
+    pub fn feature_flag_is_relevant<RenderFeatureFlagT: RenderFeatureFlag>(&self) -> bool {
+        self.inner
+            .render_feature_flag_mask
+            .is_included::<RenderFeatureFlagT>()
+    }
+
+    pub fn feature_flag_index_is_relevant(
+        &self,
+        feature_flag_index: RenderFeatureIndex,
+    ) -> bool {
+        self.inner
+            .render_feature_flag_mask
+            .is_included_index(feature_flag_index)
+    }
+
+    pub fn render_feature_flag_mask(&self) -> RenderFeatureFlagMask {
+        self.inner.render_feature_flag_mask
     }
 }

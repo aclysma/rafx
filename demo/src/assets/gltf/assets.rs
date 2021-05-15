@@ -1,14 +1,16 @@
-use crate::phases::OpaqueRenderPhase;
+use crate::features::mesh::MeshUntexturedRenderFeatureFlag;
+use crate::phases::{OpaqueRenderPhase, WireframeRenderPhase};
 use distill::loader::handle::Handle;
 use rafx::api::RafxResult;
 use rafx::assets::MaterialInstanceAsset;
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler,
 };
-use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPass, ResourceArc};
+use rafx::framework::render_features::{RenderPhase, RenderPhaseIndex, RenderView};
+use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::rafx_visibility::VisibleBounds;
 use serde::{Deserialize, Serialize};
-use shaders::mesh_frag::MaterialDataStd140;
+use shaders::mesh_textured_frag::MaterialDataStd140;
 use std::sync::Arc;
 use type_uuid::*;
 
@@ -77,15 +79,11 @@ impl Into<MaterialDataStd140> for GltfMaterialData {
             normal_texture_scale: self.normal_texture_scale,
             occlusion_texture_strength: self.occlusion_texture_strength,
             alpha_cutoff: self.alpha_cutoff,
-            has_base_color_texture: if self.has_base_color_texture { 1 } else { 0 },
-            has_metallic_roughness_texture: if self.has_metallic_roughness_texture {
-                1
-            } else {
-                0
-            },
-            has_normal_texture: if self.has_normal_texture { 1 } else { 0 },
-            has_occlusion_texture: if self.has_occlusion_texture { 1 } else { 0 },
-            has_emissive_texture: if self.has_emissive_texture { 1 } else { 0 },
+            has_base_color_texture: self.has_base_color_texture as u32,
+            has_metallic_roughness_texture: self.has_metallic_roughness_texture as u32,
+            has_normal_texture: self.has_normal_texture as u32,
+            has_occlusion_texture: self.has_occlusion_texture as u32,
+            has_emissive_texture: self.has_emissive_texture as u32,
             ..Default::default()
         }
     }
@@ -110,12 +108,61 @@ pub struct MeshAssetData {
 }
 
 pub struct MeshAssetPart {
-    pub opaque_pass: MaterialPass,
-    pub opaque_material_descriptor_set: DescriptorSetArc,
+    pub material_instance: MaterialInstanceAsset,
+    pub textured_pass_index: usize,
+    pub untextured_pass_index: usize,
+    pub wireframe_pass_index: usize,
     pub vertex_buffer_offset_in_bytes: u32,
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
+}
+
+const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
+
+impl MeshAssetPart {
+    pub fn get_material_pass_index(
+        &self,
+        view: &RenderView,
+        render_phase_index: RenderPhaseIndex,
+    ) -> usize {
+        if render_phase_index == OpaqueRenderPhase::render_phase_index() {
+            return if view.feature_flag_is_relevant::<MeshUntexturedRenderFeatureFlag>() {
+                self.untextured_pass_index
+            } else {
+                self.textured_pass_index
+            };
+        } else if render_phase_index == WireframeRenderPhase::render_phase_index() {
+            self.wireframe_pass_index
+        } else {
+            panic!(
+                "mesh does not support render phase index {}",
+                render_phase_index
+            )
+        }
+    }
+
+    pub fn get_material_pass_resource(
+        &self,
+        view: &RenderView,
+        render_phase_index: RenderPhaseIndex,
+    ) -> &ResourceArc<MaterialPassResource> {
+        &self.material_instance.material.passes
+            [self.get_material_pass_index(view, render_phase_index)]
+        .material_pass_resource
+    }
+
+    pub fn get_material_descriptor_set(
+        &self,
+        view: &RenderView,
+        render_phase_index: RenderPhaseIndex,
+    ) -> &DescriptorSetArc {
+        return &self.material_instance.material_descriptor_sets
+            [self.get_material_pass_index(view, render_phase_index)]
+            [PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
+            .as_ref()
+            .unwrap();
+    }
 }
 
 pub struct MeshAssetInner {
@@ -158,29 +205,26 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
                     .committed_asset(&mesh_part.material_instance)
                     .unwrap();
 
-                let opaque_pass_index = material_instance
+                let textured_pass_index = material_instance
                     .material
-                    .find_pass_by_phase::<OpaqueRenderPhase>();
+                    .find_pass_by_name("mesh textured")
+                    .expect("could not find `mesh textured` pass in mesh part material");
 
-                if opaque_pass_index.is_none() {
-                    log::error!(
-                        "A mesh part with material {:?} has no opaque phase",
-                        material_instance.material_handle
-                    );
-                    return None;
-                }
+                let untextured_pass_index = material_instance
+                    .material
+                    .find_pass_by_name("mesh untextured")
+                    .expect("could not find `mesh untextured` pass in mesh part material");
 
-                let opaque_pass_index = opaque_pass_index.unwrap();
-
-                const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
+                let wireframe_pass_index = material_instance
+                    .material
+                    .find_pass_by_name("mesh wireframe")
+                    .expect("could not find `mesh wireframe` pass in mesh part material");
 
                 Some(MeshAssetPart {
-                    opaque_pass: material_instance.material.passes[opaque_pass_index].clone(),
-                    opaque_material_descriptor_set: material_instance.material_descriptor_sets
-                        [opaque_pass_index][PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
-                        .as_ref()
-                        .unwrap()
-                        .clone(),
+                    material_instance: material_instance.clone(),
+                    textured_pass_index,
+                    untextured_pass_index,
+                    wireframe_pass_index,
                     vertex_buffer_offset_in_bytes: mesh_part.vertex_buffer_offset_in_bytes,
                     vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
                     index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,

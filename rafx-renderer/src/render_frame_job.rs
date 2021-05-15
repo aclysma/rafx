@@ -398,7 +398,7 @@ impl RenderFrameJob {
             Box<dyn RenderFeatureSubmitPacket>,
         )>,
     ) -> Vec<Option<Arc<dyn RenderFeatureWriteJob<'write> + 'write>>> {
-        let mut write_jobs = vec![None; features.len()];
+        let mut write_jobs = vec![None; RenderRegistry::registered_feature_count() as usize];
 
         for write_job in frame_and_submit_packets.into_iter().map(|frame_packet| {
             RenderFrameJob::create_write_job(features, write_context, frame_packet)
@@ -407,6 +407,7 @@ impl RenderFrameJob {
                 .get_mut(write_job.feature_index() as usize)
                 .unwrap();
 
+            assert!(feature.is_none());
             *feature = Some(write_job);
         }
 

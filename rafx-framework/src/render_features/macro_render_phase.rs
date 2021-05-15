@@ -29,6 +29,13 @@ macro_rules! declare_render_phase {
 
         impl RenderPhase for $struct_name {
             fn set_render_phase_index(index: RenderPhaseIndex) {
+                assert_eq!(
+                    $struct_name::render_phase_index(),
+                    RenderPhaseIndex::MAX,
+                    "render phase {} was already registered",
+                    $struct_name::render_phase_debug_name(),
+                );
+
                 use std::convert::TryInto;
                 $atomic_constant_name.store(
                     index.try_into().unwrap(),

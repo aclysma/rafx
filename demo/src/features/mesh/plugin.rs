@@ -3,6 +3,7 @@ use rafx::render_feature_renderer_prelude::*;
 use super::*;
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
+    WireframeRenderPhase,
 };
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
@@ -53,6 +54,7 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
             || view.phase_is_relevant::<ShadowMapRenderPhase>()
             || view.phase_is_relevant::<OpaqueRenderPhase>()
             || view.phase_is_relevant::<TransparentRenderPhase>()
+            || view.phase_is_relevant::<WireframeRenderPhase>()
     }
 
     fn requires_visible_render_objects(&self) -> bool {
@@ -63,7 +65,12 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<MeshRenderFeature>()
+        render_registry
+            .register_feature::<MeshRenderFeature>()
+            .register_feature_flag::<MeshWireframeRenderFeatureFlag>()
+            .register_feature_flag::<MeshUntexturedRenderFeatureFlag>()
+            .register_feature_flag::<MeshUnlitRenderFeatureFlag>()
+            .register_feature_flag::<MeshNoShadowsRenderFeatureFlag>()
     }
 
     fn initialize_static_resources(
@@ -148,6 +155,10 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
                 SubmitNodeBlock::with_capacity::<OpaqueRenderPhase>(view, num_submit_nodes),
                 SubmitNodeBlock::with_capacity::<DepthPrepassRenderPhase>(view, num_submit_nodes),
                 SubmitNodeBlock::with_capacity::<ShadowMapRenderPhase>(view, num_submit_nodes),
+                SubmitNodeBlock::with_capacity_and_feature_flag::<
+                    WireframeRenderPhase,
+                    MeshWireframeRenderFeatureFlag,
+                >(view, num_submit_nodes),
             ];
 
             view_submit_packets.push(ViewSubmitPacket::new(

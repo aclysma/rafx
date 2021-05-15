@@ -10,8 +10,8 @@ use rafx::api::*;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::framework::render_features::{
-    ExtractResources, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderRegistry,
-    RenderViewDepthRange,
+    ExtractResources, RenderFeatureFlagMask, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
+    RenderRegistry, RenderViewDepthRange,
 };
 use rafx::framework::visibility::VisibilityRegion;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
@@ -228,6 +228,7 @@ fn run() -> RafxResult<()> {
                     depth_range: RenderViewDepthRange::from_projection(&projection),
                     render_phase_mask: main_camera_phase_mask,
                     render_feature_mask: main_camera_feature_mask,
+                    render_feature_flag_mask: RenderFeatureFlagMask::empty(),
                     debug_name: "main".to_string(),
                 })
             }

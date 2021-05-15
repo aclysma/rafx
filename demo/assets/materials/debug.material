@@ -1,11 +1,11 @@
 (
     passes: [
         (
-            phase: Some("Opaque"),
+            phase: Some("Wireframe"),
             fixed_function_state: (
                 alpha_blending: Enabled,
                 depth_testing: EnabledReverseZ,
-                polygon_mode: Some(Line)
+                fill_mode: Some(Wireframe)
             ),
             shaders: [
                 (

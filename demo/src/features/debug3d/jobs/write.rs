@@ -1,7 +1,7 @@
 use rafx::render_feature_write_job_prelude::*;
 
 use super::*;
-use crate::phases::OpaqueRenderPhase;
+use crate::phases::WireframeRenderPhase;
 use rafx::api::{RafxPrimitiveTopology, RafxVertexBufferBinding};
 use rafx::framework::render_features::RenderPhase;
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
@@ -86,7 +86,7 @@ impl<'write> RenderFeatureWriteJob<'write> for Debug3DWriteJob<'write> {
             command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
 
             let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
-            if render_phase_index == OpaqueRenderPhase::render_phase_index() {
+            if render_phase_index == WireframeRenderPhase::render_phase_index() {
                 let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
 
                 per_view_submit_data

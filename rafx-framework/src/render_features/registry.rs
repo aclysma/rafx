@@ -8,11 +8,17 @@ use std::sync::Arc;
 /// The `ID` of a registered `RenderFeature`.
 pub type RenderFeatureIndex = u32;
 
+/// The `ID` of a registered `RenderFeatureFlag`.
+pub type RenderFeatureFlagIndex = u32;
+
 /// The `ID` of a registered `RenderPhase`.
 pub type RenderPhaseIndex = u32;
 
 pub type RenderFeatureMaskInnerType = u64;
 pub const MAX_RENDER_FEATURE_COUNT: u32 = 64;
+
+pub type RenderFeatureFlagMaskInnerType = u128;
+pub const MAX_RENDER_FEATURE_FLAG_COUNT: u32 = 128;
 
 pub type RenderPhaseMaskInnerType = u32;
 pub const MAX_RENDER_PHASE_COUNT: u32 = 32;
@@ -46,6 +52,13 @@ pub trait RenderFeature {
     fn feature_debug_constants() -> &'static RenderFeatureDebugConstants;
 }
 
+pub trait RenderFeatureFlag {
+    fn set_feature_flag_index(index: RenderFeatureIndex);
+    fn feature_flag_index() -> RenderFeatureIndex;
+
+    fn feature_flag_debug_name() -> &'static str;
+}
+
 pub trait RenderPhase {
     fn set_render_phase_index(index: RenderPhaseIndex);
     fn render_phase_index() -> RenderPhaseIndex;
@@ -68,6 +81,7 @@ impl RegisteredPhase {
 }
 
 static RENDER_REGISTRY_FEATURE_COUNT: AtomicU32 = AtomicU32::new(0);
+static RENDER_REGISTRY_FEATURE_FLAG_COUNT: AtomicU32 = AtomicU32::new(0);
 static RENDER_REGISTRY_PHASE_COUNT: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Default)]
@@ -83,6 +97,15 @@ impl RenderRegistryBuilder {
     {
         let feature_index = RENDER_REGISTRY_FEATURE_COUNT.fetch_add(1, Ordering::AcqRel);
         T::set_feature_index(feature_index);
+        self
+    }
+
+    pub fn register_feature_flag<T>(self) -> Self
+    where
+        T: RenderFeatureFlag,
+    {
+        let feature_flag_index = RENDER_REGISTRY_FEATURE_FLAG_COUNT.fetch_add(1, Ordering::AcqRel);
+        T::set_feature_flag_index(feature_flag_index);
         self
     }
 

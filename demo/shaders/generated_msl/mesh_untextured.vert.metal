@@ -1,3 +1,5 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
 #include <metal_stdlib>
 #include <simd/simd.h>
 
@@ -101,11 +103,6 @@ struct spvDescriptorSetBuffer0
 struct spvDescriptorSetBuffer1
 {
     constant MaterialDataUbo* per_material_data [[id(0)]];
-    texture2d<float> base_color_texture [[id(1)]];
-    texture2d<float> metallic_roughness_texture [[id(2)]];
-    texture2d<float> normal_texture [[id(3)]];
-    texture2d<float> occlusion_texture [[id(4)]];
-    texture2d<float> emissive_texture [[id(5)]];
 };
 
 struct spvDescriptorSetBuffer2
@@ -135,23 +132,29 @@ struct main0_in
     float2 in_uv [[attribute(3)]];
 };
 
+static inline __attribute__((always_inline))
+void pbr_main(constant PerViewData& per_view_data, constant PerObjectData& per_object_data, thread float4& gl_Position, thread float3& in_pos, thread float3& out_position_vs, thread float3& out_normal_vs, thread float3& in_normal, thread float3& out_tangent_vs, thread float4& in_tangent, thread float3& out_binormal_vs, thread float2& out_uv, thread float2& in_uv, thread float4& out_position_ws, thread float3x3& out_model_view)
+{
+    float4x4 model_view_proj = per_view_data.view_proj * per_object_data.model;
+    float4x4 model_view = per_view_data.view * per_object_data.model;
+    gl_Position = model_view_proj * float4(in_pos, 1.0);
+    out_position_vs = (model_view * float4(in_pos, 1.0)).xyz;
+    out_normal_vs = float3x3(model_view[0].xyz, model_view[1].xyz, model_view[2].xyz) * in_normal;
+    out_tangent_vs = float3x3(model_view[0].xyz, model_view[1].xyz, model_view[2].xyz) * in_tangent.xyz;
+    float3 binormal = cross(in_normal, in_tangent.xyz) * in_tangent.w;
+    out_binormal_vs = float3x3(model_view[0].xyz, model_view[1].xyz, model_view[2].xyz) * binormal;
+    out_uv = in_uv;
+    out_position_ws = per_object_data.model * float4(in_pos, 1.0);
+    out_model_view = float3x3(model_view[0].xyz, model_view[1].xyz, model_view[2].xyz);
+}
+
 vertex main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]], constant spvDescriptorSetBuffer2& spvDescriptorSet2 [[buffer(2)]])
 {
     constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
     constexpr sampler smp_depth(filter::linear, mip_filter::linear, compare_func::greater, max_anisotropy(16));
     main0_out out = {};
     float3x3 out_model_view = {};
-    float4x4 model_view_proj = (*spvDescriptorSet0.per_view_data).view_proj * (*spvDescriptorSet2.per_object_data).model;
-    float4x4 model_view = (*spvDescriptorSet0.per_view_data).view * (*spvDescriptorSet2.per_object_data).model;
-    out.gl_Position = model_view_proj * float4(in.in_pos, 1.0);
-    out.out_position_vs = (model_view * float4(in.in_pos, 1.0)).xyz;
-    out.out_normal_vs = float3x3(model_view[0].xyz, model_view[1].xyz, model_view[2].xyz) * in.in_normal;
-    out.out_tangent_vs = float3x3(model_view[0].xyz, model_view[1].xyz, model_view[2].xyz) * in.in_tangent.xyz;
-    float3 binormal = cross(in.in_normal, in.in_tangent.xyz) * in.in_tangent.w;
-    out.out_binormal_vs = float3x3(model_view[0].xyz, model_view[1].xyz, model_view[2].xyz) * binormal;
-    out.out_uv = in.in_uv;
-    out.out_position_ws = (*spvDescriptorSet2.per_object_data).model * float4(in.in_pos, 1.0);
-    out_model_view = float3x3(model_view[0].xyz, model_view[1].xyz, model_view[2].xyz);
+    pbr_main((*spvDescriptorSet0.per_view_data), (*spvDescriptorSet2.per_object_data), out.gl_Position, in.in_pos, out.out_position_vs, out.out_normal_vs, in.in_normal, out.out_tangent_vs, in.in_tangent, out.out_binormal_vs, out.out_uv, in.in_uv, out.out_position_ws, out_model_view);
     out.out_model_view_0 = out_model_view[0];
     out.out_model_view_1 = out_model_view[1];
     out.out_model_view_2 = out_model_view[2];

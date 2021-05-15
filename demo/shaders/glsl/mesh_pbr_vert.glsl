@@ -1,9 +1,3 @@
-#version 450
-#extension GL_ARB_separate_shader_objects : enable
-#extension GL_ARB_shading_language_420pack : enable
-
-#include "mesh.glsl"
-
 // @[semantic("POSITION")]
 layout (location = 0) in vec3 in_pos;
 
@@ -31,7 +25,7 @@ layout (location = 5) out vec4 out_position_ws;
 
 layout (location = 6) out mat3 out_model_view;
 
-void main() {
+void pbr_main() {
     mat4 model_view_proj = per_view_data.view_proj * per_object_data.model;
     mat4 model_view = per_view_data.view * per_object_data.model;
 

@@ -1,4 +1,5 @@
 use crate::render_features::render_features_prelude::*;
+use crate::render_features::RenderFeatureFlag;
 
 /// The `SubmitNodeBlock` is a collection of `SubmitNode` associated with a particular `RenderFeature`,
 /// `RenderView`, and `RenderPhase`. There should be a 1:1 mapping between `SubmitNode`s and draw calls
@@ -17,6 +18,8 @@ impl<SubmitPacketDataT: 'static + Sync + Send + SubmitPacketData>
         self.submit_nodes.len()
     }
 
+    /// Creates a `SubmitNodeBlock` with a capacity of `num_submit_nodes` if the `RenderView`
+    /// supports the `RenderPhase`, otherwise the capacity will be set to `0`.
     pub fn with_capacity<RenderPhaseT: RenderPhase>(
         view: &RenderView,
         num_submit_nodes: usize,
@@ -26,6 +29,30 @@ impl<SubmitPacketDataT: 'static + Sync + Send + SubmitPacketData>
             render_phase: RenderPhaseT::render_phase_index(),
             submit_nodes: AtomicOnceCellStack::with_capacity(
                 if view.phase_is_relevant::<RenderPhaseT>() {
+                    num_submit_nodes
+                } else {
+                    0
+                },
+            ),
+        }
+    }
+
+    /// Creates a `SubmitNodeBlock` with a capacity of `num_submit_nodes` if the `RenderView`
+    /// supports the `RenderPhase` and `RenderFeatureFlag`, otherwise the capacity will be set to `0`.
+    pub fn with_capacity_and_feature_flag<
+        RenderPhaseT: RenderPhase,
+        RenderFeatureFlagT: RenderFeatureFlag,
+    >(
+        view: &RenderView,
+        num_submit_nodes: usize,
+    ) -> Self {
+        Self {
+            feature_index: SubmitPacketDataT::RenderFeature::feature_index(),
+            render_phase: RenderPhaseT::render_phase_index(),
+            submit_nodes: AtomicOnceCellStack::with_capacity(
+                if view.phase_is_relevant::<RenderPhaseT>()
+                    && view.feature_flag_is_relevant::<RenderFeatureFlagT>()
+                {
                     num_submit_nodes
                 } else {
                     0
