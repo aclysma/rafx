@@ -247,7 +247,7 @@ impl MaterialPassData {
                 return Err(error)?;
             }
 
-            log::trace!("  Reflection data:\n{:#?}", reflection_data);
+            //log::trace!("  Reflection data:\n{:#?}", reflection_data);
         }
 
         let fixed_function_state = Arc::new(self.fixed_function_state.clone().prepare()?);

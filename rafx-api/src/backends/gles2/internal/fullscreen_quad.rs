@@ -8,6 +8,7 @@ use std::ffi::CString;
 pub(crate) struct FullscreenQuad {
     program_id: ProgramId,
     buffer_id: BufferId,
+    flip_y_buffer_id: BufferId,
 }
 
 impl FullscreenQuad {
@@ -35,6 +36,25 @@ impl FullscreenQuad {
         gl_context.gl_destroy_shader(frag_shader)?;
 
         #[rustfmt::skip]
+        const FLIP_Y_QUAD_VERTICES :[f32; 24] = [
+            -1.0, 1.0, 0.0, 0.0,
+            -1.0, -1.0, 0.0, 1.0,
+            1.0, -1.0, 1.0, 1.0,
+            -1.0, 1.0, 0.0, 0.0,
+            1.0, -1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 0.0
+        ];
+
+        let flip_y_buffer_id = gl_context.gl_create_buffer()?;
+        gl_context.gl_bind_buffer(gles2_bindings::ARRAY_BUFFER, flip_y_buffer_id)?;
+        gl_context.gl_buffer_data(
+            gles2_bindings::ARRAY_BUFFER,
+            24 * 4,
+            FLIP_Y_QUAD_VERTICES.as_ptr() as _,
+            gles2_bindings::STATIC_DRAW,
+        )?;
+
+        #[rustfmt::skip]
         const QUAD_VERTICES :[f32; 24] = [
             -1.0, 1.0, 0.0, 1.0,
             -1.0, -1.0, 0.0, 0.0,
@@ -56,6 +76,7 @@ impl FullscreenQuad {
         Ok(FullscreenQuad {
             program_id,
             buffer_id,
+            flip_y_buffer_id,
         })
     }
 
@@ -63,12 +84,19 @@ impl FullscreenQuad {
         &self,
         gl_context: &GlContext,
         texture: &RafxTextureGles2,
+        flip_y: bool,
     ) -> RafxResult<()> {
         gl_context.gl_disable(gles2_bindings::BLEND)?;
         gl_context.gl_disable(gles2_bindings::DEPTH_TEST)?;
         gl_context.gl_use_program(self.program_id)?;
 
-        gl_context.gl_bind_buffer(gles2_bindings::ARRAY_BUFFER, self.buffer_id)?;
+        let buffer_id = if flip_y {
+            self.flip_y_buffer_id
+        } else {
+            self.buffer_id
+        };
+
+        gl_context.gl_bind_buffer(gles2_bindings::ARRAY_BUFFER, buffer_id)?;
 
         gl_context.gl_vertex_attrib_pointer(0, 2, gles2_bindings::FLOAT, false, 16, 0)?;
         gl_context.gl_enable_vertex_attrib_array(0)?;

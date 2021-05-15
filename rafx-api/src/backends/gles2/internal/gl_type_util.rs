@@ -49,10 +49,9 @@ pub fn set_uniform<T: Copy>(
     count: u32,
 ) -> RafxResult<()> {
     match gl_type {
-        gles2_bindings::INT
-        | gles2_bindings::BOOL
-        | gles2_bindings::SAMPLER_2D
-        | gles2_bindings::SAMPLER_CUBE => gl_context.gl_uniform_1iv(location, data, count),
+        gles2_bindings::INT | gles2_bindings::BOOL => {
+            gl_context.gl_uniform_1iv(location, data, count)
+        }
         gles2_bindings::FLOAT => gl_context.gl_uniform_1fv(location, data, count),
         gles2_bindings::INT_VEC2 | gles2_bindings::BOOL_VEC2 => {
             gl_context.gl_uniform_2iv(location, data, count)

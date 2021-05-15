@@ -41,8 +41,11 @@ impl Gles2PipelineInfo {
     pub fn resource_location(
         &self,
         descriptor_index: RafxDescriptorIndex,
+        element_index: u32,
     ) -> &Option<LocationId> {
-        &self.resource_locations[descriptor_index.0 as usize]
+        let descriptor = self.root_signature.descriptor(descriptor_index).unwrap();
+        &self.resource_locations
+            [(descriptor.first_location_index.unwrap() + element_index) as usize]
     }
 
     pub fn uniform_member_location(
@@ -150,8 +153,14 @@ impl RafxPipelineGles2 {
 
         let mut resource_locations = Vec::with_capacity(gl_root_signature.inner.descriptors.len());
         for resource in &gl_root_signature.inner.descriptors {
-            resource_locations
-                .push(gl_context.gl_get_uniform_location(program_id, &resource.gl_name)?);
+            if let Some(first_location_index) = resource.first_location_index {
+                for i in 0..resource.element_count {
+                    let location_name = &gl_root_signature.inner.location_names
+                        [(first_location_index + i) as usize];
+                    resource_locations
+                        .push(gl_context.gl_get_uniform_location(program_id, location_name)?);
+                }
+            }
         }
 
         let all_uniform_fields = gl_root_signature.inner.uniform_reflection.fields();
@@ -171,7 +180,7 @@ impl RafxPipelineGles2 {
                 )
             })?;
 
-        let gl_pipeline_info = Gles2PipelineInfo {
+        let mut gl_pipeline_info = Gles2PipelineInfo {
             last_bound_by_command_pool: TrustCell::new(0),
             gl_rasterizer_state: pipeline_def.rasterizer_state.into(),
             gl_depth_stencil_state: pipeline_def.depth_state.into(),
@@ -184,6 +193,15 @@ impl RafxPipelineGles2 {
             root_signature: gl_root_signature.clone(),
             last_descriptor_updates: Default::default(),
         };
+
+        // Front face needs to be reversed because we render GL with a flipped Y axis:
+        // - rafx-shader-processor uses spirv-cross to patch vertex shaders to flip the Y axis
+        // - textures can be sampled using V+ in down direction (the way that DX, vulkan, metal work)
+        // - we flip the image right-side-up when we do the final present
+        gl_pipeline_info.gl_rasterizer_state.front_face = pipeline_def
+            .rasterizer_state
+            .front_face
+            .gles2_front_face(true);
 
         Ok(RafxPipelineGles2 {
             root_signature: pipeline_def.root_signature.clone(),

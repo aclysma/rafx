@@ -8,5 +8,7 @@ void main()
 {
     interface_var_0 = in_color;
     gl_Position = pos;
+    gl_Position.z = 2.0 * gl_Position.z - gl_Position.w;
+    gl_Position.y = -gl_Position.y;
 }
 

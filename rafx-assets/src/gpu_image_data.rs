@@ -165,4 +165,9 @@ impl GpuImageData {
 
         GpuImageData::new_simple(dimensions.0, dimensions.1, color_space.rgba8(), image_data)
     }
+
+    pub fn new_1x1_d32(d: f32) -> Self {
+        let bytes = d.to_bits().to_ne_bytes().to_vec();
+        GpuImageData::new_simple(1, 1, RafxFormat::D32_SFLOAT, bytes)
+    }
 }

@@ -15,5 +15,7 @@ void main()
 {
     interface_var_0 = in_uv;
     gl_Position = vec4(pos, 0.0, 1.0);
+    gl_Position.z = 2.0 * gl_Position.z - gl_Position.w;
+    gl_Position.y = -gl_Position.y;
 }
 

@@ -119,11 +119,17 @@ impl GlContext {
             Profile::Compatibility => glx::arb::GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
         };
 
+        let mut flags = 0;
+        if config.use_debug_context {
+            flags |= glx::arb::GLX_CONTEXT_DEBUG_BIT_ARB;
+        }
+
         #[rustfmt::skip]
         let ctx_attribs = [
             glx::arb::GLX_CONTEXT_MAJOR_VERSION_ARB, config.version.0 as i32,
             glx::arb::GLX_CONTEXT_MINOR_VERSION_ARB, config.version.1 as i32,
             glx::arb::GLX_CONTEXT_PROFILE_MASK_ARB, profile_mask,
+            glx::arb::GLX_CONTEXT_FLAGS_ARB, flags,
             0,
         ];
 

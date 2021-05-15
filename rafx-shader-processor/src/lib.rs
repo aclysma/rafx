@@ -421,6 +421,8 @@ fn process_glsl_shader(
         let mut spirv_cross_gles2_options = spirv_cross::glsl::CompilerOptions::default();
         spirv_cross_gles2_options.version = spirv_cross::glsl::Version::V1_00Es;
         spirv_cross_gles2_options.vulkan_semantics = false;
+        spirv_cross_gles2_options.vertex.transform_clip_space = true;
+        spirv_cross_gles2_options.vertex.invert_y = true;
 
         gles2_ast.build_combined_image_samplers()?;
         let mut all_combined_textures = FnvHashSet::default();
