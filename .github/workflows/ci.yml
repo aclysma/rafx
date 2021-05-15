@@ -58,6 +58,13 @@ jobs:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
+      - name: Run tests (gles2)
+        run: cargo test --workspace --features "rafx-gles2" --manifest-path demo/Cargo.toml
+        if: ${{ runner.os == 'macOS' && matrix.toolchain == 'stable' }}
+        env:
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
+
   deny-check:
     name: cargo-deny
     runs-on: ubuntu-latest
