@@ -98,8 +98,7 @@ impl RenderThread {
                     profiling::scope!("Render Frame");
 
                     log::trace!("kick off render");
-                    let resource_lock = render_resources.lock().unwrap();
-                    let result = prepared_frame.render_async(frame_in_flight, &*resource_lock);
+                    let result = prepared_frame.render_async(frame_in_flight);
                     result_tx.send(result).unwrap();
                 }
                 RenderThreadMessage::Finish => {

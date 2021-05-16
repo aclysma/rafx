@@ -241,21 +241,17 @@ impl Renderer {
     ) {
         let result = Self::try_create_render_job(&renderer, extract_resources, &presentable_frame);
 
-        let mut guard = renderer.inner.lock().unwrap();
-        let renderer_inner = &mut *guard;
         match result {
             Ok(prepared_frame) => {
-                if cfg!(all(feature = "no-render-thread")) {
-                    // NOTE(dvd): Run single threaded. Useful when trying to track # of global memory allocations.
-                    let _ = prepared_frame.render_async(
-                        presentable_frame,
-                        &*guard.render_thread.render_resources().lock().unwrap(),
-                    );
-                } else {
-                    renderer_inner
-                        .render_thread
-                        .render(prepared_frame, presentable_frame);
-                }
+                //if cfg!(all(feature = "no-render-thread")) {
+                // NOTE(dvd): Run single threaded. Useful when trying to track # of global memory allocations.
+                let _ = prepared_frame.render_async(presentable_frame);
+                // } else {
+                //     let mut guard = renderer.inner.lock().unwrap();
+                //     guard
+                //         .render_thread
+                //         .render(prepared_frame, presentable_frame);
+                // }
             }
             Err(e) => {
                 let graphics_queue = renderer.graphics_queue();

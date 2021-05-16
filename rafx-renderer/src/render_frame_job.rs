@@ -28,13 +28,14 @@ impl RenderFrameJob {
     pub fn render_async(
         self,
         presentable_frame: RafxPresentableFrame,
-        render_resources: &RenderResources,
     ) -> RenderFrameJobResult {
         let t0 = std::time::Instant::now();
 
-        let mut thread_pool = {
+        let (mut thread_pool, render_resources) = {
             let mut renderer_inner = self.renderer.inner.lock().unwrap();
-            renderer_inner.thread_pool.clone_to_box()
+            let thread_pool = renderer_inner.thread_pool.clone_to_box();
+            let render_resources = renderer_inner.render_thread.render_resources().clone();
+            (thread_pool, render_resources)
         };
 
         let result = Self::do_render_async(
@@ -42,7 +43,7 @@ impl RenderFrameJob {
             self.resource_context,
             self.frame_packets,
             self.render_registry,
-            render_resources,
+            &*render_resources.lock().unwrap(),
             self.graphics_queue,
             self.render_views,
             self.feature_plugins,

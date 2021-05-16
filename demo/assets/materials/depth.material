@@ -12,7 +12,11 @@
                     shader_module: "../shaders/depth.vert.cookedshaderpackage",
                     entry_name: "main"
                 ),
-                // No fragment shader required
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/depth.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
             ],
         )
     ]

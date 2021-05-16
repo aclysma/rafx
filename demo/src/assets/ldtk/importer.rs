@@ -325,9 +325,6 @@ impl Importer for LdtkImporter {
 
         *stable_state = unstable_state.into();
 
-        println!("state: {:#?}", stable_state);
-        println!("imported assets: {}", imported_assets.len());
-
         Ok(ImporterValue {
             assets: imported_assets,
         })

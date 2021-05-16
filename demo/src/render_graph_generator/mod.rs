@@ -31,7 +31,7 @@ mod bloom_combine_pass;
 
 mod ui_pass;
 
-mod compute_test;
+//mod compute_test;
 
 lazy_static::lazy_static! {
     pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
@@ -122,24 +122,24 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
         let opaque_pass =
             opaque_pass::opaque_pass(&mut graph_context, depth_prepass.depth, &shadow_maps);
 
-        {
-            let compute_test_pipeline = asset_manager
-                .committed_asset(&static_resources.compute_test)
-                .unwrap()
-                .compute_pipeline
-                .clone();
-
-            let compute_test_pass =
-                compute_test::compute_test_pass(&mut graph_context, &compute_test_pipeline);
-
-            let _out = graph_context.graph.read_storage_buffer(
-                opaque_pass.node,
-                compute_test_pass.position_buffer,
-                RenderGraphBufferConstraint {
-                    ..Default::default()
-                },
-            );
-        }
+        // {
+        //     let compute_test_pipeline = asset_manager
+        //         .committed_asset(&static_resources.compute_test)
+        //         .unwrap()
+        //         .compute_pipeline
+        //         .clone();
+        //
+        //     let compute_test_pass =
+        //         compute_test::compute_test_pass(&mut graph_context, &compute_test_pipeline);
+        //
+        //     let _out = graph_context.graph.read_storage_buffer(
+        //         opaque_pass.node,
+        //         compute_test_pass.position_buffer,
+        //         RenderGraphBufferConstraint {
+        //             ..Default::default()
+        //         },
+        //     );
+        // }
 
         let previous_pass_color = if graph_config.enable_hdr {
             let bloom_extract_material_pass = asset_manager

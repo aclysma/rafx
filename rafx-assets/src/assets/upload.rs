@@ -641,7 +641,7 @@ impl UploadManager {
             buffer_upload_result_rx,
             buffer_upload_result_tx,
             astc4x4_supported: false,
-            bc7_supported: true,
+            bc7_supported: false,
         }
     }
 

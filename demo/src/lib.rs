@@ -35,6 +35,7 @@ use crate::assets::font::FontAsset;
 use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
 pub use demo_plugin::DemoRendererPlugin;
+use rafx::framework::RenderResources;
 
 #[cfg(all(
     feature = "profile-with-tracy-memory",
@@ -168,7 +169,7 @@ impl RenderOptions {
 
     fn default_3d() -> Self {
         RenderOptions {
-            enable_msaa: true,
+            enable_msaa: false,
             enable_hdr: true,
             enable_bloom: true,
             show_debug3d: true,

@@ -15,7 +15,7 @@ use rafx::render_features::{
     ExtractResources, RenderFeatureMask, RenderFeatureMaskBuilder, RenderPhaseMask,
     RenderPhaseMaskBuilder, RenderView, RenderViewDepthRange, RenderViewSet,
 };
-use rafx::visibility::{ObjectId, ViewFrustumArc};
+use rafx::visibility::{ObjectId, ViewFrustumArc, VisibilityConfig};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum LightId {
