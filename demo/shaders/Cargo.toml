@@ -19,6 +19,7 @@ default = []
 rafx-vulkan = ["rafx-framework/rafx-vulkan"]
 rafx-metal = ["rafx-framework/rafx-metal"]
 rafx-gles2 = ["rafx-framework/rafx-gles2"]
+rafx-gles3 = ["rafx-framework/rafx-gles2"]
 
 [dev-dependencies]
 memoffset = "0.6"

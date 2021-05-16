@@ -133,7 +133,8 @@ impl RafxShaderPackage {
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     #[doc(hidden)]
@@ -145,6 +146,8 @@ impl RafxShaderPackage {
         RafxShaderModuleDef {
             #[cfg(feature = "rafx-gles2")]
             gles2: self.gles2_module_def(),
+            #[cfg(feature = "rafx-gles3")]
+            gles3: self.gles3_module_def(),
             #[cfg(feature = "rafx-metal")]
             metal: self.metal_module_def(),
             #[cfg(feature = "rafx-vulkan")]
@@ -154,7 +157,8 @@ impl RafxShaderPackage {
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             #[doc(hidden)]
@@ -169,6 +173,16 @@ impl RafxShaderPackage {
 #[derive(Copy, Clone, Hash)]
 #[cfg(feature = "rafx-gles2")]
 pub enum RafxShaderModuleDefGles2<'a> {
+    /// GL source code
+    GlSrc(&'a str),
+}
+
+/// Used to create a RafxShaderModule
+///
+/// This enum may be populated manually or created from a RafxShaderPackage.
+#[derive(Copy, Clone, Hash)]
+#[cfg(feature = "rafx-gles3")]
+pub enum RafxShaderModuleDefGles3<'a> {
     /// GL source code
     GlSrc(&'a str),
 }
@@ -202,7 +216,8 @@ pub enum RafxShaderModuleDefVulkan<'a> {
     not(any(
         feature = "rafx-metal",
         feature = "rafx-vulkan",
-        feature = "rafx-gles2"
+        feature = "rafx-gles2",
+        feature = "rafx-gles3"
     ))
 ))]
 #[derive(Copy, Clone, Hash)]
@@ -218,6 +233,8 @@ pub enum RafxShaderModuleDefEmpty<'a> {
 pub struct RafxShaderModuleDef<'a> {
     #[cfg(feature = "rafx-gles2")]
     pub gles2: Option<RafxShaderModuleDefGles2<'a>>,
+    #[cfg(feature = "rafx-gles3")]
+    pub gles3: Option<RafxShaderModuleDefGles3<'a>>,
     #[cfg(feature = "rafx-metal")]
     pub metal: Option<RafxShaderModuleDefMetal<'a>>,
     #[cfg(feature = "rafx-vulkan")]
@@ -227,7 +244,8 @@ pub struct RafxShaderModuleDef<'a> {
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     #[doc(hidden)]

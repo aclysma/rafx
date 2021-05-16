@@ -2,6 +2,8 @@ use crate::{RafxCommandBuffer, RafxResult, RafxTexture};
 
 #[cfg(feature = "rafx-gles2")]
 use crate::gles2::RafxCommandBufferGles2;
+#[cfg(feature = "rafx-gles3")]
+use crate::gles3::RafxCommandBufferGles3;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxCommandBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -36,12 +38,15 @@ pub fn generate_mipmaps(
         RafxCommandBuffer::Metal(inner) => generate_mipmaps_metal(inner, _texture),
         #[cfg(feature = "rafx-gles2")]
         RafxCommandBuffer::Gles2(inner) => generate_mipmaps_gles2(inner, _texture),
+        #[cfg(feature = "rafx-gles3")]
+        RafxCommandBuffer::Gles3(inner) => generate_mipmaps_gles3(inner, _texture),
         #[cfg(any(
             feature = "rafx-empty",
             not(any(
                 feature = "rafx-metal",
                 feature = "rafx-vulkan",
-                feature = "rafx-gles2"
+                feature = "rafx-gles2",
+                feature = "rafx-gles3"
             ))
         ))]
         RafxCommandBuffer::Empty(_) => unimplemented!(),
@@ -74,6 +79,24 @@ fn generate_mipmaps_gles2(
     //TODO: Implement mipmaps for GL
 
     let texture = texture.gles2_texture().unwrap();
+    let target = texture.gl_target();
+    let texture_id = texture.gl_raw_image().gl_texture_id().unwrap();
+    let gl_context = command_buffer.queue().device_context().gl_context();
+    gl_context.gl_bind_texture(target, texture_id)?;
+    gl_context.gl_generate_mipmap(target)?;
+    gl_context.gl_bind_texture(target, NONE_TEXTURE)?;
+    Ok(())
+}
+
+#[cfg(feature = "rafx-gles3")]
+fn generate_mipmaps_gles3(
+    command_buffer: &RafxCommandBufferGles3,
+    texture: &RafxTexture,
+) -> RafxResult<()> {
+    use crate::gles3::NONE_TEXTURE;
+    //TODO: Implement mipmaps for GL
+
+    let texture = texture.gles3_texture().unwrap();
     let target = texture.gl_target();
     let texture_id = texture.gl_raw_image().gl_texture_id().unwrap();
     let gl_context = command_buffer.queue().device_context().gl_context();

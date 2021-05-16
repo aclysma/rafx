@@ -38,5 +38,6 @@ default = []
 rafx-vulkan = ["rafx-api/rafx-vulkan"]
 rafx-metal = ["rafx-api/rafx-metal"]
 rafx-gles2 = ["rafx-api/rafx-gles2"]
+rafx-gles3 = ["rafx-api/rafx-gles3"]
 static-vulkan = ["rafx-api/static-vulkan"]
 
