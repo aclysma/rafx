@@ -1,0 +1,17 @@
+#version 300 es
+precision mediump float;
+precision highp int;
+
+layout(std140) uniform UniformData
+{
+    highp vec4 uniform_color;
+} uniform_data;
+
+layout(location = 0) out highp vec4 out_color;
+in highp vec4 interface_var_0;
+
+void main()
+{
+    out_color = uniform_data.uniform_color;
+}
+

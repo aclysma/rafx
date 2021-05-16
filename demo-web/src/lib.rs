@@ -220,7 +220,7 @@ pub fn update_loop(
             set_index: 0,
             binding: 0,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
-            gles2_name: Some("uniform_data".to_string()),
+            gles_name: Some("uniform_data".to_string()),
             gles2_uniform_members: vec![RafxGlUniformMember::new("uniform_data.mvp", 0)],
             ..Default::default()
         };
@@ -230,8 +230,8 @@ pub fn update_loop(
             set_index: 0,
             binding: 1,
             resource_type: RafxResourceType::TEXTURE,
-            gles2_name: Some("tex".to_string()),
-            gles2_sampler_name: Some("smp".to_string()),
+            gles_name: Some("tex".to_string()),
+            gles_sampler_name: Some("smp".to_string()),
             ..Default::default()
         };
 
@@ -240,7 +240,7 @@ pub fn update_loop(
             set_index: 0,
             binding: 2,
             resource_type: RafxResourceType::SAMPLER,
-            gles2_name: Some("smp".to_string()),
+            gles_name: Some("smp".to_string()),
             ..Default::default()
         };
 

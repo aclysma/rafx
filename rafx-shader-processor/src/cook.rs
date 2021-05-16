@@ -1,5 +1,6 @@
 use rafx_api::{
-    RafxShaderPackage, RafxShaderPackageGles2, RafxShaderPackageMetal, RafxShaderPackageVulkan,
+    RafxShaderPackage, RafxShaderPackageGles2, RafxShaderPackageGles3, RafxShaderPackageMetal,
+    RafxShaderPackageVulkan,
 };
 use rafx_framework::CookedShaderPackage;
 use rafx_framework::{ReflectedEntryPoint, ShaderModuleHash};
@@ -9,6 +10,7 @@ pub(crate) fn cook_shader(
     vk_spv: Option<&Vec<u8>>,
     metal_source: Option<String>,
     gles2_source: Option<String>,
+    gles3_source: Option<String>,
 ) -> Result<Vec<u8>, String> {
     let shader_package = RafxShaderPackage {
         vk: vk_spv.map(|x| RafxShaderPackageVulkan::SpvBytes(x.to_vec())),
@@ -20,6 +22,7 @@ pub(crate) fn cook_shader(
         metal: metal_source.map(|x| RafxShaderPackageMetal::Src(x)),
 
         gles2: gles2_source.map(|x| RafxShaderPackageGles2::Src(x)),
+        gles3: gles3_source.map(|x| RafxShaderPackageGles3::Src(x)),
     };
 
     let cooked_shader = CookedShaderPackage {

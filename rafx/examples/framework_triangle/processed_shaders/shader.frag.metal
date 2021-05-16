@@ -3,14 +3,14 @@
 
 using namespace metal;
 
-struct PerViewData
+struct UniformData
 {
     float4 uniform_color;
 };
 
 struct spvDescriptorSetBuffer0
 {
-    constant PerViewData* uniform_data [[id(0)]];
+    constant UniformData* uniform_data [[id(0)]];
 };
 
 struct main0_out
