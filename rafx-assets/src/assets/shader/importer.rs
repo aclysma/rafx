@@ -32,7 +32,7 @@ impl Importer for ShaderImporterSpv {
     where
         Self: Sized,
     {
-        4
+        5
     }
 
     fn version(&self) -> u32 {
@@ -72,6 +72,7 @@ impl Importer for ShaderImporterSpv {
             metal: None,
             vk: Some(RafxShaderPackageVulkan::SpvBytes(spv_bytes)),
             gles2: None,
+            gles3: None,
         };
 
         let shader_module_hash = ShaderModuleHash::new(&shader_package);
@@ -107,7 +108,7 @@ impl Importer for ShaderImporterCooked {
     where
         Self: Sized,
     {
-        4
+        5
     }
 
     fn version(&self) -> u32 {

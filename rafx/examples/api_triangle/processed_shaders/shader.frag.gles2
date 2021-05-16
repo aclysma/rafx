@@ -2,17 +2,17 @@
 precision mediump float;
 precision highp int;
 
-struct PerViewData
+struct UniformData_UniformBlock
 {
     highp vec4 uniform_color;
 };
 
-uniform PerViewData uniform_data;
+uniform UniformData_UniformBlock UniformData;
 
 varying highp vec4 interface_var_0;
 
 void main()
 {
-    gl_FragData[0] = uniform_data.uniform_color;
+    gl_FragData[0] = UniformData.uniform_color;
 }
 

@@ -132,11 +132,17 @@ where
             &builtin_types,
             &user_types,
             &parsed_binding.parsed.type_name,
-            parsed_binding.parsed.instance_name.clone(),
+            parsed_binding.parsed.type_name.clone(),
             0,
             &mut gl_uniform_members,
         )?;
     }
+
+    let gles_name = if resource_type == RafxResourceType::UNIFORM_BUFFER {
+        parsed_binding.parsed.type_name.clone()
+    } else {
+        parsed_binding.parsed.instance_name.clone()
+    };
 
     let resource = RafxShaderResource {
         resource_type,
@@ -146,8 +152,8 @@ where
         size_in_bytes: 0,
         used_in_shader_stages: stage_flags,
         name: Some(slot_name.unwrap_or_else(|| resource.name.clone())),
-        gles2_name: Some(parsed_binding.parsed.instance_name.clone()),
-        gles2_sampler_name: None, // This is set later if necessary when we cross compile GLES 2.0 src by set_gl_sampler_name
+        gles_name: Some(gles_name),
+        gles_sampler_name: None, // This is set later if necessary when we cross compile GLES 2.0 src by set_gl_sampler_name
         gles2_uniform_members: gl_uniform_members,
     };
 
@@ -652,25 +658,23 @@ impl ShaderProcessorRefectionData {
     ) {
         for entry_point in &mut self.reflection {
             for resource in &mut entry_point.rafx_api_reflection.resources {
-                if resource.gles2_name.as_ref().unwrap().as_str() == texture_gl_name {
+                if resource.gles_name.as_ref().unwrap().as_str() == texture_gl_name {
                     assert!(resource.resource_type.intersects(
                         RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE
                     ));
-                    resource.gles2_sampler_name = Some(sampler_gl_name.to_string());
+                    resource.gles_sampler_name = Some(sampler_gl_name.to_string());
                 }
             }
 
             for layout in &mut entry_point.descriptor_set_layouts {
                 if let Some(layout) = layout {
                     for resource in &mut layout.bindings {
-                        if resource.resource.gles2_name.as_ref().unwrap().as_str()
-                            == texture_gl_name
+                        if resource.resource.gles_name.as_ref().unwrap().as_str() == texture_gl_name
                         {
                             assert!(resource.resource.resource_type.intersects(
                                 RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE
                             ));
-                            resource.resource.gles2_sampler_name =
-                                Some(sampler_gl_name.to_string());
+                            resource.resource.gles_sampler_name = Some(sampler_gl_name.to_string());
                         }
                     }
                 }

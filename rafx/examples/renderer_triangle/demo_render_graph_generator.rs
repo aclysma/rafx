@@ -39,7 +39,7 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             0,
             Some(RafxColorClearValue([0.0, 0.0, 0.0, 0.0])),
             RenderGraphImageConstraint {
-                samples: Some(RafxSampleCount::SampleCount4),
+                samples: Some(RafxSampleCount::SampleCount1),
                 format: Some(swapchain_resources.default_color_format_sdr),
                 ..Default::default()
             },

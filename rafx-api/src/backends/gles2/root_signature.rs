@@ -251,9 +251,9 @@ impl RafxRootSignatureGles2 {
                 first_location_index = Some(location_names.len() as u32);
                 for i in 0..element_count {
                     let location_name = if element_count == 1 {
-                        CString::new(resource.gles2_name.as_ref().unwrap().as_str())
+                        CString::new(resource.gles_name.as_ref().unwrap().as_str())
                     } else {
-                        CString::new(format!("{}[{}]", resource.gles2_name.as_ref().unwrap(), i))
+                        CString::new(format!("{}[{}]", resource.gles_name.as_ref().unwrap(), i))
                     };
                     location_names.push(location_name.unwrap());
                 }
@@ -290,7 +290,7 @@ impl RafxRootSignatureGles2 {
 
             let layout: &mut DescriptorSetLayoutInfo = &mut layouts[resource.set_index as usize];
 
-            let gl_name = resource.gles2_name.as_ref().unwrap();
+            let gl_name = resource.gles_name.as_ref().unwrap();
             let gl_name_cstr = CString::new(gl_name.as_str()).unwrap();
 
             if let Some(immutable_sampler_def_index) = immutable_sampler_def_index {
@@ -320,13 +320,13 @@ impl RafxRootSignatureGles2 {
                 });
 
                 let old = sampler_by_gl_name.insert(
-                    resource.gles2_name.as_ref().unwrap(),
+                    resource.gles_name.as_ref().unwrap(),
                     RafxSamplerIndexGles2::Immutable(immutable_sampler_index as u32),
                 );
                 if old.is_some() {
                     Err(format!(
                         "The sampler name {:?} was used by multiple samplers",
-                        resource.gles2_name
+                        resource.gles_name
                     ))?;
                 }
             } else {
@@ -369,7 +369,7 @@ impl RafxRootSignatureGles2 {
                     .resource_type
                     .intersects(RafxResourceType::TEXTURE | RafxResourceType::TEXTURE_READ_WRITE)
                 {
-                    if let Some(gles2_sampler_name) = &resource.gles2_sampler_name {
+                    if let Some(gles2_sampler_name) = &resource.gles_sampler_name {
                         texture_descriptor_index_sampler_names
                             .push((descriptor_index, gles2_sampler_name));
                     }
@@ -377,13 +377,13 @@ impl RafxRootSignatureGles2 {
 
                 if resource.resource_type.intersects(RafxResourceType::SAMPLER) {
                     let old = sampler_by_gl_name.insert(
-                        resource.gles2_name.as_ref().unwrap(),
+                        resource.gles_name.as_ref().unwrap(),
                         RafxSamplerIndexGles2::Mutable(descriptor_index),
                     );
                     if old.is_some() {
                         Err(format!(
                             "The sampler name {:?} was used by multiple samplers",
-                            resource.gles2_name
+                            resource.gles_name
                         ))?;
                     }
                 }

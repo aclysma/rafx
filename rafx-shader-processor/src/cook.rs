@@ -1,4 +1,7 @@
-use rafx_api::{RafxShaderPackage, RafxShaderPackageGles2, RafxShaderPackageMetal, RafxShaderPackageVulkan, RafxShaderPackageGles3};
+use rafx_api::{
+    RafxShaderPackage, RafxShaderPackageGles2, RafxShaderPackageGles3, RafxShaderPackageMetal,
+    RafxShaderPackageVulkan,
+};
 use rafx_framework::CookedShaderPackage;
 use rafx_framework::{ReflectedEntryPoint, ShaderModuleHash};
 

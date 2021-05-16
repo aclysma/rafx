@@ -1,7 +1,7 @@
 #version 450
 
 // @[internal_buffer]
-layout (set = 0, binding = 0) uniform PerViewData {
+layout (set = 0, binding = 0) uniform UniformData {
     vec4 uniform_color;
 } uniform_data;
 

@@ -1,0 +1,14 @@
+#version 300 es
+
+out vec4 interface_var_0;
+layout(location = 1) in vec4 in_color;
+layout(location = 0) in vec4 pos;
+
+void main()
+{
+    interface_var_0 = in_color;
+    gl_Position = pos;
+    gl_Position.z = 2.0 * gl_Position.z - gl_Position.w;
+    gl_Position.y = -gl_Position.y;
+}
+
