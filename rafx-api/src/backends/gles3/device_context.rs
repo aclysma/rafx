@@ -77,14 +77,26 @@ impl RafxDeviceContextGles3Inner {
         let max_vertex_attribute_count =
             gl_context.gl_get_integerv(gles3_bindings::MAX_VERTEX_ATTRIBS) as u32;
 
+        let min_uniform_buffer_offset_alignment =
+            gl_context.gl_get_integerv(gles3_bindings::UNIFORM_BUFFER_OFFSET_ALIGNMENT) as u32;
+        //let min_storage_buffer_offset_alignment = gl_context.gl_get_integerv(gles2_bindings::STORAGE_BUFFER_OFFSET_ALIGNMENT);
+
         let device_info = RafxDeviceInfo {
-            min_uniform_buffer_offset_alignment: pack_alignment,
+            min_uniform_buffer_offset_alignment,
             min_storage_buffer_offset_alignment: pack_alignment,
             upload_buffer_texture_alignment: pack_alignment,
             upload_buffer_texture_row_alignment: pack_alignment,
             supports_clamp_to_border_color: false, // requires GLES 3.2 or an extension
             max_vertex_attribute_count,
         };
+
+        // Enable sRGB framebuffers on desktop GL. This is enabled by default on ES 3.0
+        if gl_context.has_extension(&"GL_ARB_framebuffer_sRGB".to_string()) {
+            // constant does not exist in bindings because they are based on ES 3.0 and
+            // this is desktop-only
+            const FRAMEBUFFER_SRGB: u32 = 0x8DB9;
+            gl_context.gl_enable(FRAMEBUFFER_SRGB)?;
+        }
 
         let fullscreen_quad = FullscreenQuad::new(&gl_context)?;
 

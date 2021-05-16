@@ -6,8 +6,6 @@ pub use gl_context_manager::GlContextManager;
 
 pub mod conversions;
 
-pub mod reflection;
-
 pub mod gl_type_util;
 
 pub mod fullscreen_quad;

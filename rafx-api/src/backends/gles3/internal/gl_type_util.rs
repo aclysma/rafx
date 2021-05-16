@@ -2,6 +2,7 @@ use crate::gles3::gles3_bindings::types::GLenum;
 use crate::gles3::{gles3_bindings, GlContext, LocationId};
 use crate::RafxResult;
 
+#[allow(dead_code)]
 pub fn is_uniform_buffer_field_type(gl_type: GLenum) -> bool {
     match gl_type {
         gles3_bindings::INT

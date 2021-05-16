@@ -8,7 +8,7 @@ use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
 const SWAPCHAIN_IMAGE_COUNT: u32 = 3;
-const SWAPCHAIN_FORMAT: RafxFormat = RafxFormat::R8G8B8A8_UNORM;
+const SWAPCHAIN_FORMAT: RafxFormat = RafxFormat::R8G8B8A8_SRGB;
 
 pub struct RafxSwapchainGles3 {
     device_context: RafxDeviceContextGles3,

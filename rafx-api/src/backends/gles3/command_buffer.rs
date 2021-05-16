@@ -817,7 +817,6 @@ impl RafxCommandBufferGles3 {
         array_index: u32,
     ) -> RafxResult<()> {
         let root_signature = &pipeline_info.root_signature;
-        let uniform_reflection_data = root_signature.uniform_reflection_data();
         for descriptor_index in &root_signature.inner.layouts[set_index as usize].descriptors {
             let descriptor = &root_signature.inner.descriptors[descriptor_index.0 as usize];
 
@@ -922,49 +921,74 @@ impl RafxCommandBufferGles3 {
                                 gles3_bindings::TEXTURE_WRAP_T,
                                 sampler.inner.gl_address_mode_t as _,
                             )?;
+                            // compare op
+                            gl_context.gl_tex_parameteri(
+                                target,
+                                gles3_bindings::TEXTURE_COMPARE_FUNC,
+                                sampler.inner.gl_compare_op as _,
+                            )?;
+
+                            let comparison_enabled = sampler.inner.gl_compare_op
+                                != gles3_bindings::NEVER
+                                && sampler.inner.gl_compare_op != gles3_bindings::ALWAYS;
+                            if comparison_enabled {
+                                gl_context.gl_tex_parameteri(
+                                    target,
+                                    gles3_bindings::TEXTURE_COMPARE_MODE,
+                                    gles3_bindings::COMPARE_REF_TO_TEXTURE as _,
+                                )?;
+
+                                // compare op
+                                gl_context.gl_tex_parameteri(
+                                    target,
+                                    gles3_bindings::TEXTURE_COMPARE_FUNC,
+                                    sampler.inner.gl_compare_op as _,
+                                )?;
+                            } else {
+                                gl_context.gl_tex_parameteri(
+                                    target,
+                                    gles3_bindings::TEXTURE_COMPARE_MODE,
+                                    gles3_bindings::NONE as _,
+                                )?;
+                            }
                         }
                     }
                 }
                 RafxResourceType::UNIFORM_BUFFER => {
-                    if let Some(uniform_index) = descriptor.uniform_index {
-                        // Find where the buffers states begin for this resource in this descriptor set
-                        let base_buffer_state_index = array_index * data.buffer_states_per_set
-                            + descriptor.descriptor_data_offset_in_set.unwrap();
-                        for i in 0..descriptor.element_count {
-                            // Find the buffer state for this specific element of the resource
-                            let buffer_state_index = base_buffer_state_index + i;
-                            let buffer_state = data.buffer_states[buffer_state_index as usize]
-                                .as_ref()
-                                .unwrap();
+                    if let Some(uniform_block_binding) = descriptor.uniform_block_binding {
+                        if let Some(uniform_block_size) =
+                            pipeline_info.uniform_block_sizes[uniform_block_binding as usize]
+                        {
+                            // Find where the buffers states begin for this resource in this descriptor set
+                            let base_buffer_state_index = array_index * data.buffer_states_per_set
+                                + descriptor.descriptor_data_offset_in_set.unwrap();
+                            for i in 0..descriptor.element_count {
+                                // Find the buffer state for this specific element of the resource
+                                let buffer_state_index = base_buffer_state_index + i;
+                                let buffer_state = data.buffer_states[buffer_state_index as usize]
+                                    .as_ref()
+                                    .unwrap();
 
-                            // Get a ptr to the start of the uniform data we're binding
-                            let uniform_data_ptr = unsafe {
-                                buffer_state
+                                let allocation_size = buffer_state
                                     .buffer_contents
                                     .as_ref()
                                     .unwrap()
-                                    .try_as_ptr()
-                                    .expect("bound uniform buffer must be CPU-visible")
-                                    .add(buffer_state.offset as usize)
-                            };
-
-                            let fields = uniform_reflection_data.uniform_fields(uniform_index);
-                            for field in fields {
-                                // Iterate through each member, updating the values
-                                if let Some(location) =
-                                    pipeline_info.uniform_member_location(field.field_index)
-                                {
-                                    let field_ref =
-                                        unsafe { &*uniform_data_ptr.add(field.offset as usize) };
-
-                                    gl_type_util::set_uniform(
-                                        gl_context,
-                                        location,
-                                        field_ref,
-                                        field.ty,
-                                        field.element_count,
-                                    )?;
-                                }
+                                    .allocation_size();
+                                assert!(
+                                    buffer_state.offset + uniform_block_size as u64
+                                        <= allocation_size
+                                );
+                                gl_context.gl_bind_buffer_range(
+                                    gles3_bindings::UNIFORM_BUFFER,
+                                    uniform_block_binding,
+                                    buffer_state
+                                        .buffer_contents
+                                        .as_ref()
+                                        .unwrap()
+                                        .as_buffer_id(),
+                                    buffer_state.offset,
+                                    uniform_block_size,
+                                )?;
                             }
                         }
                     }

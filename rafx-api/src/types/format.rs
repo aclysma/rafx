@@ -1391,8 +1391,8 @@ impl RafxFormat {
             // RafxFormat::X8_D24_UNORM_PACK32 => None,
             RafxFormat::D32_SFLOAT => Some(gl::FLOAT),
             RafxFormat::S8_UINT => Some(gl::UNSIGNED_BYTE),
-            // RafxFormat::D16_UNORM_S8_UINT => None,
-            // RafxFormat::D24_UNORM_S8_UINT => None,
+            RafxFormat::D16_UNORM_S8_UINT => Some(gl::UNSIGNED_INT_24_8),
+            RafxFormat::D24_UNORM_S8_UINT => Some(gl::FLOAT_32_UNSIGNED_INT_24_8_REV),
             // RafxFormat::D32_SFLOAT_S8_UINT => None,
             // RafxFormat::BC1_RGB_UNORM_BLOCK => None,
             // RafxFormat::BC1_RGB_SRGB_BLOCK => None,
@@ -1455,7 +1455,7 @@ impl RafxFormat {
     pub fn gles3_texture_format_info(self) -> Option<GlTextureFormatInfo> {
         use crate::gles3::gles3_bindings as gl;
         #[rustfmt::skip]
-            let formats = match self {
+        let formats = match self {
             // RafxFormat::UNDEFINED => None,
             // RafxFormat::R4G4_UNORM_PACK8 => None,
             RafxFormat::R4G4B4A4_UNORM_PACK16 => Some((gl::RGBA, gl::RGBA)),
@@ -1465,7 +1465,7 @@ impl RafxFormat {
             RafxFormat::R5G5B5A1_UNORM_PACK16 => Some((gl::RGBA, gl::RGBA)),
             // RafxFormat::B5G5R5A1_UNORM_PACK16 => None,
             // RafxFormat::A1R5G5B5_UNORM_PACK16 => None,
-            RafxFormat::R8_UNORM => Some((gl::LUMINANCE, gl::LUMINANCE)),
+            RafxFormat::R8_UNORM => Some((gl::RED, gl::R8)),
             // RafxFormat::R8_SNORM => Some((gl::LUMINANCE, gl::LUMINANCE)),
             // RafxFormat::R8_USCALED => None,
             // RafxFormat::R8_SSCALED => None,
@@ -1485,7 +1485,7 @@ impl RafxFormat {
             // RafxFormat::R8G8B8_SSCALED => None,
             // RafxFormat::R8G8B8_UINT => None,
             // RafxFormat::R8G8B8_SINT => None,
-            // RafxFormat::R8G8B8_SRGB => None,
+            RafxFormat::R8G8B8_SRGB => Some((gl::RGB, gl::SRGB8)),
             // RafxFormat::B8G8R8_UNORM => None,
             // RafxFormat::B8G8R8_SNORM => None,
             // RafxFormat::B8G8R8_USCALED => None,
@@ -1499,7 +1499,7 @@ impl RafxFormat {
             // RafxFormat::R8G8B8A8_SSCALED => None,
             // RafxFormat::R8G8B8A8_UINT => None,
             // RafxFormat::R8G8B8A8_SINT => None,
-            // RafxFormat::R8G8B8A8_SRGB => None,
+            RafxFormat::R8G8B8A8_SRGB => Some((gl::RGBA, gl::SRGB8_ALPHA8)),
             // RafxFormat::B8G8R8A8_UNORM => None,
             // RafxFormat::B8G8R8A8_SNORM => None,
             // RafxFormat::B8G8R8A8_USCALED => None,
@@ -1565,7 +1565,7 @@ impl RafxFormat {
             // RafxFormat::R32G32B32_SFLOAT => None,
             // RafxFormat::R32G32B32A32_UINT => None,
             // RafxFormat::R32G32B32A32_SINT => None,
-            // RafxFormat::R32G32B32A32_SFLOAT => None,
+            RafxFormat::R32G32B32A32_SFLOAT => Some((gl::RGBA, gl::RGBA32F)),
             // RafxFormat::R64_UINT => None,
             // RafxFormat::R64_SINT => None,
             // RafxFormat::R64_SFLOAT => None,
@@ -1580,13 +1580,13 @@ impl RafxFormat {
             // RafxFormat::R64G64B64A64_SFLOAT => None,
             // RafxFormat::B10G11R11_UFLOAT_PACK32 => None,
             // RafxFormat::E5B9G9R9_UFLOAT_PACK32 => None,
-            // RafxFormat::D16_UNORM => None,
+            RafxFormat::D16_UNORM => Some((gl::DEPTH_COMPONENT, gl::DEPTH_COMPONENT16)),
             // RafxFormat::X8_D24_UNORM_PACK32 => None,
-            // RafxFormat::D32_SFLOAT => None,
+            RafxFormat::D32_SFLOAT => Some((gl::DEPTH_COMPONENT, gl::DEPTH_COMPONENT32F)),
             // RafxFormat::S8_UINT => None,
-            // RafxFormat::D16_UNORM_S8_UINT => None,
-            // RafxFormat::D24_UNORM_S8_UINT => None,
-            // RafxFormat::D32_SFLOAT_S8_UINT => None,
+            //RafxFormat::D16_UNORM_S8_UINT => None,
+            RafxFormat::D24_UNORM_S8_UINT => Some((gl::DEPTH_STENCIL, gl::DEPTH24_STENCIL8)),
+            RafxFormat::D32_SFLOAT_S8_UINT => Some((gl::DEPTH_STENCIL, gl::DEPTH32F_STENCIL8)),
             // RafxFormat::BC1_RGB_UNORM_BLOCK => None,
             // RafxFormat::BC1_RGB_SRGB_BLOCK => None,
             // RafxFormat::BC1_RGBA_UNORM_BLOCK => None,
@@ -2392,9 +2392,10 @@ pub mod recommended_formats {
         RafxFormat::R32G32B32A32_SFLOAT, // vulkan: 100% coverage with optimal
     ];
 
-    pub const DEPTH_FORMATS: [RafxFormat; 3] = [
+    pub const DEPTH_FORMATS: [RafxFormat; 4] = [
         RafxFormat::D32_SFLOAT,         // vulkan: 100% coverage with optimal
         RafxFormat::D32_SFLOAT_S8_UINT, // vulkan: 100% coverage with optimal
         RafxFormat::D24_UNORM_S8_UINT,
+        RafxFormat::D16_UNORM, // Most likely to be used by GL ES 2.0
     ];
 }

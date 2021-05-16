@@ -15,6 +15,9 @@ use std::ffi::{CStr, CString};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocationId(u32);
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct UniformBlockIndex(u32);
+
 pub struct GetActiveUniformMaxNameLengthHint(i32);
 
 extern "system" fn debug_callback(
@@ -258,6 +261,24 @@ impl GlContext {
         pname: u32,
     ) -> String {
         gl_get_string(&self.gles3, pname)
+    }
+
+    pub fn gl_get_stringi(
+        &self,
+        pname: u32,
+        index: u32,
+    ) -> String {
+        unsafe {
+            let str = self.gles3.GetStringi(pname, index);
+            if str.is_null() {
+                return "".to_string();
+            }
+
+            std::ffi::CStr::from_ptr(str as _)
+                .to_str()
+                .unwrap()
+                .to_string()
+        }
     }
 
     pub fn gl_viewport(
@@ -725,6 +746,80 @@ impl GlContext {
         }
 
         Ok(())
+    }
+
+    pub fn gl_get_uniform_block_index(
+        &self,
+        program_id: ProgramId,
+        block_name: &CStr,
+    ) -> RafxResult<Option<UniformBlockIndex>> {
+        unsafe {
+            let value = self
+                .gles3
+                .GetUniformBlockIndex(program_id.0, block_name.as_ptr());
+            self.check_for_error()?;
+
+            if value == gles3_bindings::INVALID_INDEX {
+                return Ok(None);
+            }
+
+            Ok(Some(UniformBlockIndex(value as u32)))
+        }
+    }
+
+    pub fn gl_get_active_uniform_blockiv(
+        &self,
+        program_id: ProgramId,
+        block_index: UniformBlockIndex,
+        pname: GLenum,
+    ) -> RafxResult<i32> {
+        unsafe {
+            let mut value = 0;
+            self.gles3
+                .GetActiveUniformBlockiv(program_id.0, block_index.0, pname, &mut value);
+            self.check_for_error()?;
+            Ok(value)
+        }
+    }
+
+    pub fn gl_uniform_block_binding(
+        &self,
+        program_id: ProgramId,
+        block_index: UniformBlockIndex,
+        binding: u32,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles3
+                .UniformBlockBinding(program_id.0, block_index.0, binding);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_bind_buffer_base(
+        &self,
+        target: GLenum,
+        binding: u32,
+        buffer: BufferId,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles3.BindBufferBase(target, binding, buffer.0);
+            self.check_for_error()
+        }
+    }
+
+    pub fn gl_bind_buffer_range(
+        &self,
+        target: GLenum,
+        binding: u32,
+        buffer: BufferId,
+        offset: u64,
+        size: u32,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles3
+                .BindBufferRange(target, binding, buffer.0, offset as _, size as _);
+            self.check_for_error()
+        }
     }
 
     pub fn gl_get_uniform_location(

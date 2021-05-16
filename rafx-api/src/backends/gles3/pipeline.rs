@@ -1,8 +1,8 @@
 use crate::gles3::conversions::{Gles3BlendState, Gles3DepthStencilState, Gles3RasterizerState};
 use crate::gles3::gles3_bindings::types::GLenum;
-use crate::gles3::reflection::FieldIndex;
 use crate::gles3::{
-    LocationId, ProgramId, RafxDeviceContextGles3, RafxRootSignatureGles3, RafxShaderGles3,
+    gles3_bindings, LocationId, ProgramId, RafxDeviceContextGles3, RafxRootSignatureGles3,
+    RafxShaderGles3,
 };
 use crate::{
     RafxComputePipelineDef, RafxDescriptorIndex, RafxGraphicsPipelineDef, RafxPipelineType,
@@ -31,7 +31,7 @@ pub(crate) struct Gles3PipelineInfo {
     pub(crate) gl_attributes: Vec<Gles3Attribute>,
     pub(crate) program_id: ProgramId,
     resource_locations: Vec<Option<LocationId>>,
-    uniform_field_locations: Vec<Option<LocationId>>,
+    pub(crate) uniform_block_sizes: Vec<Option<u32>>,
     pub(crate) root_signature: RafxRootSignatureGles3,
     pub(crate) last_descriptor_updates: TrustCell<[u64; MAX_DESCRIPTOR_SET_LAYOUTS]>,
     pub(crate) last_bound_by_command_pool: TrustCell<u32>,
@@ -46,13 +46,6 @@ impl Gles3PipelineInfo {
         let descriptor = self.root_signature.descriptor(descriptor_index).unwrap();
         &self.resource_locations
             [(descriptor.first_location_index.unwrap() + element_index) as usize]
-    }
-
-    pub fn uniform_member_location(
-        &self,
-        field_index: FieldIndex,
-    ) -> &Option<LocationId> {
-        &self.uniform_field_locations[field_index.0 as usize]
     }
 }
 
@@ -163,11 +156,30 @@ impl RafxPipelineGles3 {
             }
         }
 
-        let all_uniform_fields = gl_root_signature.inner.uniform_reflection.fields();
-        let mut uniform_field_locations = Vec::with_capacity(all_uniform_fields.len());
-        for field in all_uniform_fields {
-            uniform_field_locations
-                .push(gl_context.gl_get_uniform_location(program_id, &field.name)?);
+        let mut uniform_block_sizes =
+            Vec::with_capacity(gl_root_signature.inner.uniform_block_descriptors.len());
+        for &descriptor_index in &gl_root_signature.inner.uniform_block_descriptors {
+            let descriptor = gl_root_signature.descriptor(descriptor_index).unwrap();
+            let uniform_block_binding = descriptor.uniform_block_binding.unwrap();
+
+            let uniform_block_index =
+                gl_context.gl_get_uniform_block_index(program_id, &descriptor.gl_name)?;
+            // The uniform block might not be active in this program
+            if let Some(uniform_block_index) = uniform_block_index {
+                let size = gl_context.gl_get_active_uniform_blockiv(
+                    program_id,
+                    uniform_block_index,
+                    gles3_bindings::UNIFORM_BLOCK_DATA_SIZE,
+                )?;
+                gl_context.gl_uniform_block_binding(
+                    program_id,
+                    uniform_block_index,
+                    uniform_block_binding,
+                )?;
+                uniform_block_sizes.push(Some(size as u32));
+            } else {
+                uniform_block_sizes.push(None);
+            }
         }
 
         let gl_topology = pipeline_def
@@ -189,7 +201,7 @@ impl RafxPipelineGles3 {
             gl_attributes,
             program_id,
             resource_locations,
-            uniform_field_locations,
+            uniform_block_sizes,
             root_signature: gl_root_signature.clone(),
             last_descriptor_updates: Default::default(),
         };

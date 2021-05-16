@@ -195,11 +195,24 @@ impl RafxBufferGles3 {
         let target;
 
         let mut allocation_size = buffer_def.size;
-        if buffer_def
-            .resource_type
-            .intersects(RafxResourceType::INDEX_BUFFER | RafxResourceType::VERTEX_BUFFER)
-        {
+        if buffer_def.resource_type.intersects(
+            RafxResourceType::INDEX_BUFFER
+                | RafxResourceType::VERTEX_BUFFER
+                | RafxResourceType::UNIFORM_BUFFER,
+        ) {
             target = if buffer_def
+                .resource_type
+                .contains(RafxResourceType::UNIFORM_BUFFER)
+            {
+                allocation_size = rafx_base::memory::round_size_up_to_alignment_u64(
+                    allocation_size,
+                    device_context
+                        .device_info()
+                        .min_uniform_buffer_offset_alignment as u64,
+                );
+
+                gles3_bindings::UNIFORM_BUFFER
+            } else if buffer_def
                 .resource_type
                 .contains(RafxResourceType::VERTEX_BUFFER)
             {
@@ -231,18 +244,6 @@ impl RafxBufferGles3 {
                 buffer_contents = Some(vec![0_u8; allocation_size as _]);
             }
         } else {
-            if buffer_def
-                .resource_type
-                .intersects(RafxResourceType::UNIFORM_BUFFER)
-            {
-                allocation_size = rafx_base::memory::round_size_up_to_alignment_u64(
-                    allocation_size,
-                    device_context
-                        .device_info()
-                        .min_uniform_buffer_offset_alignment as u64,
-                );
-            }
-
             buffer_def.memory_usage = RafxMemoryUsage::CpuOnly;
             buffer_contents = Some(vec![0_u8; allocation_size as _]);
             target = gles3_bindings::NONE;

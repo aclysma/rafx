@@ -1,5 +1,4 @@
-use crate::gles3::reflection::{UniformIndex, UniformReflectionData};
-use crate::gles3::{ProgramId, RafxDeviceContextGles3, RafxSamplerGles3};
+use crate::gles3::{RafxDeviceContextGles3, RafxSamplerGles3};
 use crate::{
     RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
@@ -46,9 +45,8 @@ pub(crate) struct DescriptorInfo {
     // // --- gl-specific ---
     // //pub(crate) immutable_sampler: Option<Vec<RafxSampler>>,
 
-    // Indexed by the index of the shader passed into the root descriptor. It may not be the same
-    // for different shaders.
-    pub(crate) uniform_index: Option<UniformIndex>,
+    // Binding we will assign the uniform block to within GL
+    pub(crate) uniform_block_binding: Option<u32>,
 
     // descriptor sets contain a list of textures, buffers, etc. This indicates where in the list
     // this descriptor starts.
@@ -93,7 +91,7 @@ pub(crate) struct RafxRootSignatureGles3Inner {
     //
     // --- gl-specific ---
     pub(crate) immutable_samplers: Vec<ImmutableSampler>,
-    pub(crate) uniform_reflection: UniformReflectionData,
+    pub(crate) uniform_block_descriptors: Vec<RafxDescriptorIndex>,
     pub(crate) root_signature_id: u32,
 
     pub(crate) location_names: Vec<CString>,
@@ -148,16 +146,12 @@ impl RafxRootSignatureGles3 {
         self.inner.descriptors.get(descriptor_index.0 as usize)
     }
 
-    pub(crate) fn uniform_reflection_data(&self) -> &UniformReflectionData {
-        &self.inner.uniform_reflection
-    }
-
     #[allow(dead_code)]
-    pub(crate) fn uniform_index(
+    pub(crate) fn uniform_block_binding(
         &self,
         descriptor_index: RafxDescriptorIndex,
-    ) -> Option<UniformIndex> {
-        self.inner.descriptors[descriptor_index.0 as usize].uniform_index
+    ) -> Option<u32> {
+        self.inner.descriptors[descriptor_index.0 as usize].uniform_block_binding
     }
 
     pub fn new(
@@ -172,8 +166,7 @@ impl RafxRootSignatureGles3 {
         assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
 
         let mut immutable_samplers = vec![];
-
-        let gl_context = device_context.gl_context();
+        let mut uniform_block_descriptors = vec![];
 
         // Make sure all shaders are compatible/build lookup of shared data from them
         let (pipeline_type, merged_resources, _merged_resources_name_index_map) =
@@ -194,16 +187,6 @@ impl RafxRootSignatureGles3 {
 
         let mut descriptors = Vec::with_capacity(merged_resources.len());
         let mut name_to_descriptor_index = FnvHashMap::default();
-
-        let program_ids: Vec<ProgramId> = root_signature_def
-            .shaders
-            .iter()
-            .map(|x| x.gles3_shader().unwrap().gl_program_id())
-            .collect();
-
-        // Lookup for uniform fields
-        let uniform_reflection =
-            UniformReflectionData::new(gl_context, &program_ids, root_signature_def.shaders)?;
 
         let mut location_names = Vec::<CString>::default();
 
@@ -332,12 +315,14 @@ impl RafxRootSignatureGles3 {
             } else {
                 let descriptor_index = RafxDescriptorIndex(descriptors.len() as u32);
 
-                let uniform_index = if resource.resource_type == RafxResourceType::UNIFORM_BUFFER {
-                    // May be none if the variable is not active in any shader
-                    uniform_reflection.uniform_index(gl_name)
-                } else {
-                    None
-                };
+                let uniform_block_binding =
+                    if resource.resource_type == RafxResourceType::UNIFORM_BUFFER {
+                        let uniform_block_binding = uniform_block_descriptors.len() as u32;
+                        uniform_block_descriptors.push(descriptor_index);
+                        Some(uniform_block_binding)
+                    } else {
+                        None
+                    };
 
                 // Add it to the descriptor list
                 descriptors.push(DescriptorInfo {
@@ -349,7 +334,7 @@ impl RafxRootSignatureGles3 {
                     element_count,
                     descriptor_index,
                     // immutable_sampler: immutable_sampler.map(|x| immutable_samplers[x].clone()),
-                    uniform_index,
+                    uniform_block_binding,
                     descriptor_data_offset_in_set,
                     sampler_descriptor_index: None, // we set this later
                     gl_name: gl_name_cstr,
@@ -414,7 +399,7 @@ impl RafxRootSignatureGles3 {
             descriptors,
             name_to_descriptor_index,
             immutable_samplers,
-            uniform_reflection,
+            uniform_block_descriptors,
             root_signature_id,
             location_names,
         };
