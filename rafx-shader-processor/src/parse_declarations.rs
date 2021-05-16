@@ -145,13 +145,15 @@ pub(crate) struct ParseStructResult {
 }
 
 fn parse_array_sizes(
+    constants: &[ParseConstantResult],
     code: &[char],
     position: &mut usize,
 ) -> Result<Vec<usize>, String> {
     let mut array_sizes = Vec::<usize>::default();
     while crate::parse_source::try_consume_literal(code, position, "[").is_some() {
         crate::parse_source::skip_whitespace(code, position);
-        let array_index = crate::parse_source::try_consume_array_index(code, position).unwrap_or(0);
+        let array_index =
+            crate::parse_source::try_consume_array_index(constants, code, position).unwrap_or(0);
         array_sizes.push(array_index);
         crate::parse_source::skip_whitespace(code, position);
         crate::parse_source::try_consume_literal(code, position, "]").ok_or(format!(
@@ -165,6 +167,7 @@ fn parse_array_sizes(
 }
 
 fn parse_field(
+    constants: &[ParseConstantResult],
     code: &[char],
     position: &mut usize,
 ) -> Result<ParseFieldResult, String> {
@@ -190,7 +193,7 @@ fn parse_field(
         ));
     }
 
-    let array_sizes = parse_array_sizes(code, position)?;
+    let array_sizes = parse_array_sizes(constants, code, position)?;
 
     crate::parse_source::try_consume_literal(code, position, ";").ok_or(format!(
         "Missing ; while parsing struct field:\n{}",
@@ -205,6 +208,7 @@ fn parse_field(
 }
 
 fn try_parse_fields(
+    constants: &[ParseConstantResult],
     code: &[char],
     position: &mut usize,
 ) -> Result<Option<Arc<Vec<ParseFieldResult>>>, String> {
@@ -237,14 +241,17 @@ fn try_parse_fields(
             break;
         }
 
-        let field = parse_field(code, position)?;
+        let field = parse_field(constants, code, position)?;
         fields.push(field);
     }
 
     Ok(Some(Arc::new(fields)))
 }
 
-fn try_parse_struct(code: &[char]) -> Result<Option<ParseStructResult>, String> {
+fn try_parse_struct(
+    constants: &[ParseConstantResult],
+    code: &[char],
+) -> Result<Option<ParseStructResult>, String> {
     let mut position = 0;
 
     // Consume the struct keyword. If it's missing, assume this isn't a struct and return None
@@ -262,7 +269,7 @@ fn try_parse_struct(code: &[char]) -> Result<Option<ParseStructResult>, String> 
         ))?;
 
     crate::parse_source::skip_whitespace(code, &mut position);
-    let fields = try_parse_fields(code, &mut position)?.ok_or(format!(
+    let fields = try_parse_fields(constants, code, &mut position)?.ok_or(format!(
         "Expected {{ while parsing struct:\n{}",
         crate::parse_source::characters_to_string(&code)
     ))?;
@@ -378,6 +385,13 @@ pub(crate) struct ParseBindingResult {
     pub(crate) array_sizes: Vec<usize>,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct ParseConstantResult {
+    pub(crate) type_name: String,
+    pub(crate) instance_name: String,
+    pub(crate) value: Option<String>,
+}
+
 fn parse_layout_part(
     code: &[char],
     position: &mut usize,
@@ -441,7 +455,10 @@ fn parse_layout_parts(
     Ok(layout_parts)
 }
 
-fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String> {
+fn try_parse_binding(
+    constants: &[ParseConstantResult],
+    code: &[char],
+) -> Result<Option<ParseBindingResult>, String> {
     let mut position = 0;
 
     //
@@ -474,7 +491,7 @@ fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String
     }
 
     // Optionally get struct fields
-    let fields = try_parse_fields(code, &mut position)?;
+    let fields = try_parse_fields(constants, code, &mut position)?;
     if fields.is_some() {
         // If struct fields exist, we need one more identifier
         crate::parse_source::skip_whitespace(code, &mut position);
@@ -526,7 +543,7 @@ fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String
         )
     })?;
 
-    let array_sizes = parse_array_sizes(code, &mut position)?;
+    let array_sizes = parse_array_sizes(constants, code, &mut position)?;
 
     crate::parse_source::skip_whitespace(code, &mut position);
     crate::parse_source::try_consume_literal(code, &mut position, ";").ok_or(format!(
@@ -555,15 +572,94 @@ fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String
     }))
 }
 
-fn try_parse_const(code: &[char]) -> Result<Option<()>, String> {
+fn try_parse_const(code: &[char]) -> Result<Option<ParseConstantResult>, String> {
     let mut position = 0;
 
-    // Consume the layout keyword. If it's missing, assume this isn't a binding and return None
+    //
+    // See if it starts with const. If not, assume this isn't a constant and return None
+    //
     if crate::parse_source::try_consume_literal(code, &mut position, "const").is_none() {
         return Ok(None);
     }
 
-    Ok(Some(()))
+    crate::parse_source::skip_whitespace(code, &mut position);
+    let type_name =
+        crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
+            "Expected type name while parsing constant:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        ))?;
+
+    crate::parse_source::skip_whitespace(code, &mut position);
+    let instance_name =
+        crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
+            "Expected instance name while parsing constant:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        ))?;
+
+    crate::parse_source::skip_whitespace(code, &mut position);
+    crate::parse_source::try_consume_literal(code, &mut position, "=").ok_or(format!(
+        "Expected = while parsing constant:\n{}",
+        crate::parse_source::characters_to_string(&code)
+    ))?;
+
+    crate::parse_source::skip_whitespace(code, &mut position);
+    if crate::parse_source::is_string_at_position(code, position, "vec3")
+        || crate::parse_source::is_string_at_position(code, position, "vec4")
+        || crate::parse_source::is_string_at_position(code, position, "mat3")
+        || crate::parse_source::is_string_at_position(code, position, "mat4")
+    {
+        // TODO(dvd): We don't support mat3, mat4, vec3, vec4.
+        return Ok(Some(ParseConstantResult {
+            type_name,
+            instance_name,
+            value: None,
+        }));
+    }
+
+    // 1 or more values with + / - * between them.
+    let mut values = Vec::default();
+    loop {
+        values.push(
+            crate::parse_source::try_consume_constant_value(code, &mut position).ok_or(format!(
+                "Expected value while parsing constant:\n{}",
+                crate::parse_source::characters_to_string(&code)
+            ))?,
+        );
+
+        if crate::parse_source::try_consume_literal(code, &mut position, ";").is_some() {
+            break;
+        } else {
+            fn push_operator(
+                values: &mut Vec<String>,
+                operator: &str,
+            ) {
+                values.push(format!(" {} ", operator));
+            }
+
+            crate::parse_source::skip_whitespace(code, &mut position);
+            if crate::parse_source::try_consume_literal(code, &mut position, "+").is_some() {
+                push_operator(&mut values, "+");
+            } else if crate::parse_source::try_consume_literal(code, &mut position, "-").is_some() {
+                push_operator(&mut values, "-");
+            } else if crate::parse_source::try_consume_literal(code, &mut position, "*").is_some() {
+                push_operator(&mut values, "*");
+            } else if crate::parse_source::try_consume_literal(code, &mut position, "/").is_some() {
+                push_operator(&mut values, "/");
+            } else {
+                panic!(
+                    "Expected ; while parsing constant:\n{}",
+                    crate::parse_source::characters_to_string(&code)
+                )
+            }
+            crate::parse_source::skip_whitespace(code, &mut position);
+        }
+    }
+
+    Ok(Some(ParseConstantResult {
+        type_name,
+        instance_name,
+        value: Some(values.join("")),
+    }))
 }
 
 // fn generate_struct(result: &ParseStructResult, annotations: &StructAnnotations) -> Result<String, String> {
@@ -584,9 +680,14 @@ pub(crate) struct ParsedBindingWithAnnotations {
     pub(crate) annotations: BindingAnnotations,
 }
 
+pub(crate) struct ParsedConstantWithAnnotations {
+    pub(crate) parsed: ParseConstantResult,
+}
+
 pub(crate) struct ParseDeclarationsResult {
     pub(crate) structs: Vec<ParsedStructWithAnnotations>,
     pub(crate) bindings: Vec<ParsedBindingWithAnnotations>,
+    pub(crate) constants: Vec<ParsedConstantWithAnnotations>,
 }
 
 pub(crate) fn parse_declarations(
@@ -594,12 +695,47 @@ pub(crate) fn parse_declarations(
 ) -> Result<ParseDeclarationsResult, String> {
     let mut structs = Vec::default();
     let mut bindings = Vec::default();
+    let mut constants = Vec::default();
+
+    //
+    // Parse all constants and their annotations
+    //
+    for declaration in declarations.iter().filter(|d| d.is_constant) {
+        if let Some(const_result) = try_parse_const(&declaration.text)? {
+            //
+            // Handle const
+            //
+            //println!("Parsed a const {:?}", const_result);
+
+            if !declaration.annotations.is_empty() {
+                // TODO(dvd): Not sure what an annotation would imply for a const.
+                return Err(format!(
+                    "Annotations on consts not yet supported:\n{}",
+                    crate::parse_source::characters_to_string(&declaration.text)
+                ));
+            }
+
+            constants.push(ParsedConstantWithAnnotations {
+                parsed: const_result,
+            });
+        } else {
+            return Err(format!(
+                "Annotations applied to declaration, but the declaration could not be parsed:\n{}",
+                crate::parse_source::characters_to_string(&declaration.text)
+            ));
+        }
+    }
+
+    let parsed_constants = constants
+        .iter()
+        .map(|constant| constant.parsed.clone())
+        .collect::<Vec<_>>();
 
     //
     // Parse all declarations and their annotations
     //
-    for declaration in declarations {
-        if let Some(struct_result) = try_parse_struct(&declaration.text)? {
+    for declaration in declarations.iter().filter(|d| !d.is_constant) {
+        if let Some(struct_result) = try_parse_struct(&parsed_constants, &declaration.text)? {
             //
             // Handle struct
             //
@@ -618,7 +754,9 @@ pub(crate) fn parse_declarations(
                 parsed: struct_result,
                 annotations: struct_annotations,
             });
-        } else if let Some(binding_result) = try_parse_binding(&declaration.text)? {
+        } else if let Some(binding_result) =
+            try_parse_binding(&parsed_constants, &declaration.text)?
+        {
             //
             // Handle Binding
             //
@@ -637,16 +775,6 @@ pub(crate) fn parse_declarations(
                 parsed: binding_result,
                 annotations: binding_annotations,
             });
-        } else if try_parse_const(&declaration.text)?.is_some() {
-            //
-            // Stub for constants, not yet supported
-            //
-            if !declaration.annotations.is_empty() {
-                return Err(format!(
-                    "Annotations on consts not yet supported:\n{}",
-                    crate::parse_source::characters_to_string(&declaration.text)
-                ));
-            }
         } else {
             return Err(format!(
                 "Annotations applied to declaration, but the declaration could not be parsed:\n{}",
@@ -655,5 +783,9 @@ pub(crate) fn parse_declarations(
         }
     }
 
-    Ok(ParseDeclarationsResult { structs, bindings })
+    Ok(ParseDeclarationsResult {
+        structs,
+        bindings,
+        constants,
+    })
 }

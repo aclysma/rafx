@@ -4,6 +4,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 use super::IncludeType;
+use crate::parse_declarations::ParseConstantResult;
 
 fn range_of_line_at_position(
     code: &[char],
@@ -82,6 +83,10 @@ pub(crate) fn is_identifier_char(c: char) -> bool {
     return true;
 }
 
+pub(crate) fn is_value_char(c: char) -> bool {
+    is_identifier_char(c) || c == '-'
+}
+
 // I'm ignoring that identifiers usually can't start with numbers
 pub(crate) fn is_number_char(c: char) -> bool {
     c >= '0' && c <= '9'
@@ -150,7 +155,44 @@ pub(crate) fn try_consume_identifier(
     }
 }
 
+pub(crate) fn try_consume_constant_value(
+    code: &[char],
+    position: &mut usize,
+) -> Option<String> {
+    let begin = next_non_whitespace(code, *position);
+
+    if begin < code.len() && is_value_char(code[begin]) {
+        let mut end = next_non_identifer(code, begin + 1);
+        if code[end] == '.' {
+            end = next_non_identifer(code, end + 1);
+        }
+
+        let value = characters_to_string(&code[begin..end]);
+        *position = end;
+        Some(value)
+    } else {
+        None
+    }
+}
+
+fn recursive_try_find_constant_value(
+    constants: &[ParseConstantResult],
+    start: &ParseConstantResult,
+) -> Option<String> {
+    start.value.as_ref().and_then(|value| {
+        if let Some(constant) = constants
+            .iter()
+            .find(|constant| &constant.instance_name == value)
+        {
+            recursive_try_find_constant_value(constants, constant)
+        } else {
+            Some(value.clone())
+        }
+    })
+}
+
 pub(crate) fn try_consume_array_index(
+    constants: &[ParseConstantResult],
     code: &[char],
     position: &mut usize,
 ) -> Option<usize> {
@@ -160,9 +202,26 @@ pub(crate) fn try_consume_array_index(
 
         // If this fails, then we may have a string like "123xyz"
         let number: usize = characters_to_string(&code[begin..end]).parse().ok()?;
-
         *position = end;
         Some(number)
+    } else if begin < code.len() {
+        let end = next_non_identifer(code, begin);
+        let identifier = characters_to_string(&code[begin..end]);
+        if let Some(constant) = constants
+            .iter()
+            .find(|constant| constant.instance_name == identifier)
+        {
+            // If this fails, then we may have a string like "123xyz"
+            let number: usize = recursive_try_find_constant_value(constants, constant)
+                .expect(format!("const {} is not valid as an array index", identifier).as_str())
+                .parse()
+                .ok()?;
+
+            *position = end;
+            Some(number)
+        } else {
+            None
+        }
     } else {
         None
     }
@@ -611,6 +670,7 @@ fn pop_comments_up_to_position(
 pub struct DeclarationText {
     pub text: Vec<char>,
     pub annotations: Vec<AnnotationText>,
+    pub is_constant: bool,
 }
 
 #[derive(Debug)]
@@ -715,12 +775,18 @@ pub(crate) fn parse_shader_source_text(
             //     println!("  comment at {}: {:?}", comment.position, characters_to_string(&comment.text[..]));
             // }
 
-            let text = code[position..new_position].iter().cloned().collect();
+            let text = code[position..new_position]
+                .iter()
+                .cloned()
+                .collect::<Vec<_>>();
 
+            let is_constant = is_string_at_position(&code, position, "const");
             declarations.push(DeclarationText {
                 text,
                 annotations, //comments: relevant_comments
+                is_constant,
             });
+
             position = new_position
         } else if let Some(new_position) = try_consume_unknown_block(&code, position) {
             position = new_position

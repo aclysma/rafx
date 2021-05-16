@@ -121,6 +121,13 @@ fn generate_rust_file(
 
     rust_header(&mut rust_code);
 
+    rust_constants(
+        &mut rust_code,
+        builtin_types,
+        user_types,
+        &parsed_declarations,
+    );
+
     let structs = rust_structs(&mut rust_code, builtin_types, user_types)?;
 
     rust_binding_constants(&mut rust_code, &parsed_declarations);
@@ -649,6 +656,37 @@ fn descriptor_constant_binding_index_name(binding: &ParsedBindingWithAnnotations
     )
 }
 
+fn rust_constants(
+    rust_code: &mut Vec<String>,
+    builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
+    user_types: &FnvHashMap<String, UserType>,
+    parsed_declarations: &ParseDeclarationsResult,
+) {
+    use heck::ShoutySnakeCase;
+
+    for c in &parsed_declarations.constants {
+        if let Some(value) = c.parsed.value.as_ref() {
+            let type_name = get_rust_type_name(
+                builtin_types,
+                user_types,
+                &c.parsed.type_name,
+                MemoryLayout::C,
+                &[],
+            )
+            .unwrap();
+
+            rust_code.push(format!(
+                "pub const {}: {} = {};\n",
+                c.parsed.instance_name.to_shouty_snake_case(),
+                type_name,
+                get_rust_value(&value, &type_name).unwrap()
+            ));
+        }
+    }
+
+    rust_code.push("\n".to_string());
+}
+
 fn rust_binding_constants(
     rust_code: &mut Vec<String>,
     parsed_declarations: &ParseDeclarationsResult,
@@ -684,6 +722,25 @@ fn rust_tests(
             rust_code.push(generate_struct_test_code(&s));
         }
         rust_code.push("}\n".to_string());
+    }
+}
+
+fn get_rust_value(
+    value: &str,
+    rust_type_name: &str,
+) -> Result<String, String> {
+    match rust_type_name {
+        "bool" => Ok(value.to_string()),
+        "f32" =>  Ok(format!("{}f32", value.chars().filter(|c| *c != 'f').collect::<String>())),
+        "i8" =>  Ok(value.to_string()),
+        "u8" =>  Ok(value.to_string()),
+        "i16" =>  Ok(value.to_string()),
+        "u16" =>  Ok(value.to_string()),
+        "i32" =>  Ok(value.to_string()),
+        "u32" =>  Ok(value.to_string()),
+        "i64" =>  Ok(value.to_string()),
+        "u64" =>  Ok(value.to_string()),
+        _ => Err(format!("Could not find type {}. Is this a built in type that needs to be added to get_rust_value()?", rust_type_name))
     }
 }
 
