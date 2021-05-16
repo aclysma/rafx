@@ -3,12 +3,15 @@
     not(any(
         feature = "rafx-metal",
         feature = "rafx-vulkan",
-        feature = "rafx-gles2"
+        feature = "rafx-gles2",
+        feature = "rafx-gles3"
     ))
 ))]
 use crate::empty::RafxFenceEmpty;
 #[cfg(feature = "rafx-gles2")]
 use crate::gles2::RafxFenceGles2;
+#[cfg(feature = "rafx-gles3")]
+use crate::gles3::RafxFenceGles3;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxFenceMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -34,12 +37,15 @@ pub enum RafxFence {
     Metal(RafxFenceMetal),
     #[cfg(feature = "rafx-gles2")]
     Gles2(RafxFenceGles2),
+    #[cfg(feature = "rafx-gles3")]
+    Gles3(RafxFenceGles3),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     Empty(RafxFenceEmpty),
@@ -59,12 +65,15 @@ impl RafxFence {
             RafxFence::Metal(inner) => inner.get_fence_status(),
             #[cfg(feature = "rafx-gles2")]
             RafxFence::Gles2(inner) => inner.get_fence_status(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxFence::Gles3(inner) => inner.get_fence_status(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxFence::Empty(inner) => inner.get_fence_status(),
@@ -80,12 +89,15 @@ impl RafxFence {
             RafxFence::Metal(inner) => inner.wait(),
             #[cfg(feature = "rafx-gles2")]
             RafxFence::Gles2(inner) => inner.wait(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxFence::Gles3(inner) => inner.wait(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxFence::Empty(inner) => inner.wait(),
@@ -103,12 +115,15 @@ impl RafxFence {
             RafxFence::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxFence::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxFence::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxFence::Empty(_) => None,
@@ -126,12 +141,15 @@ impl RafxFence {
             RafxFence::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
             RafxFence::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxFence::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxFence::Empty(_) => None,
@@ -149,12 +167,41 @@ impl RafxFence {
             RafxFence::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxFence::Gles2(inner) => Some(inner),
+            #[cfg(feature = "rafx-gles3")]
+            RafxFence::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxFence::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gles3")]
+    pub fn gles3_fence(&self) -> Option<&RafxFenceGles3> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxFence::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxFence::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxFence::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxFence::Gles3(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxFence::Empty(_) => None,
@@ -168,7 +215,8 @@ impl RafxFence {
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     pub fn empty_fence(&self) -> Option<&RafxFenceEmpty> {
@@ -179,12 +227,15 @@ impl RafxFence {
             RafxFence::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxFence::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxFence::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxFence::Empty(inner) => Some(inner),

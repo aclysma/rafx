@@ -1,7 +1,8 @@
 #[cfg(any(
     feature = "rafx-metal",
     feature = "rafx-vulkan",
-    feature = "rafx-gles2"
+    feature = "rafx-gles2",
+    feature = "rafx-gles3"
 ))]
 use crate::{
     RafxImmutableSamplerKey, RafxImmutableSamplers, RafxPipelineType, RafxResult,
@@ -11,7 +12,8 @@ use crate::{
 #[cfg(any(
     feature = "rafx-metal",
     feature = "rafx-vulkan",
-    feature = "rafx-gles2"
+    feature = "rafx-gles2",
+    feature = "rafx-gles3"
 ))]
 pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
@@ -19,14 +21,16 @@ pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
 #[cfg(any(
     feature = "rafx-metal",
     feature = "rafx-vulkan",
-    feature = "rafx-gles2"
+    feature = "rafx-gles2",
+    feature = "rafx-gles3"
 ))]
 use fnv::FnvHashMap;
 
 #[cfg(any(
     feature = "rafx-metal",
     feature = "rafx-vulkan",
-    feature = "rafx-gles2"
+    feature = "rafx-gles2",
+    feature = "rafx-gles3"
 ))]
 pub(crate) fn find_immutable_sampler_index(
     samplers: &[RafxImmutableSamplers],
@@ -57,7 +61,8 @@ pub(crate) fn find_immutable_sampler_index(
 #[cfg(any(
     feature = "rafx-metal",
     feature = "rafx-vulkan",
-    feature = "rafx-gles2"
+    feature = "rafx-gles2",
+    feature = "rafx-gles3"
 ))]
 pub(crate) fn merge_resources<'a>(
     root_signature_def: &RafxRootSignatureDef<'a>
@@ -210,7 +215,8 @@ pub(crate) fn merge_resources<'a>(
 #[cfg(any(
     feature = "rafx-metal",
     feature = "rafx-vulkan",
-    feature = "rafx-gles2"
+    feature = "rafx-gles2",
+    feature = "rafx-gles3"
 ))]
 fn verify_resources_can_overlap(
     resource: &RafxShaderResource,

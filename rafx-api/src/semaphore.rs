@@ -3,12 +3,15 @@
     not(any(
         feature = "rafx-metal",
         feature = "rafx-vulkan",
-        feature = "rafx-gles2"
+        feature = "rafx-gles2",
+        feature = "rafx-gles3"
     ))
 ))]
 use crate::empty::RafxSemaphoreEmpty;
 #[cfg(feature = "rafx-gles2")]
 use crate::gles2::RafxSemaphoreGles2;
+#[cfg(feature = "rafx-gles3")]
+use crate::gles3::RafxSemaphoreGles3;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxSemaphoreMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -29,12 +32,15 @@ pub enum RafxSemaphore {
     Metal(RafxSemaphoreMetal),
     #[cfg(feature = "rafx-gles2")]
     Gles2(RafxSemaphoreGles2),
+    #[cfg(feature = "rafx-gles3")]
+    Gles3(RafxSemaphoreGles3),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     Empty(RafxSemaphoreEmpty),
@@ -52,12 +58,15 @@ impl RafxSemaphore {
             RafxSemaphore::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxSemaphore::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxSemaphore::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxSemaphore::Empty(_) => None,
@@ -75,12 +84,15 @@ impl RafxSemaphore {
             RafxSemaphore::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
             RafxSemaphore::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxSemaphore::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxSemaphore::Empty(_) => None,
@@ -98,12 +110,41 @@ impl RafxSemaphore {
             RafxSemaphore::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxSemaphore::Gles2(inner) => Some(inner),
+            #[cfg(feature = "rafx-gles3")]
+            RafxSemaphore::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxSemaphore::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying gl API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gles3")]
+    pub fn gles3_semaphore(&self) -> Option<&RafxSemaphoreGles3> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxSemaphore::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxSemaphore::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxSemaphore::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxSemaphore::Gles3(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxSemaphore::Empty(_) => None,
@@ -117,7 +158,8 @@ impl RafxSemaphore {
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     pub fn empty_semaphore(&self) -> Option<&RafxSemaphoreEmpty> {
@@ -128,12 +170,15 @@ impl RafxSemaphore {
             RafxSemaphore::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxSemaphore::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxSemaphore::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxSemaphore::Empty(inner) => Some(inner),

@@ -3,12 +3,15 @@
     not(any(
         feature = "rafx-metal",
         feature = "rafx-vulkan",
-        feature = "rafx-gles2"
+        feature = "rafx-gles2",
+        feature = "rafx-gles3"
     ))
 ))]
 use crate::empty::RafxTextureEmpty;
 #[cfg(feature = "rafx-gles2")]
 use crate::gles2::RafxTextureGles2;
+#[cfg(feature = "rafx-gles3")]
+use crate::gles3::RafxTextureGles3;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxTextureMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -26,12 +29,15 @@ pub enum RafxTexture {
     Metal(RafxTextureMetal),
     #[cfg(feature = "rafx-gles2")]
     Gles2(RafxTextureGles2),
+    #[cfg(feature = "rafx-gles3")]
+    Gles3(RafxTextureGles3),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     Empty(RafxTextureEmpty),
@@ -47,12 +53,15 @@ impl RafxTexture {
             RafxTexture::Metal(inner) => inner.texture_def(),
             #[cfg(feature = "rafx-gles2")]
             RafxTexture::Gles2(inner) => inner.texture_def(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxTexture::Gles3(inner) => inner.texture_def(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxTexture::Empty(inner) => inner.texture_def(),
@@ -70,12 +79,15 @@ impl RafxTexture {
             RafxTexture::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxTexture::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxTexture::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxTexture::Empty(_) => None,
@@ -93,12 +105,15 @@ impl RafxTexture {
             RafxTexture::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
             RafxTexture::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxTexture::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxTexture::Empty(_) => None,
@@ -116,12 +131,41 @@ impl RafxTexture {
             RafxTexture::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxTexture::Gles2(inner) => Some(inner),
+            #[cfg(feature = "rafx-gles3")]
+            RafxTexture::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxTexture::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying metal API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gles3")]
+    pub fn gles3_texture(&self) -> Option<&RafxTextureGles3> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxTexture::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxTexture::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxTexture::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxTexture::Gles3(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxTexture::Empty(_) => None,
@@ -135,7 +179,8 @@ impl RafxTexture {
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     pub fn empty_texture(&self) -> Option<&RafxTextureEmpty> {
@@ -146,12 +191,15 @@ impl RafxTexture {
             RafxTexture::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxTexture::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxTexture::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxTexture::Empty(inner) => Some(inner),

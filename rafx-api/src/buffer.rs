@@ -3,12 +3,15 @@
     not(any(
         feature = "rafx-metal",
         feature = "rafx-vulkan",
-        feature = "rafx-gles2"
+        feature = "rafx-gles2",
+        feature = "rafx-gles3"
     ))
 ))]
 use crate::empty::RafxBufferEmpty;
 #[cfg(feature = "rafx-gles2")]
 use crate::gles2::RafxBufferGles2;
+#[cfg(feature = "rafx-gles3")]
+use crate::gles3::RafxBufferGles3;
 #[cfg(feature = "rafx-metal")]
 use crate::metal::RafxBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
@@ -26,12 +29,15 @@ pub enum RafxBuffer {
     Metal(RafxBufferMetal),
     #[cfg(feature = "rafx-gles2")]
     Gles2(RafxBufferGles2),
+    #[cfg(feature = "rafx-gles3")]
+    Gles3(RafxBufferGles3),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     Empty(RafxBufferEmpty),
@@ -52,12 +58,15 @@ impl RafxBuffer {
             RafxBuffer::Metal(inner) => inner.copy_to_host_visible_buffer(data),
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(inner) => inner.copy_to_host_visible_buffer(data),
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(inner) => inner.copy_to_host_visible_buffer(data),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(inner) => inner.copy_to_host_visible_buffer(data),
@@ -84,12 +93,17 @@ impl RafxBuffer {
             RafxBuffer::Gles2(inner) => {
                 inner.copy_to_host_visible_buffer_with_offset(data, buffer_byte_offset)
             }
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(inner) => {
+                inner.copy_to_host_visible_buffer_with_offset(data, buffer_byte_offset)
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(inner) => {
@@ -107,12 +121,15 @@ impl RafxBuffer {
             RafxBuffer::Metal(inner) => inner.buffer_def(),
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(inner) => inner.buffer_def(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(inner) => inner.buffer_def(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(inner) => inner.buffer_def(),
@@ -134,12 +151,15 @@ impl RafxBuffer {
             RafxBuffer::Metal(inner) => inner.map_buffer(),
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(inner) => inner.map_buffer(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(inner) => inner.map_buffer(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(inner) => inner.map_buffer(),
@@ -160,12 +180,15 @@ impl RafxBuffer {
             RafxBuffer::Metal(inner) => inner.unmap_buffer(),
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(inner) => inner.unmap_buffer(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(inner) => inner.unmap_buffer(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(inner) => inner.unmap_buffer(),
@@ -181,12 +204,15 @@ impl RafxBuffer {
             RafxBuffer::Metal(inner) => inner.mapped_memory(),
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(inner) => inner.mapped_memory(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(inner) => inner.mapped_memory(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(inner) => inner.mapped_memory(),
@@ -204,12 +230,15 @@ impl RafxBuffer {
             RafxBuffer::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(_) => None,
@@ -227,12 +256,15 @@ impl RafxBuffer {
             RafxBuffer::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(_) => None,
@@ -250,12 +282,41 @@ impl RafxBuffer {
             RafxBuffer::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(inner) => Some(inner),
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxBuffer::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying gl API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gles3")]
+    pub fn gles3_buffer(&self) -> Option<&RafxBufferGles3> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxBuffer::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxBuffer::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxBuffer::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(_) => None,
@@ -269,7 +330,8 @@ impl RafxBuffer {
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     pub fn empty_buffer(&self) -> Option<&RafxBufferEmpty> {
@@ -280,12 +342,15 @@ impl RafxBuffer {
             RafxBuffer::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxBuffer::Empty(inner) => Some(inner),

@@ -3,12 +3,15 @@
     not(any(
         feature = "rafx-metal",
         feature = "rafx-vulkan",
-        feature = "rafx-gles2"
+        feature = "rafx-gles2",
+        feature = "rafx-gles3"
     ))
 ))]
 use crate::empty::RafxApiEmpty;
 #[cfg(feature = "rafx-gles2")]
 use crate::gles2::{RafxApiDefGles2, RafxApiGles2};
+#[cfg(feature = "rafx-gles3")]
+use crate::gles3::{RafxApiDefGles3, RafxApiGles3};
 #[cfg(feature = "rafx-metal")]
 use crate::metal::{RafxApiDefMetal, RafxApiMetal};
 #[cfg(feature = "rafx-vulkan")]
@@ -34,12 +37,15 @@ pub enum RafxApi {
     Metal(RafxApiMetal),
     #[cfg(feature = "rafx-gles2")]
     Gles2(RafxApiGles2),
+    #[cfg(feature = "rafx-gles3")]
+    Gles3(RafxApiGles3),
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     Empty(RafxApiEmpty),
@@ -66,6 +72,11 @@ impl RafxApi {
         #[cfg(feature = "rafx-vulkan")]
         {
             return RafxApi::new_vulkan(_window, _api_def, &Default::default());
+        }
+
+        #[cfg(feature = "rafx-gles3")]
+        {
+            return RafxApi::new_gles3(_window, _api_def, &Default::default());
         }
 
         #[cfg(feature = "rafx-gles2")]
@@ -112,7 +123,7 @@ impl RafxApi {
         )?))
     }
 
-    /// Initialize a device using vulkan
+    /// Initialize a device using OpenGL ES 2.0
     #[cfg(feature = "rafx-gles2")]
     pub fn new_gles2(
         window: &dyn HasRawWindowHandle,
@@ -120,6 +131,18 @@ impl RafxApi {
         gl_api_def: &RafxApiDefGles2,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Gles2(RafxApiGles2::new(
+            window, api_def, gl_api_def,
+        )?))
+    }
+
+    /// Initialize a device using OpenGL ES 3.0
+    #[cfg(feature = "rafx-gles3")]
+    pub fn new_gles3(
+        window: &dyn HasRawWindowHandle,
+        api_def: &RafxApiDef,
+        gl_api_def: &RafxApiDefGles3,
+    ) -> RafxResult<Self> {
+        Ok(RafxApi::Gles3(RafxApiGles3::new(
             window, api_def, gl_api_def,
         )?))
     }
@@ -141,12 +164,15 @@ impl RafxApi {
             RafxApi::Metal(inner) => RafxDeviceContext::Metal(inner.device_context().clone()),
             #[cfg(feature = "rafx-gles2")]
             RafxApi::Gles2(inner) => RafxDeviceContext::Gles2(inner.device_context().clone()),
+            #[cfg(feature = "rafx-gles3")]
+            RafxApi::Gles3(inner) => RafxDeviceContext::Gles3(inner.device_context().clone()),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxApi::Empty(inner) => RafxDeviceContext::Empty(inner.device_context().clone()),
@@ -166,12 +192,15 @@ impl RafxApi {
             RafxApi::Metal(inner) => inner.destroy(),
             #[cfg(feature = "rafx-gles2")]
             RafxApi::Gles2(inner) => inner.destroy(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxApi::Gles3(inner) => inner.destroy(),
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxApi::Empty(inner) => inner.destroy(),
@@ -189,12 +218,15 @@ impl RafxApi {
             RafxApi::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxApi::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxApi::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxApi::Empty(_) => None,
@@ -212,12 +244,15 @@ impl RafxApi {
             RafxApi::Metal(inner) => Some(inner),
             #[cfg(feature = "rafx-gles2")]
             RafxApi::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxApi::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxApi::Empty(_) => None,
@@ -235,12 +270,41 @@ impl RafxApi {
             RafxApi::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxApi::Gles2(inner) => Some(inner),
+            #[cfg(feature = "rafx-gles3")]
+            RafxApi::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxApi::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying gl API object. This provides access to any internally created
+    /// metal objects.
+    #[cfg(feature = "rafx-gles3")]
+    pub fn gles3_api(&self) -> Option<&RafxApiGles3> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxApi::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxApi::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxApi::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxApi::Gles3(inner) => Some(inner),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxApi::Empty(_) => None,
@@ -254,7 +318,8 @@ impl RafxApi {
         not(any(
             feature = "rafx-metal",
             feature = "rafx-vulkan",
-            feature = "rafx-gles2"
+            feature = "rafx-gles2",
+            feature = "rafx-gles3"
         ))
     ))]
     pub fn empty_api(&self) -> Option<&RafxApiEmpty> {
@@ -265,12 +330,15 @@ impl RafxApi {
             RafxApi::Metal(_) => None,
             #[cfg(feature = "rafx-gles2")]
             RafxApi::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxApi::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
-                    feature = "rafx-gles2"
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
                 ))
             ))]
             RafxApi::Empty(inner) => Some(inner),

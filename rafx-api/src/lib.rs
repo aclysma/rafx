@@ -245,12 +245,18 @@ pub use backends::gles2;
 #[cfg(feature = "rafx-gles2")]
 pub use backends::gles2::RafxApiDefGles2;
 
+#[cfg(feature = "rafx-gles3")]
+pub use backends::gles3;
+#[cfg(feature = "rafx-gles3")]
+pub use backends::gles3::RafxApiDefGles3;
+
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
         feature = "rafx-metal",
         feature = "rafx-vulkan",
-        feature = "rafx-gles2"
+        feature = "rafx-gles2",
+        feature = "rafx-gles3"
     ))
 ))]
 pub use backends::empty;
