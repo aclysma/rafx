@@ -457,8 +457,8 @@ fn process_glsl_shader(
             gles2_ast.set_name(
                 resource.base_type_id,
                 &format!("{}_UniformBlock", block_name),
-            );
-            gles2_ast.set_name(resource.id, &block_name);
+            )?;
+            gles2_ast.set_name(resource.id, &block_name)?;
         }
 
         rename_gl_samplers(&mut reflected_data, &mut gles2_ast)?;
