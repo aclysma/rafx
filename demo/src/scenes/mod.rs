@@ -20,18 +20,23 @@ use rafxmark_scene::RafxmarkScene;
 mod many_sprites_scene;
 use many_sprites_scene::ManySpritesScene;
 
+mod many_cubes_scene;
+use many_cubes_scene::ManyCubesScene;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Scene {
     Shadows,
     Sprite,
     Rafxmark,
+    ManyCubes,
     ManySprites,
 }
 
-pub const ALL_SCENES: [Scene; 4] = [
+pub const ALL_SCENES: [Scene; 5] = [
     Scene::Shadows,
     Scene::Sprite,
     Scene::Rafxmark,
+    Scene::ManyCubes,
     Scene::ManySprites,
 ];
 
@@ -52,6 +57,7 @@ fn create_scene(
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
         Scene::Sprite => Box::new(SpriteScene::new(world, resources)),
         Scene::Rafxmark => Box::new(RafxmarkScene::new(world, resources)),
+        Scene::ManyCubes => Box::new(ManyCubesScene::new(world, resources)),
         Scene::ManySprites => Box::new(ManySpritesScene::new(world, resources)),
     }
 }

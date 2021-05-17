@@ -81,6 +81,7 @@ impl<'a> ViewVisibilityJob<'a> {
         }) {
             let object_id = visibility_object.object_id();
             for render_object in visibility_object.render_objects() {
+                // TODO(dvd): Should this use a render phase bitmask as another culling option?
                 let render_feature_index = render_object.render_feature_index();
                 if !render_feature_mask.is_included_index(render_feature_index) {
                     continue;
