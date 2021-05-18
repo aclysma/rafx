@@ -2,9 +2,8 @@
 
 use crate::assets::gltf::MeshAsset;
 use crate::components::{
-    DirectionalLightComponent, MeshComponent, PointLightComponent, TransformComponent,
+    MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
 };
-use crate::components::{SpotLightComponent, VisibilityComponent};
 use crate::features::debug3d::Debug3DRenderFeature;
 use crate::features::imgui::ImGuiRenderFeature;
 use crate::features::mesh::{
@@ -16,18 +15,16 @@ use crate::features::sprite::SpriteRenderFeature;
 use crate::features::text::TextRenderFeature;
 use crate::features::tile_layer::TileLayerRenderFeature;
 use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
-    WireframeRenderPhase,
+    OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
 use crate::time::TimeState;
 use crate::RenderOptions;
 use distill::loader::handle::Handle;
-use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
-use rafx::rafx_visibility::{AsyncCommand, DepthRange, PerspectiveParameters, Projection};
+use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
 use rafx::render_features::{
     RenderFeatureFlagMaskBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
     RenderViewDepthRange,
@@ -196,7 +193,6 @@ fn update_main_view_3d(
     viewports_resource: &mut ViewportsResource,
 ) {
     let phase_mask_builder = RenderPhaseMaskBuilder::default()
-        .add_render_phase::<DepthPrepassRenderPhase>()
         .add_render_phase::<OpaqueRenderPhase>()
         .add_render_phase::<TransparentRenderPhase>()
         .add_render_phase::<WireframeRenderPhase>()
@@ -204,9 +200,7 @@ fn update_main_view_3d(
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
         .add_render_feature::<MeshRenderFeature>()
-        .add_render_feature::<ImGuiRenderFeature>()
-        .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<TileLayerRenderFeature>();
+        .add_render_feature::<ImGuiRenderFeature>();
 
     if render_options.show_text {
         feature_mask_builder = feature_mask_builder.add_render_feature::<TextRenderFeature>();

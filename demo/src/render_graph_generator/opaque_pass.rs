@@ -3,6 +3,7 @@ use rafx::graph::*;
 
 use super::RenderGraphContext;
 use super::ShadowMapImageResources;
+use crate::render_graph_generator::depth_prepass::DepthPrepass;
 use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
 use rafx::render_features::RenderJobCommandBufferContext;
 
@@ -14,7 +15,7 @@ pub(super) struct OpaquePass {
 
 pub(super) fn opaque_pass(
     context: &mut RenderGraphContext,
-    depth_prepass: RenderGraphImageUsageId,
+    depth_prepass: Option<DepthPrepass>,
     shadow_map_passes: &[ShadowMapImageResources],
 ) -> OpaquePass {
     let node = context
@@ -36,10 +37,10 @@ pub(super) fn opaque_pass(
 
     let mut shadow_maps = Vec::with_capacity(shadow_map_passes.len());
 
-    if context.graph_config.show_surfaces {
+    if context.graph_config.show_surfaces && depth_prepass.is_some() {
         context.graph.read_depth_attachment(
             node,
-            depth_prepass,
+            depth_prepass.unwrap().depth,
             RenderGraphImageConstraint {
                 samples: Some(context.graph_config.samples),
                 format: Some(context.graph_config.depth_format),

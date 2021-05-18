@@ -1,5 +1,5 @@
 use crate::features::mesh::MeshUntexturedRenderFeatureFlag;
-use crate::phases::{OpaqueRenderPhase, WireframeRenderPhase};
+use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, WireframeRenderPhase};
 use distill::loader::handle::Handle;
 use rafx::api::RafxResult;
 use rafx::assets::MaterialInstanceAsset;
@@ -127,10 +127,11 @@ impl MeshAssetPart {
         render_phase_index: RenderPhaseIndex,
     ) -> usize {
         if render_phase_index == OpaqueRenderPhase::render_phase_index() {
+            let offset = !view.phase_is_relevant::<DepthPrepassRenderPhase>() as usize;
             return if view.feature_flag_is_relevant::<MeshUntexturedRenderFeatureFlag>() {
-                self.untextured_pass_index
+                self.untextured_pass_index + offset
             } else {
-                self.textured_pass_index
+                self.textured_pass_index + offset
             };
         } else if render_phase_index == WireframeRenderPhase::render_phase_index() {
             self.wireframe_pass_index
@@ -210,10 +211,32 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
                     .find_pass_by_name("mesh textured")
                     .expect("could not find `mesh textured` pass in mesh part material");
 
+                let textured_z_pass_index = material_instance
+                    .material
+                    .find_pass_by_name("mesh textured z")
+                    .expect("could not find `mesh textured z` pass in mesh part material");
+
+                assert_eq!(
+                    textured_z_pass_index,
+                    textured_pass_index + 1,
+                    "expected `mesh textured z` to occur after `mesh textured`"
+                );
+
                 let untextured_pass_index = material_instance
                     .material
                     .find_pass_by_name("mesh untextured")
                     .expect("could not find `mesh untextured` pass in mesh part material");
+
+                let untextured_z_pass_index = material_instance
+                    .material
+                    .find_pass_by_name("mesh untextured z")
+                    .expect("could not find `mesh untextured z` pass in mesh part material");
+
+                assert_eq!(
+                    untextured_z_pass_index,
+                    untextured_pass_index + 1,
+                    "expected `mesh untextured z` to occur after `mesh untextured`"
+                );
 
                 let wireframe_pass_index = material_instance
                     .material
