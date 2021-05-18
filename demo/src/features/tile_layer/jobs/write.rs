@@ -2,7 +2,8 @@ use rafx::render_feature_write_job_prelude::*;
 
 use super::*;
 use rafx::api::{
-    RafxIndexBufferBinding, RafxIndexType, RafxPrimitiveTopology, RafxVertexBufferBinding,
+    RafxIndexBufferBinding, RafxIndexType, RafxPrimitiveTopology, RafxVertexAttributeRate,
+    RafxVertexBufferBinding,
 };
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
 use std::marker::PhantomData;
@@ -18,7 +19,7 @@ pub struct TileLayerVertex {
 lazy_static::lazy_static! {
     pub static ref TILE_LAYER_VERTEX_LAYOUT : VertexDataSetLayout = {
         use rafx::api::RafxFormat;
-        VertexDataLayout::build_vertex_layout(&TileLayerVertex::default(), |builder, vertex| {
+        VertexDataLayout::build_vertex_layout(&TileLayerVertex::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
             builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
             builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
         }).into_set(RafxPrimitiveTopology::TriangleList)

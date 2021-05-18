@@ -118,7 +118,7 @@ pub struct MeshAssetPart {
     pub index_buffer_size_in_bytes: u32,
 }
 
-const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
+pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
 
 impl MeshAssetPart {
     pub fn get_material_pass_index(

@@ -185,7 +185,6 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
             frame_packet.into_concrete(),
             submit_packet.into_concrete(),
             self.render_objects.clone(),
-            self.max_num_mesh_parts,
         )
     }
 

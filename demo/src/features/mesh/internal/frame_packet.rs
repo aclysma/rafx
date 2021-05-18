@@ -5,8 +5,9 @@ use crate::components::{
 };
 use glam::{Quat, Vec3};
 use rafx::framework::render_features::render_features_prelude::*;
-use rafx::framework::{DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc};
-use std::sync::Arc;
+use rafx::framework::{
+    BufferResource, DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc,
+};
 
 pub struct MeshRenderFeatureTypes;
 
@@ -72,8 +73,8 @@ pub type MeshViewPacket = ViewPacket<MeshRenderFeatureTypes>;
 pub const MAX_SHADOW_MAPS_2D: usize = 32;
 pub const MAX_SHADOW_MAPS_CUBE: usize = 16;
 
-pub struct MeshPartDescriptorSetPair {
-    pub depth_descriptor_set: DescriptorSetArc,
+#[derive(Clone)]
+pub struct MeshPartMaterialDescriptorSetPair {
     pub textured_descriptor_set: Option<DescriptorSetArc>,
     pub untextured_descriptor_set: Option<DescriptorSetArc>,
 }
@@ -88,11 +89,11 @@ pub struct MeshPerFrameSubmitData {
         [shaders::mesh_textured_frag::ShadowMapCubeDataStd140; MAX_SHADOW_MAPS_CUBE],
     pub shadow_map_cube_image_views: [Option<ResourceArc<ImageViewResource>>; MAX_SHADOW_MAPS_CUBE],
     pub shadow_map_image_index_remap: [Option<usize>; MAX_SHADOW_MAPS_2D + MAX_SHADOW_MAPS_CUBE],
-    pub mesh_part_descriptor_sets: Arc<AtomicOnceCellStack<MeshPartDescriptorSetPair>>,
+    pub model_matrix_buffer: TrustCell<Option<ResourceArc<BufferResource>>>,
 }
 
 pub struct MeshRenderObjectInstanceSubmitData {
-    pub mesh_part_descriptor_set_index: usize,
+    pub model_matrix_offset: usize,
 }
 
 impl SubmitPacketData for MeshRenderFeatureTypes {
@@ -118,7 +119,9 @@ pub struct MeshPerViewSubmitData {
 }
 
 pub struct MeshDrawCall {
-    pub mesh_asset: MeshAsset,
+    pub render_object_instance_id: RenderObjectInstanceId,
+    pub material_pass_resource: ResourceArc<MaterialPassResource>,
+    pub per_material_descriptor_set: Option<DescriptorSetArc>,
     pub mesh_part_index: usize,
-    pub mesh_part_descriptor_set_index: usize,
+    pub model_matrix_offset: usize,
 }

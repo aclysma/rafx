@@ -5,15 +5,13 @@ use crate::components::{
     MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
 };
 use crate::features::debug3d::Debug3DRenderFeature;
-use crate::features::imgui::ImGuiRenderFeature;
+use crate::features::egui::EguiRenderFeature;
 use crate::features::mesh::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
     MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
 };
 use crate::features::skybox::SkyboxRenderFeature;
-use crate::features::sprite::SpriteRenderFeature;
 use crate::features::text::TextRenderFeature;
-use crate::features::tile_layer::TileLayerRenderFeature;
 use crate::phases::{
     OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
@@ -74,7 +72,7 @@ impl ManyCubesScene {
                 .visible_bounds
         };
 
-        let cull_model = CullModel::VisibleBounds(load_visible_bounds(&container_1_asset));
+        let visible_bounds = load_visible_bounds(&container_1_asset);
 
         //
         // Add some meshes
@@ -88,6 +86,7 @@ impl ManyCubesScene {
                     rng.gen_range(-50.0, 50.0),
                     0.0,
                 ),
+                scale: glam::Vec3::new(0.5, 0.5, 0.5),
                 ..Default::default()
             };
 
@@ -99,8 +98,10 @@ impl ManyCubesScene {
             let mut entry = world.entry(entity).unwrap();
             entry.add_component(VisibilityComponent {
                 visibility_object_handle: {
-                    let handle = visibility_region
-                        .register_dynamic_object(ObjectId::from(entity), cull_model.clone());
+                    let handle = visibility_region.register_dynamic_object(
+                        ObjectId::from(entity),
+                        CullModel::VisibleBounds(visible_bounds.clone()),
+                    );
                     handle.set_transform(
                         transform_component.translation,
                         transform_component.rotation,
@@ -127,7 +128,7 @@ impl ManyCubesScene {
         super::add_point_light(
             resources,
             world,
-            glam::Vec3::new(4., -4., 5.),
+            glam::Vec3::new(-4., -4., 10.),
             PointLightComponent {
                 color: [1.0, 1.0, 1.0, 1.0].into(),
                 intensity: 200.0,
@@ -143,6 +144,7 @@ impl ManyCubesScene {
 }
 
 impl super::TestScene for ManyCubesScene {
+    #[profiling::function]
     fn update(
         &mut self,
         world: &mut World,
@@ -168,19 +170,16 @@ impl super::TestScene for ManyCubesScene {
                 Read<VisibilityComponent>,
                 Read<MeshComponent>,
             )>::query();
+
             for (transform, visibility, _mesh) in query.iter_mut(world) {
                 transform.translation +=
-                    glam::Vec3::new(1.0, 0.0, 0.0) * time_state.previous_update_dt();
+                    glam::Vec3::new(-1.0, 0.0, 0.0) * time_state.previous_update_dt();
 
                 visibility.visibility_object_handle.set_transform(
                     transform.translation,
                     transform.rotation,
                     transform.scale,
                 );
-
-                // TODO(dvd): support changing material
-                // material.base_color =
-                //     Color::BLUE * Vec3::splat((3.0 * time.seconds_since_startup() as f32).sin());
             }
         }
     }
@@ -200,7 +199,7 @@ fn update_main_view_3d(
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
         .add_render_feature::<MeshRenderFeature>()
-        .add_render_feature::<ImGuiRenderFeature>();
+        .add_render_feature::<EguiRenderFeature>();
 
     if render_options.show_text {
         feature_mask_builder = feature_mask_builder.add_render_feature::<TextRenderFeature>();

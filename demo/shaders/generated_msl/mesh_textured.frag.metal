@@ -120,11 +120,6 @@ struct MaterialDataUbo
     MaterialData data;
 };
 
-struct PerObjectData
-{
-    float4x4 model;
-};
-
 struct spvDescriptorSetBuffer0
 {
     constant PerViewData* per_view_data [[id(0)]];
@@ -140,11 +135,6 @@ struct spvDescriptorSetBuffer1
     texture2d<float> normal_texture [[id(3)]];
     texture2d<float> occlusion_texture [[id(4)]];
     texture2d<float> emissive_texture [[id(5)]];
-};
-
-struct spvDescriptorSetBuffer2
-{
-    constant PerObjectData* per_object_data [[id(0)]];
 };
 
 struct main0_out
@@ -519,7 +509,7 @@ float4 pbr_main(thread texture2d<float> normal_texture, thread sampler smp, cons
     return out_color;
 }
 
-fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]], constant spvDescriptorSetBuffer2& spvDescriptorSet2 [[buffer(2)]])
+fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]])
 {
     constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
     constexpr sampler smp_depth(filter::linear, mip_filter::linear, compare_func::greater, max_anisotropy(16));

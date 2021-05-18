@@ -9,7 +9,6 @@ use rafx_visibility::{
 };
 use std::sync::Arc;
 
-#[derive(Clone)]
 pub enum CullModel {
     Mesh(PolygonSoup),
     VisibleBounds(VisibleBounds),

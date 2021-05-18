@@ -4,7 +4,7 @@ use super::*;
 use rafx::api::{
     RafxBarrierQueueTransition, RafxCmdCopyBufferToTextureParams, RafxFormat,
     RafxIndexBufferBinding, RafxIndexType, RafxPrimitiveTopology, RafxResourceState,
-    RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxTextureBarrier, RafxVertexAttributeRate, RafxVertexBufferBinding,
 };
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
 use std::marker::PhantomData;
@@ -20,7 +20,7 @@ pub struct TextVertex {
 
 lazy_static::lazy_static! {
     pub static ref TEXT_VERTEX_LAYOUT : VertexDataSetLayout = {
-        VertexDataLayout::build_vertex_layout(&TextVertex::default(), |builder, vertex| {
+        VertexDataLayout::build_vertex_layout(&TextVertex::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
             builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
             builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
             builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);

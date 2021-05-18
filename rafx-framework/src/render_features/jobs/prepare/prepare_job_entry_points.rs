@@ -101,6 +101,12 @@ impl<'prepare, 'entry, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>>
         &self.frame_packet.per_frame_data.get()
     }
 
+    pub fn per_frame_submit_data(
+        &self
+    ) -> &<PrepareJobEntryPointsT::SubmitPacketDataT as SubmitPacketData>::PerFrameSubmitData {
+        &self.submit_packet.per_frame_submit_data().get()
+    }
+
     pub fn frame_packet(&self) -> &FramePacket<PrepareJobEntryPointsT::FramePacketDataT> {
         self.frame_packet
     }

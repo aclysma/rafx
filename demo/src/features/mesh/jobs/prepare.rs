@@ -8,23 +8,18 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, WireframeRenderPhase,
 };
 use rafx::base::resource_map::ReadBorrow;
-use rafx::framework::{
-    DescriptorSetAllocatorRef, MaterialPassResource, ResourceArc, ResourceContext,
-};
+use rafx::framework::{MaterialPassResource, ResourceArc, ResourceContext};
 
 use glam::Mat4;
+use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 use rafx::renderer::InvalidResources;
-use shaders::depth_vert::PerObjectDataUniform as ShadowPerObjectShaderParam;
 use shaders::depth_vert::PerViewDataUniform as ShadowPerViewShaderParam;
-use shaders::mesh_textured_frag::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
 use shaders::mesh_textured_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
     shaders::mesh_textured_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
 const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 =
     shaders::mesh_textured_frag::PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX as u32;
-const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 =
-    shaders::mesh_textured_frag::PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX as u32;
 
 struct PreparedDirectionalLight<'a> {
     light: &'a DirectionalLightComponent,
@@ -45,12 +40,13 @@ struct PreparedSpotLight<'a> {
 
 pub struct MeshPrepareJob<'prepare> {
     resource_context: ResourceContext,
+    device_context: RafxDeviceContext,
     requires_textured_descriptor_sets: bool,
     requires_untextured_descriptor_sets: bool,
     depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     shadow_map_data: ReadBorrow<'prepare, ShadowMapResource>,
     invalid_resources: ReadBorrow<'prepare, InvalidResources>,
-    mesh_part_descriptor_sets: Arc<AtomicOnceCellStack<MeshPartDescriptorSetPair>>,
+    render_object_instance_transforms: Arc<AtomicOnceCellStack<[[f32; 4]; 4]>>,
     render_objects: MeshRenderObjectSet,
 }
 
@@ -60,27 +56,7 @@ impl<'prepare> MeshPrepareJob<'prepare> {
         frame_packet: Box<MeshFramePacket>,
         submit_packet: Box<MeshSubmitPacket>,
         render_objects: MeshRenderObjectSet,
-        max_num_mesh_parts: Option<usize>,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
-        let max_num_mesh_part_descriptor_sets = if let Some(max_num_mesh_parts) = max_num_mesh_parts
-        {
-            frame_packet.render_object_instances().len() * max_num_mesh_parts
-        } else {
-            // NOTE(dvd): Count exact number of mesh parts required.
-            let mut num_mesh_part_descriptor_sets = 0;
-            for id in 0..frame_packet.render_object_instances().len() {
-                // TODO(dvd): This could be replaced by an `iter` or `as_slice` method on the data.
-                if let Some(extracted_data) = frame_packet.render_object_instances_data().get(id) {
-                    let mesh_parts = &extracted_data.mesh_asset.inner.mesh_parts;
-                    num_mesh_part_descriptor_sets += mesh_parts
-                        .iter()
-                        .filter(|mesh_part| mesh_part.is_some())
-                        .count();
-                }
-            }
-            num_mesh_part_descriptor_sets
-        };
-
         let mut requires_textured_descriptor_sets = false;
         let mut requires_untextured_descriptor_sets = false;
 
@@ -97,11 +73,12 @@ impl<'prepare> MeshPrepareJob<'prepare> {
 
         Arc::new(PrepareJob::new(
             Self {
-                resource_context: { prepare_context.resource_context.clone() },
-                mesh_part_descriptor_sets: {
+                resource_context: prepare_context.resource_context.clone(),
+                device_context: prepare_context.device_context.clone(),
+                render_object_instance_transforms: {
                     // TODO: Ideally this would use an allocator from the `prepare_context`.
                     Arc::new(AtomicOnceCellStack::with_capacity(
-                        max_num_mesh_part_descriptor_sets,
+                        frame_packet.render_object_instances().len(),
                     ))
                 },
                 depth_material_pass: {
@@ -127,10 +104,6 @@ impl<'prepare> MeshPrepareJob<'prepare> {
     }
 }
 
-pub struct MeshPrepareJobContext {
-    descriptor_set_allocator: DescriptorSetAllocatorRef,
-}
-
 impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
     fn begin_per_frame_prepare(
         &self,
@@ -144,7 +117,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
             shadow_map_cube_data: Default::default(),
             shadow_map_cube_image_views: Default::default(),
             shadow_map_image_index_remap: [None; MAX_SHADOW_MAPS_CUBE + MAX_SHADOW_MAPS_2D],
-            mesh_part_descriptor_sets: self.mesh_part_descriptor_sets.clone(),
+            model_matrix_buffer: Default::default(),
         });
 
         let shadow_map_data = &self.shadow_map_data;
@@ -239,7 +212,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
 
     fn prepare_render_object_instance(
         &self,
-        job_context: &mut MeshPrepareJobContext,
+        _job_context: &mut DefaultJobContext,
         context: &PrepareRenderObjectInstanceContext<'prepare, '_, Self>,
     ) {
         let render_object_instance = context.render_object_instance_data();
@@ -254,102 +227,12 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
             extracted_data.translation,
         );
 
-        let num_mesh_parts = extracted_data.mesh_asset.inner.mesh_parts.len();
-        let start_index = self
-            .mesh_part_descriptor_sets
-            .reserve_uninit(num_mesh_parts);
+        let model = world_transform.to_cols_array_2d();
+        let model_matrix_offset = self.render_object_instance_transforms.push(model);
 
         context.set_render_object_instance_submit_data(MeshRenderObjectInstanceSubmitData {
-            mesh_part_descriptor_set_index: start_index,
+            model_matrix_offset,
         });
-
-        let model = world_transform.to_cols_array_2d();
-        let descriptor_set_allocator = &mut job_context.descriptor_set_allocator;
-        let depth_descriptor_set = {
-            let per_object_data = ShadowPerObjectShaderParam { model };
-
-            let per_instance_descriptor_set_layout = &self
-                .depth_material_pass
-                .as_ref()
-                .unwrap()
-                .get_raw()
-                .descriptor_set_layouts[PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
-
-            descriptor_set_allocator
-                .create_descriptor_set_with_writer(
-                    per_instance_descriptor_set_layout,
-                    shaders::depth_vert::DescriptorSet2Args {
-                        per_object_data: &per_object_data,
-                    },
-                )
-                .unwrap()
-        };
-
-        for (mesh_part_index, mesh_part) in extracted_data
-            .mesh_asset
-            .inner
-            .mesh_parts
-            .iter()
-            .enumerate()
-        {
-            if mesh_part.is_none() {
-                continue;
-            }
-
-            let mesh_part = mesh_part.as_ref().unwrap();
-            let textured_descriptor_set = if self.requires_textured_descriptor_sets {
-                let per_object_data = MeshPerObjectFragmentShaderParam { model };
-
-                let per_instance_descriptor_set_layout =
-                    &mesh_part.material_instance.material.passes[mesh_part.textured_pass_index]
-                        .material_pass_resource
-                        .get_raw()
-                        .descriptor_set_layouts
-                        [PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
-
-                descriptor_set_allocator
-                    .create_descriptor_set_with_writer(
-                        per_instance_descriptor_set_layout,
-                        shaders::mesh_textured_frag::DescriptorSet2Args {
-                            per_object_data: &per_object_data,
-                        },
-                    )
-                    .ok()
-            } else {
-                None
-            };
-
-            let untextured_descriptor_set = if self.requires_untextured_descriptor_sets {
-                let per_object_data = MeshPerObjectFragmentShaderParam { model };
-
-                let per_instance_descriptor_set_layout =
-                    &mesh_part.material_instance.material.passes[mesh_part.untextured_pass_index]
-                        .material_pass_resource
-                        .get_raw()
-                        .descriptor_set_layouts
-                        [PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
-
-                descriptor_set_allocator
-                    .create_descriptor_set_with_writer(
-                        per_instance_descriptor_set_layout,
-                        shaders::mesh_textured_frag::DescriptorSet2Args {
-                            per_object_data: &per_object_data,
-                        },
-                    )
-                    .ok()
-            } else {
-                None
-            };
-
-            self.mesh_part_descriptor_sets.set(
-                start_index + mesh_part_index,
-                MeshPartDescriptorSetPair {
-                    depth_descriptor_set: depth_descriptor_set.clone(),
-                    textured_descriptor_set,
-                    untextured_descriptor_set,
-                },
-            );
-        }
     }
 
     fn prepare_render_object_instance_per_view(
@@ -358,12 +241,14 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
         context: &PrepareRenderObjectInstancePerViewContext<'prepare, '_, Self>,
     ) {
         let view = context.view();
+
         if let Some(extracted_data) = context.render_object_instance_data() {
             let distance = (view.eye_position() - extracted_data.translation).length_squared();
-            let mesh_asset = &extracted_data.mesh_asset;
-            let mesh_part_descriptor_set_index = context
+            let render_object_instance_id = context.render_object_instance_id();
+
+            let model_matrix_offset = context
                 .render_object_instance_submit_data()
-                .mesh_part_descriptor_set_index;
+                .model_matrix_offset;
 
             for (mesh_part_index, mesh_part) in extracted_data
                 .mesh_asset
@@ -376,24 +261,18 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                     continue;
                 }
 
+                let mesh_part = mesh_part.as_ref().unwrap();
+
+                let depth_material_pass = self.depth_material_pass.as_ref().unwrap();
+
                 if view.phase_is_relevant::<DepthPrepassRenderPhase>() {
                     context.push_submit_node::<DepthPrepassRenderPhase>(
                         MeshDrawCall {
-                            mesh_asset: mesh_asset.clone(),
+                            render_object_instance_id,
+                            material_pass_resource: depth_material_pass.clone(),
+                            per_material_descriptor_set: None,
                             mesh_part_index,
-                            mesh_part_descriptor_set_index,
-                        },
-                        0,
-                        distance,
-                    );
-                }
-
-                if view.phase_is_relevant::<OpaqueRenderPhase>() {
-                    context.push_submit_node::<OpaqueRenderPhase>(
-                        MeshDrawCall {
-                            mesh_asset: mesh_asset.clone(),
-                            mesh_part_index,
-                            mesh_part_descriptor_set_index,
+                            model_matrix_offset,
                         },
                         0,
                         distance,
@@ -403,9 +282,38 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                 if view.phase_is_relevant::<ShadowMapRenderPhase>() {
                     context.push_submit_node::<ShadowMapRenderPhase>(
                         MeshDrawCall {
-                            mesh_asset: mesh_asset.clone(),
+                            render_object_instance_id,
+                            material_pass_resource: depth_material_pass.clone(),
+                            per_material_descriptor_set: None,
                             mesh_part_index,
-                            mesh_part_descriptor_set_index,
+                            model_matrix_offset,
+                        },
+                        0,
+                        distance,
+                    );
+                }
+
+                if view.phase_is_relevant::<OpaqueRenderPhase>() {
+                    let material_pass_resource = mesh_part
+                        .get_material_pass_resource(view, OpaqueRenderPhase::render_phase_index())
+                        .clone();
+
+                    let per_material_descriptor_set = Some(
+                        mesh_part
+                            .get_material_descriptor_set(
+                                view,
+                                OpaqueRenderPhase::render_phase_index(),
+                            )
+                            .clone(),
+                    );
+
+                    context.push_submit_node::<OpaqueRenderPhase>(
+                        MeshDrawCall {
+                            render_object_instance_id,
+                            material_pass_resource,
+                            per_material_descriptor_set,
+                            mesh_part_index,
+                            model_matrix_offset,
                         },
                         0,
                         distance,
@@ -415,11 +323,29 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                 if view.phase_is_relevant::<WireframeRenderPhase>()
                     && view.feature_flag_is_relevant::<MeshWireframeRenderFeatureFlag>()
                 {
+                    let material_pass_resource = mesh_part
+                        .get_material_pass_resource(
+                            view,
+                            WireframeRenderPhase::render_phase_index(),
+                        )
+                        .clone();
+
+                    let per_material_descriptor_set = Some(
+                        mesh_part
+                            .get_material_descriptor_set(
+                                view,
+                                OpaqueRenderPhase::render_phase_index(),
+                            )
+                            .clone(),
+                    );
+
                     context.push_submit_node::<WireframeRenderPhase>(
                         MeshDrawCall {
-                            mesh_asset: mesh_asset.clone(),
+                            render_object_instance_id,
+                            material_pass_resource,
+                            per_material_descriptor_set,
                             mesh_part_index,
-                            mesh_part_descriptor_set_index,
+                            model_matrix_offset,
                         },
                         0,
                         distance,
@@ -682,6 +608,48 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
             });
     }
 
+    fn end_per_frame_prepare(
+        &self,
+        context: &PreparePerFrameContext<'prepare, '_, Self>,
+    ) {
+        let mut model_matrix_buffer = context
+            .per_frame_submit_data()
+            .model_matrix_buffer
+            .borrow_mut();
+
+        *model_matrix_buffer = if self.render_object_instance_transforms.len() > 0 {
+            let dyn_resource_allocator_set =
+                self.resource_context.create_dyn_resource_allocator_set();
+
+            let vertex_buffer_size = self.render_object_instance_transforms.len() as u64
+                * std::mem::size_of::<MeshModelMatrix>() as u64;
+
+            let vertex_buffer = self
+                .device_context
+                .create_buffer(&RafxBufferDef {
+                    size: vertex_buffer_size,
+                    memory_usage: RafxMemoryUsage::CpuToGpu,
+                    resource_type: RafxResourceType::VERTEX_BUFFER,
+                    ..Default::default()
+                })
+                .unwrap();
+
+            // TODO(dvd): Get rid of this copy.
+            let mut data = Vec::with_capacity(self.render_object_instance_transforms.len());
+            for ii in 0..data.capacity() {
+                data.push(self.render_object_instance_transforms.get(ii).clone());
+            }
+
+            vertex_buffer
+                .copy_to_host_visible_buffer(data.as_slice())
+                .unwrap();
+
+            Some(dyn_resource_allocator_set.insert_buffer(vertex_buffer))
+        } else {
+            None
+        };
+    }
+
     fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
         super::render_feature_debug_constants()
     }
@@ -690,10 +658,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
         super::render_feature_index()
     }
 
-    fn new_render_object_instance_job_context(&'prepare self) -> Option<MeshPrepareJobContext> {
-        Some(MeshPrepareJobContext {
-            descriptor_set_allocator: self.resource_context.create_descriptor_set_allocator(),
-        })
+    fn new_render_object_instance_job_context(&'prepare self) -> Option<DefaultJobContext> {
+        Some(DefaultJobContext::new())
     }
 
     fn new_render_object_instance_per_view_job_context(
@@ -702,7 +668,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
         Some(DefaultJobContext::new())
     }
 
-    type RenderObjectInstanceJobContextT = MeshPrepareJobContext;
+    type RenderObjectInstanceJobContextT = DefaultJobContext;
     type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
 
     type FramePacketDataT = MeshRenderFeatureTypes;
