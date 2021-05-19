@@ -47,6 +47,7 @@ pub struct RenderGraphConfig {
     pub samples: RafxSampleCount,
     pub enable_hdr: bool,
     pub enable_bloom: bool,
+    pub show_surfaces: bool,
     pub blur_pass_count: usize,
 }
 
@@ -100,6 +101,7 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
                 enable_hdr: render_options.enable_hdr,
                 swapchain_format,
                 enable_bloom: render_options.enable_bloom,
+                show_surfaces: render_options.show_surfaces,
                 blur_pass_count: render_options.blur_pass_count,
             }
         };

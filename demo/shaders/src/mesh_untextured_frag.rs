@@ -274,16 +274,6 @@ pub const SHADOW_MAP_IMAGES_CUBE_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const SHADOW_MAP_IMAGES_CUBE_DESCRIPTOR_BINDING_INDEX: usize = 4;
 pub const PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX: usize = 1;
 pub const PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
-pub const BASE_COLOR_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
-pub const BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 1;
-pub const METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
-pub const METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 2;
-pub const NORMAL_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
-pub const NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 3;
-pub const OCCLUSION_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
-pub const OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 4;
-pub const EMISSIVE_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
-pub const EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 5;
 pub const PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX: usize = 2;
 pub const PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
 
@@ -428,11 +418,6 @@ impl DescriptorSet0 {
 
 pub struct DescriptorSet1Args<'a> {
     pub per_material_data: &'a MaterialDataUboUniform,
-    pub base_color_texture: &'a ResourceArc<ImageViewResource>,
-    pub metallic_roughness_texture: &'a ResourceArc<ImageViewResource>,
-    pub normal_texture: &'a ResourceArc<ImageViewResource>,
-    pub occlusion_texture: &'a ResourceArc<ImageViewResource>,
-    pub emissive_texture: &'a ResourceArc<ImageViewResource>,
 }
 
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
@@ -467,26 +452,6 @@ impl<'a> DescriptorSetWriter<'a> for DescriptorSet1Args<'a> {
             PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
             args.per_material_data,
         );
-        descriptor_set.set_image(
-            BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.base_color_texture,
-        );
-        descriptor_set.set_image(
-            METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.metallic_roughness_texture,
-        );
-        descriptor_set.set_image(
-            NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.normal_texture,
-        );
-        descriptor_set.set_image(
-            OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.occlusion_texture,
-        );
-        descriptor_set.set_image(
-            EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.emissive_texture,
-        );
     }
 }
 
@@ -501,26 +466,6 @@ impl DescriptorSet1 {
             PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
             args.per_material_data,
         );
-        descriptor_set.set_image(
-            BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.base_color_texture,
-        );
-        descriptor_set.set_image(
-            METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.metallic_roughness_texture,
-        );
-        descriptor_set.set_image(
-            NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.normal_texture,
-        );
-        descriptor_set.set_image(
-            OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.occlusion_texture,
-        );
-        descriptor_set.set_image(
-            EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            args.emissive_texture,
-        );
     }
 
     pub fn set_args(
@@ -528,11 +473,6 @@ impl DescriptorSet1 {
         args: DescriptorSet1Args,
     ) {
         self.set_per_material_data(args.per_material_data);
-        self.set_base_color_texture(args.base_color_texture);
-        self.set_metallic_roughness_texture(args.metallic_roughness_texture);
-        self.set_normal_texture(args.normal_texture);
-        self.set_occlusion_texture(args.occlusion_texture);
-        self.set_emissive_texture(args.emissive_texture);
     }
 
     pub fn set_per_material_data(
@@ -542,56 +482,6 @@ impl DescriptorSet1 {
         self.0.set_buffer_data(
             PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
             per_material_data,
-        );
-    }
-
-    pub fn set_base_color_texture(
-        &mut self,
-        base_color_texture: &ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            base_color_texture,
-        );
-    }
-
-    pub fn set_metallic_roughness_texture(
-        &mut self,
-        metallic_roughness_texture: &ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            metallic_roughness_texture,
-        );
-    }
-
-    pub fn set_normal_texture(
-        &mut self,
-        normal_texture: &ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            normal_texture,
-        );
-    }
-
-    pub fn set_occlusion_texture(
-        &mut self,
-        occlusion_texture: &ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            occlusion_texture,
-        );
-    }
-
-    pub fn set_emissive_texture(
-        &mut self,
-        emissive_texture: &ResourceArc<ImageViewResource>,
-    ) {
-        self.0.set_image(
-            EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
-            emissive_texture,
         );
     }
 

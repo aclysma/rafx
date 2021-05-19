@@ -1,6 +1,12 @@
-#version 450
-#extension GL_ARB_separate_shader_objects : enable
-#extension GL_ARB_shading_language_420pack : enable
+layout (location = 0) in vec3 in_position_vs;
+layout (location = 1) in vec3 in_normal_vs;
+// w component is a sign value (-1 or +1) indicating handedness of the tangent basis
+// see GLTF spec for more info
+layout (location = 2) in vec3 in_tangent_vs;
+layout (location = 3) in vec3 in_binormal_vs;
+layout (location = 4) in vec2 in_uv;
+layout (location = 5) in vec4 in_position_ws;
+layout (location = 6) in mat3 in_model_view;
 
 // References:
 // https://www.3dgep.com/forward-plus/
@@ -59,9 +65,9 @@ const float SHADOW_MAP_BIAS_MAX = 0.01;
 const float SHADOW_MAP_BIAS_MIN = 0.0005;
 
 //#define PCF_DISABLED
-//#define PCF_SAMPLE_1
-//#define PCF_SAMPLE_9
-#define PCF_SAMPLE_25
+// #define PCF_SAMPLE_1
+#define PCF_SAMPLE_9
+// #define PCF_SAMPLE_25
 
 #define PCF_CUBE_SAMPLE_1
 //#define PCF_CUBE_SAMPLE_8
@@ -70,20 +76,7 @@ const float SHADOW_MAP_BIAS_MIN = 0.0005;
 
 //#define DEBUG_RENDER_PERCENT_LIT
 
-#include "mesh.glsl"
-
-layout (location = 0) in vec3 in_position_vs;
-layout (location = 1) in vec3 in_normal_vs;
-// w component is a sign value (-1 or +1) indicating handedness of the tangent basis
-// see GLTF spec for more info
-layout (location = 2) in vec3 in_tangent_vs;
-layout (location = 3) in vec3 in_binormal_vs;
-layout (location = 4) in vec2 in_uv;
-layout (location = 5) in vec4 in_position_ws;
-layout (location = 6) in mat3 in_model_view;
-
-layout (location = 0) out vec4 out_color;
-
+#ifdef PBR_TEXTURES
 // Passing texture/sampler through like this breaks reflection metadata so for now just grab global data
 vec4 normal_map(
     mat3 tangent_binormal_normal,
@@ -99,6 +92,7 @@ vec4 normal_map(
     normal = tangent_binormal_normal * normal;
     return normalize(vec4(normal, 0.0));
 }
+#endif
 
 //TODO: Set up dummy texture so all bindings can be populated
 //TODO: Fix bias adjustment in spotlights?
@@ -129,7 +123,7 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
     float near_plane = per_view_data.shadow_map_cube_data[index].cube_map_projection_near_z;
     float far_plane = per_view_data.shadow_map_cube_data[index].cube_map_projection_far_z;
     vec3 light_to_surface_ws = in_position_ws.xyz - light_position_ws;
-    
+
     // Tune with single-PCF
     // bias_angle_factor is high when the light angle is almost orthogonal to the normal
     vec3 surface_to_light_dir_vs = normalize(light_position_vs - in_position_vs);
@@ -140,7 +134,7 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
     // slope scale depth bias is better or the max(MIN_BIAS, MAX_BIAS * slope_factor) is better
     // Good info here: https://digitalrune.github.io/DigitalRune-Documentation/html/3f4d959e-9c98-4a97-8d85-7a73c26145d7.htm
     //float bias = max(
-    //    SHADOW_MAP_BIAS_MAX * bias_angle_factor * bias_angle_factor * bias_angle_factor, 
+    //    SHADOW_MAP_BIAS_MAX * bias_angle_factor * bias_angle_factor * bias_angle_factor,
     //    0.03 //SHADOW_MAP_BIAS_MIN * 0.5
     //) * POINT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER;
 
@@ -149,15 +143,15 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
 
 #ifdef PCF_CUBE_SAMPLE_1
     float depth_of_surface = calculate_cubemap_equivalent_depth(
-        light_to_surface_ws, 
-        near_plane, 
+        light_to_surface_ws,
+        near_plane,
         far_plane
     );
 
     float shadow = texture(
-        samplerCubeShadow(shadow_map_images_cube[index], smp_depth), 
+        samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
         vec4(
-            light_to_surface_ws, 
+            light_to_surface_ws,
             depth_of_surface + bias
         )
     ).r;
@@ -168,7 +162,7 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
 
     vec3 sampleOffsetDirections[20] = vec3[]
     (
-        vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1), 
+        vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1),
         vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
         vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
         vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
@@ -184,20 +178,20 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
     {
         vec3 offset = sampleOffsetDirections[i] * diskRadius;
         float depth_of_surface = calculate_cubemap_equivalent_depth(
-            light_to_surface_ws + offset, 
-            near_plane, 
+            light_to_surface_ws + offset,
+            near_plane,
             far_plane
         );
 
         shadow += texture(
-            samplerCubeShadow(shadow_map_images_cube[index], smp_depth), 
+            samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
             vec4(
-                light_to_surface_ws + offset, 
+                light_to_surface_ws + offset,
                 depth_of_surface + bias
             )
         ).r;
     }
-    shadow /= float(samples);  
+    shadow /= float(samples);
 #endif
 
 #ifdef PCF_CUBE_SAMPLE_8
@@ -212,15 +206,15 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
             for(float z = -offset; z < offset; z += offset / (samples * 0.5))
             {
                 float depth_of_surface = calculate_cubemap_equivalent_depth(
-                    light_to_surface_ws + vec3(x, y, z), 
-                    near_plane, 
+                    light_to_surface_ws + vec3(x, y, z),
+                    near_plane,
                     far_plane
                 );
 
                 shadow += texture(
-                    samplerCubeShadow(shadow_map_images_cube[index], smp_depth), 
+                    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
                     vec4(
-                        light_to_surface_ws + vec3(x, y, z), 
+                        light_to_surface_ws + vec3(x, y, z),
                         depth_of_surface + bias
                     )
                 ).r;
@@ -242,15 +236,15 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
             for(float z = -offset; z < offset; z += offset / (samples * 0.5))
             {
                 float depth_of_surface = calculate_cubemap_equivalent_depth(
-                    light_to_surface_ws + vec3(x, y, z), 
-                    near_plane, 
+                    light_to_surface_ws + vec3(x, y, z),
+                    near_plane,
                     far_plane
                 );
 
                 shadow += texture(
-                    samplerCubeShadow(shadow_map_images_cube[index], smp_depth), 
+                    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
                     vec4(
-                        light_to_surface_ws + vec3(x, y, z), 
+                        light_to_surface_ws + vec3(x, y, z),
                         depth_of_surface + bias
                     )
                 ).r;
@@ -383,8 +377,8 @@ float attenuate_light(
 }
 
 vec4 diffuse_light(
-    vec3 surface_to_light_dir, 
-    vec3 normal, 
+    vec3 surface_to_light_dir,
+    vec3 normal,
     vec4 light_color
 ) {
     // Diffuse light - just dot the normal vector with the surface to light dir.
@@ -393,9 +387,9 @@ vec4 diffuse_light(
 }
 
 vec4 specular_light_phong(
-    vec3 surface_to_light_dir, 
-    vec3 surface_to_eye_dir, 
-    vec3 normal, 
+    vec3 surface_to_light_dir,
+    vec3 surface_to_eye_dir,
+    vec3 normal,
     vec4 light_color
 ) {
     // Calculate the angle that light might reflect at
@@ -878,7 +872,7 @@ vec4 pbr_path(
     // There are still issues here, not sure how alpha interacts and gamma looks terrible
     //
     vec3 ambient = per_view_data.ambient_light.rgb * base_color.rgb; //TODO: Multiply ao in here
-    
+
 #ifdef DEBUG_RENDER_PERCENT_LIT
     vec3 color = total_light;
 #else
@@ -888,28 +882,37 @@ vec4 pbr_path(
 }
 
 
-void main() {
+vec4 pbr_main() {
     // Sample the base color, if it exists
     vec4 base_color = per_material_data.data.base_color_factor;
+
+#ifdef PBR_TEXTURES
     if (per_material_data.data.has_base_color_texture) {
         base_color *= texture(sampler2D(base_color_texture, smp), in_uv);
     }
+#endif
 
     // Sample the emissive color, if it exists
     vec4 emissive_color = vec4(per_material_data.data.emissive_factor, 1);
+
+#ifdef PBR_TEXTURES
     if (per_material_data.data.has_emissive_texture) {
         emissive_color *= texture(sampler2D(emissive_texture, smp), in_uv);
         base_color = vec4(1.0, 1.0, 0.0, 1.0);
     }
+#endif
 
     // Sample metalness/roughness
     float metalness = per_material_data.data.metallic_factor;
     float roughness = per_material_data.data.roughness_factor;
+
+#ifdef PBR_TEXTURES
     if (per_material_data.data.has_metallic_roughness_texture) {
         vec4 sampled = texture(sampler2D(metallic_roughness_texture, smp), in_uv);
         metalness *= sampled.r;
         roughness *= sampled.g;
     }
+#endif
 
     // Extremely smooth surfaces can produce sharp reflections that, while accurate for point lights, can produce
     // very sharp contrasts in color which look "weird" - and with bloom can produce flickering.
@@ -918,6 +921,8 @@ void main() {
 
     // Calculate the normal (use the normal map if it exists)
     vec3 normal_vs;
+
+#ifdef PBR_TEXTURES
     if (per_material_data.data.has_normal_texture) {
         mat3 tbn = mat3(in_tangent_vs, in_binormal_vs, in_normal_vs);
         normal_vs = normal_map(
@@ -929,6 +934,9 @@ void main() {
     } else {
         normal_vs = normalize(vec4(in_normal_vs, 0)).xyz;
     }
+#else
+    normal_vs = normalize(vec4(in_normal_vs, 0)).xyz;
+#endif
 
     //TOOD: AO
 
@@ -946,7 +954,7 @@ void main() {
 
     //out_color = per_material_data.data.base_color_factor;
 
-    out_color = pbr_path(
+    vec4 out_color = pbr_path(
         surface_to_eye_vs,
         base_color,
         emissive_color,
@@ -955,4 +963,6 @@ void main() {
         normal_vs
     );
     //out_color = vec4(vec3(dot(normal_vs, -in_shadow_map_light_dir_vs)), 1.0);
+
+    return out_color;
 }

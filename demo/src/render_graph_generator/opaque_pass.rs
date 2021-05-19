@@ -1,9 +1,9 @@
-use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase};
+use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
 use rafx::graph::*;
 
 use super::RenderGraphContext;
 use super::ShadowMapImageResources;
-use rafx::api::RafxColorClearValue;
+use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
 use rafx::render_features::RenderJobCommandBufferContext;
 
 pub(super) struct OpaquePass {
@@ -34,18 +34,36 @@ pub(super) fn opaque_pass(
     );
     context.graph.set_image_name(color, "color");
 
-    context.graph.read_depth_attachment(
-        node,
-        depth_prepass,
-        RenderGraphImageConstraint {
-            samples: Some(context.graph_config.samples),
-            format: Some(context.graph_config.depth_format),
-            ..Default::default()
-        },
-        Default::default(),
-    );
-
     let mut shadow_maps = Vec::with_capacity(shadow_map_passes.len());
+
+    if context.graph_config.show_surfaces {
+        context.graph.read_depth_attachment(
+            node,
+            depth_prepass,
+            RenderGraphImageConstraint {
+                samples: Some(context.graph_config.samples),
+                format: Some(context.graph_config.depth_format),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+    } else {
+        let depth = context.graph.create_depth_attachment(
+            node,
+            Some(RafxDepthStencilClearValue {
+                depth: 0.0,
+                stencil: 0,
+            }),
+            RenderGraphImageConstraint {
+                samples: Some(context.graph_config.samples),
+                format: Some(context.graph_config.depth_format),
+                ..Default::default()
+            },
+            Default::default(),
+        );
+        context.graph.set_image_name(depth, "depth");
+    }
+
     for shadow_map_pass in shadow_map_passes {
         let sampled_image = match shadow_map_pass {
             ShadowMapImageResources::Single(image) => {
@@ -68,24 +86,36 @@ pub(super) fn opaque_pass(
         .add_render_phase_dependency::<OpaqueRenderPhase>(node);
 
     let main_view = context.main_view.clone();
+    let show_models = context.graph_config.show_surfaces;
 
     context.graph.set_renderpass_callback(node, move |args| {
         let mut write_context =
             RenderJobCommandBufferContext::from_graph_visit_render_pass_args(&args);
 
-        {
-            profiling::scope!("Opaque Pass");
-            args.graph_context
-                .prepared_render_data()
-                .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context)?;
+        if show_models {
+            {
+                profiling::scope!("Opaque Pass");
+                args.graph_context
+                    .prepared_render_data()
+                    .write_view_phase::<OpaqueRenderPhase>(&main_view, &mut write_context)?;
+            }
+
+            {
+                profiling::scope!("Transparent Pass");
+                args.graph_context
+                    .prepared_render_data()
+                    .write_view_phase::<TransparentRenderPhase>(&main_view, &mut write_context)?;
+            }
         }
 
         {
-            profiling::scope!("Transparent Pass");
+            profiling::scope!("Wireframes Pass");
             args.graph_context
                 .prepared_render_data()
-                .write_view_phase::<TransparentRenderPhase>(&main_view, &mut write_context)
+                .write_view_phase::<WireframeRenderPhase>(&main_view, &mut write_context)?;
         }
+
+        Ok(())
     });
 
     OpaquePass {

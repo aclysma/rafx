@@ -139,6 +139,10 @@ pub struct RenderOptions {
     pub enable_msaa: bool,
     pub enable_hdr: bool,
     pub enable_bloom: bool,
+    pub enable_textures: bool,
+    pub enable_lighting: bool,
+    pub show_surfaces: bool,
+    pub show_wireframes: bool,
     pub show_debug3d: bool,
     pub show_text: bool,
     pub show_skybox: bool,
@@ -155,6 +159,10 @@ impl RenderOptions {
             enable_msaa: false,
             enable_hdr: false,
             enable_bloom: false,
+            enable_textures: true,
+            enable_lighting: true,
+            show_surfaces: true,
+            show_wireframes: false,
             show_debug3d: true,
             show_text: true,
             show_skybox: true,
@@ -171,6 +179,10 @@ impl RenderOptions {
             enable_msaa: true,
             enable_hdr: true,
             enable_bloom: true,
+            enable_textures: true,
+            enable_lighting: true,
+            show_surfaces: true,
+            show_wireframes: false,
             show_debug3d: true,
             show_text: true,
             show_skybox: true,
@@ -205,48 +217,79 @@ impl RenderOptions {
         ui: &imgui::Ui<'_>,
     ) {
         ui.checkbox(imgui::im_str!("enable_msaa"), &mut self.enable_msaa);
+
+        ui.new_line();
         ui.checkbox(imgui::im_str!("enable_hdr"), &mut self.enable_hdr);
-        ui.checkbox(imgui::im_str!("enable_bloom"), &mut self.enable_bloom);
+
+        if self.enable_hdr {
+            ui.indent();
+
+            // iterate over the valid tonemapper values and convert them into their names
+            let tonemapper_names: Vec<imgui::ImString> = (0..(TonemapperType::MAX as i32))
+                .map(|t| imgui::ImString::new(TonemapperType::from(t).display_name()))
+                .collect();
+
+            let mut current_tonemapper_type = self.tonemapper_type as i32;
+
+            if let Some(combo) = imgui::ComboBox::new(imgui::im_str!("tonemapper_type"))
+                .preview_value(&tonemapper_names[current_tonemapper_type as usize])
+                .begin(ui)
+            {
+                ui.list_box(
+                    imgui::im_str!(""),
+                    &mut current_tonemapper_type,
+                    &tonemapper_names.iter().collect::<Vec<_>>(),
+                    tonemapper_names.len() as i32,
+                );
+                combo.end(ui);
+                self.tonemapper_type = current_tonemapper_type.into();
+            }
+
+            ui.checkbox(imgui::im_str!("enable_bloom"), &mut self.enable_bloom);
+            if self.enable_bloom {
+                ui.indent();
+                let mut blur_pass_count = self.blur_pass_count as i32;
+
+                imgui::Drag::new(imgui::im_str!("blur_pass_count"))
+                    .range(0..=10)
+                    .build(ui, &mut blur_pass_count);
+
+                self.blur_pass_count = blur_pass_count as usize;
+                ui.unindent();
+            }
+
+            ui.unindent();
+        }
+
+        ui.new_line();
+        ui.checkbox(imgui::im_str!("show_wireframes"), &mut self.show_wireframes);
+        ui.checkbox(imgui::im_str!("show_surfaces"), &mut self.show_surfaces);
 
         if self.show_feature_toggles {
+            if self.show_surfaces {
+                ui.indent();
+                ui.checkbox(imgui::im_str!("enable_textures"), &mut self.enable_textures);
+                ui.checkbox(imgui::im_str!("enable_lighting"), &mut self.enable_lighting);
+
+                if self.enable_lighting {
+                    ui.indent();
+                    ui.checkbox(imgui::im_str!("show_shadows"), &mut self.show_shadows);
+                    ui.unindent();
+                }
+
+                ui.checkbox(imgui::im_str!("show_skybox_feature"), &mut self.show_skybox);
+                ui.unindent();
+            }
+
             ui.checkbox(
                 imgui::im_str!("show_debug3d_feature"),
                 &mut self.show_debug3d,
             );
+
             ui.checkbox(imgui::im_str!("show_text_feature"), &mut self.show_text);
-            ui.checkbox(imgui::im_str!("show_skybox_feature"), &mut self.show_skybox);
-            ui.checkbox(imgui::im_str!("show_shadows"), &mut self.show_shadows);
         }
 
-        let mut blur_pass_count = self.blur_pass_count as i32;
-
-        imgui::Drag::new(imgui::im_str!("blur_pass_count"))
-            .range(0..=10)
-            .build(ui, &mut blur_pass_count);
-
-        self.blur_pass_count = blur_pass_count as usize;
-
-        // iterate over the valid tonemapper values and convert them into their names
-        let tonemapper_names: Vec<imgui::ImString> = (0..(TonemapperType::MAX as i32))
-            .map(|t| imgui::ImString::new(TonemapperType::from(t).display_name()))
-            .collect();
-
-        let mut current_tonemapper_type = self.tonemapper_type as i32;
-
-        if let Some(combo) = imgui::ComboBox::new(imgui::im_str!("tonemapper_type"))
-            .preview_value(&tonemapper_names[current_tonemapper_type as usize])
-            .begin(ui)
-        {
-            ui.list_box(
-                imgui::im_str!(""),
-                &mut current_tonemapper_type,
-                &tonemapper_names.iter().collect::<Vec<_>>(),
-                tonemapper_names.len() as i32,
-            );
-            combo.end(ui);
-            self.tonemapper_type = current_tonemapper_type.into();
-        }
-
+        ui.new_line();
         ui.checkbox(
             imgui::im_str!("enable_visibility_update"),
             &mut self.enable_visibility_update,

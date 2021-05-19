@@ -4,7 +4,9 @@ use super::*;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
-use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase};
+use crate::phases::{
+    DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, WireframeRenderPhase,
+};
 use rafx::base::resource_map::ReadBorrow;
 use rafx::framework::{
     DescriptorSetAllocatorRef, MaterialPassResource, ResourceArc, ResourceContext,
@@ -14,15 +16,15 @@ use glam::Mat4;
 use rafx::renderer::InvalidResources;
 use shaders::depth_vert::PerObjectDataUniform as ShadowPerObjectShaderParam;
 use shaders::depth_vert::PerViewDataUniform as ShadowPerViewShaderParam;
-use shaders::mesh_frag::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
-use shaders::mesh_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
+use shaders::mesh_textured_frag::PerObjectDataUniform as MeshPerObjectFragmentShaderParam;
+use shaders::mesh_textured_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
-    shaders::mesh_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
+    shaders::mesh_textured_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
 const PER_MATERIAL_DESCRIPTOR_SET_INDEX: u32 =
-    shaders::mesh_frag::PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX as u32;
+    shaders::mesh_textured_frag::PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX as u32;
 const PER_INSTANCE_DESCRIPTOR_SET_INDEX: u32 =
-    shaders::mesh_frag::PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX as u32;
+    shaders::mesh_textured_frag::PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX as u32;
 
 struct PreparedDirectionalLight<'a> {
     light: &'a DirectionalLightComponent,
@@ -43,6 +45,8 @@ struct PreparedSpotLight<'a> {
 
 pub struct MeshPrepareJob<'prepare> {
     resource_context: ResourceContext,
+    requires_textured_descriptor_sets: bool,
+    requires_untextured_descriptor_sets: bool,
     depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     shadow_map_data: ReadBorrow<'prepare, ShadowMapResource>,
     invalid_resources: ReadBorrow<'prepare, InvalidResources>,
@@ -77,6 +81,20 @@ impl<'prepare> MeshPrepareJob<'prepare> {
             num_mesh_part_descriptor_sets
         };
 
+        let mut requires_textured_descriptor_sets = false;
+        let mut requires_untextured_descriptor_sets = false;
+
+        for view in frame_packet.view_packets() {
+            if view
+                .view()
+                .feature_flag_is_relevant::<MeshUntexturedRenderFeatureFlag>()
+            {
+                requires_untextured_descriptor_sets = true;
+            } else {
+                requires_textured_descriptor_sets = true;
+            }
+        }
+
         Arc::new(PrepareJob::new(
             Self {
                 resource_context: { prepare_context.resource_context.clone() },
@@ -98,6 +116,8 @@ impl<'prepare> MeshPrepareJob<'prepare> {
                         .render_resources
                         .fetch::<ShadowMapResource>()
                 },
+                requires_textured_descriptor_sets,
+                requires_untextured_descriptor_sets,
                 invalid_resources: { prepare_context.render_resources.fetch::<InvalidResources>() },
                 render_objects,
             },
@@ -116,40 +136,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
         &self,
         context: &PreparePerFrameContext<'prepare, '_, Self>,
     ) {
-        // NOTE(dvd): This assumes that all opaque materials have the same per view descriptor set layout.
-        let opaque_per_view_descriptor_set_layout = {
-            let frame_packet = context.frame_packet();
-            let mut opaque_per_view_descriptor_set_layout = None;
-
-            for id in 0..frame_packet.render_object_instances().len() {
-                // TODO(dvd): This could be replaced by an `iter` or `as_slice` method on the data.
-                if let Some(extracted_data) = frame_packet.render_object_instances_data().get(id) {
-                    let mesh_parts = &extracted_data.mesh_asset.inner.mesh_parts;
-                    for mesh_part in mesh_parts {
-                        if let Some(mesh_part) = mesh_part {
-                            opaque_per_view_descriptor_set_layout = Some(
-                                mesh_part
-                                    .opaque_pass
-                                    .material_pass_resource
-                                    .get_raw()
-                                    .descriptor_set_layouts
-                                    [PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
-                                    .clone(),
-                            );
-
-                            break;
-                        }
-                    }
-                }
-
-                if opaque_per_view_descriptor_set_layout.is_some() {
-                    break;
-                }
-            }
-
-            opaque_per_view_descriptor_set_layout
-        };
-
         let mut per_frame_submit_data = Box::new(MeshPerFrameSubmitData {
             num_shadow_map_2d: 0,
             shadow_map_2d_data: Default::default(),
@@ -159,7 +145,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
             shadow_map_cube_image_views: Default::default(),
             shadow_map_image_index_remap: [None; MAX_SHADOW_MAPS_CUBE + MAX_SHADOW_MAPS_2D],
             mesh_part_descriptor_sets: self.mesh_part_descriptor_sets.clone(),
-            opaque_per_view_descriptor_set_layout,
         });
 
         let shadow_map_data = &self.shadow_map_data;
@@ -193,7 +178,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                         }
 
                         per_frame_submit_data.shadow_map_2d_data[num_shadow_map_2d] =
-                            shaders::mesh_frag::ShadowMap2DDataStd140 {
+                            shaders::mesh_textured_frag::ShadowMap2DDataStd140 {
                                 shadow_map_view_proj: shadow_view.view_proj().to_cols_array_2d(),
                                 shadow_map_light_dir: shadow_view.view_dir().into(),
                                 ..Default::default()
@@ -220,7 +205,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                             .unwrap();
 
                         per_frame_submit_data.shadow_map_cube_data[num_shadow_map_cube] =
-                            shaders::mesh_frag::ShadowMapCubeDataStd140 {
+                            shaders::mesh_textured_frag::ShadowMapCubeDataStd140 {
                                 cube_map_projection_near_z: near,
                                 cube_map_projection_far_z: far,
                                 ..Default::default()
@@ -312,30 +297,56 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
             }
 
             let mesh_part = mesh_part.as_ref().unwrap();
-            let opaque_descriptor_set = {
+            let textured_descriptor_set = if self.requires_textured_descriptor_sets {
                 let per_object_data = MeshPerObjectFragmentShaderParam { model };
 
-                let per_instance_descriptor_set_layout = &mesh_part
-                    .opaque_pass
-                    .material_pass_resource
-                    .get_raw()
-                    .descriptor_set_layouts[PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
+                let per_instance_descriptor_set_layout =
+                    &mesh_part.material_instance.material.passes[mesh_part.textured_pass_index]
+                        .material_pass_resource
+                        .get_raw()
+                        .descriptor_set_layouts
+                        [PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
 
                 descriptor_set_allocator
                     .create_descriptor_set_with_writer(
                         per_instance_descriptor_set_layout,
-                        shaders::mesh_frag::DescriptorSet2Args {
+                        shaders::mesh_textured_frag::DescriptorSet2Args {
                             per_object_data: &per_object_data,
                         },
                     )
-                    .unwrap()
+                    .ok()
+            } else {
+                None
+            };
+
+            let untextured_descriptor_set = if self.requires_untextured_descriptor_sets {
+                let per_object_data = MeshPerObjectFragmentShaderParam { model };
+
+                let per_instance_descriptor_set_layout =
+                    &mesh_part.material_instance.material.passes[mesh_part.untextured_pass_index]
+                        .material_pass_resource
+                        .get_raw()
+                        .descriptor_set_layouts
+                        [PER_INSTANCE_DESCRIPTOR_SET_INDEX as usize];
+
+                descriptor_set_allocator
+                    .create_descriptor_set_with_writer(
+                        per_instance_descriptor_set_layout,
+                        shaders::mesh_textured_frag::DescriptorSet2Args {
+                            per_object_data: &per_object_data,
+                        },
+                    )
+                    .ok()
+            } else {
+                None
             };
 
             self.mesh_part_descriptor_sets.set(
                 start_index + mesh_part_index,
                 MeshPartDescriptorSetPair {
                     depth_descriptor_set: depth_descriptor_set.clone(),
-                    opaque_descriptor_set,
+                    textured_descriptor_set,
+                    untextured_descriptor_set,
                 },
             );
         }
@@ -400,6 +411,20 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                         distance,
                     );
                 }
+
+                if view.phase_is_relevant::<WireframeRenderPhase>()
+                    && view.feature_flag_is_relevant::<MeshWireframeRenderFeatureFlag>()
+                {
+                    context.push_submit_node::<WireframeRenderPhase>(
+                        MeshDrawCall {
+                            mesh_asset: mesh_asset.clone(),
+                            mesh_part_index,
+                            mesh_part_descriptor_set_index,
+                        },
+                        0,
+                        distance,
+                    );
+                }
             }
         }
     }
@@ -415,13 +440,20 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
         let per_frame_submit_data = context.per_frame_submit_data();
 
         let view = context.view();
+        let is_lit = !view.feature_flag_is_relevant::<MeshUnlitRenderFeatureFlag>();
+        let has_shadows = !view.feature_flag_is_relevant::<MeshNoShadowsRenderFeatureFlag>();
+
         let opaque_descriptor_set = if view.phase_is_relevant::<OpaqueRenderPhase>() {
             let per_view_frag_data = {
                 let mut per_view_frag_data = MeshPerViewFragmentShaderParam::default();
 
                 per_view_frag_data.view = view.view_matrix().to_cols_array_2d();
                 per_view_frag_data.view_proj = view.view_proj().to_cols_array_2d();
-                per_view_frag_data.ambient_light = glam::Vec4::new(0.03, 0.03, 0.03, 1.0).into();
+                per_view_frag_data.ambient_light = if is_lit {
+                    glam::Vec4::new(0.03, 0.03, 0.03, 1.0).into()
+                } else {
+                    glam::Vec4::ONE.into()
+                };
 
                 for directional_light in &per_view_data.directional_lights {
                     if directional_light.is_none() {
@@ -454,7 +486,11 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                     out.direction_vs = light_direction_vs.into();
                     out.color = light.light.color.into();
                     out.intensity = light.light.intensity;
-                    out.shadow_map = shadow_map_index.map(|x| x as i32).unwrap_or(-1);
+                    out.shadow_map = if has_shadows {
+                        shadow_map_index.map(|x| x as i32).unwrap_or(-1)
+                    } else {
+                        -1
+                    };
 
                     per_view_frag_data.directional_light_count += 1;
                 }
@@ -486,7 +522,11 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                     out.color = light.light.color.into();
                     out.range = light.light.range;
                     out.intensity = light.light.intensity;
-                    out.shadow_map = shadow_map_index.map(|x| x as i32).unwrap_or(-1);
+                    out.shadow_map = if has_shadows {
+                        shadow_map_index.map(|x| x as i32).unwrap_or(-1)
+                    } else {
+                        -1
+                    };
 
                     per_view_frag_data.point_light_count += 1;
                 }
@@ -526,7 +566,11 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                     out.color = light.light.color.into();
                     out.range = light.light.range;
                     out.intensity = light.light.intensity;
-                    out.shadow_map = shadow_map_index.map(|x| x as i32).unwrap_or(-1);
+                    out.shadow_map = if has_shadows {
+                        shadow_map_index.map(|x| x as i32).unwrap_or(-1)
+                    } else {
+                        -1
+                    };
 
                     per_view_frag_data.spot_light_count += 1;
                 }
@@ -554,21 +598,54 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                 shadow_map_images_cube[index] = Some(image_view);
             }
 
-            per_frame_submit_data
-                .opaque_per_view_descriptor_set_layout
-                .as_ref()
-                .and_then(|per_view_descriptor_set_layout| {
+            // NOTE(dvd): This assumes that all opaque materials have the same per view descriptor set layout.
+            let opaque_per_view_descriptor_set_layout = {
+                let mut opaque_per_view_descriptor_set_layout = None;
+
+                for id in 0..context.render_object_instances().len() {
+                    // TODO(dvd): This could be replaced by an `iter` or `as_slice` method on the data.
+                    if let Some(extracted_data) = context.render_object_instances_data().get(id) {
+                        let mesh_parts = &extracted_data.mesh_asset.inner.mesh_parts;
+                        for mesh_part in mesh_parts {
+                            if let Some(mesh_part) = mesh_part {
+                                opaque_per_view_descriptor_set_layout = Some(
+                                    mesh_part
+                                        .get_material_pass_resource(
+                                            view,
+                                            OpaqueRenderPhase::render_phase_index(),
+                                        )
+                                        .get_raw()
+                                        .descriptor_set_layouts
+                                        [PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
+                                        .clone(),
+                                );
+                                break;
+                            }
+                        }
+                    }
+
+                    if opaque_per_view_descriptor_set_layout.is_some() {
+                        break;
+                    }
+                }
+
+                opaque_per_view_descriptor_set_layout
+            };
+
+            opaque_per_view_descriptor_set_layout.as_ref().and_then(
+                |per_view_descriptor_set_layout| {
                     descriptor_set_allocator
                         .create_descriptor_set(
                             &per_view_descriptor_set_layout,
-                            shaders::mesh_frag::DescriptorSet0Args {
+                            shaders::mesh_textured_frag::DescriptorSet0Args {
                                 shadow_map_images,
                                 shadow_map_images_cube,
                                 per_view_data: &per_view_frag_data,
                             },
                         )
                         .ok()
-                })
+                },
+            )
         } else {
             None
         };

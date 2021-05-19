@@ -37,6 +37,8 @@ pub use rafx_framework as framework;
 #[cfg(feature = "framework")]
 pub use rafx_framework::declare_render_feature;
 #[cfg(feature = "framework")]
+pub use rafx_framework::declare_render_feature_flag;
+#[cfg(feature = "framework")]
 pub use rafx_framework::declare_render_phase;
 #[cfg(feature = "framework")]
 pub use rafx_framework::graph;
@@ -78,7 +80,8 @@ pub mod render_feature_renderer_prelude {
 #[cfg(feature = "framework")]
 pub mod render_feature_mod_prelude {
     pub use rafx_framework::render_features::{
-        RenderFeature, RenderFeatureDebugConstants, RenderFeatureIndex,
+        RenderFeature, RenderFeatureDebugConstants, RenderFeatureFlag, RenderFeatureFlagIndex,
+        RenderFeatureIndex,
     };
     pub use std::convert::TryInto;
 }

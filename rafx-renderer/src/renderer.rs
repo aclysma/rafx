@@ -148,7 +148,7 @@ impl Renderer {
 
         let render_thread = RenderThread::start(render_resources);
 
-        let num_features = feature_plugins.len();
+        let num_features = RenderRegistry::registered_feature_count() as usize;
         let renderer = RendererInner {
             feature_plugins,
             render_thread,
@@ -339,6 +339,7 @@ impl Renderer {
             view_meta.depth_range,
             view_meta.render_phase_mask,
             view_meta.render_feature_mask,
+            view_meta.render_feature_flag_mask,
             view_meta.debug_name,
         );
 

@@ -1,7 +1,7 @@
 use rafx::render_feature_renderer_prelude::*;
 
 use super::*;
-use crate::phases::OpaqueRenderPhase;
+use crate::phases::WireframeRenderPhase;
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
@@ -38,7 +38,7 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         &self,
         view: &RenderView,
     ) -> bool {
-        view.phase_is_relevant::<OpaqueRenderPhase>()
+        view.phase_is_relevant::<WireframeRenderPhase>()
     }
 
     fn requires_visible_render_objects(&self) -> bool {
@@ -109,7 +109,7 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         let mut view_submit_packets = Vec::with_capacity(frame_packet.view_packets().len());
         for view_packet in frame_packet.view_packets() {
             let view_submit_packet =
-                ViewSubmitPacket::from_view_packet::<OpaqueRenderPhase>(view_packet, Some(1));
+                ViewSubmitPacket::from_view_packet::<WireframeRenderPhase>(view_packet, Some(1));
             view_submit_packets.push(view_submit_packet);
         }
 

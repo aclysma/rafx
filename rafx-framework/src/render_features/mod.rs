@@ -8,10 +8,6 @@ pub use render_objects::RenderObjectSet;
 pub use render_objects::RenderObjectsMap;
 
 mod render_views;
-pub use render_views::RenderFeatureMask;
-pub use render_views::RenderFeatureMaskBuilder;
-pub use render_views::RenderPhaseMask;
-pub use render_views::RenderPhaseMaskBuilder;
 pub use render_views::RenderView;
 pub use render_views::RenderViewCount;
 pub use render_views::RenderViewDepthRange;
@@ -24,6 +20,8 @@ pub use jobs::*;
 mod registry;
 pub use registry::RenderFeature;
 pub use registry::RenderFeatureDebugConstants;
+pub use registry::RenderFeatureFlag;
+pub use registry::RenderFeatureFlagIndex;
 pub use registry::RenderFeatureIndex;
 pub use registry::RenderPhase;
 pub use registry::RenderPhaseIndex;
@@ -32,7 +30,18 @@ pub use registry::RenderRegistryBuilder;
 pub use registry::MAX_RENDER_PHASE_COUNT;
 
 mod macro_render_feature;
+mod macro_render_feature_flag;
 mod macro_render_phase;
+
+mod render_feature_mask;
+pub use render_feature_mask::RenderFeatureMask;
+pub use render_feature_mask::RenderFeatureMaskBuilder;
+mod render_feature_flag_mask;
+pub use render_feature_flag_mask::RenderFeatureFlagMask;
+pub use render_feature_flag_mask::RenderFeatureFlagMaskBuilder;
+mod render_phase_mask;
+pub use render_phase_mask::RenderPhaseMask;
+pub use render_phase_mask::RenderPhaseMaskBuilder;
 
 pub mod render_features_prelude {
     pub use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};

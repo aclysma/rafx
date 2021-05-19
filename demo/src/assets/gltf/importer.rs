@@ -176,7 +176,7 @@ impl Importer for GltfImporter {
     where
         Self: Sized,
     {
-        25
+        26
     }
 
     fn version(&self) -> u32 {
@@ -283,8 +283,9 @@ impl Importer for GltfImporter {
 
             let mut slot_assignments = vec![];
 
+            let material_data = &material_to_import.asset.material_data;
             let material_data_shader_param: GltfMaterialDataShaderParam =
-                material_to_import.asset.material_data.clone().into();
+                material_data.clone().into();
             slot_assignments.push(MaterialInstanceSlotAssignment {
                 slot_name: "per_material_data".to_string(),
                 array_index: 0,
@@ -298,13 +299,18 @@ impl Importer for GltfImporter {
             fn push_image_slot_assignment(
                 slot_name: &str,
                 slot_assignments: &mut Vec<MaterialInstanceSlotAssignment>,
+                should_include: bool,
                 image: &Option<Handle<ImageAsset>>,
                 default_image: &Handle<ImageAsset>,
             ) {
                 slot_assignments.push(MaterialInstanceSlotAssignment {
                     slot_name: slot_name.to_string(),
                     array_index: 0,
-                    image: Some(image.as_ref().map_or(default_image, |x| x).clone()),
+                    image: if should_include {
+                        Some(image.as_ref().map_or(default_image, |x| x).clone())
+                    } else {
+                        Some(default_image.clone())
+                    },
                     sampler: None,
                     buffer_data: None,
                 });
@@ -313,30 +319,35 @@ impl Importer for GltfImporter {
             push_image_slot_assignment(
                 "base_color_texture",
                 &mut slot_assignments,
+                material_data.has_base_color_texture,
                 &material_to_import.asset.base_color_texture,
                 &null_image_handle,
             );
             push_image_slot_assignment(
                 "metallic_roughness_texture",
                 &mut slot_assignments,
+                material_data.has_metallic_roughness_texture,
                 &material_to_import.asset.metallic_roughness_texture,
                 &null_image_handle,
             );
             push_image_slot_assignment(
                 "normal_texture",
                 &mut slot_assignments,
+                material_data.has_normal_texture,
                 &material_to_import.asset.normal_texture,
                 &null_image_handle,
             );
             push_image_slot_assignment(
                 "occlusion_texture",
                 &mut slot_assignments,
+                material_data.has_occlusion_texture,
                 &material_to_import.asset.occlusion_texture,
                 &null_image_handle,
             );
             push_image_slot_assignment(
                 "emissive_texture",
                 &mut slot_assignments,
+                material_data.has_emissive_texture,
                 &material_to_import.asset.emissive_texture,
                 &null_image_handle,
             );

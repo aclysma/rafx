@@ -85,8 +85,17 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshExtractJob<'extract> {
         &self,
         context: &ExtractPerViewContext<'extract, '_, Self>,
     ) {
-        let world = &*self.world;
         let mut per_view = MeshPerViewData::default();
+        let is_lit = !context
+            .view()
+            .feature_flag_is_relevant::<MeshUnlitRenderFeatureFlag>();
+
+        if !is_lit {
+            context.view_packet().per_view_data().set(per_view);
+            return;
+        }
+
+        let world = &*self.world;
 
         let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
         for light in query.iter(world).map(|(e, l)| ExtractedDirectionalLight {

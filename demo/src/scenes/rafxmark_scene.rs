@@ -20,7 +20,7 @@ use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::render_features::{
-    RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange,
+    RenderFeatureFlagMask, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange,
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
@@ -402,6 +402,7 @@ fn update_main_view_2d(
         depth_range: RenderViewDepthRange::from_projection(&projection),
         render_phase_mask: main_camera_phase_mask,
         render_feature_mask: main_camera_feature_mask,
+        render_feature_flag_mask: RenderFeatureFlagMask::empty(),
         debug_name: "main".to_string(),
     });
 }

@@ -10,8 +10,7 @@
 /// This macro will also define the following helper functions in the same scope.
 /// - `render_feature_index()`: Syntactic sugar for Debug3DRenderFeature::feature_index().
 /// - `render_feature_debug_name()`: Syntactic sugar for Debug3DRenderFeature::feature_debug_name().
-/// - `RENDER_SUBMIT_NODE_SCOPE_NAME`: Syntactic sugar for `&'static str` in the form `Debug3DRenderFeature render_submit_node`.
-/// - `[...]_SCOPE_NAME`: The same as `RENDER_SUBMIT_NODE_SCOPE_NAME` for other supported job entry points.
+/// - `render_feature_debug_constants()`: Returns a struct containing `&'static str` debug strings for the feature.
 #[macro_export]
 macro_rules! declare_render_feature {
     ($struct_name:ident, $atomic_constant_name:ident) => {
@@ -43,6 +42,13 @@ macro_rules! declare_render_feature {
 
         impl RenderFeature for $struct_name {
             fn set_feature_index(index: RenderFeatureIndex) {
+                assert_eq!(
+                    $struct_name::feature_index(),
+                    RenderFeatureIndex::MAX,
+                    "feature {} was already registered",
+                    $struct_name::feature_debug_name(),
+                );
+
                 $atomic_constant_name.store(
                     index.try_into().unwrap(),
                     std::sync::atomic::Ordering::Release,
