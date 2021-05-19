@@ -21,12 +21,6 @@ layout (location = 6) in mat3 in_model_view;
 
 const float PI = 3.14159265359;
 
-//TODO: Shader processor can't handle consts
-//const int MAX_POINT_LIGHTS = 16;
-//const int MAX_DIRECTIONAL_LIGHTS = 16;
-//const int MAX_SPOT_LIGHTS = 16;
-//const int MAX_SHADOWS = MAX_DIRECTIONAL_LIGHTS * MAX_POINT_LIGHTS * MAX_SPOT_LIGHTS;
-
 // These are determined by trial and error. A deeper Z projection requires lower numbers here so this may need to be
 // per light based on Z-depth
 //

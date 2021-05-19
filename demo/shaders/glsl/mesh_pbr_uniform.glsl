@@ -48,6 +48,16 @@ struct ShadowMapCubeData {
     float cube_map_projection_far_z;
 };
 
+const int MAX_POINT_LIGHTS = 16;
+const int MAX_DIRECTIONAL_LIGHTS = 16;
+const int MAX_SPOT_LIGHTS = 16;
+
+const int MAX_SHADOW_MAPS_2D = MAX_DIRECTIONAL_LIGHTS + MAX_SPOT_LIGHTS;
+const int SHADOW_MAP_2D_ARRAY_LEN = 32; // TODO(dvd): Shader processor can't handle const math in array indices.
+
+const int MAX_SHADOW_MAPS_CUBE = MAX_POINT_LIGHTS;
+const int SHADOW_MAP_CUBE_ARRAY_LEN = MAX_POINT_LIGHTS;
+
 // @[export]
 // @[internal_buffer]
 layout (set = 0, binding = 0) uniform PerViewData {
@@ -57,11 +67,11 @@ layout (set = 0, binding = 0) uniform PerViewData {
     uint point_light_count;
     uint directional_light_count;
     uint spot_light_count;
-    PointLight point_lights[16];
-    DirectionalLight directional_lights[16];
-    SpotLight spot_lights[16];
-    ShadowMap2DData shadow_map_2d_data[32];
-    ShadowMapCubeData shadow_map_cube_data[16];
+    PointLight point_lights[MAX_POINT_LIGHTS];
+    DirectionalLight directional_lights[MAX_DIRECTIONAL_LIGHTS];
+    SpotLight spot_lights[MAX_SPOT_LIGHTS];
+    ShadowMap2DData shadow_map_2d_data[SHADOW_MAP_2D_ARRAY_LEN];
+    ShadowMapCubeData shadow_map_cube_data[SHADOW_MAP_CUBE_ARRAY_LEN];
 } per_view_data;
 
 // @[immutable_samplers([
@@ -93,10 +103,10 @@ layout (set = 0, binding = 1) uniform sampler smp;
 layout (set = 0, binding = 2) uniform sampler smp_depth;
 
 // @[export]
-layout (set = 0, binding = 3) uniform texture2D shadow_map_images[32];
+layout (set = 0, binding = 3) uniform texture2D shadow_map_images[SHADOW_MAP_2D_ARRAY_LEN];
 
 // @[export]
-layout (set = 0, binding = 4) uniform textureCube shadow_map_images_cube[16];
+layout (set = 0, binding = 4) uniform textureCube shadow_map_images_cube[SHADOW_MAP_CUBE_ARRAY_LEN];
 
 //
 // Per-Material Bindings

@@ -10,6 +10,31 @@ use rafx_framework::{
     ResourceArc,
 };
 
+pub const FP16_SCALE: f32 = 0.0009765625f32;
+pub const APERTURE_F_NUMBER: f32 = 0.01f32;
+pub const ISO: f32 = 1.0f32;
+pub const SHUTTER_SPEED_VALUE: f32 = 1.0f32;
+pub const KEY_VALUE: f32 = 0.1150f32;
+pub const MANUAL_EXPOSURE: f32 = -16.0f32;
+pub const WHITE_POINT_HABLE: f32 = 6.0f32;
+pub const WHITE_POINT_HEJL: f32 = 1.0f32;
+pub const EXPOSURE_MODE_AUTO: i32 = 1;
+pub const EXPOSURE_MODE_MANUAL_SBS: i32 = 2;
+pub const EXPOSURE_MODE_MANUAL_SOS: i32 = 3;
+pub const EXPOSURE_MODE: i32 = EXPOSURE_MODE_MANUAL_SBS;
+pub const SHOULDER_STRENGTH: f32 = 4.0f32;
+pub const LINEAR_STRENGTH: f32 = 5.0f32;
+pub const LINEAR_ANGLE: f32 = 0.1200f32;
+pub const TOE_STRENGTH: f32 = 13.0f32;
+pub const TM_STEPHEN_HILL_ACES: i32 = 1;
+pub const TM_SIMPLIFIED_LUMA_ACES: i32 = 2;
+pub const TM_HEJL2015: i32 = 3;
+pub const TM_HABLE: i32 = 4;
+pub const TM_FILMIC_ALU: i32 = 5;
+pub const TM_LOG_DERIVATIVE: i32 = 6;
+pub const TM_VISUALIZE_RGB_MAX: i32 = 7;
+pub const TM_VISUALIZE_LUMA: i32 = 8;
+
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct ConfigStd140 {

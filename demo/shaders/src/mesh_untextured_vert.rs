@@ -10,6 +10,14 @@ use rafx_framework::{
     ResourceArc,
 };
 
+pub const MAX_POINT_LIGHTS: i32 = 16;
+pub const MAX_DIRECTIONAL_LIGHTS: i32 = 16;
+pub const MAX_SPOT_LIGHTS: i32 = 16;
+pub const MAX_SHADOW_MAPS_2D: i32 = MAX_DIRECTIONAL_LIGHTS + MAX_SPOT_LIGHTS;
+pub const SHADOW_MAP_2D_ARRAY_LEN: i32 = 32;
+pub const MAX_SHADOW_MAPS_CUBE: i32 = MAX_POINT_LIGHTS;
+pub const SHADOW_MAP_CUBE_ARRAY_LEN: i32 = MAX_POINT_LIGHTS;
+
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct ShadowMap2DDataStd140 {
