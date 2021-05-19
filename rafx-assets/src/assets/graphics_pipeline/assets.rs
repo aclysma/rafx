@@ -38,6 +38,7 @@ pub struct SamplerAsset {
 pub enum AlphaBlendingPreset {
     Disabled,
     Enabled,
+    Custom,
 }
 
 impl Default for AlphaBlendingPreset {
@@ -53,6 +54,7 @@ pub enum DepthBufferPreset {
     ReadOnly,
     EnabledReverseZ,
     ReadOnlyReverseZ,
+    Custom,
 }
 
 impl Default for DepthBufferPreset {
@@ -136,6 +138,9 @@ impl FixedFunctionStateData {
                 blend_state.render_target_blend_states =
                     vec![RafxBlendStateRenderTarget::default_alpha_enabled()]
             }
+            AlphaBlendingPreset::Custom => {
+                // do nothing
+            }
         }
 
         match self.depth_testing {
@@ -162,6 +167,9 @@ impl FixedFunctionStateData {
                 depth_state.depth_test_enable = true;
                 depth_state.depth_write_enable = false;
                 depth_state.depth_compare_op = RafxCompareOp::GreaterOrEqual;
+            }
+            DepthBufferPreset::Custom => {
+                //do nothing
             }
         }
 

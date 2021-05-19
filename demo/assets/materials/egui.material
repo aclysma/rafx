@@ -1,0 +1,37 @@
+(
+    passes: [
+        (
+            phase: Some("Ui"),
+            fixed_function_state: (
+                alpha_blending: Custom,
+                blend_state: (
+                    render_target_blend_states: [
+                        (
+                            src_factor: One,
+                            dst_factor: OneMinusSrcAlpha,
+                            src_factor_alpha: OneMinusDstAlpha,
+                            dst_factor_alpha: One,
+                            blend_op: Add,
+                            blend_op_alpha: Add,
+                            masks: (bits: 15)
+                        )
+                    ],
+                    render_target_mask: (bits: 255),
+                    independent_blend: false,
+                ),
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/egui.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/egui.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)

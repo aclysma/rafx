@@ -2,6 +2,7 @@ use crate::assets::font::FontAssetTypeRendererPlugin;
 use crate::assets::gltf::GltfAssetTypeRendererPlugin;
 use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use crate::features::debug3d::Debug3DRendererPlugin;
+use crate::features::egui::EguiRendererPlugin;
 use crate::features::mesh::MeshRendererPlugin;
 use crate::features::skybox::SkyboxRendererPlugin;
 use crate::features::sprite::SpriteRendererPlugin;
@@ -52,7 +53,7 @@ pub fn sdl2_init() -> Sdl2Systems {
 
 pub fn rendering_init(
     resources: &mut Resources,
-    sdl2_window: &sdl2::video::Window,
+    sdl2_systems: &Sdl2Systems,
     asset_source: AssetSource,
 ) -> RafxResult<()> {
     resources.insert(VisibilityRegion::new());
@@ -64,6 +65,7 @@ pub fn rendering_init(
     let tile_layer_renderer_plugin = Arc::new(TileLayerRendererPlugin::default());
     let debug3d_renderer_plugin = Arc::new(Debug3DRendererPlugin::default());
     let text_renderer_plugin = Arc::new(TextRendererPlugin::default());
+    let egui_renderer_plugin = Arc::new(EguiRendererPlugin::default());
 
     mesh_renderer_plugin.legion_init(resources);
     sprite_renderer_plugin.legion_init(resources);
@@ -71,6 +73,13 @@ pub fn rendering_init(
     tile_layer_renderer_plugin.legion_init(resources);
     debug3d_renderer_plugin.legion_init(resources);
     text_renderer_plugin.legion_init(resources);
+    egui_renderer_plugin.legion_init(
+        resources,
+        &sdl2_systems.video_subsystem,
+        sdl2_systems.context.mouse(),
+    );
+
+    let sdl2_window = &sdl2_systems.window;
 
     //
     // Create the api. GPU programming is fundamentally unsafe, so all rafx APIs should be
@@ -90,25 +99,11 @@ pub fn rendering_init(
         .add_render_feature(skybox_renderer_plugin)
         .add_render_feature(tile_layer_renderer_plugin)
         .add_render_feature(debug3d_renderer_plugin)
-        .add_render_feature(text_renderer_plugin);
-
-    #[cfg(feature = "use-imgui")]
-    {
-        use crate::features::imgui::ImGuiRendererPlugin;
-        let imgui_renderer_plugin = Arc::new(ImGuiRendererPlugin::default());
-        imgui_renderer_plugin.legion_init(resources, sdl2_window);
-        renderer_builder = renderer_builder.add_render_feature(imgui_renderer_plugin);
-    }
+        .add_render_feature(text_renderer_plugin)
+        .add_render_feature(egui_renderer_plugin);
 
     let mut renderer_builder_result = {
-        let mut extract_resources = ExtractResources::default();
-
-        #[cfg(feature = "use-imgui")]
-        let mut imgui_manager = resources
-            .get_mut::<crate::features::imgui::Sdl2ImguiManager>()
-            .unwrap();
-        #[cfg(feature = "use-imgui")]
-        extract_resources.insert(&mut *imgui_manager);
+        let extract_resources = ExtractResources::default();
 
         let render_graph_generator = Box::new(DemoRenderGraphGenerator);
 
@@ -160,18 +155,13 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
 
         resources.remove::<Renderer>();
 
-        #[cfg(feature = "use-imgui")]
-        {
-            use crate::features::imgui::ImGuiRendererPlugin;
-            ImGuiRendererPlugin::legion_destroy(resources);
-        }
-
         MeshRendererPlugin::legion_destroy(resources);
         SpriteRendererPlugin::legion_destroy(resources);
         SkyboxRendererPlugin::legion_destroy(resources);
         TileLayerRendererPlugin::legion_destroy(resources);
         Debug3DRendererPlugin::legion_destroy(resources);
         TextRendererPlugin::legion_destroy(resources);
+        EguiRendererPlugin::legion_destroy(resources);
 
         resources.remove::<RenderRegistry>();
 

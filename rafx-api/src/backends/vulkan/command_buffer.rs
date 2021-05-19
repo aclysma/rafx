@@ -580,17 +580,18 @@ impl RafxCommandBufferVulkan {
         }
 
         fn image_subresource_range(
-            aspect_mask: vk::ImageAspectFlags,
+            texture: &RafxTextureVulkan,
             array_slice: Option<u16>,
             mip_slice: Option<u8>,
         ) -> vk::ImageSubresourceRange {
             let mut subresource_range = vk::ImageSubresourceRange::builder()
-                .aspect_mask(aspect_mask)
+                .aspect_mask(texture.vk_aspect_mask())
                 .build();
 
             if let Some(array_slice) = array_slice {
                 subresource_range.layer_count = 1;
                 subresource_range.base_array_layer = array_slice as u32;
+                assert!((array_slice as u32) < texture.texture_def().array_length);
             } else {
                 subresource_range.layer_count = vk::REMAINING_ARRAY_LAYERS;
                 subresource_range.base_array_layer = 0;
@@ -599,6 +600,7 @@ impl RafxCommandBufferVulkan {
             if let Some(mip_slice) = mip_slice {
                 subresource_range.level_count = 1;
                 subresource_range.base_mip_level = mip_slice as u32;
+                assert!((mip_slice as u32) < texture.texture_def().mip_count);
             } else {
                 subresource_range.level_count = vk::REMAINING_MIP_LEVELS;
                 subresource_range.base_mip_level = 0;
@@ -634,11 +636,8 @@ impl RafxCommandBufferVulkan {
         for barrier in texture_barriers {
             let texture = barrier.texture.vk_texture().unwrap();
 
-            let subresource_range = image_subresource_range(
-                texture.vk_aspect_mask(),
-                barrier.array_slice,
-                barrier.mip_slice,
-            );
+            let subresource_range =
+                image_subresource_range(texture, barrier.array_slice, barrier.mip_slice);
 
             // First transition is always from undefined. Doing it here can save downstream code
             // from having to implement a "first time" path and a "normal" path

@@ -4,7 +4,7 @@ use crate::components::{
 };
 use crate::components::{SpotLightComponent, VisibilityComponent};
 use crate::features::debug3d::Debug3DRenderFeature;
-use crate::features::imgui::ImGuiRenderFeature;
+use crate::features::egui::EguiRenderFeature;
 use crate::features::mesh::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
     MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
@@ -336,7 +336,7 @@ fn update_main_view_3d(
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
         .add_render_feature::<MeshRenderFeature>()
-        .add_render_feature::<ImGuiRenderFeature>()
+        .add_render_feature::<EguiRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
         .add_render_feature::<TileLayerRenderFeature>();
 

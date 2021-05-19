@@ -845,7 +845,7 @@ impl Into<MTLVertexFormat> for RafxFormat {
             RafxFormat::R32G32B32A32_UINT => MTLVertexFormat::UInt4,
             RafxFormat::R32G32B32A32_SINT => MTLVertexFormat::Int4,
             RafxFormat::R32G32B32A32_SFLOAT => MTLVertexFormat::Float4,
-            _ => unimplemented!(),
+            _ => unimplemented!("into MTLVertexFormat unimplemented for {:?}", self),
         }
     }
 }

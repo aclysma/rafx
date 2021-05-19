@@ -17,6 +17,8 @@ type-uuid = "0.1"
 sdl2 = { version = "0.34", features = ["raw-window-handle"] }
 imgui = { version = "0.7", optional = true }
 imgui-sdl2 = { version = "0.14.0", optional = true }
+egui = { version = "0.12", features = ["default_fonts"] }
+puffin_egui = { version = "0.2.0", optional = true }
 legion = { version = "0.4.0", default-features = false, features = ["serialize"] }
 image = "0.23.12"
 image2 = { version = "0.11", features = ["ser"] }
@@ -51,7 +53,6 @@ serde = "1"
 serde_bytes = "0.11"
 bincode = "1.3.1"
 ron = "0.6"
-puffin-imgui = { version = "0.7.0", optional = true }
 profiling = "1.0.1"
 stats_alloc = { version = "0.1.8", optional = true }
 bevy_tasks = "0.5.0"
@@ -60,7 +61,6 @@ bevy_tasks = "0.5.0"
 default = [
     "sdl2-bundled",
     "sdl2-static-link",
-    "use-imgui",
     "profile-with-puffin",
     #"profile-with-stats-alloc", # Cannot be enabled with "profile-with-tracy-memory". Will run renderer / game loop single-threaded.
     #"profile-with-optick",
@@ -79,9 +79,8 @@ sdl2-static-link = ["sdl2/static-link"]
 static-vulkan = ["rafx/static-vulkan"]
 profile-with-stats-alloc = ["stats_alloc", "rafx/no-render-thread"]
 profile-with-puffin = [
-    "use-imgui",
     "profiling/profile-with-puffin",
-    "puffin-imgui"
+    "puffin_egui"
 ]
 profile-with-optick = [
     "profiling/profile-with-optick",
