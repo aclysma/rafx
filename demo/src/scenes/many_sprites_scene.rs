@@ -2,7 +2,7 @@
 
 use crate::assets::font::FontAsset;
 use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
-use crate::features::imgui::ImGuiRenderFeature;
+use crate::features::egui::EguiRenderFeature;
 use crate::features::skybox::SkyboxRenderFeature;
 use crate::features::sprite::{SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet};
 use crate::features::text::{TextRenderFeature, TextResource};
@@ -266,7 +266,7 @@ fn update_main_view_2d(
         .build();
 
     let main_camera_feature_mask = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<ImGuiRenderFeature>()
+        .add_render_feature::<EguiRenderFeature>()
         .add_render_feature::<SkyboxRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
         .add_render_feature::<TextRenderFeature>()
