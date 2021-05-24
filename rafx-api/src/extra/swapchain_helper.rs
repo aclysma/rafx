@@ -396,9 +396,22 @@ impl RafxSwapchainHelper {
         //
         if !rebuild_swapchain {
             // This case is taken if we have never rendered a frame or if the previous render was successful
-            let result = self.try_acquire_next_image(window_width, window_height)?;
-            if let TryAcquireNextImageResult::Success(presentable_frame) = result {
-                return Ok(presentable_frame);
+            match self.try_acquire_next_image(window_width, window_height) {
+                Ok(result) => {
+                    if let TryAcquireNextImageResult::Success(presentable_frame) = result {
+                        return Ok(presentable_frame);
+                    }
+
+                    // if not successful, fall through to try to recreate the swapchain
+                }
+                Err(RafxError::VkError(ash::vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
+                    // fall through to try to recreate the swapchain
+                }
+                Err(e) => {
+                    // An unexpected error occurred that likely cannot be fixed by recreating the
+                    // swapchain. Bail!
+                    return Err(e);
+                }
             }
         };
 
