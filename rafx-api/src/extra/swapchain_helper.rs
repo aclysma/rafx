@@ -396,23 +396,13 @@ impl RafxSwapchainHelper {
         //
         if !rebuild_swapchain {
             // This case is taken if we have never rendered a frame or if the previous render was successful
-            match self.try_acquire_next_image(window_width, window_height) {
-                Ok(result) => {
-                    if let TryAcquireNextImageResult::Success(presentable_frame) = result {
-                        return Ok(presentable_frame);
-                    }
-
-                    // if not successful, fall through to try to recreate the swapchain
-                }
-                Err(RafxError::VkError(ash::vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
-                    // fall through to try to recreate the swapchain
-                }
-                Err(e) => {
-                    // An unexpected error occurred that likely cannot be fixed by recreating the
-                    // swapchain. Bail!
-                    return Err(e);
-                }
+            let result = self.try_acquire_next_image(window_width, window_height)?;
+            if let TryAcquireNextImageResult::Success(presentable_frame) = result {
+                return Ok(presentable_frame);
             }
+
+            // if not successful (TryAcquireNextImageResult::DeviceReset), fall through to
+            // try to recreate the swapchain
         };
 
         //
@@ -462,14 +452,26 @@ impl RafxSwapchainHelper {
 
         // Acquire the next image and signal the image available semaphore when it's ready to use
         let image_available_semaphore = &shared_state.image_available_semaphores[sync_frame_index];
-        let swapchain_image = swapchain.acquire_next_image_semaphore(image_available_semaphore)?;
+        let swapchain_image = swapchain.acquire_next_image_semaphore(image_available_semaphore);
 
         self.expect_result_from_previous_frame = true;
-        return Ok(TryAcquireNextImageResult::Success(RafxPresentableFrame {
-            shared_state: Some(shared_state.clone()),
-            swapchain_image,
-            sync_frame_index,
-        }));
+
+        match swapchain_image {
+            Ok(swapchain_image) => {
+                Ok(TryAcquireNextImageResult::Success(RafxPresentableFrame {
+                    shared_state: Some(shared_state.clone()),
+                    swapchain_image,
+                    sync_frame_index,
+                }))
+            }
+            #[cfg(feature = "rafx-vulkan")]
+            Err(RafxError::VkError(ash::vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
+                Ok(TryAcquireNextImageResult::DeviceReset)
+            }
+            Err(e) => {
+                Err(e)
+            }
+        }
     }
 
     fn rebuild_swapchain(
