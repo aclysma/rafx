@@ -400,6 +400,9 @@ impl RafxSwapchainHelper {
             if let TryAcquireNextImageResult::Success(presentable_frame) = result {
                 return Ok(presentable_frame);
             }
+
+            // if not successful (TryAcquireNextImageResult::DeviceReset), fall through to
+            // try to recreate the swapchain
         };
 
         //
@@ -418,6 +421,20 @@ impl RafxSwapchainHelper {
     }
 
     pub fn try_acquire_next_image(
+        &mut self,
+        window_width: u32,
+        window_height: u32,
+    ) -> RafxResult<TryAcquireNextImageResult> {
+        match self.do_try_acquire_next_image(window_width, window_height) {
+            #[cfg(feature = "rafx-vulkan")]
+            Err(RafxError::VkError(ash::vk::Result::ERROR_OUT_OF_DATE_KHR)) => {
+                Ok(TryAcquireNextImageResult::DeviceReset)
+            }
+            result @ _ => result,
+        }
+    }
+
+    fn do_try_acquire_next_image(
         &mut self,
         window_width: u32,
         window_height: u32,
@@ -452,11 +469,12 @@ impl RafxSwapchainHelper {
         let swapchain_image = swapchain.acquire_next_image_semaphore(image_available_semaphore)?;
 
         self.expect_result_from_previous_frame = true;
-        return Ok(TryAcquireNextImageResult::Success(RafxPresentableFrame {
+
+        Ok(TryAcquireNextImageResult::Success(RafxPresentableFrame {
             shared_state: Some(shared_state.clone()),
             swapchain_image,
             sync_frame_index,
-        }));
+        }))
     }
 
     fn rebuild_swapchain(
