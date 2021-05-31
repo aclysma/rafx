@@ -43,6 +43,12 @@ DirectX and Metal.
 By default, rafx-api will try to enable validation in debug mode. This requires installing the vulkan SDK. It is
 highly recommended that you install the SDK and run with validation on from time to time.
 
+### Shader Translation
+
+`rafx-api` accepts pre-compiled SPV. You can compile this yourself, or use `rafx-shader-processor`. The shader processor
+currently uses vulkan GLSL as input, so there are no special considerations - the shader is used exactly as it is
+provided.
+
 ### Linking Vulkan
 
 Vulkan can be loaded dynamically or statically. Dynamic linking should be preferred and is the default. Static linking
