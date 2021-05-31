@@ -6,7 +6,7 @@ use crate::gles3::{
 };
 use crate::{
     RafxComputePipelineDef, RafxDescriptorIndex, RafxGraphicsPipelineDef, RafxPipelineType,
-    RafxResult, RafxRootSignature, MAX_DESCRIPTOR_SET_LAYOUTS,
+    RafxResult, RafxRootSignature, RafxVertexAttributeRate, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
@@ -18,6 +18,7 @@ pub(crate) struct Gles3Attribute {
     pub(crate) channel_count: u32,
     pub(crate) gl_type: GLenum,
     pub(crate) stride: u32,
+    pub(crate) divisor: u32,
     pub(crate) is_normalized: bool,
     pub(crate) byte_offset: u32,
 }
@@ -127,12 +128,18 @@ impl RafxPipelineGles3 {
 
             let buffer = &pipeline_def.vertex_layout.buffers[attribute.buffer_index as usize];
 
+            let divisor = match buffer.rate {
+                RafxVertexAttributeRate::Vertex => 0,
+                RafxVertexAttributeRate::Instance => 1,
+            };
+
             gl_attributes.push(Gles3Attribute {
                 buffer_index: attribute.buffer_index,
                 location: attribute.location,
                 channel_count: attribute.format.channel_count(),
                 gl_type,
                 stride: buffer.stride,
+                divisor,
                 is_normalized: attribute.format.is_normalized(),
                 byte_offset: attribute.byte_offset,
             });

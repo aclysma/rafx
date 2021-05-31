@@ -470,6 +470,17 @@ impl GlContext {
         }
     }
 
+    pub fn gl_vertex_attrib_divisor(
+        &self,
+        index: u32,
+        divisor: u32,
+    ) -> RafxResult<()> {
+        unsafe {
+            self.gles3.VertexAttribDivisor(index, divisor);
+            self.check_for_error()
+        }
+    }
+
     pub fn gl_enable_vertex_attrib_array(
         &self,
         index: u32,
