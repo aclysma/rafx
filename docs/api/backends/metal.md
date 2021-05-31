@@ -25,6 +25,11 @@ Metal is supported on macOS and iOS only. A9 or higher is recommended on mobile.
 
 Set the environment variable `METAL_DEVICE_WRAPPER_TYPE=1`
 
+### Debugging
+
+Xcode can be used to debug/trace a frame. It can be used by rust by making an empty xcode project and changing the
+debug settings to launch an external program.
+
 ### Shader Translation
 
 `rafx-api` accepts metal source code or compiled shader libraries. You can compile this yourself, or use
