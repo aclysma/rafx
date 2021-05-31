@@ -43,6 +43,12 @@ DirectX and Metal.
 By default, rafx-api will try to enable validation in debug mode. This requires installing the vulkan SDK. It is
 highly recommended that you install the SDK and run with validation on from time to time.
 
+### Debugging
+
+ * Renderdoc
+ * NVidia/AMD tools
+ * 
+
 ### Shader Translation
 
 `rafx-api` accepts pre-compiled SPV. You can compile this yourself, or use `rafx-shader-processor`. The shader processor
@@ -79,10 +85,10 @@ needed and hashed/reused. We retain the 200 most recent of each.
 ### Subpasses
 
 Subpasses are not supported.
-* Historically they have not been very useful on desktop platforms. DirectX 12 added support for them only recently
-* They can be a significant win for mobile platforms (see Tile-Based Deferred Rendering) and metal has had similar
-  support for a while. Unfortunately the two APIs are very different in design and it's unclear how they can be
-  abstracted in a reasonable way.
+ * Historically they have not been very useful on desktop platforms. DirectX 12 added support for them only recently
+ * They can be a significant win for mobile platforms (see Tile-Based Deferred Rendering) and metal has had similar
+   support for a while. Unfortunately the two APIs are very different in design and it's unclear how they can be
+   abstracted in a reasonable way.
 
 ### Descriptors
 
@@ -94,7 +100,9 @@ logic in `rafx-framework` to ensure that dropped descriptor sets are queued for 
 
 ## Future Work
 
-* Use `VK_KHR_descriptor_update_template` for more efficient descriptor set updates
-* Descriptor set "default" values (i.e. bind a 1x1 texture)
-* Push Constants
-* Dynamic uniforms
+ * Use `VK_KHR_descriptor_update_template` for more efficient descriptor set updates
+ * Descriptor set "default" values (i.e. bind a 1x1 texture)
+ * Push Constants
+     * While these can be convenient, they are not necessarily a performance win vs. uniforms.
+ * Dynamic uniforms
+ * Better debugging tools, particularly around crash/GPU hang handling
