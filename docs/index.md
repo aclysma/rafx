@@ -19,6 +19,11 @@
     * [Resource Binding Model](api/resource_binding_model.md)
     * [Validation and Debugging](api/validation_and_debugging.md)
     * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
+    * Backend Implementation Details:
+        * [Vulkan](api/backends/vulkan.md)
+        * Metal (TODO)
+        * GL ES 2.0 (TODO)
+        * GL ES 3.0 (TODO)
 * rafx-visibility
     * [API Design](visibility/api_design.md)
 * rafx-framework
@@ -52,9 +57,6 @@
     * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
     * [Render Graph Triangle Example](../rafx/examples/framework_triangle/framework_triangle.rs)
     * [Asset Triangle Example](../rafx/examples/asset_triangle/asset_triangle.rs)
-* Backend Implementation Details
-    * Metal
-    * Vulkan
 * [Building for iOS](building_for_ios.md)
 * [Acknowledgements and Other Resources](acknowledgements.md)
 
