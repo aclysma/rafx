@@ -21,8 +21,8 @@
     * [API Triangle Example](../rafx/examples/api_triangle/api_triangle.rs)
     * Backend Implementation Details:
         * [Vulkan](api/backends/vulkan.md)
-        * Metal (TODO)
-        * GL ES 2.0 (TODO)
+        * [Metal](api/backends/metal.md)
+        * [GL ES 2.0](api/backends/gles2.md)
         * GL ES 3.0 (TODO)
 * rafx-visibility
     * [API Design](visibility/api_design.md)
