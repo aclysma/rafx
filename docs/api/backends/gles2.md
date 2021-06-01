@@ -39,7 +39,7 @@ Some features that are not available in GL ES 2.0 (some of these can be addresse
 * No MSAA on textures (requires GL_EXT_multisampled_render_to_texture)
 * No 3D textures (requires GL_OES_texture_3D extension)
 * No depth textures (requires GL_OES_depth_texture, GL_OES_depth_texture_cube_map, and GL_EXT_shadow_samplers to sample from them)
-* No sRGB formats (requires GL_EXT_sRGB, 56% coverage)
+* No sRGB formats (requires GL_EXT_sRGB)
 * Poor support for sampling of specific mip levels
 * No support for rendering to a specific mip level (requires OES_fbo_render_mipmap extension)
 * Some texture sampling methods only work with power-of-two texture sizes
