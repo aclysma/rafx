@@ -21,7 +21,7 @@ Detailed info here: https://vulkan.gpuinfo.org
 Vulkan is well supported on a wide variety of desktop hardware and operating systems.
 * [AMD](https://www.amd.com/en/technologies/vulkan) - R5 240, 500 series, etc. and up (~circa 2013)
 * [Intel](https://www.intel.com/content/www/us/en/support/articles/000005524/graphics.html) - Skylake/HD 500 or later (~circa 2015)
-* [NVIDEA](https://developer.nvidia.com/vulkan-driver) - Kepler/600 series and up (~circa 2012)
+* [NVIDIA](https://developer.nvidia.com/vulkan-driver) - Kepler/600 series and up (~circa 2012)
 
 It is also supported on iOS (via MoltenVK) and some android devices.
 
@@ -47,7 +47,7 @@ highly recommended that you install the SDK and run with validation on from time
 
 These tools can be used to debug/trace a frame
  * Renderdoc
- * NVIDEA Nsight
+ * NVIDIA Nsight
  * Xcode
 
 ### Shader Translation

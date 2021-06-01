@@ -3,16 +3,17 @@
 ## Minimum Requirements
 
 The OpenGL ES 2.0 backend is intended primarily for WebGL, but might also be useful with very old mobile devices. It
-currently does not require any extensions.
+currently does not require or use any extensions.
 
 ## Status
 
-WebGL and GLES2 are very old APIs and are very limited. Many features in `rafx-api` will not work properly. It is
-probably best to limit usage to simple 2d rendering.
+WebGL and GLES2 are old APIs and are limited in functionality and performance. Many features in `rafx-api` will not work
+properly. It is probably best to limit usage to simple 2d rendering, unless you are willing to require extensions. In
+general this backend is intended for broadest compatibility possible with minimal functionality to do basic 2d drawing.
 
 ## Platform Support
 
-While OpenGL is available across a wide range of hardware/platforms, initialization is very platform-dependent.
+While OpenGL is available across a wide range of hardware/platforms, initialization is platform-dependent.
 Currently initialization only supports windows, macOS, linux, and web browsers. Support for Android would
 require implementing initialization with EGL.
 
@@ -20,6 +21,43 @@ Technically, when this backend is running on desktop, it is using desktop OpenGL
 to make this work transparently. More details below!
 
 ## Implementation Notes
+
+### Limitations of OpenGL ES 2.0
+
+Some features that are not available in GL ES 2.0 (some of these can be addressed with extensions):
+* Only Uint16 index buffers are supported (requires OES_element_index_uint extension)
+* Only 16-bit depth buffers (requires GL_OES_depth24/GL_OES_depth32 extensions)
+* No native instanced drawing (introduced in GL ES 3.0, might be possible to emulate)
+* No compute shaders (introduced in GL ES 3.1)
+* Cubemap sampling may not be seamless (introduced in GL ES 3.0)
+* No MSAA on textures (requires GL_EXT_multisampled_render_to_texture)
+* No 3D textures (requires GL_OES_texture_3D extension)
+* No depth textures (requires GL_OES_depth_texture, GL_OES_depth_texture_cube_map, and GL_EXT_shadow_samplers to sample from them)
+* No sRGB formats (requires GL_EXT_sRGB, 56% coverage)
+* Poor support for sampling of specific mip levels
+* No support for rendering to a specific mip level (requires OES_fbo_render_mipmap extension)
+* Some texture sampling methods only work with power-of-two texture sizes
+* GLSL does not support bool, uint, or textureSize()
+* GLSL does not support dynamically indexing arrays of textures
+* Extensions are required for all but the most basic texture formats
+
+Some of these (like GL_OES_depth_texture) are widely supported, but some like GL_EXT_sRGB are surprisingly not.
+
+When using WebGL, even if some widely supported extensions are available on hardware, they may not be exposed in
+certain browsers. Additionally, there are some WebGL-only extensions (like WEBGL_depth_texture) that are similar but
+not quite the same as their comparable extension in native OpenGL ES.
+
+Also note that while generally in OpenGL ES an extension is "always on", in WebGL it must be explicitly enabled.
+
+There are also limitations in the API that can be performance liabilities:
+* No support for unified buffer objects, meaning at best, 1 API call per 16 bytes of uniform data. This adds up fast!
+* No support for sampler objects. This results in several API calls to bind a single texture.
+* Drawing indexed primitives with a vertex buffer offset is not natively supported, but emulated by rebinding the
+  vertex buffer.
+
+While this backend could be improved to support some of these features via extensions, this project is more likely
+to focus on more recent backends, and only recommend the use of this backend for very simple workloads that require
+very broad compatibility.
 
 ### Coordinate System
 
@@ -51,7 +89,7 @@ This functionality is not properly exposed in the public API yet.
 
 These tools can be used to debug/trace a frame
 * Renderdoc
-* NVIDEA Nsight
+* NVIDIA Nsight
 * Xcode (Haven't confirmed myself)
 
 ### Shader Translation
@@ -101,7 +139,8 @@ extensions yet. The lack of depth textures limits what can be done with the rend
 
 ### Formats
 
-Notably sRGB is not supported in base OpenGL ES 2.0. The GL_EXT_sRGB adds support, but this is not implemented.
+Notably sRGB is not supported in base OpenGL ES 2.0. The GL_EXT_sRGB adds support, but this is not implemented. As an
+alternative, conversion from/to linear color space can be manually performed in a fragment shader.
 
 ### Binding uniform values
 
@@ -109,6 +148,8 @@ OpenGL ES 2.0 does not support uniform block objects (UBO). This means uniform v
 `rafx-api`'s API only supports setting the entire uniform at once (like other APIs). To emulate this, reflection data
 must be provided to the API. Reflection can be generated automatically offline by `rafx-shader-processor`. If you use
 other rafx crates to load the shader, this is handled for you transparently.
+
+Keep in mind that the lack of UBO support may result in many API calls to bind a single uniform struct.
 
 ### Texture Units
 
