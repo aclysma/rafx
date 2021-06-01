@@ -212,7 +212,7 @@ impl RafxCommandPool {
             #[cfg(feature = "rafx-gles2")]
             RafxCommandPool::Gles2(inner) => Some(inner),
             #[cfg(feature = "rafx-gles3")]
-            RafxCommandPool::Gles2(_) => None,
+            RafxCommandPool::Gles3(_) => None,
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(

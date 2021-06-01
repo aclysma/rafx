@@ -1,7 +1,6 @@
-#[cfg(feature = "rafx-gles2")]
-use crate::gles2::gles2_bindings::types::GLenum;
-#[cfg(feature = "rafx-gles3")]
-use crate::gles3::gles3_bindings::types::GLenum;
+#[cfg(any(feature = "rafx-gles2", feature = "rafx-gles3"))]
+type GLenum = u32;
+
 #[cfg(feature = "rafx-vulkan")]
 use ash::vk;
 #[cfg(feature = "rafx-metal")]

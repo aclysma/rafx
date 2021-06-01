@@ -65,6 +65,13 @@ jobs:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
+      - name: Run tests (gles3)
+        run: cargo test --workspace --features "rafx-gles3" --manifest-path demo/Cargo.toml
+        if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
+        env:
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
+
   deny-check:
     name: cargo-deny
     runs-on: ubuntu-latest

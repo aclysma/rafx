@@ -526,9 +526,9 @@ impl RafxCommandBufferGles2 {
         // newly bound attributes
         let mut attributes_in_use = state.vertex_attribute_enabled_bits;
 
-        let mut binding_index = first_binding;
-        for binding in bindings {
-            // First, clear the attributes_in_use flags that were previously used with this binding
+        for binding_offset in 0..bindings.len() {
+            let binding_index = first_binding + binding_offset as u32;
+            // First, clear the attributes_in_use flags that were previously used with these bindings
             // and the attribute metadata
             if let Some(bound_vertex_buffer) = &state.bound_vertex_buffers[binding_index as usize] {
                 let bound_attribute_bits = bound_vertex_buffer.attribute_enabled_bits;
@@ -540,7 +540,10 @@ impl RafxCommandBufferGles2 {
 
                 attributes_in_use = attributes_in_use & !bound_attribute_bits;
             }
+        }
 
+        for (binding_offset, binding) in bindings.iter().enumerate() {
+            let binding_index = first_binding + binding_offset as u32;
             // Check that the buffer is declared as a vertex buffer
             let gl_buffer = binding.buffer.gles2_buffer().unwrap();
             if !gl_buffer
@@ -579,8 +582,6 @@ impl RafxCommandBufferGles2 {
             // Since we've changed the vertex buffer and not bound it, clear the currently bound
             // vertex offset. (update_vertex_attributes_in_use() below will deactivate unused attributes)
             state.currently_bound_vertex_offset[binding_index as usize] = None;
-
-            binding_index += 1;
         }
 
         Self::update_vertex_attributes_in_use(gl_context, &mut *state, attributes_in_use)
