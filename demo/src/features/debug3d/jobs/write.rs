@@ -2,7 +2,7 @@ use rafx::render_feature_write_job_prelude::*;
 
 use super::*;
 use crate::phases::WireframeRenderPhase;
-use rafx::api::{RafxPrimitiveTopology, RafxVertexBufferBinding};
+use rafx::api::{RafxPrimitiveTopology, RafxVertexAttributeRate, RafxVertexBufferBinding};
 use rafx::framework::render_features::RenderPhase;
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
 use std::marker::PhantomData;
@@ -19,7 +19,7 @@ lazy_static::lazy_static! {
     pub static ref DEBUG_VERTEX_LAYOUT : VertexDataSetLayout = {
         use rafx::api::RafxFormat;
 
-        VertexDataLayout::build_vertex_layout(&Debug3DVertex::default(), |builder, vertex| {
+        VertexDataLayout::build_vertex_layout(&Debug3DVertex::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
             builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32B32_SFLOAT);
             builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
         }).into_set(RafxPrimitiveTopology::LineStrip)

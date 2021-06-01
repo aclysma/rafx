@@ -121,8 +121,7 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
 
         let shadow_maps = shadow_map_pass::shadow_map_passes(&mut graph_context);
 
-        let opaque_pass =
-            opaque_pass::opaque_pass(&mut graph_context, depth_prepass.depth, &shadow_maps);
+        let opaque_pass = opaque_pass::opaque_pass(&mut graph_context, depth_prepass, &shadow_maps);
 
         {
             let compute_test_pipeline = asset_manager

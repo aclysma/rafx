@@ -12,22 +12,6 @@ use rafx_framework::{
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct PerObjectDataStd140 {
-    pub model: [[f32; 4]; 4], // +0 (size: 64)
-} // 64 bytes
-
-impl Default for PerObjectDataStd140 {
-    fn default() -> Self {
-        PerObjectDataStd140 {
-            model: <[[f32; 4]; 4]>::default(),
-        }
-    }
-}
-
-pub type PerObjectDataUniform = PerObjectDataStd140;
-
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
 pub struct PerViewDataStd140 {
     pub view: [[f32; 4]; 4],      // +0 (size: 64)
     pub view_proj: [[f32; 4]; 4], // +64 (size: 64)
@@ -46,8 +30,6 @@ pub type PerViewDataUniform = PerViewDataStd140;
 
 pub const PER_VIEW_DATA_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
-pub const PER_OBJECT_DATA_DESCRIPTOR_SET_INDEX: usize = 2;
-pub const PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
 
 pub struct DescriptorSet0Args<'a> {
     pub per_view_data: &'a PerViewDataUniform,
@@ -124,94 +106,9 @@ impl DescriptorSet0 {
     }
 }
 
-pub struct DescriptorSet2Args<'a> {
-    pub per_object_data: &'a PerObjectDataUniform,
-}
-
-impl<'a> DescriptorSetInitializer<'a> for DescriptorSet2Args<'a> {
-    type Output = DescriptorSet2;
-
-    fn create_dyn_descriptor_set(
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> Self::Output {
-        let mut descriptor = DescriptorSet2(descriptor_set);
-        descriptor.set_args(args);
-        descriptor
-    }
-
-    fn create_descriptor_set(
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-        descriptor_set: DynDescriptorSet,
-        args: Self,
-    ) -> RafxResult<DescriptorSetArc> {
-        let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
-        descriptor.0.flush(descriptor_set_allocator)?;
-        Ok(descriptor.0.descriptor_set().clone())
-    }
-}
-
-impl<'a> DescriptorSetWriter<'a> for DescriptorSet2Args<'a> {
-    fn write_to(
-        descriptor_set: &mut DescriptorSetWriterContext,
-        args: Self,
-    ) {
-        descriptor_set.set_buffer_data(
-            PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            args.per_object_data,
-        );
-    }
-}
-
-pub struct DescriptorSet2(pub DynDescriptorSet);
-
-impl DescriptorSet2 {
-    pub fn set_args_static(
-        descriptor_set: &mut DynDescriptorSet,
-        args: DescriptorSet2Args,
-    ) {
-        descriptor_set.set_buffer_data(
-            PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            args.per_object_data,
-        );
-    }
-
-    pub fn set_args(
-        &mut self,
-        args: DescriptorSet2Args,
-    ) {
-        self.set_per_object_data(args.per_object_data);
-    }
-
-    pub fn set_per_object_data(
-        &mut self,
-        per_object_data: &PerObjectDataUniform,
-    ) {
-        self.0.set_buffer_data(
-            PER_OBJECT_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            per_object_data,
-        );
-    }
-
-    pub fn flush(
-        &mut self,
-        descriptor_set_allocator: &mut DescriptorSetAllocator,
-    ) -> RafxResult<()> {
-        self.0.flush(descriptor_set_allocator)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn test_struct_per_object_data_std140() {
-        assert_eq!(std::mem::size_of::<PerObjectDataStd140>(), 64);
-        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
-        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
-        assert_eq!(memoffset::offset_of!(PerObjectDataStd140, model), 0);
-    }
 
     #[test]
     fn test_struct_per_view_data_std140() {

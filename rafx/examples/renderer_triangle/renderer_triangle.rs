@@ -129,7 +129,7 @@ fn run() -> RafxResult<()> {
                 &api,
                 asset_source,
                 render_graph_generator,
-                None,
+                || None,
             )
         }?;
 

@@ -787,11 +787,22 @@ where
                     "".to_string()
                 };
 
-                dsc_vertex_inputs.push(ReflectedVertexInput {
-                    name: name.clone(),
-                    semantic,
-                    location,
-                });
+                // TODO(dvd): Might need other special type handling here.
+                if parsed_binding.parsed.type_name == "mat4" {
+                    for index in 0..4 {
+                        dsc_vertex_inputs.push(ReflectedVertexInput {
+                            name: name.clone(),
+                            semantic: format!("{}{}", semantic, index),
+                            location: location + index,
+                        });
+                    }
+                } else {
+                    dsc_vertex_inputs.push(ReflectedVertexInput {
+                        name: name.clone(),
+                        semantic,
+                        location,
+                    });
+                }
             }
         }
 

@@ -1,5 +1,5 @@
 use fnv::FnvHashMap;
-use rafx_api::{RafxFormat, RafxPrimitiveTopology};
+use rafx_api::{RafxFormat, RafxPrimitiveTopology, RafxVertexAttributeRate};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -141,6 +141,7 @@ pub struct VertexDataLayoutInner {
     //TODO: Not clear if hashmap is better than linear or binary search on few elements
     members: FnvHashMap<String, VertexDataMemberMeta>,
     vertex_stride: usize,
+    vertex_rate: RafxVertexAttributeRate,
     hash: VertexDataLayoutHash,
 }
 
@@ -154,6 +155,7 @@ pub struct VertexDataLayout {
 impl VertexDataLayout {
     pub fn new(
         vertex_stride: usize,
+        vertex_rate: RafxVertexAttributeRate,
         members: &[VertexMember],
     ) -> Self {
         let mut map = Default::default();
@@ -166,6 +168,7 @@ impl VertexDataLayout {
         let inner = VertexDataLayoutInner {
             members: map,
             vertex_stride,
+            vertex_rate,
             hash,
         };
 
@@ -180,7 +183,7 @@ impl VertexDataLayout {
     ///
     /// ```
     /// use rafx_framework::VertexDataLayout;
-    /// use rafx_api::{RafxFormat, RafxPrimitiveTopology};
+    /// use rafx_api::{RafxFormat, RafxPrimitiveTopology, RafxVertexAttributeRate};
     ///
     /// #[derive(Default, Copy, Clone)]
     /// #[repr(C)]
@@ -190,7 +193,7 @@ impl VertexDataLayout {
     ///     pub tex_coord: [f32; 2],
     /// }
     ///
-    /// VertexDataLayout::build_vertex_layout(&ExampleVertex::default(), |builder, vertex| {
+    /// VertexDataLayout::build_vertex_layout(&ExampleVertex::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
     ///     builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
     ///     builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
     ///     builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
@@ -201,6 +204,7 @@ impl VertexDataLayout {
         F: FnOnce(&mut VertexMemberAccumulator<VertexT>, &VertexT),
     >(
         vertex: &VertexT,
+        vertex_rate: RafxVertexAttributeRate,
         f: F,
     ) -> VertexDataLayout {
         let mut accumulator = VertexMemberAccumulator {
@@ -209,7 +213,11 @@ impl VertexDataLayout {
         };
 
         (f)(&mut accumulator, vertex);
-        VertexDataLayout::new(std::mem::size_of::<VertexT>(), &accumulator.members)
+        VertexDataLayout::new(
+            std::mem::size_of::<VertexT>(),
+            vertex_rate,
+            &accumulator.members,
+        )
     }
 
     fn add_member_to_map(
@@ -243,6 +251,10 @@ impl VertexDataLayout {
 
     pub fn hash(&self) -> VertexDataLayoutHash {
         self.inner.hash
+    }
+
+    pub fn vertex_rate(&self) -> RafxVertexAttributeRate {
+        self.inner.vertex_rate
     }
 
     pub fn vertex_stride(&self) -> usize {
@@ -862,13 +874,17 @@ mod test {
 
     impl MediumVertex {
         fn get_layout() -> VertexDataLayout {
-            VertexDataLayout::build_vertex_layout(&Self::default(), |builder, vertex| {
-                builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
-                builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
-                builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
-                builder.add_member(&vertex.tangent, "TANGENT", RafxFormat::R32G32B32_SFLOAT);
-                builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
-            })
+            VertexDataLayout::build_vertex_layout(
+                &Self::default(),
+                RafxVertexAttributeRate::Vertex,
+                |builder, vertex| {
+                    builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+                    builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
+                    builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
+                    builder.add_member(&vertex.tangent, "TANGENT", RafxFormat::R32G32B32_SFLOAT);
+                    builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
+                },
+            )
         }
 
         fn create_empty_data() -> Vec<MediumVertex> {
@@ -900,10 +916,14 @@ mod test {
 
     impl SmallVertex {
         fn get_layout() -> VertexDataLayout {
-            VertexDataLayout::build_vertex_layout(&Self::default(), |builder, vertex| {
-                builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
-                builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
-            })
+            VertexDataLayout::build_vertex_layout(
+                &Self::default(),
+                RafxVertexAttributeRate::Vertex,
+                |builder, vertex| {
+                    builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+                    builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
+                },
+            )
         }
 
         fn create_empty_data() -> Vec<SmallVertex> {
@@ -931,9 +951,13 @@ mod test {
 
     impl TinyVertex {
         fn get_layout() -> VertexDataLayout {
-            VertexDataLayout::build_vertex_layout(&Self::default(), |builder, vertex| {
-                builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
-            })
+            VertexDataLayout::build_vertex_layout(
+                &Self::default(),
+                RafxVertexAttributeRate::Vertex,
+                |builder, vertex| {
+                    builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32A32_SFLOAT);
+                },
+            )
         }
     }
 

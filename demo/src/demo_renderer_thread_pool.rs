@@ -25,13 +25,14 @@ impl DemoRendererThreadPool {
         feature_parallelism.insert(
             MeshRenderFeature::feature_index(),
             ParallelChunkSizes::default()
-                .extract_chunk_size(256)
-                .prepare_chunk_size(128)
-                .prepare_per_view_chunk_size(256),
+                .extract_chunk_size(800)
+                .extract_per_view_chunk_size(800)
+                .prepare_chunk_size(800)
+                .prepare_per_view_chunk_size(800),
         );
         feature_parallelism.insert(
             SpriteRenderFeature::feature_index(),
-            ParallelChunkSizes::default().extract_chunk_size(5000),
+            ParallelChunkSizes::default().extract_chunk_size(4096),
         );
 
         Self {

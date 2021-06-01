@@ -2,7 +2,8 @@ use rafx::render_feature_write_job_prelude::*;
 
 use super::*;
 use rafx::api::{
-    RafxIndexBufferBinding, RafxIndexType, RafxPrimitiveTopology, RafxVertexBufferBinding,
+    RafxIndexBufferBinding, RafxIndexType, RafxPrimitiveTopology, RafxVertexAttributeRate,
+    RafxVertexBufferBinding,
 };
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
 use std::marker::PhantomData;
@@ -17,7 +18,7 @@ lazy_static::lazy_static! {
             uv: Default::default()
         };
 
-        VertexDataLayout::build_vertex_layout(&vertex, |builder, vertex| {
+        VertexDataLayout::build_vertex_layout(&vertex, RafxVertexAttributeRate::Vertex,  |builder, vertex| {
             builder.add_member(&vertex.pos, "POSITION", RafxFormat::R32G32_SFLOAT);
             builder.add_member(&vertex.uv, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
             builder.add_member(&vertex.col, "COLOR", RafxFormat::R8G8B8A8_UNORM);

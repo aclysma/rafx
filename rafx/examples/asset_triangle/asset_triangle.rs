@@ -176,6 +176,7 @@ fn run() -> RafxResult<()> {
         let vertex_layout = Arc::new(
             VertexDataLayout::build_vertex_layout(
                 &PositionColorVertex::default(),
+                RafxVertexAttributeRate::Vertex,
                 |builder, vertex| {
                     builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32_SFLOAT);
                     builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32_SFLOAT);

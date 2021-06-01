@@ -52,7 +52,7 @@ impl RendererBuilder {
         rafx_api: &RafxApi,
         asset_source: AssetSource,
         render_graph_generator: Box<dyn RenderGraphGenerator>,
-        renderer_thread_pool: Option<Box<dyn RendererThreadPool>>, // TODO(dvd): Change to threading type enum with options None, RenderThread, or ThreadPool.
+        renderer_thread_pool: fn() -> Option<Box<dyn RendererThreadPool>>, // TODO(dvd): Change to threading type enum with options None, RenderThread, or ThreadPool.
     ) -> RafxResult<RendererBuilderResult> {
         let mut asset_resource = match asset_source {
             AssetSource::Packfile(packfile) => {
@@ -132,7 +132,7 @@ impl RendererBuilder {
             self.feature_plugins,
             self.asset_plugins,
             render_graph_generator,
-            renderer_thread_pool
+            renderer_thread_pool()
                 .or_else(|| Some(Box::new(RendererThreadPoolNone::new())))
                 .unwrap(),
         );

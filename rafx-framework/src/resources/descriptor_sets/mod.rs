@@ -48,6 +48,10 @@ pub use descriptor_set_allocator_manager::DescriptorSetAllocatorProvider;
 pub use descriptor_set_allocator_manager::DescriptorSetAllocatorRef;
 use rafx_api::RafxResourceType;
 
+// TODO(dvd): This could grow as more descriptor sets are needed of a given type.
+// PERF(dvd): Using a pool size of 64 has poor performance when many (e.g. thousands) of descriptor
+// sets are required. Most time (>99%) will go to CPU traversal of the pools instead & that will persist
+// even when the descriptor sets aren't being used anymore.
 const MAX_DESCRIPTOR_SETS_PER_POOL: u32 = 64;
 const MAX_FRAMES_IN_FLIGHT: usize = crate::MAX_FRAMES_IN_FLIGHT;
 const MAX_FRAMES_IN_FLIGHT_PLUS_1: usize = MAX_FRAMES_IN_FLIGHT + 1;

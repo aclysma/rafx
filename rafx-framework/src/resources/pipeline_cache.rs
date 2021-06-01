@@ -6,8 +6,8 @@ use crate::resources::vertex_data::{VertexDataSetLayout, VertexDataSetLayoutHash
 use crate::{GraphicsPipelineResource, MaterialPassResource, ResourceArc, ResourceLookupSet};
 use fnv::{FnvHashMap, FnvHashSet, FnvHasher};
 use rafx_api::{
-    RafxFormat, RafxResult, RafxSampleCount, RafxVertexAttributeRate, RafxVertexLayout,
-    RafxVertexLayoutAttribute, RafxVertexLayoutBuffer,
+    RafxFormat, RafxResult, RafxSampleCount, RafxVertexLayout, RafxVertexLayoutAttribute,
+    RafxVertexLayoutBuffer,
 };
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
@@ -443,7 +443,7 @@ impl GraphicsPipelineCache {
                         Vec::with_capacity(vertex_data_set_layout.bindings().len());
                     for binding in vertex_data_set_layout.bindings() {
                         vertex_layout_buffers.push(RafxVertexLayoutBuffer {
-                            rate: RafxVertexAttributeRate::Vertex,
+                            rate: binding.vertex_rate(),
                             stride: binding.vertex_stride() as u32,
                         })
                     }

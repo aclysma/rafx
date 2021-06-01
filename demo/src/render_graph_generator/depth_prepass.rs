@@ -9,7 +9,14 @@ pub(super) struct DepthPrepass {
     pub(super) depth: RenderGraphImageUsageId,
 }
 
-pub(super) fn depth_prepass(context: &mut RenderGraphContext) -> DepthPrepass {
+pub(super) fn depth_prepass(context: &mut RenderGraphContext) -> Option<DepthPrepass> {
+    if !context
+        .main_view
+        .phase_is_relevant::<DepthPrepassRenderPhase>()
+    {
+        return None;
+    }
+
     let node = context
         .graph
         .add_node("DepthPrepass", RenderGraphQueue::DefaultGraphics);
@@ -44,5 +51,5 @@ pub(super) fn depth_prepass(context: &mut RenderGraphContext) -> DepthPrepass {
             .write_view_phase::<DepthPrepassRenderPhase>(&main_view, &mut write_context)
     });
 
-    DepthPrepass { node, depth }
+    Some(DepthPrepass { node, depth })
 }

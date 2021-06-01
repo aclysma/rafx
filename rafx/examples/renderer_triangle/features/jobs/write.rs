@@ -4,7 +4,7 @@ use rafx::api::{RafxBufferDef, RafxFormat, RafxPrimitiveTopology, RafxVertexBuff
 use rafx::framework::render_features::RenderPhase;
 use rafx::framework::{DescriptorSetBindings, VertexDataLayout, VertexDataSetLayout};
 use rafx::render_feature_write_job_prelude::*;
-use rafx_api::RafxResult;
+use rafx_api::{RafxResult, RafxVertexAttributeRate};
 use std::marker::PhantomData;
 
 #[derive(Default, Clone, Copy)]
@@ -35,6 +35,7 @@ impl<'write> DemoWriteJob<'write> {
         let vertex_layout = Arc::new(
             VertexDataLayout::build_vertex_layout(
                 &PositionColorVertex::default(),
+                RafxVertexAttributeRate::Vertex,
                 |builder, vertex| {
                     builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32_SFLOAT);
                     builder.add_member(&vertex.color, "COLOR", RafxFormat::R32G32B32_SFLOAT);

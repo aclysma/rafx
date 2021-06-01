@@ -112,7 +112,10 @@ pub fn rendering_init(
             &rafx_api,
             asset_source,
             render_graph_generator,
-            None, // Some(Box::new(DemoRendererThreadPool::new())),
+            || {
+                None
+                // Some(Box::new(DemoRendererThreadPool::new()))
+            },
         )
     }?;
 

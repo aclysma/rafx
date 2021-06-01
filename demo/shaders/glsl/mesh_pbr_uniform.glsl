@@ -122,9 +122,3 @@ struct MaterialData {
 layout (set = 1, binding = 0) uniform MaterialDataUbo {
     MaterialData data;
 } per_material_data;
-
-// @[export]
-// @[internal_buffer]
-layout(set = 2, binding = 0) uniform PerObjectData {
-    mat4 model;
-} per_object_data;
