@@ -31,14 +31,23 @@ impl EguiDrawData {
         let mut all_clipped_draw_calls = Vec::default();
 
         for clipped_mesh in clipped_meshes {
-            let rect = clipped_mesh.0;
-            let meshes = clipped_mesh.1.split_to_u16();
-
+            let min = clipped_mesh.0.min;
+            let max = clipped_mesh.0.max;
             let mut clipped_draw_calls = EguiClippedDrawCalls {
-                clip_rect: rect,
+                clip_rect: egui::Rect::from_min_max(
+                    egui::Pos2 {
+                        x: min.x * pixels_per_point as f32,
+                        y: min.y * pixels_per_point as f32,
+                    },
+                    egui::Pos2 {
+                        x: max.x * pixels_per_point as f32,
+                        y: max.y * pixels_per_point as f32,
+                    },
+                ),
                 draw_calls: vec![],
             };
 
+            let meshes = clipped_mesh.1.split_to_u16();
             for mut mesh in meshes {
                 let vertex_offset = vertices.len();
                 let index_offset = indices.len();
