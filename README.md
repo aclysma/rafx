@@ -23,18 +23,16 @@ Rafx supports most mainstream platforms. Proprietary platforms can be supported 
 | -------- | -------- | ----- | ------------- |
 | Windows  |   ✅     |       |      ✅       |
 | macOS    |   ✅     |  ✅   |      ✅       |
-| Linux    |   🟨 (1) |       |      🟨 (1)   |
+| Linux    |   ✅ (1) |       |      ✅ (1)   |
 | iOS      |   ✅     |  ✅   |      🟥 (3)   |
 | Android  |   🟨 (2) |       |      🟥 (3)   |
 | WebGL    |          |       |      ✅       |
 
 **Caveats**: 
- 1. Linux reported working but not regularly tested. Some driver/window manager combinations might not work, especially
-    with vulkan.
+ 1. Some backend/driver/window manager combinations might not work. We primarily test with Ubuntu 20.04 LTS.
  2. Android might work with vulkan but has not been tested. (It likely can be made to work) 
  3. Mobile OpenGL devices might work but may need improvements to create the initial OpenGL graphics context.
- 4. Limitations in the OpenGL ES 2.0 API prevent full implementation. The main demo does not work in 
-GL ES 2.0.
+ 4. Limitations in the OpenGL ES 2.0 API prevent full implementation. The main demo does not work in GL ES 2.0.
 
 Please keep in mind, this crate is still in pre-0.1.0 status!
 

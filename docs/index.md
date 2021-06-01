@@ -23,7 +23,7 @@
         * [Vulkan](api/backends/vulkan.md)
         * [Metal](api/backends/metal.md)
         * [GL ES 2.0](api/backends/gles2.md)
-        * GL ES 3.0 (TODO)
+        * [GL ES 3.0](api/backends/gles3.md)
 * rafx-visibility
     * [API Design](visibility/api_design.md)
 * rafx-framework

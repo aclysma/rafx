@@ -7,7 +7,10 @@ currently does not require or use any extensions.
 
 ## Status
 
-WebGL and GLES2 are old APIs and are limited in functionality and performance. Many features in `rafx-api` will not work
+Most of what is possible to do in OpenGL ES 2.0 without extensions has been implemented. This backend is relatively
+less mature than the vulkan and metal backends.
+
+OpenGL ES 2.0 and WebGL are old APIs and are limited in functionality and performance. Many features in `rafx-api` will not work
 properly. It is probably best to limit usage to simple 2d rendering, unless you are willing to require extensions. In
 general this backend is intended for broadest compatibility possible with minimal functionality to do basic 2d drawing.
 
@@ -24,10 +27,13 @@ to make this work transparently. More details below!
 
 ### Limitations of OpenGL ES 2.0
 
+An OpenGL context may not be used by multiple threads simultaneously. So when this backend is in use, the same
+restriction applies to `rafx-api`.
+
 Some features that are not available in GL ES 2.0 (some of these can be addressed with extensions):
 * Only Uint16 index buffers are supported (requires OES_element_index_uint extension)
 * Only 16-bit depth buffers (requires GL_OES_depth24/GL_OES_depth32 extensions)
-* No native instanced drawing (introduced in GL ES 3.0, might be possible to emulate)
+* No native instanced drawing (might be possible to emulate, or use extensions EXT_draw_instanced/EXT_instanced_arrays)
 * No compute shaders (introduced in GL ES 3.1)
 * Cubemap sampling may not be seamless (introduced in GL ES 3.0)
 * No MSAA on textures (requires GL_EXT_multisampled_render_to_texture)
@@ -161,6 +167,13 @@ handled for you transparently.
 In legacy GLSL, to pass information between vertex/fragment shaders, the variables must have the same name.
 `rafx-shader-processor` renames the in/out variables based on their location. (i.e. in a vertex shader, 
 `layout(location = 0) out vec4 out_color;` becomes `out vec4 interface_var_0;`.
+
+## Synchronization
+
+Semaphores are no-ops. Fences are simuated in a very coarse-grained way by injecting a glFlush as needed during present
+and setting a user-space boolean to indicate that the flush call was made
+
+Multithreaded usage is not allowed at all in this backend.
 
 ## Future Work
 
