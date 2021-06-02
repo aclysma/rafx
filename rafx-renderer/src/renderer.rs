@@ -57,6 +57,7 @@ impl Renderer {
         asset_plugins: Vec<Arc<dyn RendererAssetPlugin>>,
         render_graph_generator: Box<dyn RenderGraphGenerator>,
         thread_pool: Box<dyn RendererThreadPool>,
+        allow_use_render_thread: bool
     ) -> RafxResult<Self> {
         let feature_plugins = Arc::new(feature_plugins);
 
@@ -150,7 +151,7 @@ impl Renderer {
 
         upload.block_until_upload_complete()?;
 
-        let use_render_thread = device_context.device_info().supports_multithreaded_usage;
+        let use_render_thread = allow_use_render_thread && device_context.device_info().supports_multithreaded_usage;
         let render_thread = if use_render_thread {
             Some(RenderThread::start())
         } else {

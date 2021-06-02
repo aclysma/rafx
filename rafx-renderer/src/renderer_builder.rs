@@ -23,10 +23,20 @@ pub struct RendererBuilderResult {
     pub renderer: Renderer,
 }
 
-#[derive(Default)]
 pub struct RendererBuilder {
     feature_plugins: Vec<Arc<dyn RenderFeaturePlugin>>,
     asset_plugins: Vec<Arc<dyn RendererAssetPlugin>>,
+    allow_use_render_thread: bool,
+}
+
+impl Default for RendererBuilder {
+    fn default() -> Self {
+        RendererBuilder {
+            feature_plugins: Default::default(),
+            asset_plugins: Default::default(),
+            allow_use_render_thread: true,
+        }
+    }
 }
 
 impl RendererBuilder {
@@ -43,6 +53,11 @@ impl RendererBuilder {
         plugin: Arc<dyn RendererAssetPlugin>,
     ) -> Self {
         self.asset_plugins.push(plugin);
+        self
+    }
+
+    pub fn allow_use_render_thread(mut self, allow_use_render_thread: bool) -> Self {
+        self.allow_use_render_thread = allow_use_render_thread;
         self
     }
 
@@ -135,6 +150,7 @@ impl RendererBuilder {
             renderer_thread_pool()
                 .or_else(|| Some(Box::new(RendererThreadPoolNone::new())))
                 .unwrap(),
+            self.allow_use_render_thread,
         );
 
         match renderer {
