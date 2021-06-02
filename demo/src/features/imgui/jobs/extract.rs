@@ -6,10 +6,11 @@ use rafx::base::resource_map::ReadBorrow;
 use rafx::base::resource_ref_map::ResourceRefBorrowMut;
 use rafx::distill::loader::handle::Handle;
 use rafx::graph::SwapchainSurfaceInfo;
+use rafx::renderer::SwapchainRenderResource;
 
 pub struct ImGuiExtractJob<'extract> {
     sdl2_imgui_manager: TrustCell<ResourceRefBorrowMut<'extract, Sdl2ImguiManager>>,
-    swapchain_surface_info: ReadBorrow<'extract, SwapchainSurfaceInfo>,
+    swapchain_surface_info: SwapchainSurfaceInfo,
     asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
     imgui_material: Handle<MaterialAsset>,
 }
@@ -29,7 +30,11 @@ impl<'extract> ImGuiExtractJob<'extract> {
                 ),
                 swapchain_surface_info: extract_context
                     .render_resources
-                    .fetch::<SwapchainSurfaceInfo>(),
+                    .fetch::<SwapchainRenderResource>()
+                    .get()
+                    .unwrap()
+                    .swapchain_surface_info
+                    .clone(),
                 asset_manager: extract_context
                     .render_resources
                     .fetch::<AssetManagerRenderResource>(),

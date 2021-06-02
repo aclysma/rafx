@@ -1,9 +1,8 @@
 use super::render_frame_job::RenderFrameJobResult;
 use super::RenderFrameJob;
-use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
+use crossbeam_channel::{Receiver, Sender};
 use rafx_api::RafxPresentableFrame;
-use rafx_framework::RenderResources;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 
 enum RenderThreadMessage {
@@ -16,44 +15,32 @@ pub struct RenderThread {
     job_tx: Sender<RenderThreadMessage>,
 
     result_rx: Receiver<RenderFrameJobResult>,
-    expecting_result: bool,
-
-    render_resources: Arc<Mutex<RenderResources>>,
+    expecting_result: AtomicBool,
 }
 
 impl RenderThread {
-    pub fn render_resources(&self) -> &Arc<Mutex<RenderResources>> {
-        &self.render_resources
-    }
-
-    pub fn start(render_resources: RenderResources) -> Self {
+    pub fn start() -> Self {
         let (job_tx, job_rx) = crossbeam_channel::bounded(1);
         let (result_tx, result_rx) = crossbeam_channel::bounded(1);
 
-        let render_resources = Arc::new(Mutex::new(render_resources));
-        let render_resources_clone = render_resources.clone();
-
         let thread_builder = std::thread::Builder::new().name("Render Thread".to_string());
         let join_handle = thread_builder
-            .spawn(
-                || match Self::render_thread(job_rx, result_tx, render_resources) {
-                    Ok(_) => log::info!("Render thread ended without error"),
-                    Err(err) => log::info!("Render thread ended with error: {:?}", err),
-                },
-            )
+            .spawn(|| match Self::render_thread(job_rx, result_tx) {
+                Ok(_) => log::info!("Render thread ended without error"),
+                Err(err) => log::info!("Render thread ended with error: {:?}", err),
+            })
             .unwrap();
 
         RenderThread {
-            render_resources: render_resources_clone,
             join_handle: Some(join_handle),
             job_tx,
             result_rx,
-            expecting_result: false,
+            expecting_result: AtomicBool::new(false),
         }
     }
 
     pub fn render(
-        &mut self,
+        &self,
         prepared_frame: RenderFrameJob,
         presentable_frame: RafxPresentableFrame,
     ) {
@@ -64,17 +51,15 @@ impl RenderThread {
             ))
             .unwrap();
 
-        assert!(!self.expecting_result);
-        self.expecting_result = true;
+        let was_expecting_result = self.expecting_result.swap(true, Ordering::Relaxed);
+        assert!(!was_expecting_result);
     }
 
-    pub fn wait_for_render_finish(
-        &mut self,
-        timeout: std::time::Duration,
-    ) -> Option<Result<RenderFrameJobResult, RecvTimeoutError>> {
-        if self.expecting_result {
-            self.expecting_result = false;
-            Some(self.result_rx.recv_timeout(timeout))
+    pub fn wait_for_render_finish(&self) -> Option<RenderFrameJobResult> {
+        if self.expecting_result.load(Ordering::Relaxed) {
+            let was_expecting_result = self.expecting_result.swap(false, Ordering::Relaxed);
+            assert!(was_expecting_result);
+            Some(self.result_rx.recv().unwrap())
         } else {
             None
         }
@@ -88,7 +73,6 @@ impl RenderThread {
     fn render_thread(
         job_rx: Receiver<RenderThreadMessage>,
         result_tx: Sender<RenderFrameJobResult>,
-        render_resources: Arc<Mutex<RenderResources>>,
     ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         loop {
             profiling::register_thread!();
@@ -98,8 +82,7 @@ impl RenderThread {
                     profiling::scope!("Render Frame");
 
                     log::trace!("kick off render");
-                    let resource_lock = render_resources.lock().unwrap();
-                    let result = prepared_frame.render_async(frame_in_flight, &*resource_lock);
+                    let result = prepared_frame.render_async(frame_in_flight);
                     result_tx.send(result).unwrap();
                 }
                 RenderThreadMessage::Finish => {

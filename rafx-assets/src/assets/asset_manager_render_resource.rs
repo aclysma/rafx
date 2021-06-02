@@ -3,21 +3,21 @@
 
 use super::AssetManager;
 use rafx_base::memory::force_to_static_lifetime;
-use std::ops::Deref;
 
-// static reference is dangerous, must only be used when extracting
-pub struct AssetManagerRenderResource(&'static AssetManager);
+// static reference is dangerous, must only be used when extracting. This is an option and is unset
+// while not extracting.
+#[derive(Default)]
+pub struct AssetManagerRenderResource(Option<&'static AssetManager>);
 
 impl AssetManagerRenderResource {
-    pub unsafe fn new(world: &AssetManager) -> Self {
-        AssetManagerRenderResource(force_to_static_lifetime(world))
+    pub unsafe fn set_asset_manager(
+        &mut self,
+        asset_manager: Option<&AssetManager>,
+    ) {
+        self.0 = asset_manager.map(|x| force_to_static_lifetime(x));
     }
-}
 
-impl Deref for AssetManagerRenderResource {
-    type Target = AssetManager;
-
-    fn deref(&self) -> &Self::Target {
+    pub fn get(&self) -> Option<&AssetManager> {
         self.0
     }
 }

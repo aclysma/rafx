@@ -42,6 +42,8 @@ impl<'extract> ExtractJobEntryPoints<'extract> for TileLayerExtractJob<'extract>
             .set(TileLayerPerFrameData {
                 tile_layer_material_pass: self
                     .asset_manager
+                    .get()
+                    .unwrap()
                     .committed_asset(&self.tile_layer_material)
                     .unwrap()
                     .get_single_material_pass()

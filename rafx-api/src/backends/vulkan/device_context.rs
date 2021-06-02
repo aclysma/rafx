@@ -160,6 +160,7 @@ impl RafxDeviceContextVulkanInner {
         let limits = &physical_device_info.properties.limits;
 
         let device_info = RafxDeviceInfo {
+            supports_multithreaded_usage: true,
             min_uniform_buffer_offset_alignment: limits.min_uniform_buffer_offset_alignment as u32,
             min_storage_buffer_offset_alignment: limits.min_storage_buffer_offset_alignment as u32,
             upload_buffer_texture_alignment: limits.optimal_buffer_copy_offset_alignment as u32,

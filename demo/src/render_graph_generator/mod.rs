@@ -23,7 +23,7 @@ use crate::RenderOptions;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;
 use rafx::renderer::RenderGraphGenerator;
-use rafx::renderer::SwapchainResources;
+use rafx::renderer::SwapchainRenderResource;
 
 mod bloom_blur_pass;
 
@@ -74,12 +74,13 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
 
         let device_context = asset_manager.device_context();
         let resource_context = asset_manager.resource_manager().resource_context();
-        let swapchain_resources = render_resources.fetch::<SwapchainResources>();
+        let swapchain_render_resource = render_resources.fetch::<SwapchainRenderResource>();
+        let swapchain_info = swapchain_render_resource.get().unwrap();
         let static_resources = render_resources.fetch::<DemoStaticResources>();
 
         let graph_config = {
             let render_options = extract_resources.fetch::<RenderOptions>().clone();
-            let swapchain_format = swapchain_resources.swapchain_surface_info.format;
+            let swapchain_format = swapchain_info.swapchain_surface_info.format;
             let sample_count = if render_options.enable_msaa {
                 RafxSampleCount::SampleCount4
             } else {
@@ -87,14 +88,14 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             };
 
             let color_format = if render_options.enable_hdr {
-                swapchain_resources.default_color_format_hdr
+                swapchain_info.default_color_format_hdr
             } else {
-                swapchain_resources.default_color_format_sdr
+                swapchain_info.default_color_format_sdr
             };
 
             RenderGraphConfig {
                 color_format,
-                depth_format: swapchain_resources.default_depth_format,
+                depth_format: swapchain_info.default_depth_format,
                 samples: sample_count,
                 enable_hdr: render_options.enable_hdr,
                 swapchain_format,
@@ -190,7 +191,7 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             &device_context,
             &resource_context,
             graph,
-            &swapchain_resources.swapchain_surface_info,
+            &swapchain_info.swapchain_surface_info,
         )?;
 
         render_resources

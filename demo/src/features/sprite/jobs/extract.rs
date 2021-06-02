@@ -47,6 +47,8 @@ impl<'extract> ExtractJobEntryPoints<'extract> for SpriteExtractJob<'extract> {
             .set(SpritePerFrameData {
                 sprite_material_pass: self
                     .asset_manager
+                    .get()
+                    .unwrap()
                     .committed_asset(&self.sprite_material)
                     .unwrap()
                     .get_single_material_pass()
@@ -65,6 +67,8 @@ impl<'extract> ExtractJobEntryPoints<'extract> for SpriteExtractJob<'extract> {
 
         let image_asset = self
             .asset_manager
+            .get()
+            .unwrap()
             .committed_asset(&render_object_static_data.image);
 
         context.set_render_object_instance_data(image_asset.and_then(|image_asset| {

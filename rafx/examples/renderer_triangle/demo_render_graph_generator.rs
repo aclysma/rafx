@@ -8,7 +8,7 @@ use rafx::graph::{
     RenderGraphImageSpecification, RenderGraphQueue,
 };
 use rafx::render_features::RenderJobCommandBufferContext;
-use rafx::renderer::{RenderGraphGenerator, SwapchainResources};
+use rafx::renderer::{RenderGraphGenerator, SwapchainRenderResource};
 
 pub struct DemoRenderGraphGenerator;
 
@@ -25,7 +25,8 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
 
         let device_context = asset_manager.device_context();
         let resource_context = asset_manager.resource_manager().resource_context();
-        let swapchain_resources = render_resources.fetch::<SwapchainResources>();
+        let swapchain_render_resource = render_resources.fetch::<SwapchainRenderResource>();
+        let swapchain_info = swapchain_render_resource.get().unwrap();
 
         //
         // Create a graph to describe how we will draw the frame. Here we just have a single
@@ -40,7 +41,7 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             Some(RafxColorClearValue([0.0, 0.0, 0.0, 0.0])),
             RenderGraphImageConstraint {
                 samples: Some(RafxSampleCount::SampleCount1),
-                format: Some(swapchain_resources.default_color_format_sdr),
+                format: Some(swapchain_info.default_color_format_sdr),
                 ..Default::default()
             },
             Default::default(),
@@ -74,7 +75,7 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             swapchain_image,
             RenderGraphImageSpecification {
                 samples: RafxSampleCount::SampleCount1,
-                format: swapchain_resources.swapchain_surface_info.format,
+                format: swapchain_info.swapchain_surface_info.format,
                 resource_type: RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR,
                 extents: RenderGraphImageExtents::MatchSurface,
                 layer_count: 1,
@@ -88,7 +89,7 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
             &device_context,
             &resource_context,
             graph_builder,
-            &swapchain_resources.swapchain_surface_info,
+            &swapchain_info.swapchain_surface_info,
         )?;
 
         Ok(prepared_render_graph)

@@ -1,4 +1,4 @@
-use super::swapchain_resources::SwapchainResources;
+use super::swapchain_render_resource::SwapchainRenderResource;
 use super::Renderer;
 use rafx_api::raw_window_handle::HasRawWindowHandle;
 use rafx_api::{
@@ -88,9 +88,6 @@ impl<'a> RafxSwapchainEventListener for SwapchainHandler<'a> {
         device_context: &RafxDeviceContext,
         swapchain: &RafxSwapchain,
     ) -> RafxResult<()> {
-        let mut guard = self.renderer.inner.lock().unwrap();
-        let renderer = &mut *guard;
-
         //
         // Metadata about the swapchain
         //
@@ -111,10 +108,11 @@ impl<'a> RafxSwapchainEventListener for SwapchainHandler<'a> {
         // Construct resources that are tied to the swapchain or swapchain metadata.
         // (i.e. renderpasses, descriptor sets that refer to swapchain images)
         //
-        let swapchain_resources = SwapchainResources::new(device_context, swapchain_surface_info)?;
-
-        let mut render_resources = renderer.render_thread.render_resources().lock().unwrap();
-        render_resources.insert(swapchain_resources);
+        let mut swapchain_render_resource = self
+            .renderer
+            .render_resources
+            .fetch_mut::<SwapchainRenderResource>();
+        swapchain_render_resource.set_swapchain(device_context, swapchain_surface_info)?;
 
         log::debug!("renderer swapchain_created finished");
 
@@ -127,20 +125,20 @@ impl<'a> RafxSwapchainEventListener for SwapchainHandler<'a> {
         _device_context: &RafxDeviceContext,
         _swapchain: &RafxSwapchain,
     ) -> RafxResult<()> {
-        let mut guard = self.renderer.inner.lock().unwrap();
-        let renderer = &mut *guard;
-
         log::debug!("renderer swapchain destroyed");
 
-        let mut render_resources = renderer.render_thread.render_resources().lock().unwrap();
-        render_resources.remove::<SwapchainResources>();
+        let mut swapchain_render_resource = self
+            .renderer
+            .render_resources
+            .fetch_mut::<SwapchainRenderResource>();
+        swapchain_render_resource.clear_swapchain();
 
         //TODO: Explicitly remove the images instead of just dropping them. This prevents anything
         // from accidentally using them after they've been freed
-        //swapchain_resources.swapchain_images.clear();
+        //swapchain_render_resource.swapchain_images.clear();
 
         // self.resource_manager
-        //     .remove_swapchain(&swapchain_resources.swapchain_surface_info);
+        //     .remove_swapchain(&swapchain_render_resource.swapchain_surface_info);
 
         Ok(())
     }

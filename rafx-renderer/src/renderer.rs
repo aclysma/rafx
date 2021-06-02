@@ -31,16 +31,17 @@ pub struct InvalidResources {
 }
 
 pub struct RendererInner {
-    pub(super) render_graph_generator: Box<dyn RenderGraphGenerator>,
-    pub(super) render_thread: RenderThread,
-    pub(super) feature_plugins: Arc<Vec<Arc<dyn RenderFeaturePlugin>>>,
+    // This is a separate lock
     pub(super) temporary_work: RenderJobExtractAllocationContext,
     pub(super) thread_pool: Box<dyn RendererThreadPool>,
 }
 
-#[derive(Clone)]
 pub struct Renderer {
     pub(super) inner: Arc<Mutex<RendererInner>>,
+    pub(super) render_thread: Option<RenderThread>,
+    pub(super) render_graph_generator: Box<dyn RenderGraphGenerator>,
+    pub(super) feature_plugins: Arc<Vec<Arc<dyn RenderFeaturePlugin>>>,
+    pub(super) render_resources: Arc<RenderResources>,
     pub(super) graphics_queue: RafxQueue,
     pub(super) transfer_queue: RafxQueue,
 }
@@ -122,6 +123,9 @@ impl Renderer {
         };
 
         let mut render_resources = RenderResources::default();
+        render_resources.insert(SwapchainRenderResource::default());
+        render_resources.insert(AssetManagerRenderResource::default());
+
         for plugin in &*feature_plugins {
             plugin.initialize_static_resources(
                 asset_manager,
@@ -146,19 +150,25 @@ impl Renderer {
 
         upload.block_until_upload_complete()?;
 
-        let render_thread = RenderThread::start(render_resources);
+        let use_render_thread = device_context.device_info().supports_multithreaded_usage;
+        let render_thread = if use_render_thread {
+            Some(RenderThread::start())
+        } else {
+            None
+        };
 
         let num_features = RenderRegistry::registered_feature_count() as usize;
         let renderer = RendererInner {
-            feature_plugins,
-            render_thread,
-            render_graph_generator,
             thread_pool,
             temporary_work: RenderJobExtractAllocationContext::new(num_features),
         };
 
         Ok(Renderer {
             inner: Arc::new(Mutex::new(renderer)),
+            render_thread,
+            render_graph_generator,
+            feature_plugins,
+            render_resources: Arc::new(render_resources),
             graphics_queue: graphics_queue.clone(),
             transfer_queue: transfer_queue.clone(),
         })
@@ -217,11 +227,9 @@ impl Renderer {
             )
         }?;
 
-        self.inner
-            .lock()
-            .unwrap()
-            .render_thread
-            .wait_for_render_finish(std::time::Duration::from_secs(30));
+        if let Some(render_thread) = &self.render_thread {
+            render_thread.wait_for_render_finish();
+        }
 
         let t1 = rafx_base::Instant::now();
         log::trace!(
@@ -241,20 +249,13 @@ impl Renderer {
     ) {
         let result = Self::try_create_render_job(&renderer, extract_resources, &presentable_frame);
 
-        let mut guard = renderer.inner.lock().unwrap();
-        let renderer_inner = &mut *guard;
         match result {
             Ok(prepared_frame) => {
-                if cfg!(all(feature = "no-render-thread")) {
-                    // NOTE(dvd): Run single threaded. Useful when trying to track # of global memory allocations.
-                    let _ = prepared_frame.render_async(
-                        presentable_frame,
-                        &*guard.render_thread.render_resources().lock().unwrap(),
-                    );
+                if let Some(render_thread) = &renderer.render_thread {
+                    render_thread.render(prepared_frame, presentable_frame);
                 } else {
-                    renderer_inner
-                        .render_thread
-                        .render(prepared_frame, presentable_frame);
+                    // This path is required for backends that do not support multithreaded use
+                    prepared_frame.render_async(presentable_frame);
                 }
             }
             Err(e) => {
@@ -287,11 +288,7 @@ impl Renderer {
 
         let mut guard = renderer.inner.lock().unwrap();
         let renderer_inner = &mut *guard;
-        let render_resources = &mut renderer_inner
-            .render_thread
-            .render_resources()
-            .lock()
-            .unwrap();
+        let render_resources = &renderer.render_resources;
 
         let renderer_config = extract_resources
             .try_fetch::<RendererConfigResource>()
@@ -313,11 +310,6 @@ impl Renderer {
                 .resources()
                 .get_or_create_image_view(&swapchain_image, None)?
         };
-
-        let swapchain_surface_info = render_resources
-            .fetch::<SwapchainResources>()
-            .swapchain_surface_info
-            .clone();
 
         let render_view_set = RenderViewSet::default();
 
@@ -352,7 +344,7 @@ impl Renderer {
         {
             profiling::scope!("Compute Views");
             render_views.push(main_view.clone());
-            for plugin in &*renderer_inner.feature_plugins {
+            for plugin in &*renderer.feature_plugins {
                 plugin.add_render_views(
                     extract_resources,
                     render_resources,
@@ -368,7 +360,7 @@ impl Renderer {
 
         asset_manager.on_begin_frame()?;
 
-        render_resources.insert(swapchain_surface_info.clone());
+        //render_resources.insert(swapchain_surface_info.clone());
 
         //
         // Build the frame packet - this takes the views and visibility results and creates a
@@ -376,7 +368,9 @@ impl Renderer {
         //
 
         unsafe {
-            render_resources.insert(AssetManagerRenderResource::new(asset_manager));
+            render_resources
+                .fetch_mut::<AssetManagerRenderResource>()
+                .set_asset_manager(Some(&asset_manager));
         }
 
         let frame_packets = {
@@ -407,7 +401,7 @@ impl Renderer {
                 renderer_inner
                     .thread_pool
                     .count_render_features_render_objects(
-                        &renderer_inner.feature_plugins,
+                        &renderer.feature_plugins,
                         &extract_context,
                         &visibility_results,
                     );
@@ -415,13 +409,13 @@ impl Renderer {
 
             {
                 profiling::scope!("Allocate Frame Packets");
-                Renderer::create_frame_packets(&renderer_inner.feature_plugins, &extract_context);
+                Renderer::create_frame_packets(&renderer.feature_plugins, &extract_context);
             }
 
             let extract_jobs = {
                 profiling::scope!("Create Extract Jobs");
                 renderer_inner.thread_pool.create_extract_jobs(
-                    &renderer_inner.feature_plugins,
+                    &renderer.feature_plugins,
                     &extract_context,
                     visibility_results,
                 )
@@ -435,25 +429,29 @@ impl Renderer {
             Renderer::take_frame_packets(extract_jobs)
         };
 
-        render_resources.remove::<AssetManagerRenderResource>();
+        unsafe {
+            render_resources
+                .fetch_mut::<AssetManagerRenderResource>()
+                .set_asset_manager(None);
+        }
 
         //TODO: This is now possible to run on the render thread
-        let prepared_render_graph = renderer_inner
-            .render_graph_generator
-            .generate_render_graph(
-                asset_manager,
-                swapchain_image,
-                main_view.clone(),
-                extract_resources,
-                render_resources,
-            )?;
+        let prepared_render_graph = renderer.render_graph_generator.generate_render_graph(
+            asset_manager,
+            swapchain_image,
+            main_view.clone(),
+            extract_resources,
+            render_resources,
+        )?;
 
-        let renderer = renderer.clone();
         let graphics_queue = renderer.graphics_queue.clone();
-        let feature_plugins = renderer_inner.feature_plugins.clone();
+        let feature_plugins = renderer.feature_plugins.clone();
+        let thread_pool = renderer_inner.thread_pool.clone_to_box();
+        let render_resources = renderer.render_resources.clone();
 
         let prepared_frame = RenderFrameJob {
-            renderer,
+            thread_pool,
+            render_resources,
             prepared_render_graph,
             resource_context,
             frame_packets,

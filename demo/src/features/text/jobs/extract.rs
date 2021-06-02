@@ -45,7 +45,13 @@ impl<'extract> ExtractJobEntryPoints<'extract> for TextExtractJob<'extract> {
         let text_resource = &mut self.text_resource.borrow_mut();
         let text_draw_data = text_resource.take_text_draw_data();
         for (load_handle, handle) in text_draw_data.fonts {
-            let asset = self.asset_manager.committed_asset(&handle).unwrap().clone();
+            let asset = self
+                .asset_manager
+                .get()
+                .unwrap()
+                .committed_asset(&handle)
+                .unwrap()
+                .clone();
             let old = font_assets.insert(load_handle, asset);
             assert!(old.is_none());
         }
@@ -56,6 +62,8 @@ impl<'extract> ExtractJobEntryPoints<'extract> for TextExtractJob<'extract> {
             .set(TextPerFrameData {
                 text_material_pass: self
                     .asset_manager
+                    .get()
+                    .unwrap()
                     .committed_asset(&self.text_material)
                     .unwrap()
                     .get_single_material_pass()

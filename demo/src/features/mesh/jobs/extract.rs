@@ -49,6 +49,8 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshExtractJob<'extract> {
             .set(MeshPerFrameData {
                 depth_material_pass: self
                     .asset_manager
+                    .get()
+                    .unwrap()
                     .committed_asset(&self.depth_material)
                     .unwrap()
                     .get_single_material_pass()
@@ -67,6 +69,8 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshExtractJob<'extract> {
 
         let mesh_asset = self
             .asset_manager
+            .get()
+            .unwrap()
             .committed_asset(&render_object_static_data.mesh);
 
         context.set_render_object_instance_data(mesh_asset.and_then(|mesh_asset| {

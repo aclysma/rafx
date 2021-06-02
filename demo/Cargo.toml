@@ -77,7 +77,7 @@ rafx-gles3 = ["rafx/rafx-gles3"]
 sdl2-bundled = ["sdl2/bundled"]
 sdl2-static-link = ["sdl2/static-link"]
 static-vulkan = ["rafx/static-vulkan"]
-profile-with-stats-alloc = ["stats_alloc", "rafx/no-render-thread"]
+profile-with-stats-alloc = ["stats_alloc"]
 profile-with-puffin = [
     "profiling/profile-with-puffin",
     "puffin_egui",

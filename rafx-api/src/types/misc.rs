@@ -36,6 +36,8 @@ impl Default for RafxValidationMode {
 /// Information about the device, mostly limits, requirements (like memory alignment), and flags to
 /// indicate whether certain features are supported
 pub struct RafxDeviceInfo {
+    pub supports_multithreaded_usage: bool,
+
     pub min_uniform_buffer_offset_alignment: u32,
     pub min_storage_buffer_offset_alignment: u32,
     pub upload_buffer_texture_alignment: u32,

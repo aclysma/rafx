@@ -6,10 +6,11 @@ use rafx::base::resource_map::ReadBorrow;
 use rafx::base::resource_ref_map::ResourceRefBorrowMut;
 use rafx::distill::loader::handle::Handle;
 use rafx::graph::SwapchainSurfaceInfo;
+use rafx::renderer::SwapchainRenderResource;
 
 pub struct EguiExtractJob<'extract> {
     sdl2_egui_manager: TrustCell<ResourceRefBorrowMut<'extract, Sdl2EguiManager>>,
-    swapchain_surface_info: ReadBorrow<'extract, SwapchainSurfaceInfo>,
+    swapchain_surface_info: SwapchainSurfaceInfo,
     asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
     egui_material: Handle<MaterialAsset>,
 }
@@ -29,7 +30,11 @@ impl<'extract> EguiExtractJob<'extract> {
                 ),
                 swapchain_surface_info: extract_context
                     .render_resources
-                    .fetch::<SwapchainSurfaceInfo>(),
+                    .fetch::<SwapchainRenderResource>()
+                    .get()
+                    .unwrap()
+                    .swapchain_surface_info
+                    .clone(),
                 asset_manager: extract_context
                     .render_resources
                     .fetch::<AssetManagerRenderResource>(),
@@ -77,6 +82,8 @@ impl<'extract> ExtractJobEntryPoints<'extract> for EguiExtractJob<'extract> {
                 egui_draw_data,
                 egui_material_pass: self
                     .asset_manager
+                    .get()
+                    .unwrap()
                     .committed_asset(&self.egui_material)
                     .unwrap()
                     .get_single_material_pass()

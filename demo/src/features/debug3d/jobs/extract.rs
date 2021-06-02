@@ -47,6 +47,8 @@ impl<'extract> ExtractJobEntryPoints<'extract> for Debug3DExtractJob<'extract> {
             .set(Debug3DPerFrameData {
                 debug3d_material_pass: self
                     .asset_manager
+                    .get()
+                    .unwrap()
                     .committed_asset(&self.debug3d_material)
                     .unwrap()
                     .get_single_material_pass()
