@@ -56,7 +56,10 @@ impl RendererBuilder {
         self
     }
 
-    pub fn allow_use_render_thread(mut self, allow_use_render_thread: bool) -> Self {
+    pub fn allow_use_render_thread(
+        mut self,
+        allow_use_render_thread: bool,
+    ) -> Self {
         self.allow_use_render_thread = allow_use_render_thread;
         self
     }
