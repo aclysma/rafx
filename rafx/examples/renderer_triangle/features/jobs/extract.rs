@@ -44,6 +44,8 @@ impl<'extract> ExtractJobEntryPoints<'extract> for DemoExtractJob<'extract> {
             .set(DemoPerFrameData {
                 triangle_material: self
                     .asset_manager
+                    .get()
+                    .unwrap()
                     .committed_asset(&self.triangle_material)
                     .and_then(|x| x.get_single_material_pass().ok()),
                 seconds: self.time_state.total_time().as_secs_f32(),
