@@ -511,6 +511,11 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                 profiling::scope!("puffin profiler");
                 puffin_egui::profiler_window(&ctx);
             }
+
+            let mut render_config_resource = resources.get_mut::<RendererConfigResource>().unwrap();
+            render_config_resource
+                .visibility_config
+                .enable_visibility_update = render_options.enable_visibility_update;
         }
 
         //
