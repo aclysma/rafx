@@ -533,30 +533,38 @@ fn process_glsl_shader(
     // Write out the spv and rust files if desired
     //
     if let Some(spv_file) = &spv_file {
-        std::fs::write(spv_file, output_spv)?;
+        write_output_file(spv_file, output_spv)?;
     }
 
     if let Some(rs_file) = &rs_file {
-        std::fs::write(rs_file, rust_code.unwrap())?;
+        write_output_file(rs_file, rust_code.unwrap())?;
     }
 
     if let Some(metal_generated_src_file) = &metal_generated_src_file {
-        std::fs::write(metal_generated_src_file, metal_src.unwrap())?;
+        write_output_file(metal_generated_src_file, metal_src.unwrap())?;
     }
 
     if let Some(gles2_generated_src_file) = &gles2_generated_src_file {
-        std::fs::write(gles2_generated_src_file, gles2_src.unwrap())?;
+        write_output_file(gles2_generated_src_file, gles2_src.unwrap())?;
     }
 
     if let Some(gles3_generated_src_file) = &gles3_generated_src_file {
-        std::fs::write(gles3_generated_src_file, gles3_src.unwrap())?;
+        write_output_file(gles3_generated_src_file, gles3_src.unwrap())?;
     }
 
     if let Some(cooked_shader_file) = &cooked_shader_file {
-        std::fs::write(cooked_shader_file, cooked_shader.unwrap())?;
+        write_output_file(cooked_shader_file, cooked_shader.unwrap())?;
     }
 
     Ok(())
+}
+
+fn write_output_file<C: AsRef<[u8]>>(
+    path: &PathBuf,
+    contents: C,
+) -> std::io::Result<()> {
+    std::fs::create_dir_all(path.parent().unwrap())?;
+    std::fs::write(path, contents)
 }
 
 fn rename_gl_samplers(
