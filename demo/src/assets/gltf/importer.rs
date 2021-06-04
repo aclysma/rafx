@@ -544,7 +544,7 @@ fn extract_images_to_import(
         let color_space = *image_color_space_assignments
             .get(&image.index())
             .unwrap_or(&ImageAssetColorSpace::Linear);
-        log::info!(
+        log::trace!(
             "Choosing color space {:?} for image index {}",
             color_space,
             image.index()
@@ -870,6 +870,7 @@ fn extract_meshes_to_import(
         // Vertex Buffer
         //
         let vertex_buffer_asset = BufferAssetData {
+            resource_type: RafxResourceType::VERTEX_BUFFER,
             data: all_vertices.into_data(),
         };
 
@@ -892,6 +893,7 @@ fn extract_meshes_to_import(
         // Index Buffer
         //
         let index_buffer_asset = BufferAssetData {
+            resource_type: RafxResourceType::INDEX_BUFFER,
             data: all_indices.into_data(),
         };
 

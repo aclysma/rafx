@@ -8,6 +8,7 @@ use distill::{core::AssetUuid, importer::ImportOp};
 use fnv::FnvHashMap;
 use itertools::Itertools;
 use ldtk_rust::{LayerInstance, Level, TileInstance};
+use rafx::api::RafxResourceType;
 use rafx::assets::{
     BufferAssetData, ImageAsset, MaterialInstanceAssetData, MaterialInstanceSlotAssignment,
 };
@@ -264,7 +265,8 @@ impl Importer for LdtkImporter {
                 //
                 // Create a vertex buffer for the level
                 //
-                let vertex_buffer_asset_data = BufferAssetData::from_vec(&vertex_data);
+                let vertex_buffer_asset_data =
+                    BufferAssetData::from_vec(RafxResourceType::VERTEX_BUFFER, &vertex_data);
                 let vertex_buffer_uuid = *unstable_state
                     .level_vertex_buffer_uuids
                     .entry(level.uid)
@@ -282,7 +284,8 @@ impl Importer for LdtkImporter {
                 //
                 // Create an index buffer for the level
                 //
-                let index_buffer_asset_data = BufferAssetData::from_vec(&index_data);
+                let index_buffer_asset_data =
+                    BufferAssetData::from_vec(RafxResourceType::INDEX_BUFFER, &index_data);
                 let index_buffer_uuid = *unstable_state
                     .level_index_buffer_uuids
                     .entry(level.uid)
@@ -324,9 +327,6 @@ impl Importer for LdtkImporter {
         });
 
         *stable_state = unstable_state.into();
-
-        println!("state: {:#?}", stable_state);
-        println!("imported assets: {}", imported_assets.len());
 
         Ok(ImporterValue {
             assets: imported_assets,
