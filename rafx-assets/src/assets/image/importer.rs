@@ -1,9 +1,10 @@
 use crate::assets::image::{ImageAssetColorSpace, ImageAssetData};
 use crate::ImageAssetDataFormat;
+#[cfg(feature = "basis-universal")]
 use basis_universal::BasisTextureType;
 use distill::importer::{Error, ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
-use image2::Image;
+use image::GenericImageView;
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -15,7 +16,7 @@ pub struct ImageImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251"]
-pub struct ImageImporter;
+pub struct ImageImporter(pub image::ImageFormat);
 impl Importer for ImageImporter {
     fn version_static() -> u32
     where
@@ -48,18 +49,20 @@ impl Importer for ImageImporter {
         let mut bytes = Vec::new();
         source.read_to_end(&mut bytes)?;
 
-        let decoded_image = image2::io::decode::<_, _, image2::Rgba>(&bytes)
-            .map_err(|e| Error::Boxed(Box::new(e)))?;
+        use image::EncodableLayout;
 
+        let decoded_image = image::load_from_memory_with_format(&bytes, self.0)
+            .map_err(|e| Error::Boxed(Box::new(e)))?;
+        let (width, height) = decoded_image.dimensions();
         let (format, mip_generation) = ImageAssetData::default_format_and_mip_generation();
         let asset_data = ImageAssetData::from_raw_rgba32(
-            decoded_image.width() as u32,
-            decoded_image.height() as u32,
+            width,
+            height,
             ImageAssetColorSpace::Srgb,
             format,
             mip_generation,
             RafxResourceType::TEXTURE,
-            decoded_image.data(),
+            decoded_image.into_rgba8().as_bytes(),
         )
         .unwrap();
 
@@ -76,13 +79,17 @@ impl Importer for ImageImporter {
     }
 }
 
+#[cfg(feature = "basis-universal")]
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "66ee2e3c-0c11-4cf3-a5f0-f8f3cdaa368c"]
 pub struct BasisImageImporterState(Option<AssetUuid>);
 
+#[cfg(feature = "basis-universal")]
 #[derive(TypeUuid)]
 #[uuid = "6da05c9f-2592-4bd4-a815-2438e05b89a4"]
 pub struct BasisImageImporter;
+
+#[cfg(feature = "basis-universal")]
 impl Importer for BasisImageImporter {
     fn version_static() -> u32
     where

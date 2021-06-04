@@ -38,6 +38,7 @@ pub enum ImageAssetBasisCompressionType {
     Uastc,
 }
 
+#[cfg(feature = "basis-universal")]
 impl Into<basis_universal::BasisTextureFormat> for ImageAssetBasisCompressionType {
     fn into(self) -> basis_universal::BasisTextureFormat {
         match self {
@@ -53,6 +54,7 @@ pub struct ImageAssetBasisCompressionSettings {
     quality: u32,
 }
 
+#[cfg(feature = "basis-universal")]
 impl ImageAssetBasisCompressionSettings {
     pub fn default_uastc() -> Self {
         ImageAssetBasisCompressionSettings {
@@ -115,10 +117,18 @@ impl ImageAssetData {
     ) -> (ImageAssetDataFormatConfig, ImageAssetMipGeneration) {
         let compress_textures = false;
         if compress_textures {
-            let basis_settings = ImageAssetBasisCompressionSettings::default_uastc();
-            let format_config = ImageAssetDataFormatConfig::BasisCompressed(basis_settings);
-            let mipmap_generation = ImageAssetMipGeneration::Precomupted;
-            (format_config, mipmap_generation)
+            #[cfg(feature = "basis-universal")]
+            {
+                let basis_settings = ImageAssetBasisCompressionSettings::default_uastc();
+                let format_config = ImageAssetDataFormatConfig::BasisCompressed(basis_settings);
+                let mipmap_generation = ImageAssetMipGeneration::Precomupted;
+                (format_config, mipmap_generation)
+            }
+
+            #[cfg(not(feature = "basis-universal"))]
+            {
+                unimplemented!("Not built with basis-universal feature")
+            }
         } else {
             let format_config = ImageAssetDataFormatConfig::RawRGBA32;
             let mipmap_generation = ImageAssetMipGeneration::Runtime;
@@ -155,6 +165,11 @@ impl ImageAssetData {
                     data: raw_rgba32.to_vec(),
                 })
             }
+            #[cfg(not(feature = "basis-universal"))]
+            ImageAssetDataFormatConfig::BasisCompressed(settings) => {
+                unimplemented!("crate not built with basis-universal feature");
+            }
+            #[cfg(feature = "basis-universal")]
             ImageAssetDataFormatConfig::BasisCompressed(settings) => {
                 let generate_mips_at_runtime = match mip_generation {
                     ImageAssetMipGeneration::NoMips => false,

@@ -5,6 +5,7 @@ use crate::components::{
     MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
 };
 use crate::features::debug3d::Debug3DRenderFeature;
+#[cfg(feature = "egui")]
 use crate::features::egui::EguiRenderFeature;
 use crate::features::mesh::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
@@ -82,8 +83,8 @@ impl ManyCubesScene {
         for _ in 0..NUM_CUBES {
             let transform_component = TransformComponent {
                 translation: glam::Vec3::new(
-                    rng.gen_range(-50.0, 50.0),
-                    rng.gen_range(-50.0, 50.0),
+                    rng.gen_range(-50.0..50.0),
+                    rng.gen_range(-50.0..50.0),
                     0.0,
                 ),
                 scale: glam::Vec3::new(0.5, 0.5, 0.5),
@@ -197,9 +198,13 @@ fn update_main_view_3d(
         .add_render_phase::<WireframeRenderPhase>()
         .add_render_phase::<UiRenderPhase>();
 
-    let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshRenderFeature>()
-        .add_render_feature::<EguiRenderFeature>();
+    let mut feature_mask_builder =
+        RenderFeatureMaskBuilder::default().add_render_feature::<MeshRenderFeature>();
+
+    #[cfg(feature = "egui")]
+    {
+        feature_mask_builder = feature_mask_builder.add_render_feature::<EguiRenderFeature>();
+    }
 
     if render_options.show_text {
         feature_mask_builder = feature_mask_builder.add_render_feature::<TextRenderFeature>();

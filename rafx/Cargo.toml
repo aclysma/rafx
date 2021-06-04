@@ -54,6 +54,7 @@ static-vulkan = ["rafx-api/static-vulkan"]
 framework = ["rafx-framework"]
 assets = ["rafx-assets", "framework"]
 renderer = ["rafx-renderer", "assets"]
+basis-universal = ["rafx-assets/basis-universal"]
 
 #
 # Profiling features - passes down features to crates contained within this one

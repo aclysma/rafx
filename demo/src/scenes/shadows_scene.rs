@@ -4,7 +4,6 @@ use crate::components::{
 };
 use crate::components::{SpotLightComponent, VisibilityComponent};
 use crate::features::debug3d::Debug3DRenderFeature;
-use crate::features::egui::EguiRenderFeature;
 use crate::features::mesh::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
     MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
@@ -150,7 +149,7 @@ impl ShadowsScene {
                 let mesh_render_object = example_meshes[i % example_meshes.len()].clone();
                 let asset_handle = &mesh_render_objects.get(&mesh_render_object).mesh;
 
-                let rand_scale = rng.gen_range(0.8, 1.2);
+                let rand_scale = rng.gen_range(0.8..1.2);
                 let offset = rand_scale - 1.;
                 let transform_component = TransformComponent {
                     translation: position + Vec3::new(0., 0., offset),
@@ -336,10 +335,14 @@ fn update_main_view_3d(
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
         .add_render_feature::<MeshRenderFeature>()
-        .add_render_feature::<EguiRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
         .add_render_feature::<TileLayerRenderFeature>();
 
+    #[cfg(feature = "egui")]
+    {
+        feature_mask_builder =
+            feature_mask_builder.add_render_feature::<crate::features::egui::EguiRenderFeature>();
+    }
     if render_options.show_text {
         feature_mask_builder = feature_mask_builder.add_render_feature::<TextRenderFeature>();
     }

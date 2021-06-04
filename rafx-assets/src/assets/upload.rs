@@ -8,6 +8,7 @@ use crate::{
     buffer_upload, image_upload, GpuImageData, GpuImageDataColorSpace, GpuImageDataLayer,
     GpuImageDataMipLevel,
 };
+#[cfg(feature = "basis-universal")]
 use basis_universal::{TranscodeParameters, TranscoderTextureFormat};
 use crossbeam_channel::{Receiver, Sender};
 use distill::loader::{storage::AssetLoadOp, LoadHandle};
@@ -667,6 +668,11 @@ impl UploadManager {
                 color_space.rgba8(),
                 request.asset.data,
             ),
+            #[cfg(not(feature = "basis-universal"))]
+            ImageAssetDataFormat::BasisCompressed => {
+                unimplemented!("Not built with basis-universal feature");
+            }
+            #[cfg(feature = "basis-universal")]
             ImageAssetDataFormat::BasisCompressed => {
                 let data = request.asset.data;
                 let mut transcoder = basis_universal::Transcoder::new();

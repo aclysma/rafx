@@ -41,9 +41,9 @@ pub const ALL_SCENES: [Scene; 5] = [
 ];
 
 fn random_color(rng: &mut impl Rng) -> Vec3 {
-    let r = rng.gen_range(0.2, 1.0);
-    let g = rng.gen_range(0.2, 1.0);
-    let b = rng.gen_range(0.2, 1.0);
+    let r = rng.gen_range(0.2..1.0);
+    let g = rng.gen_range(0.2..1.0);
+    let b = rng.gen_range(0.2..1.0);
     let v = Vec3::new(r, g, b);
     v.normalize()
 }
