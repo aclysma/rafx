@@ -2252,17 +2252,26 @@ fn create_output_passes(
                 for color_attachment in &pass.color_attachments {
                     if let Some(color_attachment) = color_attachment {
                         color_formats.push(pass.attachments[*color_attachment].format);
-                        sample_count = Some(
-                            sample_count.unwrap_or(pass.attachments[*color_attachment].samples),
-                        );
+
+                        let expected_sample_count = pass.attachments[*color_attachment].samples;
+                        if let Some(sample_count) = sample_count {
+                            assert_eq!(sample_count, expected_sample_count, "Render node has color attachments with different sample counts, this is unsupported.");
+                        } else {
+                            sample_count = Some(expected_sample_count);
+                        }
                     }
                 }
 
                 let mut depth_format = None;
                 if let Some(depth_attachment) = pass.depth_attachment {
                     depth_format = Some(pass.attachments[depth_attachment].format);
-                    sample_count =
-                        Some(sample_count.unwrap_or(pass.attachments[depth_attachment].samples));
+
+                    let expected_sample_count = pass.attachments[depth_attachment].samples;
+                    if let Some(sample_count) = sample_count {
+                        assert_eq!(sample_count, expected_sample_count, "Render node has color attachment and depth attachment with different sample counts, this is unsupported.");
+                    } else {
+                        sample_count = Some(expected_sample_count);
+                    }
                 }
 
                 let render_target_meta = GraphicsPipelineRenderTargetMeta::new(
