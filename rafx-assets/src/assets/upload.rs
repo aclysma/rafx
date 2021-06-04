@@ -141,7 +141,7 @@ struct InProgressUploadInner {
 
 struct InProgressUploadDebugInfo {
     upload_id: usize,
-    start_time: std::time::Instant,
+    start_time: rafx_base::Instant,
     size: u64,
     image_count: usize,
     buffer_count: usize,
@@ -537,7 +537,7 @@ impl UploadQueue {
                 buffer_count: in_flight_buffer_uploads.len(),
                 image_count: in_flight_image_uploads.len(),
                 size: upload.bytes_written(),
-                start_time: std::time::Instant::now(),
+                start_time: rafx_base::Instant::now(),
             };
 
             self.uploads_in_progress.push(InProgressUpload::new(
@@ -570,7 +570,7 @@ impl UploadQueue {
                         debug_info.size,
                         debug_info.image_count,
                         debug_info.buffer_count,
-                        (std::time::Instant::now() - debug_info.start_time).as_secs_f32(),
+                        debug_info.start_time.elapsed().as_secs_f32(),
                         debug_info.upload_id
                     );
 
@@ -585,7 +585,7 @@ impl UploadQueue {
                         debug_info.size,
                         debug_info.image_count,
                         debug_info.buffer_count,
-                        (std::time::Instant::now() - debug_info.start_time).as_secs_f32(),
+                        debug_info.start_time.elapsed().as_secs_f32(),
                         debug_info.upload_id
                     );
 
@@ -659,7 +659,7 @@ impl UploadManager {
 
         let generate_mips = request.asset.generate_mips_at_runtime;
 
-        let t0 = std::time::Instant::now();
+        let t0 = rafx_base::Instant::now();
         let image_data = match request.asset.format {
             ImageAssetDataFormat::RawRGBA32 => GpuImageData::new_simple(
                 request.asset.width,
@@ -754,7 +754,7 @@ impl UploadManager {
                 GpuImageData::new(layers, rafx_format)
             }
         };
-        let t1 = std::time::Instant::now();
+        let t1 = rafx_base::Instant::now();
 
         #[cfg(debug_assertions)]
         image_data.verify_state();

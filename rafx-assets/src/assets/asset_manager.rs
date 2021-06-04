@@ -154,10 +154,10 @@ impl AssetManager {
 
         fn on_interval<F: Fn()>(
             interval: std::time::Duration,
-            last_time: &mut Option<std::time::Instant>,
+            last_time: &mut Option<rafx_base::Instant>,
             f: F,
         ) {
-            let now = std::time::Instant::now();
+            let now = rafx_base::Instant::now();
 
             if last_time.is_none() || now - last_time.unwrap() >= interval {
                 (f)();
@@ -180,6 +180,7 @@ impl AssetManager {
                             asset_handle
                         );
                     });
+                    #[cfg(not(target_arch = "wasm32"))]
                     std::thread::sleep(std::time::Duration::from_millis(1));
                 }
                 LoadStatus::Loading => {
@@ -190,8 +191,8 @@ impl AssetManager {
                             asset_handle
                         );
                     });
+                    #[cfg(not(target_arch = "wasm32"))]
                     std::thread::sleep(std::time::Duration::from_millis(1));
-                    // keep waiting
                 }
                 LoadStatus::Loaded => {
                     break Ok(());

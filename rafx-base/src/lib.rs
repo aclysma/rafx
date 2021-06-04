@@ -20,3 +20,5 @@ pub mod atomic_once_cell_array;
 pub mod atomic_once_cell_stack;
 
 pub mod owned_pool;
+
+pub use instant::Instant;

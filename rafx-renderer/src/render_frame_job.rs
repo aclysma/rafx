@@ -30,7 +30,7 @@ impl RenderFrameJob {
         presentable_frame: RafxPresentableFrame,
         render_resources: &RenderResources,
     ) -> RenderFrameJobResult {
-        let t0 = std::time::Instant::now();
+        let t0 = rafx_base::Instant::now();
 
         let mut thread_pool = {
             let mut renderer_inner = self.renderer.inner.lock().unwrap();
@@ -49,7 +49,7 @@ impl RenderFrameJob {
             &mut *thread_pool,
         );
 
-        let t1 = std::time::Instant::now();
+        let t1 = rafx_base::Instant::now();
         log::trace!(
             "[render thread] render took {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
@@ -71,7 +71,7 @@ impl RenderFrameJob {
             }
         }
 
-        let t2 = std::time::Instant::now();
+        let t2 = rafx_base::Instant::now();
         log::trace!(
             "[render thread] present took {} ms",
             (t2 - t1).as_secs_f32() * 1000.0
@@ -92,7 +92,7 @@ impl RenderFrameJob {
         feature_plugins: Arc<Vec<Arc<dyn RenderFeaturePlugin>>>,
         thread_pool: &mut dyn RendererThreadPool,
     ) -> RafxResult<Vec<DynCommandBuffer>> {
-        let t0 = std::time::Instant::now();
+        let t0 = rafx_base::Instant::now();
 
         //
         // Prepare Jobs - everything beyond this point could be done in parallel with the main thread
@@ -138,7 +138,7 @@ impl RenderFrameJob {
             (submit_node_blocks, frame_and_submit_packets)
         };
 
-        let t1 = std::time::Instant::now();
+        let t1 = rafx_base::Instant::now();
         log::trace!(
             "[render thread] render prepare took {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
@@ -168,7 +168,7 @@ impl RenderFrameJob {
             }
         };
 
-        let t2 = std::time::Instant::now();
+        let t2 = rafx_base::Instant::now();
         log::trace!(
             "[render thread] execute graph took {} ms",
             (t2 - t1).as_secs_f32() * 1000.0

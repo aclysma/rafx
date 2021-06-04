@@ -1,6 +1,9 @@
+use rafx::base::Instant;
+use std::time::Duration;
+
 /// Records time when created and logs amount of time passed when dropped
 pub struct ScopeTimer<'a> {
-    start_time: std::time::Instant,
+    start_time: Instant,
     name: &'a str,
 }
 
@@ -9,7 +12,7 @@ impl<'a> ScopeTimer<'a> {
     #[allow(unused_must_use)]
     pub fn new(name: &'a str) -> Self {
         ScopeTimer {
-            start_time: std::time::Instant::now(),
+            start_time: Instant::now(),
             name,
         }
     }
@@ -17,7 +20,7 @@ impl<'a> ScopeTimer<'a> {
 
 impl<'a> Drop for ScopeTimer<'a> {
     fn drop(&mut self) {
-        let end_time = std::time::Instant::now();
+        let end_time = Instant::now();
         log::info!(
             "ScopeTimer {}: {}",
             self.name,
@@ -29,7 +32,7 @@ impl<'a> Drop for ScopeTimer<'a> {
 /// Useful for cases where you want to do something once per time interval.
 #[derive(Default)]
 pub struct PeriodicEvent {
-    last_time_triggered: Option<std::time::Instant>,
+    last_time_triggered: Option<Instant>,
 }
 
 impl PeriodicEvent {
@@ -37,8 +40,8 @@ impl PeriodicEvent {
     /// enough time has passed since it last returned true.
     pub fn try_take_event(
         &mut self,
-        current_time: std::time::Instant,
-        wait_duration: std::time::Duration,
+        current_time: Instant,
+        wait_duration: Duration,
     ) -> bool {
         match self.last_time_triggered {
             None => {
@@ -88,10 +91,6 @@ impl TimeResource {
             simulation_pause_flags: 0,
             pending_time_ops: Default::default(),
         }
-    }
-
-    pub fn system_time(&self) -> &TimeContext {
-        self.time_state.app_time_context()
     }
 
     pub fn game_time(&self) -> &TimeContext {
@@ -158,19 +157,16 @@ impl TimeResource {
     }
 }
 
-use std::time;
-
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 
 /// Contains the global time information (such as time when app was started.) There is also a
 /// time context that is continuously updated
 #[derive(Clone)]
 pub struct TimeState {
-    app_start_system_time: time::SystemTime,
-    app_start_instant: time::Instant,
+    app_start_instant: Instant,
 
     // Save the instant captured during previous update
-    previous_update_instant: time::Instant,
+    previous_update_instant: Instant,
 
     // This contains each context that we support. This will likely be removed in a future version
     // of skulpin
@@ -181,11 +177,9 @@ impl TimeState {
     /// Create a new TimeState. Default is not allowed because the current time affects the object
     #[allow(clippy::new_without_default)]
     pub fn new() -> TimeState {
-        let now_instant = time::Instant::now();
-        let now_system_time = time::SystemTime::now();
+        let now_instant = Instant::now();
 
         TimeState {
-            app_start_system_time: now_system_time,
             app_start_instant: now_instant,
             previous_update_instant: now_instant,
             app_time_context: TimeContext::new(),
@@ -195,19 +189,14 @@ impl TimeState {
     /// Call every frame to capture time passing and update values
     pub fn update(&mut self) {
         // Determine length of time since last tick
-        let now_instant = time::Instant::now();
+        let now_instant = Instant::now();
         let elapsed = now_instant - self.previous_update_instant;
         self.previous_update_instant = now_instant;
         self.app_time_context.update(elapsed);
     }
 
-    /// System time that the application started
-    pub fn app_start_system_time(&self) -> &time::SystemTime {
-        &self.app_start_system_time
-    }
-
     /// rust Instant object captured when the application started
-    pub fn app_start_instant(&self) -> &time::Instant {
+    pub fn app_start_instant(&self) -> &Instant {
         &self.app_start_instant
     }
 
@@ -217,17 +206,17 @@ impl TimeState {
     }
 
     /// Duration of time passed
-    pub fn total_time(&self) -> time::Duration {
+    pub fn total_time(&self) -> Duration {
         self.app_time_context.total_time
     }
 
-    /// `std::time::Instant` object captured at the start of the most recent update
-    pub fn current_instant(&self) -> time::Instant {
+    /// `rafx::base::Instant` object captured at the start of the most recent update
+    pub fn current_instant(&self) -> Instant {
         self.app_time_context.current_instant
     }
 
     /// duration of time passed during the previous update
-    pub fn previous_update_time(&self) -> time::Duration {
+    pub fn previous_update_time(&self) -> Duration {
         self.app_time_context.previous_update_time
     }
 
@@ -256,9 +245,9 @@ impl TimeState {
 /// possible to track a separate "context" of time, for example "unpaused" time in a game
 #[derive(Copy, Clone)]
 pub struct TimeContext {
-    total_time: time::Duration,
-    current_instant: time::Instant,
-    previous_update_time: time::Duration,
+    total_time: Duration,
+    current_instant: Instant,
+    previous_update_time: Duration,
     previous_update_dt: f32,
     updates_per_second: f32,
     updates_per_second_smoothed: f32,
@@ -269,8 +258,8 @@ impl TimeContext {
     /// Create a new TimeState. Default is not allowed because the current time affects the object
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        let now_instant = time::Instant::now();
-        let zero_duration = time::Duration::from_secs(0);
+        let now_instant = Instant::now();
+        let zero_duration = Duration::from_secs(0);
         TimeContext {
             total_time: zero_duration,
             current_instant: now_instant,
@@ -285,7 +274,7 @@ impl TimeContext {
     /// Call to capture time passing and update values
     pub fn update(
         &mut self,
-        elapsed: std::time::Duration,
+        elapsed: Duration,
     ) {
         self.total_time += elapsed;
         self.current_instant += elapsed;
@@ -309,18 +298,18 @@ impl TimeContext {
     }
 
     /// Duration of time passed in this time context
-    pub fn total_time(&self) -> time::Duration {
+    pub fn total_time(&self) -> Duration {
         self.total_time
     }
 
-    /// `std::time::Instant` object captured at the start of the most recent update in this time
+    /// `rafx::base::Instant` object captured at the start of the most recent update in this time
     /// context
-    pub fn current_instant(&self) -> time::Instant {
+    pub fn current_instant(&self) -> Instant {
         self.current_instant
     }
 
     /// duration of time passed during the previous update
-    pub fn previous_update_time(&self) -> time::Duration {
+    pub fn previous_update_time(&self) -> Duration {
         self.previous_update_time
     }
 

@@ -202,7 +202,7 @@ impl Renderer {
         //
         // Block until the previous frame completes being submitted to GPU
         //
-        let t0 = std::time::Instant::now();
+        let t0 = rafx_base::Instant::now();
 
         let presentable_frame = {
             let viewports_resource = extract_resources.fetch::<ViewportsResource>();
@@ -223,7 +223,7 @@ impl Renderer {
             .render_thread
             .wait_for_render_finish(std::time::Duration::from_secs(30));
 
-        let t1 = std::time::Instant::now();
+        let t1 = rafx_base::Instant::now();
         log::trace!(
             "[main] wait for previous frame present {} ms",
             (t1 - t0).as_secs_f32() * 1000.0

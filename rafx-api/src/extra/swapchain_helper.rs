@@ -253,11 +253,11 @@ impl RafxSwapchainHelper {
         self.wait_until_previous_frame_submitted()?;
 
         if let Some(shared_state) = self.shared_state.take() {
-            let begin_wait_time = std::time::Instant::now();
+            let begin_wait_time = rafx_base::Instant::now();
             while Arc::strong_count(&shared_state) > 1 {
                 // It's possible the previous frame has not finished dropping. Wait until this
                 // occurs.
-                if (std::time::Instant::now() - begin_wait_time).as_secs_f32() > 1.0 {
+                if (rafx_base::Instant::now() - begin_wait_time).as_secs_f32() > 1.0 {
                     // Bail early, we won't properly clean up
                     log::error!("A presentable frame was submitted but still isn't dropped. Can't clean up the swapchain");
                     break;

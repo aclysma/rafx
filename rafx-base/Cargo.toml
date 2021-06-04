@@ -18,3 +18,9 @@ log = "0.4"
 fnv = "1.0"
 crossbeam-channel = "0.5"
 downcast-rs = "1.2.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+instant = { version = "0.1", features = ["wasm-bindgen"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+instant = { version = "0.1" }

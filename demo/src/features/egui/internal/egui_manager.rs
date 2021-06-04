@@ -9,7 +9,7 @@ use std::sync::Mutex;
 struct EguiManagerInner {
     context: egui::CtxRef,
     raw_input: egui::RawInput,
-    start_time: std::time::Instant,
+    start_time: rafx::base::Instant,
 
     // This is produced when calling render()
     font_atlas: Option<Arc<egui::Texture>>,
@@ -99,7 +99,7 @@ impl EguiManager {
             inner: Arc::new(Mutex::new(EguiManagerInner {
                 context: ctx,
                 raw_input,
-                start_time: std::time::Instant::now(),
+                start_time: rafx::base::Instant::now(),
                 font_atlas: None,
                 clipped_meshes: None,
             })),

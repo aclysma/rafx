@@ -363,7 +363,7 @@ pub fn update_loop(
         })?;
 
         log::trace!("Starting event loop");
-        let start_time = instant::Instant::now();
+        let start_time = rafx::base::Instant::now();
 
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;
