@@ -10,6 +10,7 @@ pub struct PrepareJob<'prepare, PrepareJobEntryPointsT: PrepareJobEntryPoints<'p
     inner: PrepareJobEntryPointsT,
     frame_packet: Option<Box<FramePacket<PrepareJobEntryPointsT::FramePacketDataT>>>,
     submit_packet: Option<Box<SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>>>,
+    #[allow(dead_code)]
     debug_constants: &'static RenderFeatureDebugConstants,
     _phantom: (PhantomData<&'prepare ()>,),
 }

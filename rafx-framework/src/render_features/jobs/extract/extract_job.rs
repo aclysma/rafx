@@ -10,6 +10,7 @@ use std::ops::Range;
 pub struct ExtractJob<'extract, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>> {
     inner: ExtractJobEntryPointsT,
     frame_packet: Option<Box<FramePacket<ExtractJobEntryPointsT::FramePacketDataT>>>,
+    #[allow(dead_code)]
     debug_constants: &'static RenderFeatureDebugConstants,
     _phantom: (PhantomData<&'extract ()>,),
 }
