@@ -5,7 +5,7 @@ use crate::phases::{
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::RafxResult;
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, ComputePipelineAsset, MaterialAsset};
+use rafx::assets::{AssetManager, MaterialAsset};
 use rafx::base::resource_map::ResourceMap;
 use rafx::distill::loader::handle::Handle;
 use rafx::render_features::{ExtractResources, RenderRegistryBuilder};
@@ -17,7 +17,6 @@ pub struct DemoStaticResources {
     pub bloom_extract_material: Handle<MaterialAsset>,
     pub bloom_blur_material: Handle<MaterialAsset>,
     pub bloom_combine_material: Handle<MaterialAsset>,
-    pub compute_test: Handle<ComputePipelineAsset>,
 }
 
 pub struct DemoRendererPlugin;
@@ -66,12 +65,6 @@ impl RendererAssetPlugin for DemoRendererPlugin {
         let bloom_combine_material =
             asset_resource.load_asset_path::<MaterialAsset, _>("materials/bloom_combine.material");
 
-        //
-        // Compute pipeline
-        //
-        let compute_test = asset_resource
-            .load_asset_path::<ComputePipelineAsset, _>("compute_pipelines/compute_test.compute");
-
         asset_manager.wait_for_asset_to_load(
             &bloom_extract_material,
             asset_resource,
@@ -90,13 +83,10 @@ impl RendererAssetPlugin for DemoRendererPlugin {
             "bloom combine material",
         )?;
 
-        asset_manager.wait_for_asset_to_load(&compute_test, asset_resource, "compute pipeline")?;
-
         render_resources.insert(DemoStaticResources {
             bloom_extract_material,
             bloom_blur_material,
             bloom_combine_material,
-            compute_test,
         });
 
         Ok(())
