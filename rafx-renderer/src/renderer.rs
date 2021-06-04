@@ -488,8 +488,7 @@ impl Renderer {
     }
 
     pub fn calculate_frame_packet_size(
-        #[allow(unused_variables)]
-        debug_constants: &'static RenderFeatureDebugConstants,
+        #[allow(unused_variables)] debug_constants: &'static RenderFeatureDebugConstants,
         feature_index: RenderFeatureIndex,
         is_relevant: impl Fn(&RenderViewVisibilityQuery) -> bool,
         visibility_results: &Vec<RenderViewVisibilityQuery>,
@@ -604,8 +603,7 @@ impl Renderer {
     }
 
     pub fn populate_frame_packet(
-        #[allow(unused_variables)]
-        debug_constants: &'static RenderFeatureDebugConstants,
+        #[allow(unused_variables)] debug_constants: &'static RenderFeatureDebugConstants,
         feature_index: RenderFeatureIndex,
         is_relevant: impl Fn(&RenderViewVisibilityQuery) -> bool,
         visibility_results: &Vec<RenderViewVisibilityQuery>,
