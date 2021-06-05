@@ -1,6 +1,7 @@
 // There's a decent amount of code that's just for example and isn't called
 #![allow(dead_code)]
 
+use demo::DemoArgs;
 use structopt::StructOpt;
 
 pub fn logging_init() {
@@ -42,10 +43,18 @@ pub fn logging_init() {
         .init();
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
     logging_init();
 
-    let args = demo::DemoArgs::from_args();
+    //let args = demo::DemoArgs::from_args();
 
-    demo::run(&args).unwrap();
+    //let packbuffer = include_bytes!("../demo.pack");
+
+    demo::main_native(&DemoArgs {
+        external_daemon: false,
+        packfile: None,
+        packbuffer: None, //Some(packbuffer),
+        daemon_args: demo::AssetDaemonArgs::from_iter(&[""]),
+    })
 }

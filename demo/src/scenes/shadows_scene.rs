@@ -343,6 +343,7 @@ fn update_main_view_3d(
         feature_mask_builder =
             feature_mask_builder.add_render_feature::<crate::features::egui::EguiRenderFeature>();
     }
+
     if render_options.show_text {
         feature_mask_builder = feature_mask_builder.add_render_feature::<TextRenderFeature>();
     }

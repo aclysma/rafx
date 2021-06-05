@@ -10,7 +10,7 @@ pub fn main_native() {
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Winit GL Example")
+        .with_title("Rafx Web Demo")
         .build(&event_loop)
         .unwrap();
 
