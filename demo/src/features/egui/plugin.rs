@@ -16,16 +16,16 @@ impl EguiRendererPlugin {
     pub fn legion_init(
         &self,
         resources: &mut legion::Resources,
-        sdl2_video_subsystem: &sdl2::VideoSubsystem,
-        sdl2_mouse: sdl2::mouse::MouseUtil,
+        //sdl2_video_subsystem: &sdl2::VideoSubsystem,
+        //sdl2_mouse: sdl2::mouse::MouseUtil,
     ) {
-        let sdl2_egui_manager = Sdl2EguiManager::new(sdl2_video_subsystem, sdl2_mouse);
-        resources.insert(sdl2_egui_manager.egui_manager().context_resource());
-        resources.insert(sdl2_egui_manager);
+        let winit_egui_manager = WinitEguiManager::new();
+        resources.insert(winit_egui_manager.egui_manager().context_resource());
+        resources.insert(winit_egui_manager);
     }
 
     pub fn legion_destroy(resources: &mut legion::Resources) {
-        resources.remove::<Sdl2EguiManager>();
+        resources.remove::<WinitEguiManager>();
         resources.remove::<EguiContextResource>();
     }
 }

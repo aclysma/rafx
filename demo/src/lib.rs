@@ -34,7 +34,7 @@ mod demo_renderer_thread_pool;
 
 use crate::assets::font::FontAsset;
 #[cfg(feature = "egui")]
-use crate::features::egui::{EguiContextResource, Sdl2EguiManager};
+use crate::features::egui::{EguiContextResource, WinitEguiManager};
 use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
 pub use demo_plugin::DemoRendererPlugin;
@@ -434,8 +434,8 @@ impl DemoApp {
         //
         #[cfg(feature = "egui")]
         {
-            let egui_manager = resources.get::<Sdl2EguiManager>().unwrap();
-            egui_manager.begin_frame(&sdl2_systems.window)?;
+            let egui_manager = self.resources.get::<WinitEguiManager>().unwrap();
+            egui_manager.begin_frame(window)?;
         }
 
         {
@@ -457,11 +457,11 @@ impl DemoApp {
 
         #[cfg(feature = "egui")]
         {
-            let ctx = resources.get::<EguiContextResource>().unwrap().context();
-            let time_state = resources.get::<TimeState>().unwrap();
-            let mut debug_ui_state = resources.get_mut::<DebugUiState>().unwrap();
-            let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
-            let asset_manager = resources.get::<AssetResource>().unwrap();
+            let ctx = self.resources.get::<EguiContextResource>().unwrap().context();
+            let time_state = self.resources.get::<TimeState>().unwrap();
+            let mut debug_ui_state = self.resources.get_mut::<DebugUiState>().unwrap();
+            let mut render_options = self.resources.get_mut::<RenderOptions>().unwrap();
+            let asset_manager = self.resources.get::<AssetResource>().unwrap();
 
             egui::TopPanel::top("top_panel").show(&ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
@@ -541,7 +541,7 @@ impl DemoApp {
                 puffin_egui::profiler_window(&ctx);
             }
 
-            let mut render_config_resource = resources.get_mut::<RendererConfigResource>().unwrap();
+            let mut render_config_resource = self.resources.get_mut::<RendererConfigResource>().unwrap();
             render_config_resource
                 .visibility_config
                 .enable_visibility_update = render_options.enable_visibility_update;
@@ -552,7 +552,7 @@ impl DemoApp {
         //
         #[cfg(feature = "egui")]
         {
-            let egui_manager = resources.get::<Sdl2EguiManager>().unwrap();
+            let egui_manager = self.resources.get::<WinitEguiManager>().unwrap();
             egui_manager.end_frame();
         }
 
@@ -610,7 +610,7 @@ impl DemoApp {
             add_to_extract_resources!(crate::features::text::TextResource, text_resource);
 
             #[cfg(feature = "egui")]
-            add_to_extract_resources!(crate::features::egui::Sdl2EguiManager, sdl2_egui_manager);
+            add_to_extract_resources!(crate::features::egui::WinitEguiManager, winit_egui_manager);
 
             extract_resources.insert(&mut self.world);
 
@@ -652,13 +652,13 @@ impl DemoApp {
 
         #[cfg(feature = "use-egui")]
         let egui_manager = resources
-            .get::<crate::features::egui::Sdl2EguiManager>()
+            .get::<crate::features::egui::WinitEguiManager>()
             .unwrap();
 
         #[cfg(feature = "use-egui")]
         let ignore_event = {
-            egui_manager.handle_event(&event);
-            egui_manager.ignore_event(&event);
+            egui_manager.handle_event(event);
+            egui_manager.ignore_event(event)
         };
 
         #[cfg(not(feature = "use-egui"))]

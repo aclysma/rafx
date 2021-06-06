@@ -6,12 +6,14 @@ use rafx::base::resource_ref_map::ResourceRefBorrowMut;
 use rafx::distill::loader::handle::Handle;
 use rafx::graph::SwapchainSurfaceInfo;
 use rafx::renderer::SwapchainRenderResource;
+use std::marker::PhantomData;
 
 pub struct EguiExtractJob<'extract> {
-    sdl2_egui_manager: TrustCell<ResourceRefBorrowMut<'extract, Sdl2EguiManager>>,
+    egui_manager: EguiManager,
     swapchain_surface_info: SwapchainSurfaceInfo,
     asset_manager: AssetManagerExtractRef,
     egui_material: Handle<MaterialAsset>,
+    phantom_data: PhantomData<&'extract ()>
 }
 
 impl<'extract> EguiExtractJob<'extract> {
@@ -20,13 +22,14 @@ impl<'extract> EguiExtractJob<'extract> {
         frame_packet: Box<EguiFramePacket>,
         egui_material: Handle<MaterialAsset>,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
+        let egui_manager = extract_context
+            .extract_resources
+            .fetch_mut::<WinitEguiManager>()
+            .egui_manager();
+
         Arc::new(ExtractJob::new(
             Self {
-                sdl2_egui_manager: TrustCell::new(
-                    extract_context
-                        .extract_resources
-                        .fetch_mut::<Sdl2EguiManager>(),
-                ),
+                egui_manager,
                 swapchain_surface_info: extract_context
                     .render_resources
                     .fetch::<SwapchainRenderResource>()
@@ -38,6 +41,7 @@ impl<'extract> EguiExtractJob<'extract> {
                     .fetch::<AssetManagerRenderResource>()
                     .extract_ref(),
                 egui_material,
+                phantom_data: PhantomData
             },
             frame_packet,
         ))
@@ -49,8 +53,7 @@ impl<'extract> ExtractJobEntryPoints<'extract> for EguiExtractJob<'extract> {
         &self,
         context: &ExtractPerFrameContext<'extract, '_, Self>,
     ) {
-        let sdl2_egui_manager = &mut self.sdl2_egui_manager.borrow_mut();
-        let egui_draw_data = sdl2_egui_manager.egui_manager().take_draw_data();
+        let egui_draw_data = self.egui_manager.take_draw_data();
         let view_ubo = {
             let pixels_per_point = match &egui_draw_data {
                 Some(data) => data.pixels_per_point,

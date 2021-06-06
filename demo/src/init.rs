@@ -51,8 +51,8 @@ pub fn rendering_init(
     #[cfg(feature = "egui")]
     egui_renderer_plugin.legion_init(
         resources,
-        &sdl2_systems.video_subsystem,
-        sdl2_systems.context.mouse(),
+        //&sdl2_systems.video_subsystem,
+        //sdl2_systems.context.mouse(),
     );
 
     //
