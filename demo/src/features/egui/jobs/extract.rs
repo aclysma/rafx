@@ -13,7 +13,7 @@ pub struct EguiExtractJob<'extract> {
     swapchain_surface_info: SwapchainSurfaceInfo,
     asset_manager: AssetManagerExtractRef,
     egui_material: Handle<MaterialAsset>,
-    phantom_data: PhantomData<&'extract ()>
+    phantom_data: PhantomData<&'extract ()>,
 }
 
 impl<'extract> EguiExtractJob<'extract> {
@@ -41,7 +41,7 @@ impl<'extract> EguiExtractJob<'extract> {
                     .fetch::<AssetManagerRenderResource>()
                     .extract_ref(),
                 egui_material,
-                phantom_data: PhantomData
+                phantom_data: PhantomData,
             },
             frame_packet,
         ))
