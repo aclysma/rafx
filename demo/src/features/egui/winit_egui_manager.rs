@@ -3,11 +3,9 @@ use std::sync::Mutex;
 
 use super::EguiManager;
 use copypasta::{ClipboardContext, ClipboardProvider};
-use egui::CursorIcon;
 use rafx::api::RafxResult;
-use winit::dpi::LogicalPosition;
 use winit::event::MouseButton;
-use winit::event::{DeviceEvent, Event, MouseScrollDelta, WindowEvent};
+use winit::event::{Event, MouseScrollDelta, WindowEvent};
 use winit::window::Window;
 
 struct WinitEguiManagerInner {
