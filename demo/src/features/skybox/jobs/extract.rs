@@ -43,16 +43,12 @@ impl<'extract> ExtractJobEntryPoints<'extract> for SkyboxExtractJob<'extract> {
             .set(SkyboxPerFrameData {
                 skybox_material_pass: self
                     .asset_manager
-                    .get()
-                    .unwrap()
                     .committed_asset(&self.skybox_material)
                     .unwrap()
                     .get_single_material_pass()
                     .ok(),
                 skybox_texture: self
                     .asset_manager
-                    .get()
-                    .unwrap()
                     .committed_asset(&self.skybox_texture)
                     .and_then(|x| Some(x.image_view.clone())),
             });

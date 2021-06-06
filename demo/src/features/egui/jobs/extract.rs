@@ -82,8 +82,6 @@ impl<'extract> ExtractJobEntryPoints<'extract> for EguiExtractJob<'extract> {
                 egui_draw_data,
                 egui_material_pass: self
                     .asset_manager
-                    .get()
-                    .unwrap()
                     .committed_asset(&self.egui_material)
                     .unwrap()
                     .get_single_material_pass()

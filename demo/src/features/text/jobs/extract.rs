@@ -47,8 +47,6 @@ impl<'extract> ExtractJobEntryPoints<'extract> for TextExtractJob<'extract> {
         for (load_handle, handle) in text_draw_data.fonts {
             let asset = self
                 .asset_manager
-                .get()
-                .unwrap()
                 .committed_asset(&handle)
                 .unwrap()
                 .clone();
@@ -62,8 +60,6 @@ impl<'extract> ExtractJobEntryPoints<'extract> for TextExtractJob<'extract> {
             .set(TextPerFrameData {
                 text_material_pass: self
                     .asset_manager
-                    .get()
-                    .unwrap()
                     .committed_asset(&self.text_material)
                     .unwrap()
                     .get_single_material_pass()
