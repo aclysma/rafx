@@ -26,7 +26,7 @@ impl RenderGraphGenerator for DemoRenderGraphGenerator {
         let device_context = asset_manager.device_context();
         let resource_context = asset_manager.resource_manager().resource_context();
         let swapchain_render_resource = render_resources.fetch::<SwapchainRenderResource>();
-        let swapchain_info = swapchain_render_resource.get().unwrap();
+        let swapchain_info = swapchain_render_resource.get();
 
         //
         // Create a graph to describe how we will draw the frame. Here we just have a single
