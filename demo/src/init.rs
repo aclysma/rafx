@@ -49,11 +49,7 @@ pub fn rendering_init(
     text_renderer_plugin.legion_init(resources);
 
     #[cfg(feature = "egui")]
-    egui_renderer_plugin.legion_init(
-        resources,
-        //&sdl2_systems.video_subsystem,
-        //sdl2_systems.context.mouse(),
-    );
+    egui_renderer_plugin.legion_init(resources);
 
     //
     // Create the api. GPU programming is fundamentally unsafe, so all rafx APIs should be

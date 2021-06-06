@@ -2,59 +2,20 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use super::EguiManager;
-use rafx::api::RafxResult;
-use winit::event::{Event, WindowEvent, DeviceEvent, MouseScrollDelta};
-use winit::event::MouseButton;
-use winit::window::Window;
+use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::CursorIcon;
+use rafx::api::RafxResult;
 use winit::dpi::LogicalPosition;
-
-// struct CursorHandler {
-//     system_cursor: Option<sdl2::mouse::SystemCursor>,
-//     cursor: Option<sdl2::mouse::Cursor>,
-//     mouse: sdl2::mouse::MouseUtil,
-// }
-//
-// impl CursorHandler {
-//     fn new(mouse: sdl2::mouse::MouseUtil) -> Self {
-//         CursorHandler {
-//             system_cursor: None,
-//             cursor: None,
-//             mouse,
-//         }
-//     }
-//
-//     fn set_cursor(
-//         &mut self,
-//         system_cursor: Option<sdl2::mouse::SystemCursor>,
-//     ) {
-//         if system_cursor != self.system_cursor {
-//             if system_cursor.is_none() {
-//                 self.system_cursor = None;
-//                 self.cursor = None;
-//                 self.mouse.show_cursor(false);
-//             } else {
-//                 let cursor = sdl2::mouse::Cursor::from_system(system_cursor.unwrap()).unwrap();
-//                 cursor.set();
-//
-//                 self.system_cursor = system_cursor;
-//                 self.cursor = Some(cursor);
-//                 self.mouse.show_cursor(true);
-//             }
-//         }
-//     }
-// }
+use winit::event::MouseButton;
+use winit::event::{DeviceEvent, Event, MouseScrollDelta, WindowEvent};
+use winit::window::Window;
 
 struct WinitEguiManagerInner {
-    //clipboard: sdl2::clipboard::ClipboardUtil,
-    //video_subsystem: sdl2::VideoSubsystem,
-    //cursor: CursorHandler,
+    clipboard: Option<ClipboardContext>,
     mouse_position: Option<egui::Pos2>,
-    //modifiers: winit::event::ModifiersState,
+    cursor: Option<winit::window::CursorIcon>,
+    pending_cursor: Option<winit::window::CursorIcon>,
 }
-
-// For sdl2::mouse::Cursor, a member of egui_sdl2::WinitEguiManager
-//unsafe impl Send for WinitEguiManagerInner {}
 
 /// Full egui API and the SDL2 abstraction/platform integration
 #[derive(Clone)]
@@ -70,18 +31,19 @@ impl WinitEguiManager {
     }
 
     // egui and winit platform are expected to be pre-configured
-    pub fn new(
-        //sdl2_video_subsystem: &sdl2::VideoSubsystem,
-        //sdl2_mouse: sdl2::mouse::MouseUtil,
-    ) -> Self {
+    pub fn new() -> Self {
         let egui_manager = EguiManager::new();
 
         let inner = WinitEguiManagerInner {
-            //clipboard: sdl2_video_subsystem.clipboard(),
-            //video_subsystem: sdl2_video_subsystem.clone(),
-            //cursor: CursorHandler::new(sdl2_mouse),
-            mouse_position: Default::default()
+            clipboard: ClipboardContext::new().ok(),
+            mouse_position: Default::default(),
+            cursor: None,
+            pending_cursor: None,
         };
+
+        if inner.clipboard.is_none() {
+            log::warn!("Clipboard could not be initialized");
+        }
 
         WinitEguiManager {
             egui_manager,
@@ -98,7 +60,6 @@ impl WinitEguiManager {
     ) {
         self.egui_manager.with_context_and_input(|_, input| {
             match event {
-                //Event::NewEvents(_) => {}
                 Event::WindowEvent { event, .. } => {
                     match event {
                         WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
@@ -107,11 +68,19 @@ impl WinitEguiManager {
                         WindowEvent::MouseInput { state, button, .. } => {
                             let mouse_position = self.inner.lock().unwrap().mouse_position;
                             if let Some(mouse_position) = mouse_position {
-                                Self::handle_mouse_press(input, mouse_position.x, mouse_position.y, *button, state.eq(&winit::event::ElementState::Pressed));
+                                let pressed = *state == winit::event::ElementState::Pressed;
+                                Self::handle_mouse_press(
+                                    input,
+                                    mouse_position.x,
+                                    mouse_position.y,
+                                    *button,
+                                    pressed,
+                                );
                             }
                         }
                         WindowEvent::CursorMoved { position, .. } => {
-                            let mouse_position = position.to_logical(input.pixels_per_point.unwrap_or(1.0) as f64);
+                            let mouse_position =
+                                position.to_logical(input.pixels_per_point.unwrap_or(1.0) as f64);
                             let mut inner = self.inner.lock().unwrap();
                             let position = egui::pos2(mouse_position.x, mouse_position.y);
                             inner.mouse_position = Some(position);
@@ -123,17 +92,25 @@ impl WinitEguiManager {
                             input.events.push(egui::Event::PointerGone);
                         }
                         WindowEvent::ReceivedCharacter(c) => {
-                            if Self::is_printable_char(*c) && !input.modifiers.ctrl && !input.modifiers.mac_cmd {
+                            if Self::is_printable_char(*c)
+                                && !input.modifiers.ctrl
+                                && !input.modifiers.mac_cmd
+                            {
                                 input.events.push(egui::Event::Text(c.to_string()));
                             }
                         }
-                        WindowEvent::KeyboardInput { input: keyboard_input, .. } => {
+                        WindowEvent::KeyboardInput {
+                            input: keyboard_input,
+                            ..
+                        } => {
+                            let mut inner = self.inner.lock().unwrap();
+                            let pressed =
+                                keyboard_input.state == winit::event::ElementState::Pressed;
                             Self::handle_key_press(
                                 input,
                                 keyboard_input.virtual_keycode,
-                                //input.modifiers,
-                                //&self.inner.lock().unwrap().clipboard,
-                                false,
+                                &mut inner.clipboard,
+                                pressed,
                             );
                         }
                         WindowEvent::MouseWheel { delta, .. } => {
@@ -144,7 +121,8 @@ impl WinitEguiManager {
                                     egui::vec2(*x, *y) * line_height
                                 }
                                 MouseScrollDelta::PixelDelta(delta) => {
-                                    egui::vec2(delta.x as f32, delta.y as f32) / input.pixels_per_point.unwrap_or(1.0)
+                                    egui::vec2(delta.x as f32, delta.y as f32)
+                                        / input.pixels_per_point.unwrap_or(1.0)
                                 }
                             };
 
@@ -153,109 +131,18 @@ impl WinitEguiManager {
                                 delta.x *= -1.0;
                             }
                         }
-                        // WindowEvent::Resized(_) => {}
-                        // WindowEvent::Moved(_) => {}
-                        // WindowEvent::CloseRequested => {}
-                        // WindowEvent::Destroyed => {}
-                        // WindowEvent::DroppedFile(_) => {}
-                        // WindowEvent::HoveredFile(_) => {}
-                        // WindowEvent::HoveredFileCancelled => {}
-                        // WindowEvent::Focused(_) => {}
-                        // WindowEvent::ModifiersChanged(_) => {}
-                        // WindowEvent::CursorEntered { .. } => {}
-                        // WindowEvent::TouchpadPressure { .. } => {}
-                        // WindowEvent::AxisMotion { .. } => {}
-                        // WindowEvent::Touch(_) => {}
-                        // WindowEvent::ThemeChanged(_) => {}
                         _ => {}
                     }
                 }
-                // Event::DeviceEvent { event, .. } => {
-                //     match event {
-                //         DeviceEvent::Added => {}
-                //         DeviceEvent::Removed => {}
-                //         DeviceEvent::MouseMotion { .. } => {}
-                //         DeviceEvent::MouseWheel { .. } => {}
-                //         DeviceEvent::Motion { .. } => {}
-                //         DeviceEvent::Button { .. } => {}
-                //         DeviceEvent::Key(_) => {}
-                //         DeviceEvent::Text { .. } => {}
-                //     }
-                // }
-                // Event::UserEvent(_) => {}
-                // Event::Suspended => {}
-                // Event::Resumed => {}
-                // Event::MainEventsCleared => {}
-                // Event::RedrawRequested(_) => {}
-                // Event::RedrawEventsCleared => {}
-                // Event::LoopDestroyed => {}
                 _ => {}
             }
         });
-
-
-        // self.egui_manager.with_context_and_input(|_, input| {
-        //     match event {
-        //         Event::KeyDown {
-        //             keycode, keymod, ..
-        //         } => {
-        //             Self::handle_key_press(
-        //                 input,
-        //                 *keycode,
-        //                 *keymod,
-        //                 &self.inner.lock().unwrap().clipboard,
-        //                 true,
-        //             );
-        //         }
-        //         Event::KeyUp {
-        //             keycode, keymod, ..
-        //         } => {
-        //             Self::handle_key_press(
-        //                 input,
-        //                 *keycode,
-        //                 *keymod,
-        //                 &self.inner.lock().unwrap().clipboard,
-        //                 false,
-        //             );
-        //         }
-        //         Event::TextInput { text, .. } => {
-        //             input.events.push(egui::Event::Text(text.clone()));
-        //         }
-        //         Event::MouseMotion { x, y, .. } => {
-        //             let dpi = input.pixels_per_point.unwrap_or(1.0);
-        //             input.events.push(egui::Event::PointerMoved(egui::Pos2::new(
-        //                 *x as f32 / dpi,
-        //                 *y as f32 / dpi,
-        //             )));
-        //         }
-        //         Event::MouseButtonDown {
-        //             mouse_btn, x, y, ..
-        //         } => {
-        //             Self::handle_mouse_press(input, *x, *y, *mouse_btn, true);
-        //         }
-        //         Event::MouseButtonUp {
-        //             mouse_btn, x, y, ..
-        //         } => {
-        //             Self::handle_mouse_press(input, *x, *y, *mouse_btn, false);
-        //         }
-        //         Event::MouseWheel { x, y, .. } => {
-        //             // hook up to zoom if ctrl held?
-        //             input.scroll_delta.x += *x as f32;
-        //             input.scroll_delta.y += *y as f32;
-        //         }
-        //         //Event::FingerDown { .. } => {}
-        //         //Event::FingerUp { .. } => {}
-        //         //Event::FingerMotion { .. } => {}
-        //         _ => {}
-        //     }
-        // });
     }
 
     fn handle_key_press(
         input: &mut egui::RawInput,
         keycode: Option<winit::event::VirtualKeyCode>,
-        //keymod: winit::event::ModifiersState,
-        //clipboard: &sdl2::clipboard::ClipboardUtil,
+        clipboard: &mut Option<copypasta::ClipboardContext>,
         pressed: bool,
     ) {
         use winit::event::VirtualKeyCode;
@@ -293,9 +180,11 @@ impl WinitEguiManager {
                                 input.events.push(egui::Event::Copy);
                             }
                             egui::Key::V => {
-                                // if let Ok(text) = clipboard.clipboard_text() {
-                                //     input.events.push(egui::Event::Text(text));
-                                // }
+                                if let Some(clipboard) = clipboard {
+                                    if let Ok(text) = clipboard.get_contents() {
+                                        input.events.push(egui::Event::Text(text));
+                                    }
+                                }
                             }
                             _ => {}
                         }
@@ -333,21 +222,19 @@ impl WinitEguiManager {
         event: &Event<()>,
     ) -> bool {
         let mut ignore = false;
-        // self.egui_manager.with_context(|ctx| {
-        //     ignore = match event {
-        //         Event::KeyDown { .. } => ctx.wants_keyboard_input(),
-        //         Event::KeyUp { .. } => ctx.wants_keyboard_input(),
-        //         Event::TextInput { .. } => ctx.wants_keyboard_input(),
-        //         Event::MouseMotion { .. } => ctx.wants_pointer_input(),
-        //         Event::MouseButtonDown { .. } => ctx.wants_pointer_input(),
-        //         Event::MouseButtonUp { .. } => ctx.wants_pointer_input(),
-        //         Event::MouseWheel { .. } => ctx.wants_pointer_input(),
-        //         //Event::FingerDown { .. } => {}
-        //         //Event::FingerUp { .. } => {}
-        //         //Event::FingerMotion { .. } => {}
-        //         _ => false,
-        //     };
-        // });
+        self.egui_manager.with_context(|ctx| {
+            ignore = match event {
+                Event::WindowEvent { event, .. } => match event {
+                    WindowEvent::ReceivedCharacter(_) => ctx.wants_keyboard_input(),
+                    WindowEvent::KeyboardInput { .. } => ctx.wants_keyboard_input(),
+                    WindowEvent::MouseInput { .. } => ctx.wants_pointer_input(),
+                    WindowEvent::CursorMoved { .. } => ctx.wants_pointer_input(),
+                    WindowEvent::MouseWheel { .. } => ctx.wants_pointer_input(),
+                    _ => false,
+                },
+                _ => false,
+            };
+        });
 
         ignore
     }
@@ -362,6 +249,19 @@ impl WinitEguiManager {
         let physical_size = window.inner_size();
         let pixels_per_point = window.scale_factor() as f32;
 
+        let mut inner = self.inner.lock().unwrap();
+        if inner.cursor != inner.pending_cursor || inner.cursor.is_none() {
+            if let Some(pending_cursor) = inner.pending_cursor {
+                window.set_cursor_visible(true);
+                window.set_cursor_icon(pending_cursor);
+            } else {
+                window.set_cursor_visible(false);
+                window.set_cursor_icon(winit::window::CursorIcon::Default);
+            }
+
+            inner.cursor = inner.pending_cursor;
+        }
+
         self.egui_manager
             .begin_frame(physical_size.width, physical_size.height, pixels_per_point);
         Ok(())
@@ -374,14 +274,12 @@ impl WinitEguiManager {
 
         let output = self.egui_manager.end_frame();
         if !output.copied_text.is_empty() {
-            // inner
-            //     .clipboard
-            //     .set_clipboard_text(&output.copied_text)
-            //     .unwrap();
+            if let Some(clipboard) = &mut inner.clipboard {
+                clipboard.set_contents(output.copied_text).unwrap();
+            }
         }
 
-        //let cursor = Self::winit_mouse_cursor(output.cursor_icon);
-        //inner.cursor.set_cursor(cursor);
+        inner.pending_cursor = Self::winit_mouse_cursor(output.cursor_icon);
     }
 
     fn egui_mouse_button(mouse_button: winit::event::MouseButton) -> Option<egui::PointerButton> {

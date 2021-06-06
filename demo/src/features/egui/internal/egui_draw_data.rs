@@ -49,16 +49,18 @@ impl EguiDrawData {
 
             let meshes = clipped_mesh.1.split_to_u16();
             for mut mesh in meshes {
-                let vertex_offset = vertices.len();
-                let index_offset = indices.len();
-                clipped_draw_calls.draw_calls.push(EguiDrawCall {
-                    texture_id: mesh.texture_id,
-                    vertex_offset,
-                    index_offset,
-                    index_count: mesh.indices.len(),
-                });
-                vertices.append(&mut mesh.vertices);
-                indices.append(&mut mesh.indices);
+                if !mesh.indices.is_empty() {
+                    let vertex_offset = vertices.len();
+                    let index_offset = indices.len();
+                    clipped_draw_calls.draw_calls.push(EguiDrawCall {
+                        texture_id: mesh.texture_id,
+                        vertex_offset,
+                        index_offset,
+                        index_count: mesh.indices.len(),
+                    });
+                    vertices.append(&mut mesh.vertices);
+                    indices.append(&mut mesh.indices);
+                }
             }
 
             all_clipped_draw_calls.push(clipped_draw_calls);

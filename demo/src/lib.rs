@@ -457,7 +457,11 @@ impl DemoApp {
 
         #[cfg(feature = "egui")]
         {
-            let ctx = self.resources.get::<EguiContextResource>().unwrap().context();
+            let ctx = self
+                .resources
+                .get::<EguiContextResource>()
+                .unwrap()
+                .context();
             let time_state = self.resources.get::<TimeState>().unwrap();
             let mut debug_ui_state = self.resources.get_mut::<DebugUiState>().unwrap();
             let mut render_options = self.resources.get_mut::<RenderOptions>().unwrap();
@@ -541,7 +545,8 @@ impl DemoApp {
                 puffin_egui::profiler_window(&ctx);
             }
 
-            let mut render_config_resource = self.resources.get_mut::<RendererConfigResource>().unwrap();
+            let mut render_config_resource =
+                self.resources.get_mut::<RendererConfigResource>().unwrap();
             render_config_resource
                 .visibility_config
                 .enable_visibility_update = render_options.enable_visibility_update;
