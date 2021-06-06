@@ -31,7 +31,6 @@ impl<'extract> EguiExtractJob<'extract> {
                     .render_resources
                     .fetch::<SwapchainRenderResource>()
                     .get()
-                    .unwrap()
                     .swapchain_surface_info
                     .clone(),
                 asset_manager: extract_context

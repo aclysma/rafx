@@ -58,7 +58,11 @@ impl SwapchainRenderResource {
         self.0 = None;
     }
 
-    pub fn get(&self) -> Option<&SwapchainRenderResourceInner> {
+    pub fn try_get(&self) -> Option<&SwapchainRenderResourceInner> {
         self.0.as_ref()
+    }
+
+    pub fn get(&self) -> &SwapchainRenderResourceInner {
+        self.0.as_ref().unwrap()
     }
 }

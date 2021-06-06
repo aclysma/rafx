@@ -362,8 +362,6 @@ impl Renderer {
 
         asset_manager.on_begin_frame()?;
 
-        //render_resources.insert(swapchain_surface_info.clone());
-
         //
         // Build the frame packet - this takes the views and visibility results and creates a
         // structure that's used during the extract/prepare/write phases

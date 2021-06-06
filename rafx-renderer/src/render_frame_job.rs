@@ -12,7 +12,6 @@ pub struct RenderFrameJobResult;
 /// The `RenderFrameJob` is responsible for the `prepare` and `write` steps of the `Renderer` pipeline.
 /// This is created by `Renderer::try_create_render_job` with the results of the `extract` step.
 pub struct RenderFrameJob {
-    //pub renderer: Renderer,
     pub thread_pool: Box<dyn RendererThreadPool>,
     pub render_resources: Arc<RenderResources>,
     pub prepared_render_graph: PreparedRenderGraph,
