@@ -105,6 +105,7 @@ impl WinitEguiManager {
                             input: keyboard_input,
                             ..
                         } => {
+                            #[cfg(feature = "clipboard")]
                             let mut inner = self.inner.lock().unwrap();
                             let pressed =
                                 keyboard_input.state == winit::event::ElementState::Pressed;
