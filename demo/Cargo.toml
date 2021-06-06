@@ -59,8 +59,8 @@ bevy_tasks = "0.5.0"
 default = [
     "sdl2-bundled",
     "sdl2-static-link",
-    #"profile-with-puffin",
-    #"egui"
+    "profile-with-puffin",
+    "egui"
     #"stats_alloc", # Cannot be enabled with "profile-with-tracy-memory". Will run renderer / game loop single-threaded.
     #"profile-with-optick",
     #"profile-with-tracy",
