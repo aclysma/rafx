@@ -49,7 +49,7 @@ pub fn rendering_init(
     text_renderer_plugin.legion_init(resources);
 
     #[cfg(feature = "egui")]
-    egui_renderer_plugin.legion_init(resources);
+    egui_renderer_plugin.legion_init_winit(resources);
 
     //
     // Create the api. GPU programming is fundamentally unsafe, so all rafx APIs should be

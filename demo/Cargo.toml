@@ -14,9 +14,7 @@ shaders = { path = "shaders" }
 distill = { version = "=0.0.3", features = ["serde_importers"] }
 uuid = "0.8"
 type-uuid = "0.1"
-sdl2 = { version = "0.34", features = ["raw-window-handle"] }
 imgui = { version = "0.7", optional = true }
-imgui-sdl2 = { version = "0.14.0", optional = true }
 egui = { version = "0.12", features = ["default_fonts"], optional = true }
 copypasta = { version = "0.7", optional = true }
 puffin_egui = { version = "0.2.0", optional = true }
@@ -58,12 +56,10 @@ raw-window-handle = "0.3.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.6"
-winit = { version = "0.24", features = [] }
+winit = { version = "0.24" }
 
 [features]
 default = [
-    "sdl2-bundled",
-    "sdl2-static-link",
     "profile-with-puffin",
     "use-egui"
     #"stats_alloc", # Cannot be enabled with "profile-with-tracy-memory". Will run renderer / game loop single-threaded.
@@ -72,16 +68,13 @@ default = [
     #"profile-with-tracy-memory", # Cannot be enabled with "stats_alloc".
     #"profile-with-superluminal"
 ]
-use-egui = ["egui", "copypasta"]
+use-egui = ["egui", "copypasta", "egui-winit"]
 basis-universal = ["rafx/basis-universal"]
-use-imgui = ["imgui", "imgui-sdl2"]
 rafx-empty = ["rafx/rafx-empty"]
 rafx-vulkan = ["rafx/rafx-vulkan"]
 rafx-metal = ["rafx/rafx-metal"]
 rafx-gles2 = ["rafx/rafx-gles2"]
 rafx-gles3 = ["rafx/rafx-gles3"]
-sdl2-bundled = ["sdl2/bundled"]
-sdl2-static-link = ["sdl2/static-link"]
 static-vulkan = ["rafx/static-vulkan"]
 profile-with-puffin = [
     "profiling/profile-with-puffin",
@@ -99,3 +92,7 @@ profile-with-tracy-memory = [
     "profiling/profile-with-tracy",
     "profile-with-tracy"
 ]
+
+# these are used internally, turned on by use-egui
+egui-winit = []
+egui-sdl2 = []

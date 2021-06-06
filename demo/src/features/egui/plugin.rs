@@ -13,13 +13,24 @@ pub struct EguiStaticResources {
 pub struct EguiRendererPlugin;
 
 impl EguiRendererPlugin {
-    pub fn legion_init(
+    #[cfg(feature = "egui-winit")]
+    pub fn legion_init_winit(
         &self,
         resources: &mut legion::Resources,
-        //sdl2_video_subsystem: &sdl2::VideoSubsystem,
-        //sdl2_mouse: sdl2::mouse::MouseUtil,
     ) {
         let winit_egui_manager = WinitEguiManager::new();
+        resources.insert(winit_egui_manager.egui_manager().context_resource());
+        resources.insert(winit_egui_manager);
+    }
+
+    #[cfg(feature = "egui-sdl2")]
+    pub fn legion_init_sdl2(
+        &self,
+        resources: &mut legion::Resources,
+        sdl2_video_subsystem: &sdl2::VideoSubsystem,
+        sdl2_mouse: sdl2::mouse::MouseUtil,
+    ) {
+        let winit_egui_manager = Sdl2EguiManager::new(sdl2_video_subsystem, sdl2_mouse);
         resources.insert(winit_egui_manager.egui_manager().context_resource());
         resources.insert(winit_egui_manager);
     }
