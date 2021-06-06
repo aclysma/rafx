@@ -1,14 +1,15 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
-use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
-use rafx::base::resource_map::ReadBorrow;
+use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::distill::loader::handle::Handle;
+use std::marker::PhantomData;
 
 pub struct TileLayerExtractJob<'extract> {
-    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    asset_manager: AssetManagerExtractRef,
     tile_layer_material: Handle<MaterialAsset>,
     render_objects: TileLayerRenderObjectSet,
+    phantom_data: PhantomData<&'extract ()>,
 }
 
 impl<'extract> TileLayerExtractJob<'extract> {
@@ -22,9 +23,11 @@ impl<'extract> TileLayerExtractJob<'extract> {
             Self {
                 asset_manager: extract_context
                     .render_resources
-                    .fetch::<AssetManagerRenderResource>(),
+                    .fetch::<AssetManagerRenderResource>()
+                    .extract_ref(),
                 tile_layer_material,
                 render_objects,
+                phantom_data: PhantomData,
             },
             frame_packet,
         ))

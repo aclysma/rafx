@@ -5,14 +5,13 @@ use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
 use legion::{Entity, EntityStore, IntoQuery, Read, World};
-use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
-use rafx::base::resource_map::ReadBorrow;
+use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrow;
 use rafx::distill::loader::handle::Handle;
 
 pub struct MeshExtractJob<'extract> {
     world: ResourceRefBorrow<'extract, World>,
-    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    asset_manager: AssetManagerExtractRef,
     depth_material: Handle<MaterialAsset>,
     render_objects: MeshRenderObjectSet,
 }
@@ -29,7 +28,8 @@ impl<'extract> MeshExtractJob<'extract> {
                 world: extract_context.extract_resources.fetch::<World>(),
                 asset_manager: extract_context
                     .render_resources
-                    .fetch::<AssetManagerRenderResource>(),
+                    .fetch::<AssetManagerRenderResource>()
+                    .extract_ref(),
                 depth_material,
                 render_objects,
             },

@@ -2,14 +2,13 @@ use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
 use fnv::FnvHashMap;
-use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
-use rafx::base::resource_map::ReadBorrow;
+use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrowMut;
 use rafx::distill::loader::handle::Handle;
 
 pub struct TextExtractJob<'extract> {
     text_resource: TrustCell<ResourceRefBorrowMut<'extract, TextResource>>,
-    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    asset_manager: AssetManagerExtractRef,
     text_material: Handle<MaterialAsset>,
 }
 
@@ -28,7 +27,8 @@ impl<'extract> TextExtractJob<'extract> {
                 ),
                 asset_manager: extract_context
                     .render_resources
-                    .fetch::<AssetManagerRenderResource>(),
+                    .fetch::<AssetManagerRenderResource>()
+                    .extract_ref(),
                 text_material,
             },
             frame_packet,

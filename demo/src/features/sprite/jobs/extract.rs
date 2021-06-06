@@ -3,14 +3,13 @@ use rafx::render_feature_extract_job_predule::*;
 use super::*;
 use crate::components::TransformComponent;
 use legion::{EntityStore, World};
-use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
-use rafx::base::resource_map::ReadBorrow;
+use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrow;
 use rafx::distill::loader::handle::Handle;
 
 pub struct SpriteExtractJob<'extract> {
     world: ResourceRefBorrow<'extract, World>,
-    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    asset_manager: AssetManagerExtractRef,
     sprite_material: Handle<MaterialAsset>,
     render_objects: SpriteRenderObjectSet,
 }
@@ -27,7 +26,8 @@ impl<'extract> SpriteExtractJob<'extract> {
                 world: extract_context.extract_resources.fetch::<World>(),
                 asset_manager: extract_context
                     .render_resources
-                    .fetch::<AssetManagerRenderResource>(),
+                    .fetch::<AssetManagerRenderResource>()
+                    .extract_ref(),
                 sprite_material,
                 render_objects,
             },

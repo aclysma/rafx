@@ -90,6 +90,12 @@ pub fn rendering_init(
     //
     let rafx_api = unsafe { rafx::api::RafxApi::new(sdl2_window, &Default::default())? };
 
+    let allow_use_render_thread = if cfg!(feature = "stats_alloc") {
+        false
+    } else {
+        true
+    };
+
     let mut renderer_builder = RendererBuilder::default();
     renderer_builder = renderer_builder
         .add_asset(Arc::new(FontAssetTypeRendererPlugin))
@@ -101,7 +107,8 @@ pub fn rendering_init(
         .add_render_feature(skybox_renderer_plugin)
         .add_render_feature(tile_layer_renderer_plugin)
         .add_render_feature(debug3d_renderer_plugin)
-        .add_render_feature(text_renderer_plugin);
+        .add_render_feature(text_renderer_plugin)
+        .allow_use_render_thread(allow_use_render_thread);
 
     #[cfg(feature = "egui")]
     {

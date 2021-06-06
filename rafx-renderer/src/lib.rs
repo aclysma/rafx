@@ -14,8 +14,8 @@ pub use viewports_resource::ViewportsResource;
 mod render_thread;
 use render_thread::RenderThread;
 
-mod swapchain_resources;
-pub use swapchain_resources::SwapchainResources;
+mod swapchain_render_resource;
+pub use swapchain_render_resource::SwapchainRenderResource;
 
 mod render_frame_job;
 pub use render_frame_job::RenderFrameJob;

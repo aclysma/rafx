@@ -57,13 +57,6 @@ renderer = ["rafx-renderer", "assets"]
 basis-universal = ["rafx-assets/basis-universal"]
 
 #
-# Profiling features - passes down features to crates contained within this one
-#
-no-render-thread = [
-    "rafx-renderer/no-render-thread"
-]
-
-#
 # Examples
 #
 

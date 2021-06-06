@@ -1,4 +1,3 @@
-use super::Renderer;
 use crate::{RenderFeaturePlugin, RendererThreadPool};
 use fnv::FnvBuildHasher;
 use rafx_api::{RafxCommandBuffer, RafxDeviceContext, RafxQueue};
@@ -13,7 +12,8 @@ pub struct RenderFrameJobResult;
 /// The `RenderFrameJob` is responsible for the `prepare` and `write` steps of the `Renderer` pipeline.
 /// This is created by `Renderer::try_create_render_job` with the results of the `extract` step.
 pub struct RenderFrameJob {
-    pub renderer: Renderer,
+    pub thread_pool: Box<dyn RendererThreadPool>,
+    pub render_resources: Arc<RenderResources>,
     pub prepared_render_graph: PreparedRenderGraph,
     pub resource_context: ResourceContext,
     pub frame_packets: Vec<Box<dyn RenderFeatureFramePacket>>,
@@ -26,27 +26,22 @@ pub struct RenderFrameJob {
 
 impl RenderFrameJob {
     pub fn render_async(
-        self,
+        mut self,
         presentable_frame: RafxPresentableFrame,
-        render_resources: &RenderResources,
     ) -> RenderFrameJobResult {
         let t0 = rafx_base::Instant::now();
 
-        let mut thread_pool = {
-            let mut renderer_inner = self.renderer.inner.lock().unwrap();
-            renderer_inner.thread_pool.clone_to_box()
-        };
-
+        let graphics_queue = self.graphics_queue.clone();
         let result = Self::do_render_async(
             self.prepared_render_graph,
             self.resource_context,
             self.frame_packets,
             self.render_registry,
-            render_resources,
+            &*self.render_resources,
             self.graphics_queue,
             self.render_views,
             self.feature_plugins,
-            &mut *thread_pool,
+            &mut *self.thread_pool,
         );
 
         let t1 = rafx_base::Instant::now();
@@ -58,16 +53,13 @@ impl RenderFrameJob {
         match result {
             Ok(command_buffers) => {
                 // ignore the error, we will receive it when we try to acquire the next image
-                let graphics_queue = self.renderer.graphics_queue();
-
                 let refs: Vec<&RafxCommandBuffer> = command_buffers.iter().map(|x| &**x).collect();
-                let _ = presentable_frame.present(graphics_queue, &refs);
+                let _ = presentable_frame.present(&graphics_queue, &refs);
             }
             Err(err) => {
                 log::error!("Render thread failed with error {:?}", err);
                 // Pass error on to the next swapchain image acquire call
-                let graphics_queue = self.renderer.graphics_queue();
-                presentable_frame.present_with_error(graphics_queue, err);
+                presentable_frame.present_with_error(&graphics_queue, err);
             }
         }
 

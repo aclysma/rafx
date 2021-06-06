@@ -78,6 +78,7 @@ impl RafxDeviceContextGles2Inner {
             gl_context.gl_get_integerv(gles2_bindings::MAX_VERTEX_ATTRIBS) as u32;
 
         let device_info = RafxDeviceInfo {
+            supports_multithreaded_usage: false,
             min_uniform_buffer_offset_alignment: pack_alignment,
             min_storage_buffer_offset_alignment: pack_alignment,
             upload_buffer_texture_alignment: pack_alignment,

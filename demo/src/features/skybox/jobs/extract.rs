@@ -1,15 +1,16 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
-use rafx::assets::{AssetManagerRenderResource, ImageAsset, MaterialAsset};
-use rafx::base::resource_map::ReadBorrow;
+use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, ImageAsset, MaterialAsset};
 use rafx::distill::loader::handle::Handle;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 pub struct SkyboxExtractJob<'extract> {
-    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    asset_manager: AssetManagerExtractRef,
     skybox_material: Handle<MaterialAsset>,
     skybox_texture: Handle<ImageAsset>,
+    phantom_data: PhantomData<&'extract ()>,
 }
 
 impl<'extract> SkyboxExtractJob<'extract> {
@@ -23,9 +24,11 @@ impl<'extract> SkyboxExtractJob<'extract> {
             Self {
                 asset_manager: extract_context
                     .render_resources
-                    .fetch::<AssetManagerRenderResource>(),
+                    .fetch::<AssetManagerRenderResource>()
+                    .extract_ref(),
                 skybox_material,
                 skybox_texture,
+                phantom_data: PhantomData,
             },
             frame_packet,
         ))

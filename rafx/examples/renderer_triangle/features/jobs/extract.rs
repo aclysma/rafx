@@ -4,13 +4,13 @@ use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
 use rafx::distill::loader::handle::Handle;
 use rafx::framework::render_features::ExtractJob;
 use rafx::render_feature_extract_job_predule::*;
-use rafx_base::resource_map::ReadBorrow;
+use rafx_assets::AssetManagerExtractRef;
 use rafx_base::resource_ref_map::ResourceRefBorrow;
 use std::sync::Arc;
 
 pub struct DemoExtractJob<'extract> {
     time_state: ResourceRefBorrow<'extract, TimeState>,
-    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    asset_manager: AssetManagerExtractRef,
     triangle_material: Handle<MaterialAsset>,
 }
 
@@ -25,7 +25,8 @@ impl<'extract> DemoExtractJob<'extract> {
                 time_state: extract_context.extract_resources.fetch::<TimeState>(),
                 asset_manager: extract_context
                     .render_resources
-                    .fetch::<AssetManagerRenderResource>(),
+                    .fetch::<AssetManagerRenderResource>()
+                    .extract_ref(),
                 triangle_material,
             },
             frame_packet,

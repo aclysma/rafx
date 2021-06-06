@@ -1,7 +1,7 @@
 use rafx_api::{RafxDeviceContext, RafxFormat, RafxResourceType, RafxResult};
 use rafx_framework::graph::SwapchainSurfaceInfo;
 
-pub struct SwapchainResources {
+pub struct SwapchainRenderResourceInner {
     // The images presented by the swapchain
     //TODO: We don't properly support multiple swapchains right now. This would ideally be a map
     // of window/surface to info for the swapchain
@@ -13,11 +13,18 @@ pub struct SwapchainResources {
     pub default_depth_format: RafxFormat,
 }
 
-impl SwapchainResources {
-    pub fn new(
+// Contents are none if a swapchain does not exist. We allow this state so that we can insert this
+// resource into the render resources map on init while we still have mut access to it, and not
+// require adding/removing it when we create/destroy the swapchain
+#[derive(Default)]
+pub struct SwapchainRenderResource(Option<SwapchainRenderResourceInner>);
+
+impl SwapchainRenderResource {
+    pub fn set_swapchain(
+        &mut self,
         device_context: &RafxDeviceContext,
         swapchain_surface_info: SwapchainSurfaceInfo,
-    ) -> RafxResult<SwapchainResources> {
+    ) -> RafxResult<()> {
         log::debug!("creating swapchain resources");
 
         // Use swapchain format for SDR color
@@ -37,11 +44,25 @@ impl SwapchainResources {
             )
             .ok_or_else(|| "Could not find a supported depth format")?;
 
-        Ok(SwapchainResources {
+        self.0 = Some(SwapchainRenderResourceInner {
             swapchain_surface_info,
             default_color_format_hdr,
             default_color_format_sdr,
             default_depth_format,
-        })
+        });
+
+        Ok(())
+    }
+
+    pub fn clear_swapchain(&mut self) {
+        self.0 = None;
+    }
+
+    pub fn try_get(&self) -> Option<&SwapchainRenderResourceInner> {
+        self.0.as_ref()
+    }
+
+    pub fn get(&self) -> &SwapchainRenderResourceInner {
+        self.0.as_ref().unwrap()
     }
 }

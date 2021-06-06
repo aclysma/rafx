@@ -82,6 +82,7 @@ impl RafxDeviceContextGles3Inner {
         //let min_storage_buffer_offset_alignment = gl_context.gl_get_integerv(gles2_bindings::STORAGE_BUFFER_OFFSET_ALIGNMENT);
 
         let device_info = RafxDeviceInfo {
+            supports_multithreaded_usage: false,
             min_uniform_buffer_offset_alignment,
             min_storage_buffer_offset_alignment: pack_alignment,
             upload_buffer_texture_alignment: pack_alignment,
