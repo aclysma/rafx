@@ -329,7 +329,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
     'running: loop {
         profiling::scope!("Main Loop");
 
-        let t0 = std::time::Instant::now();
+        let t0 = rafx::base::Instant::now();
 
         //
         // Update time
@@ -526,7 +526,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             egui_manager.end_frame();
         }
 
-        let t1 = std::time::Instant::now();
+        let t1 = rafx::base::Instant::now();
         log::trace!(
             "[main] Simulation took {} ms",
             (t1 - t0).as_secs_f32() * 1000.0
@@ -587,7 +587,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                 .unwrap();
         }
 
-        let t2 = std::time::Instant::now();
+        let t2 = rafx::base::Instant::now();
         log::trace!(
             "[main] start rendering took {} ms",
             (t2 - t1).as_secs_f32() * 1000.0

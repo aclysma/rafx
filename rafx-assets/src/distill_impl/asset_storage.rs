@@ -495,7 +495,7 @@ impl<AssetT: TypeUuid + 'static + Send> DynAssetStorage for Storage<AssetT> {
         let asset = match uncommitted_asset_state.result {
             UpdateAssetResult::Result(asset) => asset,
             UpdateAssetResult::AsyncResult(rx) => rx
-                .recv_timeout(std::time::Duration::from_secs(0))
+                .try_recv()
                 .expect("LoadOp committed but result not sent via channel"),
         };
 
