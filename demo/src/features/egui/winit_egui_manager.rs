@@ -145,8 +145,7 @@ impl WinitEguiManager {
     fn handle_key_press(
         input: &mut egui::RawInput,
         keycode: Option<winit::event::VirtualKeyCode>,
-        #[cfg(feature = "clipboard")]
-        clipboard: &mut Option<clipboard::ClipboardContext>,
+        #[cfg(feature = "clipboard")] clipboard: &mut Option<clipboard::ClipboardContext>,
         pressed: bool,
     ) {
         use winit::event::VirtualKeyCode;
@@ -183,7 +182,8 @@ impl WinitEguiManager {
                             egui::Key::C => {
                                 input.events.push(egui::Event::Copy);
                             }
-                            egui::Key::V => {
+                            egui::Key::V =>
+                            {
                                 #[cfg(feature = "clipboard")]
                                 if let Some(clipboard) = clipboard {
                                     if let Ok(text) = clipboard.get_contents() {
