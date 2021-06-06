@@ -47,14 +47,10 @@ pub fn logging_init() {
 fn main() {
     logging_init();
 
-    //let args = demo::DemoArgs::from_args();
-
-    //let packbuffer = include_bytes!("../demo.pack");
-
     demo::main_native(&DemoArgs {
         external_daemon: false,
         packfile: None,
-        packbuffer: None, //Some(packbuffer),
+        packbuffer: None,
         daemon_args: demo::AssetDaemonArgs::from_iter(&[""]),
     })
 }

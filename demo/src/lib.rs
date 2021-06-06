@@ -293,8 +293,6 @@ impl DemoArgs {
                 daemon_args: self.daemon_args.clone().into(),
             });
         }
-
-        //None
     }
 }
 
@@ -655,18 +653,18 @@ impl DemoApp {
     ) -> bool {
         use winit::event::*;
 
-        #[cfg(feature = "use-egui")]
+        #[cfg(feature = "egui")]
         let egui_manager = resources
             .get::<crate::features::egui::WinitEguiManager>()
             .unwrap();
 
-        #[cfg(feature = "use-egui")]
+        #[cfg(feature = "egui")]
         let ignore_event = {
             egui_manager.handle_event(event);
             egui_manager.ignore_event(event)
         };
 
-        #[cfg(not(feature = "use-egui"))]
+        #[cfg(not(feature = "egui"))]
         let ignore_event = false;
 
         if !ignore_event {
