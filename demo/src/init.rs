@@ -108,7 +108,6 @@ pub fn rendering_init(
         .add_render_feature(tile_layer_renderer_plugin)
         .add_render_feature(debug3d_renderer_plugin)
         .add_render_feature(text_renderer_plugin)
-        .add_render_feature(egui_renderer_plugin)
         .allow_use_render_thread(allow_use_render_thread);
 
     #[cfg(feature = "egui")]
