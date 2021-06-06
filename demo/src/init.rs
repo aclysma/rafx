@@ -19,41 +19,15 @@ use rafx::renderer::{
     AssetSource, Renderer, RendererBuilder, RendererConfigResource, SwapchainHandler,
     ViewportsResource,
 };
+use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
-
-pub struct Sdl2Systems {
-    pub context: sdl2::Sdl,
-    pub video_subsystem: sdl2::VideoSubsystem,
-    pub window: sdl2::video::Window,
-}
-
-pub fn sdl2_init() -> Sdl2Systems {
-    // Setup SDL
-    let context = sdl2::init().expect("Failed to initialize sdl2");
-    let video_subsystem = context
-        .video()
-        .expect("Failed to create sdl video subsystem");
-
-    // Create the window
-    let window = video_subsystem
-        .window("Rafx Demo", 900, 600)
-        .position_centered()
-        .allow_highdpi()
-        .resizable()
-        .build()
-        .expect("Failed to create window");
-
-    Sdl2Systems {
-        context,
-        video_subsystem,
-        window,
-    }
-}
 
 pub fn rendering_init(
     resources: &mut Resources,
-    sdl2_systems: &Sdl2Systems,
     asset_source: AssetSource,
+    window: &dyn HasRawWindowHandle,
+    window_width: u32,
+    window_height: u32,
 ) -> RafxResult<()> {
     resources.insert(VisibilityRegion::new());
     resources.insert(ViewportsResource::default());
@@ -75,20 +49,14 @@ pub fn rendering_init(
     text_renderer_plugin.legion_init(resources);
 
     #[cfg(feature = "egui")]
-    egui_renderer_plugin.legion_init(
-        resources,
-        &sdl2_systems.video_subsystem,
-        sdl2_systems.context.mouse(),
-    );
-
-    let sdl2_window = &sdl2_systems.window;
+    egui_renderer_plugin.legion_init_winit(resources);
 
     //
     // Create the api. GPU programming is fundamentally unsafe, so all rafx APIs should be
     // considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
     // behavior on the CPU for reasons other than interacting with the GPU.
     //
-    let rafx_api = unsafe { rafx::api::RafxApi::new(sdl2_window, &Default::default())? };
+    let rafx_api = unsafe { rafx::api::RafxApi::new(window, &Default::default())? };
 
     let allow_use_render_thread = if cfg!(feature = "stats_alloc") {
         false
@@ -132,13 +100,12 @@ pub fn rendering_init(
         )
     }?;
 
-    let (width, height) = sdl2_window.size();
     let swapchain_helper = SwapchainHandler::create_swapchain(
         &mut renderer_builder_result.asset_manager,
         &mut renderer_builder_result.renderer,
-        sdl2_window,
-        width,
-        height,
+        window,
+        window_width,
+        window_height,
     )?;
 
     resources.insert(rafx_api.device_context());

@@ -49,7 +49,7 @@ struct Sdl2EguiManagerInner {
     cursor: CursorHandler,
 }
 
-// For sdl2::mouse::Cursor, a member of egui_sdl2::EguiSdl2
+// For sdl2::mouse::Cursor, a member of egui_sdl2::Sdl2EguiManager
 unsafe impl Send for Sdl2EguiManagerInner {}
 
 /// Full egui API and the SDL2 abstraction/platform integration

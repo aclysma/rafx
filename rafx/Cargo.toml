@@ -23,7 +23,7 @@ rafx-visibility = { version = "=0.0.13", path = "../rafx-visibility" }
 log = "0.4"
 env_logger = "0.6"
 legion = { version = "0.4.0", default-features = false }
-sdl2 = { version = ">=0.34", features = ["raw-window-handle"] }
+sdl2 = { version = ">=0.34", features = ["raw-window-handle", "bundled", "static-link"] }
 ash = ">=0.32"
 glam = "0.13.1"
 profiling = "1.0.1"

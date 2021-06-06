@@ -1,17 +1,18 @@
 // There's a decent amount of code that's just for example and isn't called
 #![allow(dead_code)]
 
+mod main_native;
+pub use main_native::*;
+
 use legion::*;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
 use structopt::StructOpt;
 
 use rafx::api::{RafxExtents2D, RafxResult, RafxSwapchainHelper};
 use rafx::assets::AssetManager;
 
-use crate::daemon_args::AssetDaemonArgs;
+pub use crate::daemon_args::AssetDaemonArgs;
 use crate::scenes::SceneManager;
-use crate::time::TimeState;
+use crate::time::{PeriodicEvent, TimeState};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::render_features::ExtractResources;
 use rafx::renderer::{AssetSource, Renderer};
@@ -33,10 +34,12 @@ mod demo_renderer_thread_pool;
 
 use crate::assets::font::FontAsset;
 #[cfg(feature = "egui")]
-use crate::features::egui::{EguiContextResource, Sdl2EguiManager};
+use crate::features::egui::{EguiContextResource, WinitEguiManager};
 use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
 pub use demo_plugin::DemoRendererPlugin;
+use rafx::distill::loader::handle::Handle;
+use winit::event_loop::ControlFlow;
 
 #[cfg(all(feature = "profile-with-tracy-memory", not(feature = "stats_alloc")))]
 #[global_allocator]
@@ -267,6 +270,9 @@ pub struct DemoArgs {
     #[structopt(name = "packfile", long, parse(from_os_str))]
     pub packfile: Option<std::path::PathBuf>,
 
+    #[structopt(skip)]
+    pub packbuffer: Option<&'static [u8]>,
+
     #[structopt(name = "external-daemon", long)]
     pub external_daemon: bool,
 
@@ -274,46 +280,79 @@ pub struct DemoArgs {
     pub daemon_args: AssetDaemonArgs,
 }
 
-pub fn run(args: &DemoArgs) -> RafxResult<()> {
-    #[cfg(feature = "profile-with-tracy")]
-    profiling::tracy_client::set_thread_name("Main Thread");
-    #[cfg(feature = "profile-with-optick")]
-    profiling::optick::register_thread("Main Thread");
-
-    let mut scene_manager = SceneManager::default();
-
-    let mut resources = Resources::default();
-    resources.insert(TimeState::new());
-    resources.insert(RenderOptions::default_2d());
-    resources.insert(DebugUiState::default());
-
-    let asset_source = if let Some(packfile) = &args.packfile {
-        AssetSource::Packfile(packfile.to_path_buf())
-    } else {
-        AssetSource::Daemon {
-            external_daemon: args.external_daemon,
-            daemon_args: args.daemon_args.clone().into(),
+impl DemoArgs {
+    fn asset_source(&self) -> Option<AssetSource> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(packfile) = &self.packfile {
+            return Some(AssetSource::Packfile(packfile.to_path_buf()));
         }
-    };
 
-    let sdl2_systems = init::sdl2_init();
-    init::rendering_init(&mut resources, &sdl2_systems, asset_source)?;
+        {
+            return Some(AssetSource::Daemon {
+                external_daemon: self.external_daemon,
+                daemon_args: self.daemon_args.clone().into(),
+            });
+        }
+    }
+}
 
-    log::info!("Starting window event loop");
-    let mut event_pump = sdl2_systems
-        .context
-        .event_pump()
-        .expect("Could not create sdl event pump");
+struct DemoApp {
+    scene_manager: SceneManager,
+    resources: Resources,
+    world: World,
+    print_time_event: PeriodicEvent,
+    font: Handle<FontAsset>,
+}
 
-    let mut world = World::default();
-    let mut print_time_event = crate::time::PeriodicEvent::default();
+impl DemoApp {
+    fn init(
+        args: &DemoArgs,
+        window: &winit::window::Window,
+    ) -> RafxResult<Self> {
+        #[cfg(feature = "profile-with-tracy")]
+        profiling::tracy_client::set_thread_name("Main Thread");
+        #[cfg(feature = "profile-with-optick")]
+        profiling::optick::register_thread("Main Thread");
 
-    let font = {
-        let asset_resource = resources.get::<AssetResource>().unwrap();
-        asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf")
-    };
+        let scene_manager = SceneManager::default();
 
-    'running: loop {
+        let mut resources = Resources::default();
+        resources.insert(TimeState::new());
+        resources.insert(RenderOptions::default_2d());
+        resources.insert(DebugUiState::default());
+
+        let asset_source = args.asset_source().unwrap();
+
+        let physical_size = window.inner_size();
+        init::rendering_init(
+            &mut resources,
+            asset_source,
+            window,
+            physical_size.width,
+            physical_size.height,
+        )?;
+
+        let world = World::default();
+        let print_time_event = crate::time::PeriodicEvent::default();
+
+        let font = {
+            let asset_resource = resources.get::<AssetResource>().unwrap();
+            asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf")
+        };
+
+        Ok(DemoApp {
+            scene_manager,
+            resources,
+            world,
+            print_time_event,
+            font,
+        })
+    }
+
+    fn update(
+        &mut self,
+        window: &winit::window::Window,
+    ) -> RafxResult<winit::event_loop::ControlFlow> {
         profiling::scope!("Main Loop");
 
         let t0 = rafx::base::Instant::now();
@@ -322,15 +361,15 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         // Update time
         //
         {
-            resources.get_mut::<TimeState>().unwrap().update();
+            self.resources.get_mut::<TimeState>().unwrap().update();
         }
 
         //
         // Print FPS
         //
         {
-            let time_state = resources.get::<TimeState>().unwrap();
-            if print_time_event.try_take_event(
+            let time_state = self.resources.get::<TimeState>().unwrap();
+            if self.print_time_event.try_take_event(
                 time_state.current_instant(),
                 std::time::Duration::from_secs_f32(1.0),
             ) {
@@ -339,35 +378,33 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             }
         }
 
-        //
-        // Process input
-        //
-        if !process_input(&mut scene_manager, &mut world, &resources, &mut event_pump) {
-            break 'running;
+        {
+            let mut viewports_resource = self.resources.get_mut::<ViewportsResource>().unwrap();
+            let physical_size = window.inner_size();
+            viewports_resource.main_window_size = RafxExtents2D {
+                width: physical_size.width,
+                height: physical_size.height,
+            };
         }
 
         {
-            let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
-            let (width, height) = sdl2_systems.window.vulkan_drawable_size();
-            viewports_resource.main_window_size = RafxExtents2D { width, height };
-        }
-
-        {
-            if scene_manager.has_next_scene() {
-                scene_manager.try_cleanup_current_scene(&mut world, &resources);
+            if self.scene_manager.has_next_scene() {
+                self.scene_manager
+                    .try_cleanup_current_scene(&mut self.world, &self.resources);
 
                 {
                     // NOTE(dvd): Legion leaks memory because the entity IDs aren't reset when the
                     // world is cleared and the entity location map will grow without bounds.
-                    world = World::default();
+                    self.world = World::default();
 
                     // NOTE(dvd): The Renderer maintains some per-frame temporary data to avoid
                     // allocating each frame. We can clear this between scene transitions.
-                    let mut renderer = resources.get_mut::<Renderer>().unwrap();
+                    let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
                     renderer.clear_temporary_work();
                 }
 
-                scene_manager.try_create_next_scene(&mut world, &resources);
+                self.scene_manager
+                    .try_create_next_scene(&mut self.world, &self.resources);
             }
         }
 
@@ -376,7 +413,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         {
             profiling::scope!("update asset resource");
-            let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
+            let mut asset_resource = self.resources.get_mut::<AssetResource>().unwrap();
             asset_resource.update();
         }
 
@@ -385,7 +422,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         {
             profiling::scope!("update asset loaders");
-            let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
+            let mut asset_manager = self.resources.get_mut::<AssetManager>().unwrap();
 
             asset_manager.update_asset_loaders().unwrap();
         }
@@ -395,33 +432,38 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         #[cfg(feature = "egui")]
         {
-            let egui_manager = resources.get::<Sdl2EguiManager>().unwrap();
-            egui_manager.begin_frame(&sdl2_systems.window)?;
+            let egui_manager = self.resources.get::<WinitEguiManager>().unwrap();
+            egui_manager.begin_frame(window)?;
         }
 
         {
-            let mut text_resource = resources.get_mut::<TextResource>().unwrap();
+            let mut text_resource = self.resources.get_mut::<TextResource>().unwrap();
 
             text_resource.add_text(
                 "Use Left/Right arrow keys to switch demos".to_string(),
                 glam::Vec3::new(100.0, 400.0, 0.0),
-                &font,
+                &self.font,
                 20.0,
                 glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
             );
         }
 
         {
-            scene_manager.update_scene(&mut world, &mut resources);
+            self.scene_manager
+                .update_scene(&mut self.world, &mut self.resources);
         }
 
         #[cfg(feature = "egui")]
         {
-            let ctx = resources.get::<EguiContextResource>().unwrap().context();
-            let time_state = resources.get::<TimeState>().unwrap();
-            let mut debug_ui_state = resources.get_mut::<DebugUiState>().unwrap();
-            let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
-            let asset_manager = resources.get::<AssetResource>().unwrap();
+            let ctx = self
+                .resources
+                .get::<EguiContextResource>()
+                .unwrap()
+                .context();
+            let time_state = self.resources.get::<TimeState>().unwrap();
+            let mut debug_ui_state = self.resources.get_mut::<DebugUiState>().unwrap();
+            let mut render_options = self.resources.get_mut::<RenderOptions>().unwrap();
+            let asset_manager = self.resources.get::<AssetResource>().unwrap();
 
             egui::TopPanel::top("top_panel").show(&ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
@@ -501,7 +543,8 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                 puffin_egui::profiler_window(&ctx);
             }
 
-            let mut render_config_resource = resources.get_mut::<RendererConfigResource>().unwrap();
+            let mut render_config_resource =
+                self.resources.get_mut::<RendererConfigResource>().unwrap();
             render_config_resource
                 .visibility_config
                 .enable_visibility_update = render_options.enable_visibility_update;
@@ -512,7 +555,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         #[cfg(feature = "egui")]
         {
-            let egui_manager = resources.get::<Sdl2EguiManager>().unwrap();
+            let egui_manager = self.resources.get::<WinitEguiManager>().unwrap();
             egui_manager.end_frame();
         }
 
@@ -527,18 +570,18 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         {
             profiling::scope!("Start Next Frame Render");
-            let renderer = resources.get::<Renderer>().unwrap();
+            let renderer = self.resources.get::<Renderer>().unwrap();
 
             let mut extract_resources = ExtractResources::default();
 
             macro_rules! add_to_extract_resources {
                 ($ty: ident) => {
                     #[allow(non_snake_case)]
-                    let mut $ty = resources.get_mut::<$ty>().unwrap();
+                    let mut $ty = self.resources.get_mut::<$ty>().unwrap();
                     extract_resources.insert(&mut *$ty);
                 };
                 ($ty: path, $name: ident) => {
-                    let mut $name = resources.get_mut::<$ty>().unwrap();
+                    let mut $name = self.resources.get_mut::<$ty>().unwrap();
                     extract_resources.insert(&mut *$name);
                 };
             }
@@ -570,9 +613,9 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             add_to_extract_resources!(crate::features::text::TextResource, text_resource);
 
             #[cfg(feature = "egui")]
-            add_to_extract_resources!(crate::features::egui::Sdl2EguiManager, sdl2_egui_manager);
+            add_to_extract_resources!(crate::features::egui::WinitEguiManager, winit_egui_manager);
 
-            extract_resources.insert(&mut world);
+            extract_resources.insert(&mut self.world);
 
             renderer
                 .start_rendering_next_frame(&mut extract_resources)
@@ -586,31 +629,43 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         );
 
         profiling::finish_frame!();
+
+        Ok(ControlFlow::Poll)
     }
 
-    init::rendering_destroy(&mut resources)
-}
+    fn process_input(
+        &mut self,
+        event: &winit::event::Event<()>,
+    ) -> bool {
+        Self::do_process_input(
+            &mut self.scene_manager,
+            &mut self.world,
+            &self.resources,
+            event,
+        )
+    }
 
-fn process_input(
-    scene_manager: &mut SceneManager,
-    world: &mut World,
-    resources: &Resources,
-    event_pump: &mut sdl2::EventPump,
-) -> bool {
-    #[cfg(feature = "egui")]
-    let egui_manager = resources
-        .get::<crate::features::egui::Sdl2EguiManager>()
-        .unwrap();
+    fn do_process_input(
+        scene_manager: &mut SceneManager,
+        world: &mut World,
+        resources: &Resources,
+        event: &winit::event::Event<()>,
+    ) -> bool {
+        use winit::event::*;
 
-    for event in event_pump.poll_iter() {
-        #[cfg(not(feature = "egui"))]
-        let ignore_event = false;
+        #[cfg(feature = "egui")]
+        let egui_manager = resources
+            .get::<crate::features::egui::WinitEguiManager>()
+            .unwrap();
 
         #[cfg(feature = "egui")]
         let ignore_event = {
-            egui_manager.handle_event(&event);
-            egui_manager.ignore_event(&event)
+            egui_manager.handle_event(event);
+            egui_manager.ignore_event(event)
         };
+
+        #[cfg(not(feature = "egui"))]
+        let ignore_event = false;
 
         if !ignore_event {
             //log::trace!("{:?}", event);
@@ -619,23 +674,34 @@ fn process_input(
                 //
                 // Halt if the user requests to close the window
                 //
-                Event::Quit { .. } => return false,
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                } => return false,
 
                 //
                 // Close if the escape key is hit
                 //
-                Event::KeyDown {
-                    keycode: Some(keycode),
-                    keymod: _modifiers,
+                Event::WindowEvent {
+                    event:
+                        WindowEvent::KeyboardInput {
+                            input:
+                                KeyboardInput {
+                                    state: ElementState::Pressed,
+                                    virtual_keycode: Some(virtual_keycode),
+                                    ..
+                                },
+                            ..
+                        },
                     ..
                 } => {
                     //log::trace!("Key Down {:?} {:?}", keycode, modifiers);
-                    if keycode == Keycode::Escape {
+                    if *virtual_keycode == VirtualKeyCode::Escape {
                         return false;
                     }
 
                     #[cfg(feature = "rafx-vulkan")]
-                    if keycode == Keycode::D {
+                    if *virtual_keycode == VirtualKeyCode::D {
                         let stats = resources
                             .get::<rafx::api::RafxDeviceContext>()
                             .unwrap()
@@ -648,17 +714,17 @@ fn process_input(
                         was_handled = true;
                     }
 
-                    if keycode == Keycode::Left {
+                    if *virtual_keycode == VirtualKeyCode::Left {
                         scene_manager.queue_load_previous_scene();
                         was_handled = true;
                     }
 
-                    if keycode == Keycode::Right {
+                    if *virtual_keycode == VirtualKeyCode::Right {
                         scene_manager.queue_load_next_scene();
                         was_handled = true;
                     }
 
-                    if keycode == Keycode::M {
+                    if *virtual_keycode == VirtualKeyCode::M {
                         let metrics = resources.get::<AssetManager>().unwrap().metrics();
                         println!("{:#?}", metrics);
                         was_handled = true;
@@ -671,7 +737,40 @@ fn process_input(
                 scene_manager.process_input(world, resources, event);
             }
         }
-    }
 
-    true
+        true
+    }
+}
+
+impl Drop for DemoApp {
+    fn drop(&mut self) {
+        init::rendering_destroy(&mut self.resources).unwrap()
+    }
+}
+
+pub fn update_loop(
+    args: &DemoArgs,
+    window: winit::window::Window,
+    event_loop: winit::event_loop::EventLoop<()>,
+) -> RafxResult<()> {
+    log::debug!("calling init");
+    let mut app = DemoApp::init(args, &window).unwrap();
+
+    log::debug!("start update loop");
+    event_loop.run(move |event, _, control_flow| {
+        use winit::event::Event;
+        match event {
+            Event::MainEventsCleared => {
+                window.request_redraw();
+            }
+            Event::RedrawRequested(_) => {
+                *control_flow = app.update(&window).unwrap();
+            }
+            event @ _ => {
+                if !app.process_input(&event) {
+                    *control_flow = ControlFlow::Exit;
+                }
+            }
+        }
+    });
 }

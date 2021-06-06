@@ -6,7 +6,6 @@ use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World};
 use rand::Rng;
-use sdl2::event::Event;
 
 mod shadows_scene;
 use shadows_scene::ShadowsScene;
@@ -28,16 +27,16 @@ pub enum Scene {
     Shadows,
     Sprite,
     Rafxmark,
-    ManyCubes,
     ManySprites,
+    ManyCubes,
 }
 
 pub const ALL_SCENES: [Scene; 5] = [
     Scene::Shadows,
     Scene::Sprite,
     Scene::Rafxmark,
-    Scene::ManyCubes,
     Scene::ManySprites,
+    Scene::ManyCubes,
 ];
 
 fn random_color(rng: &mut impl Rng) -> Vec3 {
@@ -57,8 +56,8 @@ fn create_scene(
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
         Scene::Sprite => Box::new(SpriteScene::new(world, resources)),
         Scene::Rafxmark => Box::new(RafxmarkScene::new(world, resources)),
-        Scene::ManyCubes => Box::new(ManyCubesScene::new(world, resources)),
         Scene::ManySprites => Box::new(ManySpritesScene::new(world, resources)),
+        Scene::ManyCubes => Box::new(ManyCubesScene::new(world, resources)),
     }
 }
 
@@ -76,7 +75,7 @@ pub trait TestScene {
         &mut self,
         _world: &mut World,
         _resources: &Resources,
-        _event: Event,
+        _event: &winit::event::Event<()>,
     ) {
     }
 
@@ -121,7 +120,7 @@ impl SceneManager {
         &mut self,
         world: &mut World,
         resources: &Resources,
-        event: Event,
+        event: &winit::event::Event<()>,
     ) {
         if let Some(current_scene) = &mut self.current_scene {
             current_scene.process_input(world, resources, event);

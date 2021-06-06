@@ -23,8 +23,7 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use sdl2::event::Event;
-use sdl2::mouse::MouseButton;
+use winit::event::{ElementState, Event, MouseButton, WindowEvent};
 
 const SPRITES_PER_SECOND: u32 = 1000;
 const GRAVITY: f32 = -9.8 * 100.0;
@@ -234,19 +233,17 @@ impl super::TestScene for RafxmarkScene {
         &mut self,
         world: &mut World,
         _resources: &Resources,
-        event: Event,
+        event: &Event<()>,
     ) {
         let mut query = <Write<InputComponent>>::query();
         let input = query.iter_mut(world).last().unwrap();
         match event {
-            Event::MouseButtonDown { mouse_btn, .. } => {
-                if mouse_btn == MouseButton::Left {
-                    input.is_left_mouse_button_down = true;
-                }
-            }
-            Event::MouseButtonUp { mouse_btn, .. } => {
-                if mouse_btn == MouseButton::Left {
-                    input.is_left_mouse_button_down = false;
+            Event::WindowEvent {
+                event: WindowEvent::MouseInput { state, button, .. },
+                ..
+            } => {
+                if *button == MouseButton::Left {
+                    input.is_left_mouse_button_down = state.eq(&ElementState::Pressed)
                 }
             }
             _ => {}
