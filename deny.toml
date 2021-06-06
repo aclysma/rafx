@@ -194,6 +194,5 @@ unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 # List of URLs for allowed Git repositories
 allow-git = [
-    "https://github.com/gltf-rs/gltf.git",
     "https://github.com/amethyst/distill.git",
 ]

@@ -1,6 +1,5 @@
 use crate::assets::ldtk::LdtkProjectAsset;
 use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
-use crate::features::egui::EguiRenderFeature;
 use crate::features::sprite::{SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet};
 use crate::features::text::TextRenderFeature;
 use crate::features::tile_layer::{
@@ -172,12 +171,19 @@ fn update_main_view_2d(
         .add_render_phase::<UiRenderPhase>()
         .build();
 
-    let main_camera_feature_mask = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<EguiRenderFeature>()
+    let mut main_camera_feature_mask = RenderFeatureMaskBuilder::default();
+    main_camera_feature_mask = main_camera_feature_mask
         .add_render_feature::<SpriteRenderFeature>()
         .add_render_feature::<TextRenderFeature>()
-        .add_render_feature::<TileLayerRenderFeature>()
-        .build();
+        .add_render_feature::<TileLayerRenderFeature>();
+
+    #[cfg(feature = "egui")]
+    {
+        main_camera_feature_mask = main_camera_feature_mask
+            .add_render_feature::<crate::features::egui::EguiRenderFeature>();
+    }
+
+    let main_camera_feature_mask = main_camera_feature_mask.build();
 
     const CAMERA_XY_DISTANCE: f32 = 400.0;
     const CAMERA_Z: f32 = 1000.0;

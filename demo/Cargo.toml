@@ -9,7 +9,7 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-rafx = { path = "../rafx", features = ["renderer"] }
+rafx = { path = "../rafx", features = ["renderer", "basis-universal"] }
 shaders = { path = "shaders" }
 distill = { version = "=0.0.3", features = ["serde_importers"] }
 uuid = "0.8"
@@ -17,16 +17,14 @@ type-uuid = "0.1"
 sdl2 = { version = "0.34", features = ["raw-window-handle"] }
 imgui = { version = "0.7", optional = true }
 imgui-sdl2 = { version = "0.14.0", optional = true }
-egui = { version = "0.12", features = ["default_fonts"] }
+egui = { version = "0.12", features = ["default_fonts"], optional = true }
 puffin_egui = { version = "0.2.0", optional = true }
 legion = { version = "0.4.0", default-features = false, features = ["serialize"] }
 image = "0.23.12"
-image2 = { version = "0.11", features = ["ser"] }
 
 # GLTF asset type
 # for https://github.com/gltf-rs/gltf/pull/288
-#gltf = "0.15"
-gltf = { git = "https://github.com/gltf-rs/gltf.git", rev = "e49aef5ee7b40c2c8f8a50efaed36b97bbb52bd4" }
+gltf = "0.16"
 
 # Font asset type
 fontdue = "0.4"
@@ -43,8 +41,8 @@ glam = { version = "0.13.1", features = [ "serde" ] }
 arrayvec = "0.5"
 crossbeam-channel = "0.5"
 fnv = "1.0"
-rand = "0.7.3"
-pcg_rand = "0.11.1"
+rand = "0.8"
+pcg_rand = "0.13"
 itertools = "0.8"
 mopa = "0.2"
 lazy_static = "1"
@@ -62,12 +60,14 @@ default = [
     "sdl2-bundled",
     "sdl2-static-link",
     "profile-with-puffin",
-    #"profile-with-stats-alloc", # Cannot be enabled with "profile-with-tracy-memory". Will run renderer / game loop single-threaded.
+    "egui"
+    #"stats_alloc", # Cannot be enabled with "profile-with-tracy-memory". Will run renderer / game loop single-threaded.
     #"profile-with-optick",
     #"profile-with-tracy",
     #"profile-with-tracy-memory", # Cannot be enabled with "profile-with-stats-alloc".
     #"profile-with-superluminal"
 ]
+basis-universal = ["rafx/basis-universal"]
 use-imgui = ["imgui", "imgui-sdl2"]
 rafx-empty = ["rafx/rafx-empty"]
 rafx-vulkan = ["rafx/rafx-vulkan"]
@@ -80,7 +80,8 @@ static-vulkan = ["rafx/static-vulkan"]
 profile-with-stats-alloc = ["stats_alloc", "rafx/no-render-thread"]
 profile-with-puffin = [
     "profiling/profile-with-puffin",
-    "puffin_egui"
+    "puffin_egui",
+    "egui"
 ]
 profile-with-optick = [
     "profiling/profile-with-optick",

@@ -5,6 +5,7 @@ pub mod sprite;
 pub mod text;
 pub mod tile_layer;
 
+#[cfg(feature = "egui")]
 pub mod egui;
 
 #[cfg(feature = "use-imgui")]

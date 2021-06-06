@@ -2,7 +2,6 @@ use crate::assets::font::FontAssetTypeRendererPlugin;
 use crate::assets::gltf::GltfAssetTypeRendererPlugin;
 use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use crate::features::debug3d::Debug3DRendererPlugin;
-use crate::features::egui::EguiRendererPlugin;
 use crate::features::mesh::MeshRendererPlugin;
 use crate::features::skybox::SkyboxRendererPlugin;
 use crate::features::sprite::SpriteRendererPlugin;
@@ -65,14 +64,17 @@ pub fn rendering_init(
     let tile_layer_renderer_plugin = Arc::new(TileLayerRendererPlugin::default());
     let debug3d_renderer_plugin = Arc::new(Debug3DRendererPlugin::default());
     let text_renderer_plugin = Arc::new(TextRendererPlugin::default());
-    let egui_renderer_plugin = Arc::new(EguiRendererPlugin::default());
 
+    #[cfg(feature = "egui")]
+    let egui_renderer_plugin = Arc::new(crate::features::egui::EguiRendererPlugin::default());
     mesh_renderer_plugin.legion_init(resources);
     sprite_renderer_plugin.legion_init(resources);
     skybox_renderer_plugin.legion_init(resources);
     tile_layer_renderer_plugin.legion_init(resources);
     debug3d_renderer_plugin.legion_init(resources);
     text_renderer_plugin.legion_init(resources);
+
+    #[cfg(feature = "egui")]
     egui_renderer_plugin.legion_init(
         resources,
         &sdl2_systems.video_subsystem,
@@ -99,8 +101,12 @@ pub fn rendering_init(
         .add_render_feature(skybox_renderer_plugin)
         .add_render_feature(tile_layer_renderer_plugin)
         .add_render_feature(debug3d_renderer_plugin)
-        .add_render_feature(text_renderer_plugin)
-        .add_render_feature(egui_renderer_plugin);
+        .add_render_feature(text_renderer_plugin);
+
+    #[cfg(feature = "egui")]
+    {
+        renderer_builder = renderer_builder.add_render_feature(egui_renderer_plugin)
+    }
 
     let mut renderer_builder_result = {
         let extract_resources = ExtractResources::default();
@@ -164,7 +170,11 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         TileLayerRendererPlugin::legion_destroy(resources);
         Debug3DRendererPlugin::legion_destroy(resources);
         TextRendererPlugin::legion_destroy(resources);
-        EguiRendererPlugin::legion_destroy(resources);
+
+        #[cfg(feature = "egui")]
+        {
+            crate::features::egui::EguiRendererPlugin::legion_destroy(resources);
+        }
 
         resources.remove::<RenderRegistry>();
 

@@ -1,4 +1,5 @@
 mod image;
+#[cfg(feature = "basis-universal")]
 pub use self::image::BasisImageImporter;
 pub use self::image::ImageAsset;
 pub use self::image::ImageAssetBasisCompressionSettings;

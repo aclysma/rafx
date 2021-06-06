@@ -32,6 +32,7 @@ mod demo_plugin;
 mod demo_renderer_thread_pool;
 
 use crate::assets::font::FontAsset;
+#[cfg(feature = "egui")]
 use crate::features::egui::{EguiContextResource, Sdl2EguiManager};
 use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
@@ -197,6 +198,7 @@ impl RenderOptions {
 }
 
 impl RenderOptions {
+    #[cfg(feature = "egui")]
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -406,6 +408,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         // Notify egui of frame begin
         //
+        #[cfg(feature = "egui")]
         {
             let egui_manager = resources.get::<Sdl2EguiManager>().unwrap();
             egui_manager.begin_frame(&sdl2_systems.window)?;
@@ -427,6 +430,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
             scene_manager.update_scene(&mut world, &mut resources);
         }
 
+        #[cfg(feature = "egui")]
         {
             let ctx = resources.get::<EguiContextResource>().unwrap().context();
             let time_state = resources.get::<TimeState>().unwrap();
@@ -521,6 +525,7 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
         //
         // Close egui input for this frame
         //
+        #[cfg(feature = "egui")]
         {
             let egui_manager = resources.get::<Sdl2EguiManager>().unwrap();
             egui_manager.end_frame();
@@ -578,6 +583,8 @@ pub fn run(args: &DemoArgs) -> RafxResult<()> {
                 debug_draw_3d_resource
             );
             add_to_extract_resources!(crate::features::text::TextResource, text_resource);
+
+            #[cfg(feature = "egui")]
             add_to_extract_resources!(crate::features::egui::Sdl2EguiManager, sdl2_egui_manager);
 
             extract_resources.insert(&mut world);
@@ -605,13 +612,20 @@ fn process_input(
     resources: &Resources,
     event_pump: &mut sdl2::EventPump,
 ) -> bool {
+    #[cfg(feature = "egui")]
     let egui_manager = resources
         .get::<crate::features::egui::Sdl2EguiManager>()
         .unwrap();
 
     for event in event_pump.poll_iter() {
-        egui_manager.handle_event(&event);
-        let ignore_event = egui_manager.ignore_event(&event);
+        #[cfg(not(feature = "egui"))]
+        let ignore_event = false;
+
+        #[cfg(feature = "egui")]
+        let ignore_event = {
+            egui_manager.handle_event(&event);
+            egui_manager.ignore_event(&event)
+        };
 
         if !ignore_event {
             //log::trace!("{:?}", event);

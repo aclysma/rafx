@@ -23,12 +23,10 @@ rafx-api = { version = "=0.0.13", path = "../rafx-api" }
 rafx-base = { version = "=0.0.13", path = "../rafx-base" }
 rafx-framework = { version = "=0.0.13", path = "../rafx-framework" }
 distill = { version = "=0.0.3", features = ["serde_importers"] }
-basis-universal = "0.1.1"
+basis-universal = { version = "0.1.1", optional = true }
 type-uuid = "0.1"
 uuid = "0.8"
-#TODO: Not sure we really need both
 image = "0.23.12"
-image2 = { version = "0.11", features = ["ser"] }
 arrayvec = "0.5"
 crossbeam-channel = "0.5"
 fnv = "1.0"

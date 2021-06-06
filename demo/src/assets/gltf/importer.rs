@@ -176,7 +176,7 @@ impl Importer for GltfImporter {
     where
         Self: Sized,
     {
-        26
+        27
     }
 
     fn version(&self) -> u32 {
@@ -677,7 +677,8 @@ fn extract_materials_to_import(
             material.normal_texture().map_or(1.0, |x| x.scale());
         material_asset.material_data.occlusion_texture_strength =
             material.occlusion_texture().map_or(1.0, |x| x.strength());
-        material_asset.material_data.alpha_cutoff = material.alpha_cutoff();
+        // Default is 0.5 per GLTF specification
+        material_asset.material_data.alpha_cutoff = material.alpha_cutoff().unwrap_or(0.5);
 
         material_asset.base_color_texture = pbr_metallic_roughness
             .base_color_texture()
