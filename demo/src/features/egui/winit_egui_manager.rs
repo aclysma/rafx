@@ -2,13 +2,15 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use super::EguiManager;
-use copypasta::{ClipboardContext, ClipboardProvider};
+#[cfg(feature = "clipboard")]
+use clipboard::{ClipboardContext, ClipboardProvider};
 use rafx::api::RafxResult;
 use winit::event::MouseButton;
 use winit::event::{Event, MouseScrollDelta, WindowEvent};
 use winit::window::Window;
 
 struct WinitEguiManagerInner {
+    #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
     mouse_position: Option<egui::Pos2>,
     cursor: Option<winit::window::CursorIcon>,
@@ -33,12 +35,14 @@ impl WinitEguiManager {
         let egui_manager = EguiManager::new();
 
         let inner = WinitEguiManagerInner {
+            #[cfg(feature = "clipboard")]
             clipboard: ClipboardContext::new().ok(),
             mouse_position: Default::default(),
             cursor: None,
             pending_cursor: None,
         };
 
+        #[cfg(feature = "clipboard")]
         if inner.clipboard.is_none() {
             log::warn!("Clipboard could not be initialized");
         }
@@ -107,6 +111,7 @@ impl WinitEguiManager {
                             Self::handle_key_press(
                                 input,
                                 keyboard_input.virtual_keycode,
+                                #[cfg(feature = "clipboard")]
                                 &mut inner.clipboard,
                                 pressed,
                             );
@@ -140,7 +145,8 @@ impl WinitEguiManager {
     fn handle_key_press(
         input: &mut egui::RawInput,
         keycode: Option<winit::event::VirtualKeyCode>,
-        clipboard: &mut Option<copypasta::ClipboardContext>,
+        #[cfg(feature = "clipboard")]
+        clipboard: &mut Option<clipboard::ClipboardContext>,
         pressed: bool,
     ) {
         use winit::event::VirtualKeyCode;
@@ -178,6 +184,7 @@ impl WinitEguiManager {
                                 input.events.push(egui::Event::Copy);
                             }
                             egui::Key::V => {
+                                #[cfg(feature = "clipboard")]
                                 if let Some(clipboard) = clipboard {
                                     if let Ok(text) = clipboard.get_contents() {
                                         input.events.push(egui::Event::Text(text));
@@ -271,6 +278,8 @@ impl WinitEguiManager {
         let mut inner = self.inner.lock().unwrap();
 
         let output = self.egui_manager.end_frame();
+
+        #[cfg(feature = "clipboard")]
         if !output.copied_text.is_empty() {
             if let Some(clipboard) = &mut inner.clipboard {
                 clipboard.set_contents(output.copied_text).unwrap();

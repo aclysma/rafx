@@ -16,7 +16,9 @@ uuid = "0.8"
 type-uuid = "0.1"
 imgui = { version = "0.7", optional = true }
 egui = { version = "0.12", features = ["default_fonts"], optional = true }
-copypasta = { version = "0.7", optional = true }
+# This could be turned on but we are leaving it off due to RUSTSEC-2021-0019
+# https://rustsec.org/advisories/RUSTSEC-2021-0019.html
+clipboard = { version = "0.5", optional = true }
 puffin_egui = { version = "0.2.0", optional = true }
 legion = { version = "0.4.0", default-features = false, features = ["serialize"] }
 image = "0.23.12"
@@ -68,7 +70,7 @@ default = [
     #"profile-with-tracy-memory", # Cannot be enabled with "stats_alloc".
     #"profile-with-superluminal"
 ]
-use-egui = ["egui", "copypasta", "egui-winit"]
+use-egui = ["egui", "egui-winit"]
 basis-universal = ["rafx/basis-universal"]
 rafx-empty = ["rafx/rafx-empty"]
 rafx-vulkan = ["rafx/rafx-vulkan"]
