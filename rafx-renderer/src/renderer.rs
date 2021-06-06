@@ -372,7 +372,7 @@ impl Renderer {
         unsafe {
             render_resources
                 .fetch_mut::<AssetManagerRenderResource>()
-                .set_asset_manager(Some(&asset_manager));
+                .begin_extract(&asset_manager);
         }
 
         let frame_packets = {
@@ -431,11 +431,9 @@ impl Renderer {
             Renderer::take_frame_packets(extract_jobs)
         };
 
-        unsafe {
-            render_resources
-                .fetch_mut::<AssetManagerRenderResource>()
-                .set_asset_manager(None);
-        }
+        render_resources
+            .fetch_mut::<AssetManagerRenderResource>()
+            .end_extract();
 
         //TODO: This is now possible to run on the render thread
         let prepared_render_graph = renderer.render_graph_generator.generate_render_graph(

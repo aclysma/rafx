@@ -2,14 +2,13 @@ use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
 use fnv::FnvHashMap;
-use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
-use rafx::base::resource_map::ReadBorrow;
+use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrowMut;
 use rafx::distill::loader::handle::Handle;
 
 pub struct TextExtractJob<'extract> {
     text_resource: TrustCell<ResourceRefBorrowMut<'extract, TextResource>>,
-    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    asset_manager: AssetManagerExtractRef,
     text_material: Handle<MaterialAsset>,
 }
 
@@ -28,7 +27,8 @@ impl<'extract> TextExtractJob<'extract> {
                 ),
                 asset_manager: extract_context
                     .render_resources
-                    .fetch::<AssetManagerRenderResource>(),
+                    .fetch::<AssetManagerRenderResource>()
+                    .extract_ref(),
                 text_material,
             },
             frame_packet,
@@ -45,11 +45,7 @@ impl<'extract> ExtractJobEntryPoints<'extract> for TextExtractJob<'extract> {
         let text_resource = &mut self.text_resource.borrow_mut();
         let text_draw_data = text_resource.take_text_draw_data();
         for (load_handle, handle) in text_draw_data.fonts {
-            let asset = self
-                .asset_manager
-                .committed_asset(&handle)
-                .unwrap()
-                .clone();
+            let asset = self.asset_manager.committed_asset(&handle).unwrap().clone();
             let old = font_assets.insert(load_handle, asset);
             assert!(old.is_none());
         }

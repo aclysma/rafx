@@ -1,14 +1,13 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
-use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
-use rafx::base::resource_map::ReadBorrow;
+use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrowMut;
 use rafx::distill::loader::handle::Handle;
 
 pub struct Debug3DExtractJob<'extract> {
     debug3d_resource: TrustCell<ResourceRefBorrowMut<'extract, Debug3DResource>>,
-    asset_manager: ReadBorrow<'extract, AssetManagerRenderResource>,
+    asset_manager: AssetManagerExtractRef,
     debug3d_material: Handle<MaterialAsset>,
 }
 
@@ -27,7 +26,8 @@ impl<'extract> Debug3DExtractJob<'extract> {
                 ),
                 asset_manager: extract_context
                     .render_resources
-                    .fetch::<AssetManagerRenderResource>(),
+                    .fetch::<AssetManagerRenderResource>()
+                    .extract_ref(),
                 debug3d_material,
             },
             frame_packet,
