@@ -190,6 +190,13 @@ impl RafxBufferGles3 {
         buffer_def.verify();
         let mut buffer_def = buffer_def.clone();
 
+        assert!(
+            !buffer_def
+                .resource_type
+                .contains(RafxResourceType::VERTEX_BUFFER | RafxResourceType::INDEX_BUFFER),
+            "GL ES 3.0 does not support buffers compatible with both vertex and index buffers"
+        );
+
         let mut buffer_id = None;
         let mut buffer_contents = None;
         let target;
@@ -214,11 +221,11 @@ impl RafxBufferGles3 {
                 gles3_bindings::UNIFORM_BUFFER
             } else if buffer_def
                 .resource_type
-                .contains(RafxResourceType::VERTEX_BUFFER)
+                .contains(RafxResourceType::INDEX_BUFFER)
             {
-                gles3_bindings::ARRAY_BUFFER
-            } else {
                 gles3_bindings::ELEMENT_ARRAY_BUFFER
+            } else {
+                gles3_bindings::ARRAY_BUFFER
             };
 
             buffer_id = Some(device_context.gl_context().gl_create_buffer()?);

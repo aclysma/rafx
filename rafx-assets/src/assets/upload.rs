@@ -100,6 +100,7 @@ pub struct PendingImageUpload {
 pub struct PendingBufferUpload {
     pub load_op: AssetLoadOp,
     pub upload_op: BufferUploadOp,
+    pub resource_type: RafxResourceType,
     pub data: Vec<u8>,
 }
 
@@ -420,6 +421,7 @@ impl UploadQueue {
         let result = buffer_upload::enqueue_load_buffer(
             &self.device_context,
             upload,
+            pending_buffer.resource_type,
             // self.transfer_queue.queue_family_index(),
             // self.graphics_queue.queue_family_index(),
             &pending_buffer.data,
@@ -802,6 +804,7 @@ impl UploadManager {
                     request.result_tx,
                     self.buffer_upload_result_tx.clone(),
                 ),
+                resource_type: request.asset.resource_type,
                 data: request.asset.data,
             })
             .map_err(|_err| {

@@ -9,6 +9,7 @@ pub fn enqueue_load_buffer(
     upload: &mut RafxTransferUpload,
     // transfer_queue_family_index: u32,
     // dst_queue_family_index: u32,
+    resource_type: RafxResourceType,
     data: &[u8],
 ) -> Result<RafxBuffer, RafxUploadError> {
     // Arbitrary, not sure if there is any requirement
@@ -23,7 +24,7 @@ pub fn enqueue_load_buffer(
         size,
         memory_usage: RafxMemoryUsage::GpuOnly,
         queue_type: upload.dst_queue().queue_type(),
-        resource_type: RafxResourceType::VERTEX_BUFFER | RafxResourceType::INDEX_BUFFER,
+        resource_type,
         ..Default::default()
     })?;
 
