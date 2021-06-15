@@ -21,7 +21,7 @@ rafx::declare_render_phase!(
     shadow_map_render_phase_sort_submit_nodes
 );
 
-fn shadow_map_render_phase_sort_submit_nodes(submit_nodes: &mut Vec<SubmitNode>) {
+fn shadow_map_render_phase_sort_submit_nodes(submit_nodes: &mut Vec<RenderFeatureSubmitNode>) {
     // Sort by feature
     log::trace!(
         "Sort phase {}",
