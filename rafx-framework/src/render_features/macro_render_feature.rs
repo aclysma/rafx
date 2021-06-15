@@ -19,7 +19,8 @@ macro_rules! declare_render_feature {
 
         pub struct $struct_name;
 
-        static RENDER_FEATURE_DEBUG_CONSTANTS: RenderFeatureDebugConstants = RenderFeatureDebugConstants {
+        static RENDER_FEATURE_DEBUG_CONSTANTS: $crate::render_features::RenderFeatureDebugConstants =
+                $crate::render_features::RenderFeatureDebugConstants {
             feature_name: stringify!($struct_name),
 
             begin_per_frame_extract: stringify!($struct_name begin_per_frame_extract),
@@ -40,11 +41,11 @@ macro_rules! declare_render_feature {
             revert_setup: stringify!($struct_name revert_setup),
         };
 
-        impl RenderFeature for $struct_name {
-            fn set_feature_index(index: RenderFeatureIndex) {
+        impl $crate::render_features::RenderFeature for $struct_name {
+            fn set_feature_index(index: $crate::render_features::RenderFeatureIndex) {
                 assert_eq!(
                     $struct_name::feature_index(),
-                    RenderFeatureIndex::MAX,
+                    $crate::render_features::RenderFeatureIndex::MAX,
                     "feature {} was already registered",
                     $struct_name::feature_debug_name(),
                 );
@@ -55,22 +56,22 @@ macro_rules! declare_render_feature {
                 );
             }
 
-            fn feature_index() -> RenderFeatureIndex {
+            fn feature_index() -> $crate::render_features::RenderFeatureIndex {
                 $atomic_constant_name.load(std::sync::atomic::Ordering::Acquire)
-                    as RenderFeatureIndex
+                    as $crate::render_features::RenderFeatureIndex
             }
 
             fn feature_debug_name() -> &'static str {
                 render_feature_debug_name()
             }
 
-            fn feature_debug_constants() -> &'static RenderFeatureDebugConstants {
+            fn feature_debug_constants() -> &'static $crate::render_features::RenderFeatureDebugConstants {
                 render_feature_debug_constants()
             }
         }
 
         #[inline(always)]
-        fn render_feature_index() -> RenderFeatureIndex {
+        fn render_feature_index() -> $crate::render_features::RenderFeatureIndex {
             $struct_name::feature_index()
         }
 
@@ -80,7 +81,7 @@ macro_rules! declare_render_feature {
         }
 
         #[inline(always)]
-        fn render_feature_debug_constants() -> &'static RenderFeatureDebugConstants {
+        fn render_feature_debug_constants() -> &'static $crate::render_features::RenderFeatureDebugConstants {
             &RENDER_FEATURE_DEBUG_CONSTANTS
         }
     };
