@@ -79,3 +79,6 @@ required-features = ["framework"]
 name = "asset_triangle"
 path = "examples/asset_triangle/asset_triangle.rs"
 required-features = ["assets"]
+
+[package.metadata.docs.rs]
+features = ["rafx-vulkan", "framework", "assets", "renderer"]
