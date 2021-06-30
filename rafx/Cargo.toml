@@ -79,3 +79,12 @@ required-features = ["framework"]
 name = "asset_triangle"
 path = "examples/asset_triangle/asset_triangle.rs"
 required-features = ["assets"]
+
+# Enable these features on docs.rs
+[package.metadata.docs.rs]
+features = [
+    "framework",
+    "assets",
+    "renderer",
+    "basis-universal",
+]

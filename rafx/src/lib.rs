@@ -1,7 +1,3 @@
-//! NOTE: **docs.rs may not generate complete documentation for rafx because it does not enable any
-//! features in cargo when building the docs.** To generate complete documentation locally, run
-//! `cargo doc --no-deps --open` in the root of the crate.
-//!
 //! **Please see [additional documentation here](https://github.com/aclysma/rafx/blob/master/docs/index.md)**
 //!
 //! Rafx is a multi-backend renderer that prioritizes performance, flexibility, and productivity. It
