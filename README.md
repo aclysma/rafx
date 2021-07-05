@@ -12,7 +12,7 @@ This crate contains several layers:
  * `rafx-framework`: Mid-level framework that eases resource management, lifetime handling, and draw call dispatching
  * `rafx-assets`: Asset layer that integrates with [`distill`](https://github.com/amethyst/distill)
  * `rafx-renderer`: A pipelined renderer with a plugin system for customizing it
-   
+
 Rafx also provides tools for building shaders and packing assets.
 
 ### Current Support:
@@ -43,7 +43,12 @@ Please keep in mind, this crate is still in pre-0.1.0 status!
 
 [![Video of Renderer in Use](docs/screenshots/ios_screenshot.png)](https://www.youtube.com/watch?v=Ks_HQbejHE4 "Video of Renderer in Use")
 
-[^ Video of this renderer running on iOS hardware](https://www.youtube.com/watch?v=Ks_HQbejHE4) 
+[^ Video of this renderer running on iOS hardware](https://www.youtube.com/watch?v=Ks_HQbejHE4)
+
+[![Video with real-world assets](docs/screenshots/render_adventure_flythrough.png)](https://www.youtube.com/watch?v=HlJsgbGyl0I "Video with real-world assets")
+
+[^ Camera flythrough demo using real-world assets](https://www.youtube.com/watch?v=HlJsgbGyl0I). Lots of room for
+improvements in our shadow performance and quality :)
 
 ![Screenshot of render with real-world assets](docs/screenshots/render_adventure1.png)
 

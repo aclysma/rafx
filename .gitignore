@@ -4,3 +4,6 @@ Cargo.lock
 .idea
 .assets_db
 .DS_store
+/demo/assets/private
+/demo/art/private
+/demo/assets_unprocessed/private
