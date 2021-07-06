@@ -1,4 +1,4 @@
-use crate::assets::gltf::{
+use crate::assets::mesh::{
     ModelAsset, PrefabAssetData, PrefabAssetDataObject, PrefabAssetDataObjectLight,
     PrefabAssetDataObjectLightKind, PrefabAssetDataObjectLightSpot, PrefabAssetDataObjectModel,
     PrefabAssetDataObjectTransform,

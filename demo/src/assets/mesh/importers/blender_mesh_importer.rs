@@ -1,4 +1,4 @@
-use crate::assets::gltf::{MeshAssetData, MeshPartAssetData};
+use crate::assets::mesh::{MeshAssetData, MeshPartAssetData};
 use crate::features::mesh::MeshVertex;
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};

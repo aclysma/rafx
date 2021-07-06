@@ -1,5 +1,5 @@
 use super::ModelAssetData;
-use crate::assets::gltf::{MeshAsset, ModelAssetDataLod};
+use crate::assets::mesh::{MeshAsset, ModelAssetDataLod};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use rafx::distill::loader::handle::Handle;

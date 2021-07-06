@@ -1,4 +1,4 @@
-use crate::assets::gltf::{
+use crate::assets::mesh::{
     MeshAssetData, MeshMaterialData, MeshMaterialDataShaderParam, MeshPartAssetData,
 };
 use crate::features::mesh::MeshVertex;

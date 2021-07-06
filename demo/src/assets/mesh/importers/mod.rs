@@ -1,6 +1,3 @@
-mod assets;
-pub use assets::*;
-
 mod gltf_importer;
 pub use gltf_importer::*;
 
@@ -16,5 +13,4 @@ pub use blender_mesh_importer::*;
 mod blender_prefab_importer;
 pub use blender_prefab_importer::*;
 
-mod plugin;
-pub use plugin::*;
+use super::assets::*;

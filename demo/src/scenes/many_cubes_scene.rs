@@ -1,6 +1,6 @@
 // NOTE(dvd): Inspired by Bevy `spawner` example (MIT licensed) https://github.com/bevyengine/bevy/blob/20673dbe0e935d9b7b4fdc8947830bfcff6bc071/examples/3d/spawner.rs
 
-use crate::assets::gltf::MeshAsset;
+use crate::assets::mesh::MeshAsset;
 use crate::components::{
     MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
 };
