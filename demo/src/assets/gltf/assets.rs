@@ -1,7 +1,7 @@
 use crate::features::mesh::MeshUntexturedRenderFeatureFlag;
 use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, WireframeRenderPhase};
 use distill::loader::handle::Handle;
-use rafx::api::RafxResult;
+use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::MaterialInstanceAsset;
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler,
@@ -10,28 +10,14 @@ use rafx::framework::render_features::{RenderPhase, RenderPhaseIndex, RenderView
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::rafx_visibility::VisibleBounds;
 use serde::{Deserialize, Serialize};
-use shaders::mesh_textured_frag::MaterialDataStd140;
 use std::sync::Arc;
 use type_uuid::*;
 
-//TODO: These are extensions that might be interesting to try supporting. In particular, lights,
-// LOD, and clearcoat
-// Good explanations of upcoming extensions here: https://medium.com/@babylonjs/gltf-extensions-in-babylon-js-b3fa56de5483
-//KHR_materials_clearcoat: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_clearcoat/README.md
-//KHR_materials_pbrSpecularGlossiness: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_pbrSpecularGlossiness/README.md
-//KHR_materials_unlit: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_unlit/README.md
-//KHR_lights_punctual (directional, point, spot): https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_lights_punctual/README.md
-//EXT_lights_image_based: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/EXT_lights_image_based/README.md
-//MSFT_lod: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_lod/README.md
-//MSFT_packing_normalRoughnessMetallic: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_packing_normalRoughnessMetallic/README.md
-// Normal: NG, Roughness: B, Metallic: A
-//MSFT_packing_occlusionRoughnessMetallic: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_packing_occlusionRoughnessMetallic/README.md
-
 // This is non-texture data associated with the material. Must convert to
-// GltfMaterialDataShaderParam to bind to a shader uniform
+// MeshMaterialDataShaderParam to bind to a shader uniform
 #[derive(Serialize, Deserialize, Clone)]
 #[repr(C)]
-pub struct GltfMaterialData {
+pub struct MeshMaterialData {
     // Using f32 arrays for serde support
     pub base_color_factor: [f32; 4],     // default: 1,1,1,1
     pub emissive_factor: [f32; 3],       // default: 0,0,0
@@ -48,9 +34,9 @@ pub struct GltfMaterialData {
     pub has_emissive_texture: bool,
 }
 
-impl Default for GltfMaterialData {
+impl Default for MeshMaterialData {
     fn default() -> Self {
-        GltfMaterialData {
+        MeshMaterialData {
             base_color_factor: [1.0, 1.0, 1.0, 1.0],
             emissive_factor: [0.0, 0.0, 0.0],
             metallic_factor: 1.0,
@@ -67,11 +53,11 @@ impl Default for GltfMaterialData {
     }
 }
 
-pub type GltfMaterialDataShaderParam = MaterialDataStd140;
+pub type MeshMaterialDataShaderParam = shaders::mesh_textured_frag::MaterialDataStd140;
 
-impl Into<MaterialDataStd140> for GltfMaterialData {
-    fn into(self) -> MaterialDataStd140 {
-        MaterialDataStd140 {
+impl Into<MeshMaterialDataShaderParam> for MeshMaterialData {
+    fn into(self) -> MeshMaterialDataShaderParam {
+        MeshMaterialDataShaderParam {
             base_color_factor: self.base_color_factor.into(),
             emissive_factor: self.emissive_factor.into(),
             metallic_factor: self.metallic_factor,
@@ -96,6 +82,7 @@ pub struct MeshPartAssetData {
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
     pub material_instance: Handle<MaterialInstanceAsset>,
+    pub index_type: RafxIndexType,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
@@ -116,6 +103,7 @@ pub struct MeshAssetPart {
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
+    pub index_type: RafxIndexType,
 }
 
 pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
@@ -252,6 +240,7 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
                     vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
                     index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
                     index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
+                    index_type: mesh_part.index_type,
                 })
             })
             .collect();
@@ -270,3 +259,120 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
 }
 
 pub type MeshAssetType = DefaultAssetTypeHandler<MeshAssetData, MeshAsset, MeshLoadHandler>;
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ModelAssetDataLod {
+    pub mesh: Handle<MeshAsset>,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Clone)]
+#[uuid = "75bbc873-e527-42c6-8409-15aa5e68a4a4"]
+pub struct ModelAssetData {
+    pub lods: Vec<ModelAssetDataLod>,
+}
+
+pub struct ModelAssetInner {
+    pub lods: Vec<ModelAssetDataLod>,
+}
+
+#[derive(TypeUuid, Clone)]
+#[uuid = "76b953ef-9d1e-464b-b2a8-74f5b8842bd8"]
+pub struct ModelAsset {
+    pub inner: Arc<ModelAssetInner>,
+}
+
+pub struct ModelLoadHandler;
+
+impl DefaultAssetTypeLoadHandler<ModelAssetData, ModelAsset> for ModelLoadHandler {
+    #[profiling::function]
+    fn load(
+        _asset_manager: &mut AssetManager,
+        model_asset: ModelAssetData,
+    ) -> RafxResult<ModelAsset> {
+        let inner = ModelAssetInner {
+            lods: model_asset.lods,
+        };
+
+        Ok(ModelAsset {
+            inner: Arc::new(inner),
+        })
+    }
+}
+
+pub type ModelAssetType = DefaultAssetTypeHandler<ModelAssetData, ModelAsset, ModelLoadHandler>;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PrefabAssetDataObjectTransform {
+    pub position: glam::Vec3,
+    pub rotation: glam::Quat,
+    pub scale: glam::Vec3,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PrefabAssetDataObjectModel {
+    pub model: Handle<ModelAsset>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub enum PrefabAssetDataObjectLightKind {
+    Point,
+    Spot,
+    Directional,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PrefabAssetDataObjectLightSpot {
+    pub inner_angle: f32,
+    pub outer_angle: f32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PrefabAssetDataObjectLight {
+    pub color: glam::Vec3,
+    pub kind: PrefabAssetDataObjectLightKind,
+    pub intensity: f32,
+    pub spot: Option<PrefabAssetDataObjectLightSpot>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PrefabAssetDataObject {
+    pub transform: PrefabAssetDataObjectTransform,
+    pub model: Option<PrefabAssetDataObjectModel>,
+    pub light: Option<PrefabAssetDataObjectLight>,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Clone, Debug)]
+#[uuid = "1af63a91-de3e-48fc-8908-ab309730b8b5"]
+pub struct PrefabAssetData {
+    pub objects: Vec<PrefabAssetDataObject>,
+}
+
+pub struct PrefabAssetInner {
+    pub objects: Vec<PrefabAssetDataObject>,
+}
+
+#[derive(TypeUuid, Clone)]
+#[uuid = "7bf45a97-62f4-4a9a-99b8-e0ac8d755993"]
+pub struct PrefabAsset {
+    pub inner: Arc<PrefabAssetInner>,
+}
+
+pub struct PrefabLoadHandler;
+
+impl DefaultAssetTypeLoadHandler<PrefabAssetData, PrefabAsset> for PrefabLoadHandler {
+    #[profiling::function]
+    fn load(
+        _asset_manager: &mut AssetManager,
+        model_asset: PrefabAssetData,
+    ) -> RafxResult<PrefabAsset> {
+        let inner = PrefabAssetInner {
+            objects: model_asset.objects,
+        };
+
+        Ok(PrefabAsset {
+            inner: Arc::new(inner),
+        })
+    }
+}
+
+pub type PrefabAssetType = DefaultAssetTypeHandler<PrefabAssetData, PrefabAsset, PrefabLoadHandler>;

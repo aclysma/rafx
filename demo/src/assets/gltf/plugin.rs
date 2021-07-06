@@ -1,4 +1,4 @@
-use crate::assets::gltf::MeshAssetType;
+use crate::assets::gltf::{MeshAssetType, ModelAssetType, PrefabAssetType};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;
@@ -15,6 +15,10 @@ impl RendererAssetPlugin for GltfAssetTypeRendererPlugin {
         asset_daemon
             .with_importer("gltf", super::GltfImporter)
             .with_importer("glb", super::GltfImporter)
+            .with_importer("blender_material", super::BlenderMaterialImporter)
+            .with_importer("blender_model", super::BlenderModelImporter)
+            .with_importer("blender_mesh", super::BlenderMeshImporter)
+            .with_importer("blender_prefab", super::BlenderPrefabImporter)
     }
 
     fn register_asset_types(
@@ -23,5 +27,7 @@ impl RendererAssetPlugin for GltfAssetTypeRendererPlugin {
         asset_resource: &mut AssetResource,
     ) {
         asset_manager.register_asset_type::<MeshAssetType>(asset_resource);
+        asset_manager.register_asset_type::<ModelAssetType>(asset_resource);
+        asset_manager.register_asset_type::<PrefabAssetType>(asset_resource);
     }
 }

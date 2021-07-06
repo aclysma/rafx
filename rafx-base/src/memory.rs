@@ -14,6 +14,14 @@ pub fn round_size_up_to_alignment_u64(
     ((size + required_alignment - 1) / required_alignment) * required_alignment
 }
 
+pub fn round_size_up_to_alignment_usize(
+    size: usize,
+    required_alignment: usize,
+) -> usize {
+    assert!(required_alignment > 0);
+    ((size + required_alignment - 1) / required_alignment) * required_alignment
+}
+
 pub fn any_as_bytes<T: Copy>(data: &T) -> &[u8] {
     let ptr: *const T = data;
     let ptr = ptr as *const u8;
