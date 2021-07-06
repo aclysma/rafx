@@ -1,7 +1,7 @@
 use crate::features::mesh::MeshUntexturedRenderFeatureFlag;
 use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, WireframeRenderPhase};
 use distill::loader::handle::Handle;
-use rafx::api::RafxResult;
+use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::MaterialInstanceAsset;
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler,
@@ -10,28 +10,14 @@ use rafx::framework::render_features::{RenderPhase, RenderPhaseIndex, RenderView
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 use rafx::rafx_visibility::VisibleBounds;
 use serde::{Deserialize, Serialize};
-use shaders::mesh_textured_frag::MaterialDataStd140;
 use std::sync::Arc;
 use type_uuid::*;
 
-//TODO: These are extensions that might be interesting to try supporting. In particular, lights,
-// LOD, and clearcoat
-// Good explanations of upcoming extensions here: https://medium.com/@babylonjs/gltf-extensions-in-babylon-js-b3fa56de5483
-//KHR_materials_clearcoat: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_clearcoat/README.md
-//KHR_materials_pbrSpecularGlossiness: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_pbrSpecularGlossiness/README.md
-//KHR_materials_unlit: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_unlit/README.md
-//KHR_lights_punctual (directional, point, spot): https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_lights_punctual/README.md
-//EXT_lights_image_based: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/EXT_lights_image_based/README.md
-//MSFT_lod: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_lod/README.md
-//MSFT_packing_normalRoughnessMetallic: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_packing_normalRoughnessMetallic/README.md
-// Normal: NG, Roughness: B, Metallic: A
-//MSFT_packing_occlusionRoughnessMetallic: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_packing_occlusionRoughnessMetallic/README.md
-
 // This is non-texture data associated with the material. Must convert to
-// GltfMaterialDataShaderParam to bind to a shader uniform
+// MeshMaterialDataShaderParam to bind to a shader uniform
 #[derive(Serialize, Deserialize, Clone)]
 #[repr(C)]
-pub struct GltfMaterialData {
+pub struct MeshMaterialData {
     // Using f32 arrays for serde support
     pub base_color_factor: [f32; 4],     // default: 1,1,1,1
     pub emissive_factor: [f32; 3],       // default: 0,0,0
@@ -48,9 +34,9 @@ pub struct GltfMaterialData {
     pub has_emissive_texture: bool,
 }
 
-impl Default for GltfMaterialData {
+impl Default for MeshMaterialData {
     fn default() -> Self {
-        GltfMaterialData {
+        MeshMaterialData {
             base_color_factor: [1.0, 1.0, 1.0, 1.0],
             emissive_factor: [0.0, 0.0, 0.0],
             metallic_factor: 1.0,
@@ -67,11 +53,11 @@ impl Default for GltfMaterialData {
     }
 }
 
-pub type GltfMaterialDataShaderParam = MaterialDataStd140;
+pub type MeshMaterialDataShaderParam = shaders::mesh_textured_frag::MaterialDataStd140;
 
-impl Into<MaterialDataStd140> for GltfMaterialData {
-    fn into(self) -> MaterialDataStd140 {
-        MaterialDataStd140 {
+impl Into<MeshMaterialDataShaderParam> for MeshMaterialData {
+    fn into(self) -> MeshMaterialDataShaderParam {
+        MeshMaterialDataShaderParam {
             base_color_factor: self.base_color_factor.into(),
             emissive_factor: self.emissive_factor.into(),
             metallic_factor: self.metallic_factor,
@@ -96,6 +82,7 @@ pub struct MeshPartAssetData {
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
     pub material_instance: Handle<MaterialInstanceAsset>,
+    pub index_type: RafxIndexType,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
@@ -116,6 +103,7 @@ pub struct MeshAssetPart {
     pub vertex_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
+    pub index_type: RafxIndexType,
 }
 
 pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
@@ -252,6 +240,7 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
                     vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
                     index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
                     index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
+                    index_type: mesh_part.index_type,
                 })
             })
             .collect();

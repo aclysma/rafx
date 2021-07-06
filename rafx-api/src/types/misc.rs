@@ -414,6 +414,7 @@ pub enum RafxPrimitiveTopology {
 
 /// The size of index buffer elements
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxIndexType {
     Uint32,
     Uint16,

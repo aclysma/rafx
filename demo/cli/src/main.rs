@@ -1,5 +1,5 @@
 use demo::assets::font::FontImporter;
-use demo::assets::gltf::GltfImporter;
+use demo::assets::mesh::GltfImporter;
 use demo::daemon_args::AssetDaemonArgs;
 use distill::daemon::AssetDaemon;
 use distill_cli::Command;

@@ -3,9 +3,7 @@ use rafx::render_feature_write_job_prelude::*;
 use super::*;
 use crate::phases::{DepthPrepassRenderPhase, ShadowMapRenderPhase, WireframeRenderPhase};
 use rafx::api::RafxPrimitiveTopology;
-use rafx::api::{
-    RafxIndexBufferBinding, RafxIndexType, RafxVertexAttributeRate, RafxVertexBufferBinding,
-};
+use rafx::api::{RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding};
 use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use serde::{Deserialize, Serialize};
@@ -199,7 +197,7 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshWriteJob<'write> {
         command_buffer.cmd_bind_index_buffer(&RafxIndexBufferBinding {
             buffer: &mesh_asset.inner.index_buffer.get_raw().buffer,
             byte_offset: mesh_part.index_buffer_offset_in_bytes as u64,
-            index_type: RafxIndexType::Uint16,
+            index_type: mesh_part.index_type,
         })?;
 
         command_buffer.cmd_draw_indexed(

@@ -1,5 +1,5 @@
-use crate::assets::gltf::{
-    GltfMaterialData, GltfMaterialDataShaderParam, MeshAssetData, MeshPartAssetData,
+use crate::assets::mesh::{
+    MeshAssetData, MeshMaterialData, MeshMaterialDataShaderParam, MeshPartAssetData,
 };
 use crate::features::mesh::MeshVertex;
 use distill::core::AssetUuid;
@@ -11,7 +11,7 @@ use glam::Vec3;
 use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
 use itertools::Itertools;
-use rafx::api::RafxResourceType;
+use rafx::api::{RafxIndexType, RafxResourceType};
 use rafx::assets::push_buffer::PushBuffer;
 use rafx::assets::BufferAssetData;
 use rafx::assets::ImageAsset;
@@ -23,6 +23,19 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::Read;
 use type_uuid::*;
+
+//TODO: These are extensions that might be interesting to try supporting. In particular, lights,
+// LOD, and clearcoat
+// Good explanations of upcoming extensions here: https://medium.com/@babylonjs/gltf-extensions-in-babylon-js-b3fa56de5483
+//KHR_materials_clearcoat: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_clearcoat/README.md
+//KHR_materials_pbrSpecularGlossiness: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_pbrSpecularGlossiness/README.md
+//KHR_materials_unlit: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_unlit/README.md
+//KHR_lights_punctual (directional, point, spot): https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_lights_punctual/README.md
+//EXT_lights_image_based: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/EXT_lights_image_based/README.md
+//MSFT_lod: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_lod/README.md
+//MSFT_packing_normalRoughnessMetallic: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_packing_normalRoughnessMetallic/README.md
+// Normal: NG, Roughness: B, Metallic: A
+//MSFT_packing_occlusionRoughnessMetallic: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_packing_occlusionRoughnessMetallic/README.md
 
 #[derive(Debug)]
 struct GltfImportError {
@@ -62,7 +75,7 @@ struct ImageToImport {
 #[derive(Default, Clone)]
 pub struct GltfMaterialImportData {
     //pub name: Option<String>,
-    pub material_data: GltfMaterialData,
+    pub material_data: MeshMaterialData,
 
     pub base_color_texture: Option<Handle<ImageAsset>>,
     // metalness in B, roughness in G
@@ -176,7 +189,7 @@ impl Importer for GltfImporter {
     where
         Self: Sized,
     {
-        27
+        29
     }
 
     fn version(&self) -> u32 {
@@ -284,7 +297,7 @@ impl Importer for GltfImporter {
             let mut slot_assignments = vec![];
 
             let material_data = &material_to_import.asset.material_data;
-            let material_data_shader_param: GltfMaterialDataShaderParam =
+            let material_data_shader_param: MeshMaterialDataShaderParam =
                 material_data.clone().into();
             slot_assignments.push(MaterialInstanceSlotAssignment {
                 slot_name: "per_material_data".to_string(),
@@ -737,17 +750,14 @@ fn extract_materials_to_import(
     materials_to_import
 }
 
-//TODO: This feels kind of dumb..
-fn convert_to_u16_indices(
-    read_indices: gltf::mesh::util::ReadIndices
-) -> Result<Vec<u16>, std::num::TryFromIntError> {
-    let indices_u32: Vec<u32> = read_indices.into_u32().collect();
-    let mut indices_u16: Vec<u16> = Vec::with_capacity(indices_u32.len());
-    for index in indices_u32 {
-        indices_u16.push(index.try_into()?);
+fn try_convert_to_u16(indices_u32: &[u32]) -> Option<Vec<u16>> {
+    for &index in indices_u32 {
+        if index > 0xFFFF {
+            return None;
+        }
     }
 
-    Ok(indices_u16)
+    Some(indices_u32.iter().map(|&x| x.try_into().unwrap()).collect())
 }
 
 fn extract_meshes_to_import(
@@ -792,25 +802,25 @@ fn extract_meshes_to_import(
                     Some(tex_coords),
                 ) = (indices, positions, normals, tangents, tex_coords)
                 {
-                    let part_indices = convert_to_u16_indices(indices);
+                    let indices_u32: Vec<u32> = indices.into_u32().collect();
+                    let indices_u16 = try_convert_to_u16(&indices_u32);
 
-                    if let Ok(part_indices) = part_indices {
-                        //TODO: Consider computing binormal (bitangent) here
-                        let positions: Vec<_> = positions.collect();
-                        let normals: Vec<_> = normals.collect();
-                        let tangents: Vec<_> = tangents.collect();
-                        let tex_coords: Vec<_> = tex_coords.into_f32().collect();
+                    //TODO: Consider computing binormal (bitangent) here
+                    let positions: Vec<_> = positions.collect();
+                    let normals: Vec<_> = normals.collect();
+                    let tangents: Vec<_> = tangents.collect();
+                    let tex_coords: Vec<_> = tex_coords.into_f32().collect();
 
-                        let vertex_offset = all_vertices.len();
-                        let indices_offset = all_indices.len();
-
-                        for i in 0..positions.len() {
-                            all_positions.push(Vec3::new(
-                                positions[i][0],
-                                positions[i][1],
-                                positions[i][2],
-                            ));
-                            all_vertices.push(
+                    let vertex_offset =
+                        all_vertices.pad_to_alignment(std::mem::size_of::<MeshVertex>());
+                    for i in 0..positions.len() {
+                        all_positions.push(Vec3::new(
+                            positions[i][0],
+                            positions[i][1],
+                            positions[i][2],
+                        ));
+                        all_vertices
+                            .push(
                                 &[MeshVertex {
                                     position: positions[i],
                                     normal: normals[i],
@@ -818,18 +828,28 @@ fn extract_meshes_to_import(
                                     tex_coord: tex_coords[i],
                                 }],
                                 1,
-                            );
-                        }
+                            )
+                            .offset();
+                    }
 
-                        all_indices.push(&part_indices, 1);
-                        all_position_indices.extend_from_slice(&part_indices);
+                    let indices_offset;
+                    if let Some(indices_u16) = &indices_u16 {
+                        indices_offset = all_indices
+                            .push(indices_u16, std::mem::size_of::<u16>())
+                            .offset()
+                    } else {
+                        indices_offset = all_indices
+                            .push(&indices_u32, std::mem::size_of::<u32>())
+                            .offset()
+                    }
 
-                        let vertex_size = all_vertices.len() - vertex_offset;
-                        let indices_size = all_indices.len() - indices_offset;
+                    all_position_indices.extend_from_slice(&indices_u32);
 
-                        let material_instance = if let Some(material_index) =
-                            primitive.material().index()
-                        {
+                    let vertex_size = all_vertices.len() - vertex_offset;
+                    let indices_size = all_indices.len() - indices_offset;
+
+                    let material_instance =
+                        if let Some(material_index) = primitive.material().index() {
                             material_instance_index_to_handle[material_index].clone()
                         } else {
                             return Err(distill::importer::Error::Boxed(Box::new(
@@ -837,20 +857,14 @@ fn extract_meshes_to_import(
                             )));
                         };
 
-                        Some(MeshPartAssetData {
-                            //material,
-                            material_instance,
-                            vertex_buffer_offset_in_bytes: vertex_offset as u32,
-                            vertex_buffer_size_in_bytes: vertex_size as u32,
-                            index_buffer_offset_in_bytes: indices_offset as u32,
-                            index_buffer_size_in_bytes: indices_size as u32,
-                        })
-                    } else {
-                        log::error!("indices must fit in u16");
-                        return Err(distill::importer::Error::Boxed(Box::new(
-                            GltfImportError::new("indices must fit in u16"),
-                        )));
-                    }
+                    Some(MeshPartAssetData {
+                        material_instance,
+                        vertex_buffer_offset_in_bytes: vertex_offset as u32,
+                        vertex_buffer_size_in_bytes: vertex_size as u32,
+                        index_buffer_offset_in_bytes: indices_offset as u32,
+                        index_buffer_size_in_bytes: indices_size as u32,
+                        index_type: RafxIndexType::Uint16,
+                    })
                 } else {
                     log::error!(
                         "Mesh primitives must specify indices, positions, normals, tangents, and tex_coords"
@@ -915,7 +929,7 @@ fn extract_meshes_to_import(
 
         let mesh_data = PolygonSoup {
             vertex_positions: all_positions,
-            index: PolygonSoupIndex::Indexed16(all_position_indices),
+            index: PolygonSoupIndex::Indexed32(all_position_indices),
         };
 
         let asset = MeshAssetData {

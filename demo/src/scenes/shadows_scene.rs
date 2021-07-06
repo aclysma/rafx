@@ -1,4 +1,4 @@
-use crate::assets::gltf::MeshAsset;
+use crate::assets::mesh::MeshAsset;
 use crate::components::{
     DirectionalLightComponent, MeshComponent, PointLightComponent, TransformComponent,
 };

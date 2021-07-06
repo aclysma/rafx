@@ -1,6 +1,6 @@
 use crate::assets::font::FontAssetTypeRendererPlugin;
-use crate::assets::gltf::GltfAssetTypeRendererPlugin;
 use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
+use crate::assets::mesh::GltfAssetTypeRendererPlugin;
 use crate::features::debug3d::Debug3DRendererPlugin;
 use crate::features::mesh::MeshRendererPlugin;
 use crate::features::skybox::SkyboxRendererPlugin;

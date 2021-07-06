@@ -24,6 +24,7 @@ mod components;
 pub mod daemon_args;
 mod features;
 mod init;
+mod input;
 mod phases;
 mod render_graph_generator;
 mod scenes;
@@ -37,6 +38,7 @@ use crate::assets::font::FontAsset;
 use crate::features::egui::{EguiContextResource, WinitEguiManager};
 use crate::features::text::TextResource;
 use crate::features::tile_layer::TileLayerResource;
+use crate::input::InputResource;
 pub use demo_plugin::DemoRendererPlugin;
 use rafx::distill::loader::handle::Handle;
 use winit::event_loop::ControlFlow;
@@ -318,6 +320,7 @@ impl DemoApp {
 
         let mut resources = Resources::default();
         resources.insert(TimeState::new());
+        resources.insert(InputResource::new());
         resources.insert(RenderOptions::default_2d());
         resources.insert(DebugUiState::default());
 
@@ -630,18 +633,25 @@ impl DemoApp {
 
         profiling::finish_frame!();
 
+        {
+            let mut input_resource = self.resources.get_mut::<InputResource>().unwrap();
+            input_resource.end_frame();
+        }
+
         Ok(ControlFlow::Poll)
     }
 
     fn process_input(
         &mut self,
         event: &winit::event::Event<()>,
+        window: &winit::window::Window,
     ) -> bool {
         Self::do_process_input(
             &mut self.scene_manager,
             &mut self.world,
             &self.resources,
             event,
+            window,
         )
     }
 
@@ -650,6 +660,7 @@ impl DemoApp {
         world: &mut World,
         resources: &Resources,
         event: &winit::event::Event<()>,
+        _window: &winit::window::Window,
     ) -> bool {
         use winit::event::*;
 
@@ -701,7 +712,7 @@ impl DemoApp {
                     }
 
                     #[cfg(feature = "rafx-vulkan")]
-                    if *virtual_keycode == VirtualKeyCode::D {
+                    if *virtual_keycode == VirtualKeyCode::V {
                         let stats = resources
                             .get::<rafx::api::RafxDeviceContext>()
                             .unwrap()
@@ -735,6 +746,11 @@ impl DemoApp {
 
             if !was_handled {
                 scene_manager.process_input(world, resources, event);
+
+                {
+                    let mut input_resource = resources.get_mut::<InputResource>().unwrap();
+                    input::handle_winit_event(event, &mut *input_resource);
+                }
             }
         }
 
@@ -767,7 +783,7 @@ pub fn update_loop(
                 *control_flow = app.update(&window).unwrap();
             }
             event @ _ => {
-                if !app.process_input(&event) {
+                if !app.process_input(&event, &window) {
                     *control_flow = ControlFlow::Exit;
                 }
             }

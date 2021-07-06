@@ -165,6 +165,12 @@ impl AssetManager {
             }
         }
 
+        log::info!(
+            "begin blocking wait for asset to resolve {} {:?}",
+            asset_name,
+            asset_handle
+        );
+
         loop {
             asset_resource.update();
             self.update_asset_loaders()?;

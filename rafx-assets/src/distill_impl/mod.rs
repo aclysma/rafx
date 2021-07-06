@@ -20,6 +20,8 @@ pub fn default_daemon() -> distill::daemon::AssetDaemon {
         .with_importer("jpg", ImageImporter(image::ImageFormat::Jpeg))
         .with_importer("jpeg", ImageImporter(image::ImageFormat::Jpeg))
         .with_importer("tga", ImageImporter(image::ImageFormat::Tga))
+        .with_importer("tif", ImageImporter(image::ImageFormat::Tiff))
+        .with_importer("tiff", ImageImporter(image::ImageFormat::Tiff))
         .with_importer("bmp", ImageImporter(image::ImageFormat::Bmp));
 
     #[cfg(feature = "basis-universal")]

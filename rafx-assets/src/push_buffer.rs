@@ -101,6 +101,18 @@ impl PushBuffer {
         self.push_bytes(slice, required_alignment)
     }
 
+    pub fn pad_to_alignment(
+        &mut self,
+        required_alignment: usize,
+    ) -> usize {
+        let new_size = rafx_base::memory::round_size_up_to_alignment_usize(
+            self.data.len(),
+            required_alignment,
+        );
+        self.data.resize(new_size, 0);
+        new_size
+    }
+
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }

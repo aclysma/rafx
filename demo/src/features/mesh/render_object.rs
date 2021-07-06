@@ -1,5 +1,5 @@
 use super::MeshRenderFeature;
-use crate::assets::gltf::MeshAsset;
+use crate::assets::mesh::MeshAsset;
 use distill::loader::handle::Handle;
 use rafx::render_features::RenderObjectSet;
 
