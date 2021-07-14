@@ -99,14 +99,11 @@ cd demo
 cargo run --bin demo --release --features "[BACKEND_FEATURE]"
 ```
 
-BACKEND_FEATURE should either be "rafx-vulkan" or "rafx-metal"
+BACKEND_FEATURE should either be `rafx-vulkan`, `rafx-metal`, or some other backend.
 
 Running in release reduces logging and disables GPU validation. The first time it will load more slowly because it
 has to import the assets, including a GLTF mesh with large textures. **Using profile overrides to optimize upstream crates
 is highly recommeneded. Asset processing is extremely slow in debug mode.** (i.e. 30s instead of 2s)
-
-The demo uses SDL2 and in debug mode, vulkan validation. If you have trouble running the demo, please check that
-dependencies for both SDL2 and vulkan are available.
 
 ### Demo Features
 
@@ -139,6 +136,8 @@ dependencies for both SDL2 and vulkan are available.
 
 The renderer includes a few tools for processing shaders and packing data in a binary blob.
 
+There is also a blender add-on that works, but is still being prototyped and is not yet documented.
+
 ### Shader Processor
 
 This tool parses GLSL and produces matching rust code. This makes working with descriptor sets easier and safer!
@@ -159,7 +158,7 @@ The shader processor produces the following assets artifacts
 * Intermediate formats for debugging/inspection
 
 The shader package can be loaded as an asset and contains everything needed to load a compiled shader.
- 
+
 ### Packaging Assets
 
 This tool currently is only useful for packing assets.
@@ -167,6 +166,25 @@ This tool currently is only useful for packing assets.
  * Run the demo like this: `run --package demo -- --packfile out.pack`
  * You'll likely want to create a binary from your own main.rs for this tool. That way you can add your own resource
    types.
+
+### Blender Add-On
+
+There is also a blender addon that implements workflows for larger levels and exports a custom format that avoids
+duplicating shared asset data. While it functions, it is still early in implementation and not yet documented.
+ * Exporting: It automatically exports textures, materials, meshes, models (set of meshes with LOD levels), and scenes
+   in easily-consumed formats, avoiding duplicating shared data, with pre-defined directory layout and export settings.
+   This makes the export workflow easy and reliable.
+ * Level Editing: Supports a workflow that can handle massive levels in a team environment. Levels can be sliced by
+   location or function and loaded individually. This allows creating levels larger than a DCC software can support,
+   and allows more granular file checkouts, leading to fewer merge conflicts. In contrast to most DCC file formats,
+   level and slice files are stored as text, making them diffable and mergeable.
+
+[![Video of slice-based level editing in Blender](docs/screenshots/slice_editing_youtube_thumb.jpg)](https://www.youtube.com/watch?v=N6s40XwAghE "Video of slice-based level editing in Blender")
+
+[^ Video of slice-based level editing in Blender](https://www.youtube.com/watch?v=N6s40XwAghE)
+
+This video shows a scene with >5k objects, 1M+ verts being loaded at once in blender and sliced into multiple smaller 
+pieces on an M1 mac mini.
 
 ## Features
 
