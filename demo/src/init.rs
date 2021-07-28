@@ -1,3 +1,4 @@
+use crate::assets::anim::AnimAssetTypeRendererPlugin;
 use crate::assets::font::FontAssetTypeRendererPlugin;
 use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use crate::assets::mesh::GltfAssetTypeRendererPlugin;
@@ -69,6 +70,7 @@ pub fn rendering_init(
         .add_asset(Arc::new(FontAssetTypeRendererPlugin))
         .add_asset(Arc::new(GltfAssetTypeRendererPlugin))
         .add_asset(Arc::new(LdtkAssetTypeRendererPlugin))
+        .add_asset(Arc::new(AnimAssetTypeRendererPlugin))
         .add_asset(Arc::new(DemoRendererPlugin))
         .add_render_feature(mesh_renderer_plugin)
         .add_render_feature(sprite_renderer_plugin)

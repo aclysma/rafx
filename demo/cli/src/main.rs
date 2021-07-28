@@ -1,5 +1,9 @@
+use demo::assets::anim::BlenderAnimImporter;
 use demo::assets::font::FontImporter;
-use demo::assets::mesh::GltfImporter;
+use demo::assets::mesh::{
+    BlenderMaterialImporter, BlenderMeshImporter, BlenderModelImporter, BlenderPrefabImporter,
+    GltfImporter,
+};
 use demo::daemon_args::AssetDaemonArgs;
 use distill::daemon::AssetDaemon;
 use distill_cli::Command;
@@ -42,6 +46,11 @@ fn create_daemon(args: &CliArgs) -> AssetDaemon {
         .with_importer("ttf", FontImporter)
         .with_importer("gltf", GltfImporter)
         .with_importer("glb", GltfImporter)
+        .with_importer("blender_material", BlenderMaterialImporter)
+        .with_importer("blender_model", BlenderModelImporter)
+        .with_importer("blender_mesh", BlenderMeshImporter)
+        .with_importer("blender_prefab", BlenderPrefabImporter)
+        .with_importer("blender_anim", BlenderAnimImporter)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

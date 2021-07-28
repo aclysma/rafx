@@ -47,10 +47,7 @@ pub fn logging_init() {
 fn main() {
     logging_init();
 
-    demo::main_native(&DemoArgs {
-        external_daemon: false,
-        packfile: None,
-        packbuffer: None,
-        daemon_args: demo::AssetDaemonArgs::from_iter(&[""]),
-    })
+    let args = DemoArgs::from_args();
+
+    demo::main_native(&args)
 }

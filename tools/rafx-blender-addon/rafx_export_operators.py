@@ -4,7 +4,7 @@ import os
 
 logging = logging.getLogger(__name__)
 
-from . import export_material, export_mesh, export_prefab, export_image, rafx_project, rafx_blender_paths, rafx_utils, rafx_errors, export_model
+from . import export_material, export_mesh, export_prefab, export_image, export_animation, rafx_project, rafx_blender_paths, rafx_utils, rafx_errors, export_model
 
 
 def do_export_image(op, image, project_settings):
@@ -40,6 +40,42 @@ def do_export_mesh(op, object, project_settings):
     except rafx_errors.RafxError as e:
         error_str = "Failed to export {}: {}".format(object.name_full, str(e))
         op.report({"ERROR"}, error_str)
+
+
+
+def do_export_animation_data(op, object, project_settings):
+    try:
+        log_str = "Exporting animation data {}".format(object.name_full)
+        op.report({'INFO'}, log_str)
+        logging.info(log_str)
+        export_animation.export_animation_data(object, project_settings)
+    except rafx_errors.RafxError as e:
+        error_str = "Failed to export {}: {}".format(object.name_full, str(e))
+        op.report({"ERROR"}, error_str)
+
+
+# def do_export_armature(op, object, project_settings):
+#     try:
+#         log_str = "Exporting armature {}".format(object.name_full)
+#         op.report({'INFO'}, log_str)
+#         logging.info(log_str)
+#         export_animation.export_armature(object, project_settings)
+#     except rafx_errors.RafxError as e:
+#         error_str = "Failed to export {}: {}".format(object.name_full, str(e))
+#         op.report({"ERROR"}, error_str)
+
+# def do_export_action(op, object, project_settings):
+#     try:
+#         log_str = "Exporting action {}".format(object.name_full)
+#         op.report({'INFO'}, log_str)
+#         logging.info(log_str)
+#         export_animation.export_action(object, project_settings)
+#     except rafx_errors.RafxError as e:
+#         error_str = "Failed to export {}: {}".format(object.name_full, str(e))
+#         op.report({"ERROR"}, error_str)
+
+
+
 
 def do_export_scene_as_prefab(op, scene, project_settings):
     try:
@@ -117,6 +153,39 @@ class RafxExportMeshOp(bpy.types.Operator):
         do_export_mesh(self, object, project_settings)
 
         return {'FINISHED'}
+    
+class RafxExportAnimationDataOp(bpy.types.Operator):
+    bl_idname = "object.rafx_export_animation_data"
+    bl_label = "Rafx: Export Animation Data"
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object \
+            and context.active_object.type == 'ARMATURE' \
+            and context.active_object.data
+    
+    def execute(self, context):
+        object = context.active_object
+        project_settings = rafx_blender_paths.find_project_settings_for_current_blender_file()
+        do_export_animation_data(self, object, project_settings)
+
+        return {'FINISHED'}
+
+# class RafxExportAllAnimationDataOp(bpy.types.Operator):
+#     bl_idname = "object.rafx_export_all_animation_data"
+#     bl_label = "Rafx: Export Animation Data"
+
+#     def execute(self, context):
+#         project_settings = rafx_blender_paths.find_project_settings_for_current_blender_file()
+
+#         for armature in bpy.data.armatures:
+#             do_export_armature(self, armature, project_settings)
+            
+#         for action in bpy.data.actions:
+#             do_export_action(self, action, project_settings)
+
+#         return {'FINISHED'}
+
 
 class RafxExportSceneAsPrefabOp(bpy.types.Operator):
     bl_idname = "object.rafx_export_current_scene_as_prefab"

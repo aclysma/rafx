@@ -69,6 +69,8 @@ def get_export_extension(data_block):
         return "blender_material"
     elif isinstance(data_block, bpy.types.Object) and data_block.type == "MESH":
         return "blender_mesh"
+    elif isinstance(data_block, bpy.types.Object) and data_block.type == "ARMATURE":
+        return "blender_anim"
     elif isinstance(data_block, bpy.types.Collection):
         if data_block.rafx_is_model:
             return "blender_model"
@@ -76,6 +78,10 @@ def get_export_extension(data_block):
             return "blender_prefab"
     elif isinstance(data_block, bpy.types.Scene):
         return get_export_extension(data_block.collection)
+    elif isinstance(data_block, bpy.types.Action):
+        return "blender_anim"
+    elif isinstance(data_block, bpy.types.Armature):
+        return "blender_skel"
     
     logging.warn("get_export_extension cannot determine extension for data block %s", data_block)
 

@@ -13,6 +13,9 @@ use shadows_scene::ShadowsScene;
 mod sprite_scene;
 use sprite_scene::SpriteScene;
 
+mod animation_scene;
+use animation_scene::AnimationScene;
+
 mod rafxmark_scene;
 use rafxmark_scene::RafxmarkScene;
 
@@ -26,14 +29,16 @@ use many_cubes_scene::ManyCubesScene;
 pub enum Scene {
     Shadows,
     Sprite,
+    Animation,
     Rafxmark,
     ManySprites,
     ManyCubes,
 }
 
-pub const ALL_SCENES: [Scene; 5] = [
+pub const ALL_SCENES: [Scene; 6] = [
     Scene::Shadows,
     Scene::Sprite,
+    Scene::Animation,
     Scene::Rafxmark,
     Scene::ManySprites,
     Scene::ManyCubes,
@@ -55,6 +60,7 @@ fn create_scene(
     match scene {
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
         Scene::Sprite => Box::new(SpriteScene::new(world, resources)),
+        Scene::Animation => Box::new(AnimationScene::new(world, resources)),
         Scene::Rafxmark => Box::new(RafxmarkScene::new(world, resources)),
         Scene::ManySprites => Box::new(ManySpritesScene::new(world, resources)),
         Scene::ManyCubes => Box::new(ManyCubesScene::new(world, resources)),
