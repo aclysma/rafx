@@ -195,6 +195,62 @@ impl Debug3DResource {
         }
     }
 
+    pub fn add_axis_aligned_grid(
+        &mut self,
+        step_distance: f32,
+    ) {
+        const GRID_LINE_AXIS_COLOR_INTENSITY: f32 = 0.25;
+        const GRID_LINE_MAJOR_STEP_COLOR_INTENSITY: f32 = 0.1;
+        const GRID_LINE_MINOR_STEP_COLOR_INTENSITY: f32 = 0.025;
+        const GRID_LINE_MAJOR_STEP_COUNT: i32 = 10;
+        const GRID_LINE_MINOR_STEP_COUNT: i32 = 10;
+        const GRID_LINE_TOTAL_STEP_COUNT: i32 =
+            GRID_LINE_MAJOR_STEP_COUNT * GRID_LINE_MINOR_STEP_COUNT;
+
+        let grid_center = glam::Vec3::ZERO;
+        for i in -GRID_LINE_TOTAL_STEP_COUNT..=GRID_LINE_TOTAL_STEP_COUNT {
+            if i == 0 {
+                continue;
+            }
+
+            let line_color = if (i.abs() % GRID_LINE_MINOR_STEP_COUNT) == 0 {
+                glam::Vec3::splat(GRID_LINE_MAJOR_STEP_COLOR_INTENSITY).extend(1.0)
+            } else {
+                glam::Vec3::splat(GRID_LINE_MINOR_STEP_COLOR_INTENSITY).extend(1.0)
+            };
+
+            let offset_y = glam::Vec3::Y * (i as f32 * step_distance) + grid_center;
+            self.add_line(
+                glam::Vec3::X * -1000.0 + offset_y,
+                glam::Vec3::X * 1000.0 + offset_y,
+                line_color,
+            );
+
+            let offset_x = glam::Vec3::X * (i as f32 * step_distance) + grid_center;
+            self.add_line(
+                glam::Vec3::Y * -1000.0 + offset_x,
+                glam::Vec3::Y * 1000.0 + offset_x,
+                line_color,
+            );
+        }
+
+        self.add_line(
+            glam::Vec3::X * -1000.0 + grid_center,
+            glam::Vec3::X * 1000.0 + grid_center,
+            (glam::Vec3::X * GRID_LINE_AXIS_COLOR_INTENSITY).extend(1.0),
+        );
+        self.add_line(
+            glam::Vec3::Y * -1000.0 + grid_center,
+            glam::Vec3::Y * 1000.0 + grid_center,
+            (glam::Vec3::Y * GRID_LINE_AXIS_COLOR_INTENSITY).extend(1.0),
+        );
+        self.add_line(
+            glam::Vec3::Z * -1000.0 + grid_center,
+            glam::Vec3::Z * 1000.0 + grid_center,
+            (glam::Vec3::Z * GRID_LINE_AXIS_COLOR_INTENSITY).extend(1.0),
+        );
+    }
+
     // Returns the draw data, leaving this object in an empty state
     pub fn take_line_lists(&mut self) -> Vec<LineList3D> {
         std::mem::replace(&mut self.line_lists, vec![])

@@ -103,6 +103,8 @@ classes = (
     rafx_export_operators.RafxExportMeshOp,
     rafx_export_operators.RafxExportSceneAsModelOp,
     rafx_export_operators.RafxExportSceneAsPrefabOp,
+    rafx_export_operators.RafxExportAnimationDataOp,
+    #rafx_export_operators.RafxExportAllAnimationDataOp,
     rafx_export_operators.RafxExportAllOp,
 
     #
