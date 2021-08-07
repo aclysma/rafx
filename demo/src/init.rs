@@ -1,15 +1,3 @@
-use crate::assets::anim::AnimAssetTypeRendererPlugin;
-use crate::assets::font::FontAssetTypeRendererPlugin;
-use crate::assets::ldtk::LdtkAssetTypeRendererPlugin;
-use crate::assets::mesh::GltfAssetTypeRendererPlugin;
-use crate::features::debug3d::Debug3DRendererPlugin;
-use crate::features::mesh::MeshRendererPlugin;
-use crate::features::skybox::SkyboxRendererPlugin;
-use crate::features::sprite::SpriteRendererPlugin;
-use crate::features::text::TextRendererPlugin;
-use crate::features::tile_layer::TileLayerRendererPlugin;
-use crate::render_graph_generator::DemoRenderGraphGenerator;
-use crate::DemoRendererPlugin;
 use legion::Resources;
 use rafx::api::{RafxApi, RafxDeviceContext, RafxResult, RafxSwapchainHelper};
 use rafx::assets::distill_impl::AssetResource;
@@ -20,6 +8,18 @@ use rafx::renderer::{
     AssetSource, Renderer, RendererBuilder, RendererConfigResource, SwapchainHandler,
     ViewportsResource,
 };
+use rafx_plugins::assets::anim::AnimAssetTypeRendererPlugin;
+use rafx_plugins::assets::font::FontAssetTypeRendererPlugin;
+use rafx_plugins::assets::ldtk::LdtkAssetTypeRendererPlugin;
+use rafx_plugins::assets::mesh::GltfAssetTypeRendererPlugin;
+use rafx_plugins::features::debug3d::Debug3DRendererPlugin;
+use rafx_plugins::features::mesh::MeshRendererPlugin;
+use rafx_plugins::features::skybox::SkyboxRendererPlugin;
+use rafx_plugins::features::sprite::SpriteRendererPlugin;
+use rafx_plugins::features::text::TextRendererPlugin;
+use rafx_plugins::features::tile_layer::TileLayerRendererPlugin;
+use rafx_plugins::pipelines::basic::BasicPipelineRendererPlugin;
+use rafx_plugins::pipelines::basic::BasicRenderGraphGenerator;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
@@ -41,7 +41,8 @@ pub fn rendering_init(
     let text_renderer_plugin = Arc::new(TextRendererPlugin::default());
 
     #[cfg(feature = "egui")]
-    let egui_renderer_plugin = Arc::new(crate::features::egui::EguiRendererPlugin::default());
+    let egui_renderer_plugin =
+        Arc::new(rafx_plugins::features::egui::EguiRendererPlugin::default());
     mesh_renderer_plugin.legion_init(resources);
     sprite_renderer_plugin.legion_init(resources);
     skybox_renderer_plugin.legion_init(resources);
@@ -71,7 +72,7 @@ pub fn rendering_init(
         .add_asset(Arc::new(GltfAssetTypeRendererPlugin))
         .add_asset(Arc::new(LdtkAssetTypeRendererPlugin))
         .add_asset(Arc::new(AnimAssetTypeRendererPlugin))
-        .add_asset(Arc::new(DemoRendererPlugin))
+        .add_asset(Arc::new(BasicPipelineRendererPlugin))
         .add_render_feature(mesh_renderer_plugin)
         .add_render_feature(sprite_renderer_plugin)
         .add_render_feature(skybox_renderer_plugin)
@@ -88,7 +89,7 @@ pub fn rendering_init(
     let mut renderer_builder_result = {
         let extract_resources = ExtractResources::default();
 
-        let render_graph_generator = Box::new(DemoRenderGraphGenerator);
+        let render_graph_generator = Box::new(BasicRenderGraphGenerator);
 
         renderer_builder.build(
             extract_resources,
@@ -149,7 +150,7 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
 
         #[cfg(feature = "egui")]
         {
-            crate::features::egui::EguiRendererPlugin::legion_destroy(resources);
+            rafx_plugins::features::egui::EguiRendererPlugin::legion_destroy(resources);
         }
 
         resources.remove::<RenderRegistry>();

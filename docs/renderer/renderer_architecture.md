@@ -198,8 +198,6 @@ pub struct MeshRenderFeatureTypes;
 // EXTRACT
 //---------
 
-pub type MeshRenderObjectStaticData = MeshRenderObject;
-
 pub struct MeshPerFrameData {
     pub depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
 }
@@ -246,7 +244,6 @@ impl FramePacketData for MeshRenderFeatureTypes {
 }
 
 pub type MeshFramePacket = FramePacket<MeshRenderFeatureTypes>;
-pub type MeshViewPacket = ViewPacket<MeshRenderFeatureTypes>;
 
 //---------
 // PREPARE
@@ -287,7 +284,6 @@ impl SubmitPacketData for MeshRenderFeatureTypes {
 }
 
 pub type MeshSubmitPacket = SubmitPacket<MeshRenderFeatureTypes>;
-pub type MeshViewSubmitPacket = ViewSubmitPacket<MeshRenderFeatureTypes>;
 
 //-------
 // WRITE

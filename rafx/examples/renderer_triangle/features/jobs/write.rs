@@ -1,4 +1,4 @@
-use crate::features::internal::{DemoFramePacket, DemoSubmitPacket};
+use crate::features::internal::{ExampleFramePacket, ExampleSubmitPacket};
 use crate::phases::OpaqueRenderPhase;
 use rafx::api::{RafxBufferDef, RafxFormat, RafxPrimitiveTopology, RafxVertexBufferBinding};
 use rafx::framework::render_features::RenderPhase;
@@ -13,18 +13,18 @@ struct PositionColorVertex {
     color: [f32; 3],
 }
 
-pub struct DemoWriteJob<'write> {
+pub struct ExampleWriteJob<'write> {
     vertex_layout: Arc<VertexDataSetLayout>,
-    frame_packet: Box<DemoFramePacket>,
-    _submit_packet: Box<DemoSubmitPacket>,
+    frame_packet: Box<ExampleFramePacket>,
+    _submit_packet: Box<ExampleSubmitPacket>,
     phantom: PhantomData<&'write ()>,
 }
 
-impl<'write> DemoWriteJob<'write> {
+impl<'write> ExampleWriteJob<'write> {
     pub fn new(
         _write_context: &RenderJobWriteContext<'write>,
-        frame_packet: Box<DemoFramePacket>,
-        _submit_packet: Box<DemoSubmitPacket>,
+        frame_packet: Box<ExampleFramePacket>,
+        _submit_packet: Box<ExampleSubmitPacket>,
     ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
         //
         // The vertex format does not need to be specified up-front to create the material pass.
@@ -53,7 +53,7 @@ impl<'write> DemoWriteJob<'write> {
     }
 }
 
-impl<'write> RenderFeatureWriteJob<'write> for DemoWriteJob<'write> {
+impl<'write> RenderFeatureWriteJob<'write> for ExampleWriteJob<'write> {
     fn view_frame_index(
         &self,
         view: &RenderView,

@@ -1,4 +1,6 @@
-use crate::features::internal::{DemoFramePacket, DemoPerFrameData, DemoRenderFeatureTypes};
+use crate::features::internal::{
+    ExampleFramePacket, ExamplePerFrameData, ExampleRenderFeatureTypes,
+};
 use crate::TimeState;
 use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
 use rafx::distill::loader::handle::Handle;
@@ -8,16 +10,16 @@ use rafx_assets::AssetManagerExtractRef;
 use rafx_base::resource_ref_map::ResourceRefBorrow;
 use std::sync::Arc;
 
-pub struct DemoExtractJob<'extract> {
+pub struct ExampleExtractJob<'extract> {
     time_state: ResourceRefBorrow<'extract, TimeState>,
     asset_manager: AssetManagerExtractRef,
     triangle_material: Handle<MaterialAsset>,
 }
 
-impl<'extract> DemoExtractJob<'extract> {
+impl<'extract> ExampleExtractJob<'extract> {
     pub fn new(
         extract_context: &RenderJobExtractContext<'extract>,
-        frame_packet: Box<DemoFramePacket>,
+        frame_packet: Box<ExampleFramePacket>,
         triangle_material: Handle<MaterialAsset>,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
         Arc::new(ExtractJob::new(
@@ -34,7 +36,7 @@ impl<'extract> DemoExtractJob<'extract> {
     }
 }
 
-impl<'extract> ExtractJobEntryPoints<'extract> for DemoExtractJob<'extract> {
+impl<'extract> ExtractJobEntryPoints<'extract> for ExampleExtractJob<'extract> {
     fn begin_per_frame_extract(
         &self,
         context: &ExtractPerFrameContext<'extract, '_, Self>,
@@ -42,7 +44,7 @@ impl<'extract> ExtractJobEntryPoints<'extract> for DemoExtractJob<'extract> {
         context
             .frame_packet()
             .per_frame_data()
-            .set(DemoPerFrameData {
+            .set(ExamplePerFrameData {
                 triangle_material: self
                     .asset_manager
                     .committed_asset(&self.triangle_material)
@@ -62,5 +64,5 @@ impl<'extract> ExtractJobEntryPoints<'extract> for DemoExtractJob<'extract> {
     type RenderObjectInstanceJobContextT = DefaultJobContext;
     type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
 
-    type FramePacketDataT = DemoRenderFeatureTypes;
+    type FramePacketDataT = ExampleRenderFeatureTypes;
 }

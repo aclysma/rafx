@@ -4,7 +4,7 @@ mod internal;
 use internal::*;
 
 use rafx::render_feature_mod_prelude::*;
-rafx::declare_render_feature!(DemoRenderFeature, DEMO_FEATURE_INDEX);
+rafx::declare_render_feature!(ExampleRenderFeature, EXAMPLE_FEATURE_INDEX);
 
 // Public API
 

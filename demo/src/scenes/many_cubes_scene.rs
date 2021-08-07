@@ -1,18 +1,5 @@
 // NOTE(dvd): Inspired by Bevy `spawner` example (MIT licensed) https://github.com/bevyengine/bevy/blob/20673dbe0e935d9b7b4fdc8947830bfcff6bc071/examples/3d/spawner.rs
 
-use crate::assets::mesh::MeshAsset;
-use crate::components::{
-    MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
-};
-use crate::features::debug3d::Debug3DRenderFeature;
-#[cfg(feature = "egui")]
-use crate::features::egui::EguiRenderFeature;
-use crate::features::mesh::{
-    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
-    MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
-};
-use crate::features::skybox::SkyboxRenderFeature;
-use crate::features::text::TextRenderFeature;
 use crate::phases::{
     OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
@@ -30,6 +17,19 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
+use rafx_plugins::assets::mesh::MeshAsset;
+use rafx_plugins::components::{
+    MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
+};
+use rafx_plugins::features::debug3d::Debug3DRenderFeature;
+#[cfg(feature = "egui")]
+use rafx_plugins::features::egui::EguiRenderFeature;
+use rafx_plugins::features::mesh::{
+    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
+    MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
+};
+use rafx_plugins::features::skybox::SkyboxRenderFeature;
+use rafx_plugins::features::text::TextRenderFeature;
 use rand::{thread_rng, Rng};
 
 const NUM_CUBES: usize = 10000;

@@ -1,0 +1,25 @@
+[package]
+name = "rafx-plugins-shaders"
+version = "0.0.13"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+# This is a demo crate, we shouldn't publish it
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+rafx-framework = { path = "../../rafx-framework" }
+
+[features]
+default = []
+rafx-vulkan = ["rafx-framework/rafx-vulkan"]
+rafx-metal = ["rafx-framework/rafx-metal"]
+rafx-gles2 = ["rafx-framework/rafx-gles2"]
+rafx-gles3 = ["rafx-framework/rafx-gles2"]
+
+[dev-dependencies]
+memoffset = "0.6"

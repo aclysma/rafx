@@ -5,8 +5,19 @@ use rafx_assets::distill_impl::AssetResource;
 use rafx_assets::AssetManager;
 use rafx_base::resource_map::ResourceMap;
 use rafx_framework::render_features::{ExtractResources, RenderRegistryBuilder};
+use std::path::PathBuf;
 
 pub trait RendererAssetPlugin: Send + Sync {
+    fn plugin_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+
+    fn add_asset_paths(
+        &self,
+        _asset_paths: &mut Vec<PathBuf>,
+    ) {
+    }
+
     // If the daemon is not running in-process, this will not be called
     fn configure_asset_daemon(
         &self,

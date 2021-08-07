@@ -8,8 +8,10 @@ members = [
     "rafx-renderer",
     "rafx-visibility",
     "rafx-assets",
+    "rafx-plugins",
+    "rafx-plugins/rafx-plugins-shaders",
     "demo",
-    "demo/shaders",
+    "demo/demo-shaders",
     "demo/cli",
     "demo-web"
 ]
@@ -45,3 +47,4 @@ split-debuginfo = "unpacked"
 #raw-gl-context = { git = "https://github.com/aclysma/raw-gl-context.git", branch = "rafx" }
 #basis-universal = { path = "../basis-universal-rs/basis-universal" }
 #basis-universal-sys = { path = "../basis-universal-rs/basis-universal-sys" }
+vk-mem = { git = "https://github.com/aclysma/vk-mem-rs.git", branch = "rafx-vk-mem" }

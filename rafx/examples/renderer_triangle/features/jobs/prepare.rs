@@ -3,19 +3,19 @@ use rafx::render_feature_prepare_job_predule::*;
 use super::*;
 use crate::phases::OpaqueRenderPhase;
 
-pub struct DemoPrepareJob {}
+pub struct ExamplePrepareJob {}
 
-impl DemoPrepareJob {
+impl ExamplePrepareJob {
     pub fn new<'prepare>(
         _prepare_context: &RenderJobPrepareContext<'prepare>,
-        frame_packet: Box<DemoFramePacket>,
-        submit_packet: Box<DemoSubmitPacket>,
+        frame_packet: Box<ExampleFramePacket>,
+        submit_packet: Box<ExampleSubmitPacket>,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
         Arc::new(PrepareJob::new(Self {}, frame_packet, submit_packet))
     }
 }
 
-impl<'prepare> PrepareJobEntryPoints<'prepare> for DemoPrepareJob {
+impl<'prepare> PrepareJobEntryPoints<'prepare> for ExamplePrepareJob {
     fn end_per_view_prepare(
         &self,
         context: &PreparePerViewContext<'prepare, '_, Self>,
@@ -39,6 +39,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for DemoPrepareJob {
     type RenderObjectInstanceJobContextT = DefaultJobContext;
     type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
 
-    type FramePacketDataT = DemoRenderFeatureTypes;
-    type SubmitPacketDataT = DemoRenderFeatureTypes;
+    type FramePacketDataT = ExampleRenderFeatureTypes;
+    type SubmitPacketDataT = ExampleRenderFeatureTypes;
 }

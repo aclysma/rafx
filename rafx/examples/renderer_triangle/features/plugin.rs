@@ -1,20 +1,20 @@
 use rafx::render_feature_renderer_prelude::*;
 
-use super::{DemoExtractJob, DemoRenderFeature};
-use crate::features::internal::{DemoFramePacket, DemoSubmitPacket};
-use crate::features::jobs::{DemoPrepareJob, DemoWriteJob};
+use super::{ExampleExtractJob, ExampleRenderFeature};
+use crate::features::internal::{ExampleFramePacket, ExampleSubmitPacket};
+use crate::features::jobs::{ExamplePrepareJob, ExampleWriteJob};
 use crate::phases::OpaqueRenderPhase;
 use rafx::assets::MaterialAsset;
 use rafx::distill::loader::handle::Handle;
 
-pub struct DemoStaticResources {
+pub struct ExampleStaticResources {
     pub triangle_material_handle: Handle<MaterialAsset>,
 }
 
 #[derive(Default)]
-pub struct DemoRenderFeaturePlugin;
+pub struct ExampleRenderFeaturePlugin;
 
-impl DemoRenderFeaturePlugin {
+impl ExampleRenderFeaturePlugin {
     pub fn legion_init(
         &self,
         _resources: &mut legion::Resources,
@@ -24,7 +24,7 @@ impl DemoRenderFeaturePlugin {
     pub fn legion_destroy(_resources: &mut legion::Resources) {}
 }
 
-impl RenderFeaturePlugin for DemoRenderFeaturePlugin {
+impl RenderFeaturePlugin for ExampleRenderFeaturePlugin {
     fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
         super::render_feature_debug_constants()
     }
@@ -48,7 +48,7 @@ impl RenderFeaturePlugin for DemoRenderFeaturePlugin {
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<DemoRenderFeature>()
+        render_registry.register_feature::<ExampleRenderFeature>()
     }
 
     fn initialize_static_resources(
@@ -75,7 +75,7 @@ impl RenderFeaturePlugin for DemoRenderFeaturePlugin {
         let triangle_material_handle =
             asset_resource.load_asset_path::<MaterialAsset, _>("triangle.material");
 
-        render_resources.insert(DemoStaticResources {
+        render_resources.insert(ExampleStaticResources {
             triangle_material_handle,
         });
 
@@ -86,7 +86,7 @@ impl RenderFeaturePlugin for DemoRenderFeaturePlugin {
         &self,
         frame_packet_size: &FramePacketSize,
     ) -> Box<dyn RenderFeatureFramePacket> {
-        Box::new(DemoFramePacket::new(
+        Box::new(ExampleFramePacket::new(
             self.feature_index(),
             frame_packet_size,
         ))
@@ -99,11 +99,11 @@ impl RenderFeaturePlugin for DemoRenderFeaturePlugin {
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
         let triangle_material = extract_context
             .render_resources
-            .fetch::<DemoStaticResources>()
+            .fetch::<ExampleStaticResources>()
             .triangle_material_handle
             .clone();
 
-        DemoExtractJob::new(
+        ExampleExtractJob::new(
             extract_context,
             frame_packet.into_concrete(),
             triangle_material,
@@ -115,7 +115,7 @@ impl RenderFeaturePlugin for DemoRenderFeaturePlugin {
         &self,
         frame_packet: &Box<dyn RenderFeatureFramePacket>,
     ) -> Box<dyn RenderFeatureSubmitPacket> {
-        let frame_packet: &DemoFramePacket = frame_packet.as_ref().as_concrete();
+        let frame_packet: &ExampleFramePacket = frame_packet.as_ref().as_concrete();
 
         let mut view_submit_packets = Vec::with_capacity(frame_packet.view_packets().len());
         for view_packet in frame_packet.view_packets() {
@@ -124,7 +124,7 @@ impl RenderFeaturePlugin for DemoRenderFeaturePlugin {
             view_submit_packets.push(view_submit_packet);
         }
 
-        Box::new(DemoSubmitPacket::new(
+        Box::new(ExampleSubmitPacket::new(
             self.feature_index(),
             frame_packet.render_object_instances().len(),
             view_submit_packets,
@@ -137,7 +137,7 @@ impl RenderFeaturePlugin for DemoRenderFeaturePlugin {
         frame_packet: Box<dyn RenderFeatureFramePacket>,
         submit_packet: Box<dyn RenderFeatureSubmitPacket>,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
-        DemoPrepareJob::new(
+        ExamplePrepareJob::new(
             prepare_context,
             frame_packet.into_concrete(),
             submit_packet.into_concrete(),
@@ -150,7 +150,7 @@ impl RenderFeaturePlugin for DemoRenderFeaturePlugin {
         frame_packet: Box<dyn RenderFeatureFramePacket>,
         submit_packet: Box<dyn RenderFeatureSubmitPacket>,
     ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
-        DemoWriteJob::new(
+        ExampleWriteJob::new(
             write_context,
             frame_packet.into_concrete(),
             submit_packet.into_concrete(),

@@ -1,17 +1,3 @@
-use crate::assets::mesh::MeshAsset;
-use crate::components::{
-    DirectionalLightComponent, MeshComponent, PointLightComponent, TransformComponent,
-};
-use crate::components::{SpotLightComponent, VisibilityComponent};
-use crate::features::debug3d::Debug3DRenderFeature;
-use crate::features::mesh::{
-    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
-    MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
-};
-use crate::features::skybox::SkyboxRenderFeature;
-use crate::features::sprite::SpriteRenderFeature;
-use crate::features::text::TextRenderFeature;
-use crate::features::tile_layer::TileLayerRenderFeature;
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
     WireframeRenderPhase,
@@ -31,6 +17,20 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
+use rafx_plugins::assets::mesh::MeshAsset;
+use rafx_plugins::components::{
+    DirectionalLightComponent, MeshComponent, PointLightComponent, TransformComponent,
+};
+use rafx_plugins::components::{SpotLightComponent, VisibilityComponent};
+use rafx_plugins::features::debug3d::Debug3DRenderFeature;
+use rafx_plugins::features::mesh::{
+    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
+    MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
+};
+use rafx_plugins::features::skybox::SkyboxRenderFeature;
+use rafx_plugins::features::sprite::SpriteRenderFeature;
+use rafx_plugins::features::text::TextRenderFeature;
+use rafx_plugins::features::tile_layer::TileLayerRenderFeature;
 use rand::{thread_rng, Rng};
 
 pub(super) struct ShadowsScene {
@@ -340,8 +340,8 @@ fn update_main_view_3d(
 
     #[cfg(feature = "egui")]
     {
-        feature_mask_builder =
-            feature_mask_builder.add_render_feature::<crate::features::egui::EguiRenderFeature>();
+        feature_mask_builder = feature_mask_builder
+            .add_render_feature::<rafx_plugins::features::egui::EguiRenderFeature>();
     }
 
     if render_options.show_text {

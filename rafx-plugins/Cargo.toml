@@ -1,0 +1,60 @@
+[package]
+name = "rafx-plugins"
+version = "0.0.1"
+edition = "2018"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+description = "Rendering framework built on an extensible asset pipeline"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/aclysma/rafx"
+homepage = "https://github.com/aclysma/rafx"
+keywords = ["game", "rendering", "graphics"]
+categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
+
+[dependencies]
+shaders = { path = "rafx-plugins-shaders", package="rafx-plugins-shaders" }
+
+rafx = { path = "../rafx", features = ["assets"] }
+distill = { version = "=0.0.3", features = ["serde_importers"] }
+
+legion = { version = "0.4.0", default-features = false, features = ["serialize"], optional = true }
+
+# Font asset type
+fontdue = "0.4"
+ttf-parser = "0.8.3"
+rectangle-pack = "0.2.0"
+
+# Egui
+egui = { version = "0.12", features = ["default_fonts"], optional = true }
+winit = { version = "0.24", optional = true }
+
+# Animation
+serde_json = "1.0"
+
+# LDTK asset type
+ldtk_rust = "0.4"
+itertools = "0.8"
+#serde_json
+
+# GLTF asset type
+gltf = "0.16"
+image = "0.23.12"
+
+glam = { version = "0.13.1", features = [ "serde" ] }
+log = "0.4"
+fnv = "1.0"
+lazy_static = "1"
+uuid = "0.8"
+type-uuid = "0.1"
+serde = "1"
+serde_bytes = "0.11"
+profiling = "1.0.1"
+
+
+[features]
+# legion: if enabled, include some helper setup code
+
+# if enabled, use egui with winit
+egui-winit = ["egui", "winit"]
+# if enabled, use egui with sdl2
+egui-sdl2 = ["egui"]

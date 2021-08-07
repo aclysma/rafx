@@ -6,6 +6,7 @@ use rafx_assets::AssetManager;
 use rafx_base::resource_map::ResourceMap;
 use rafx_framework::render_features::render_features_prelude::*;
 use rafx_framework::RenderResources;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 /// A `RenderFeaturePlugin` defines a `RenderFeature` for the `Renderer`. The `RenderFeaturePlugin`
@@ -75,6 +76,12 @@ pub trait RenderFeaturePlugin: Send + Sync {
     /// `FramePacket` for this `RenderFeature`. This is normally `true` if the `RenderFeature` defines
     /// a `RenderObjectSet` and `false` otherwise.
     fn requires_visible_render_objects(&self) -> bool;
+
+    fn add_asset_paths(
+        &self,
+        _asset_paths: &mut Vec<PathBuf>,
+    ) {
+    }
 
     fn configure_render_registry(
         &self,

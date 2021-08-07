@@ -1,12 +1,12 @@
-use demo::assets::anim::BlenderAnimImporter;
-use demo::assets::font::FontImporter;
-use demo::assets::mesh::{
-    BlenderMaterialImporter, BlenderMeshImporter, BlenderModelImporter, BlenderPrefabImporter,
-    GltfImporter,
-};
 use demo::daemon_args::AssetDaemonArgs;
 use distill::daemon::AssetDaemon;
 use distill_cli::Command;
+use rafx_plugins::assets::anim::BlenderAnimImporter;
+use rafx_plugins::assets::font::FontImporter;
+use rafx_plugins::assets::mesh::{
+    BlenderMaterialImporter, BlenderMeshImporter, BlenderModelImporter, BlenderPrefabImporter,
+    GltfImporter,
+};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
