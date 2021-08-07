@@ -1,8 +1,7 @@
 use log::LevelFilter;
 
-use crate::demo_plugin::DemoRendererPlugin;
-use crate::demo_render_graph_generator::DemoRenderGraphGenerator;
-use crate::features::{DemoRenderFeature, DemoRenderFeaturePlugin};
+use crate::example_render_graph_generator::ExampleRenderGraphGenerator;
+use crate::features::{ExampleRenderFeature, ExampleRenderFeaturePlugin};
 use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
 use legion::{Resources, World};
@@ -23,8 +22,10 @@ use rafx_renderer::daemon::AssetDaemonOpt;
 use std::sync::Arc;
 use std::time;
 
-mod demo_plugin;
-mod demo_render_graph_generator;
+mod example_plugin;
+use example_plugin::ExampleRendererPlugin;
+
+mod example_render_graph_generator;
 mod features;
 mod phases;
 
@@ -111,18 +112,18 @@ fn run() -> RafxResult<()> {
         resources.insert(VisibilityRegion::new());
         resources.insert(ViewportsResource::default());
 
-        let demo_render_feature_plugin = Arc::new(DemoRenderFeaturePlugin::default());
+        let demo_render_feature_plugin = Arc::new(ExampleRenderFeaturePlugin::default());
         demo_render_feature_plugin.legion_init(&mut resources);
 
         let mut renderer_builder = RendererBuilder::default();
         renderer_builder = renderer_builder
-            .add_asset(Arc::new(DemoRendererPlugin))
+            .add_asset(Arc::new(ExampleRendererPlugin))
             .add_render_feature(demo_render_feature_plugin);
 
         let mut renderer_builder_result = {
             let extract_resources = ExtractResources::default();
 
-            let render_graph_generator = Box::new(DemoRenderGraphGenerator);
+            let render_graph_generator = Box::new(ExampleRenderGraphGenerator);
 
             renderer_builder.build(
                 extract_resources,
@@ -188,7 +189,7 @@ fn run() -> RafxResult<()> {
                     .build();
 
                 let main_camera_feature_mask = RenderFeatureMaskBuilder::default()
-                    .add_render_feature::<DemoRenderFeature>()
+                    .add_render_feature::<ExampleRenderFeature>()
                     .build();
 
                 const CAMERA_Z: f32 = 1000.0;
@@ -290,7 +291,7 @@ fn run() -> RafxResult<()> {
 
         resources.remove::<Renderer>();
 
-        DemoRenderFeaturePlugin::legion_destroy(&mut resources);
+        ExampleRenderFeaturePlugin::legion_destroy(&mut resources);
 
         resources.remove::<RenderRegistry>();
 

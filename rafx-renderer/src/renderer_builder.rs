@@ -3,6 +3,7 @@ use super::{daemon, Renderer};
 use super::{RenderFeaturePlugin, RenderGraphGenerator};
 use crate::renderer_thread_pool_none::RendererThreadPoolNone;
 use crate::{RendererAssetPlugin, RendererThreadPool};
+use fnv::FnvHashSet;
 use rafx_api::{RafxApi, RafxQueueType, RafxResult};
 use rafx_assets::distill_impl::AssetResource;
 use rafx_assets::{AssetManager, UploadQueueConfig};
@@ -86,10 +87,42 @@ impl RendererBuilder {
                 if !external_daemon {
                     log::info!("Hosting local daemon at {:?}", daemon_args.address);
 
+                    let mut asset_dirs = FnvHashSet::default();
+                    for path in daemon_args.asset_dirs {
+                        log::info!("Added asset path {:?}", path);
+                        asset_dirs.insert(path);
+                    }
+
+                    for plugin in &self.asset_plugins {
+                        let mut paths = Default::default();
+                        plugin.add_asset_paths(&mut paths);
+                        for path in paths {
+                            log::info!(
+                                "Added asset path {:?} from asset plugin {}",
+                                path,
+                                plugin.plugin_name()
+                            );
+                            asset_dirs.insert(path);
+                        }
+                    }
+
+                    for plugin in &self.feature_plugins {
+                        let mut paths = Default::default();
+                        plugin.add_asset_paths(&mut paths);
+                        for path in paths {
+                            log::info!(
+                                "Added asset path {:?} from feature plugin {:?}",
+                                path,
+                                plugin.feature_debug_constants().feature_name
+                            );
+                            asset_dirs.insert(path);
+                        }
+                    }
+
                     let mut asset_daemon = rafx_assets::distill_impl::default_daemon()
                         .with_db_path(daemon_args.db_dir)
                         .with_address(daemon_args.address)
-                        .with_asset_dirs(daemon_args.asset_dirs);
+                        .with_asset_dirs(asset_dirs.into_iter().collect());
 
                     for plugin in &self.asset_plugins {
                         asset_daemon = plugin.configure_asset_daemon(asset_daemon);

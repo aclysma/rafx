@@ -1,10 +1,5 @@
 // NOTE(dvd): Inspired by Bevy `many_sprites` example (MIT licensed) https://github.com/bevyengine/bevy/blob/621cba4864fd5d2c0962151b126769eff45797fd/examples/2d/many_sprites.rs
 
-use crate::assets::font::FontAsset;
-use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
-use crate::features::skybox::SkyboxRenderFeature;
-use crate::features::sprite::{SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet};
-use crate::features::text::{TextRenderFeature, TextResource};
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
 };
@@ -22,6 +17,14 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
+use rafx_plugins::assets::font::FontAsset;
+use rafx_plugins::components::SpriteComponent;
+use rafx_plugins::components::{TransformComponent, VisibilityComponent};
+use rafx_plugins::features::skybox::SkyboxRenderFeature;
+use rafx_plugins::features::sprite::{
+    SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet,
+};
+use rafx_plugins::features::text::{TextRenderFeature, TextResource};
 use rand::Rng;
 
 const CAMERA_SPEED: f32 = 1000.0;
@@ -36,39 +39,6 @@ struct CameraComponent {
 struct TextComponent {
     text: String,
     font: Handle<FontAsset>,
-}
-
-impl TransformComponent {
-    pub fn rotate(
-        &mut self,
-        rotation: Quat,
-    ) {
-        self.rotation *= rotation;
-    }
-
-    pub fn mul_transform(
-        &self,
-        transform: TransformComponent,
-    ) -> Self {
-        let translation = self.mul_vec3(transform.translation);
-        let rotation = self.rotation * transform.rotation;
-        let scale = self.scale * transform.scale;
-        TransformComponent {
-            translation,
-            rotation,
-            scale,
-        }
-    }
-
-    pub fn mul_vec3(
-        &self,
-        mut value: Vec3,
-    ) -> Vec3 {
-        value = self.rotation * value;
-        value = self.scale * value;
-        value += self.translation;
-        value
-    }
 }
 
 pub(super) struct ManySpritesScene {
@@ -273,7 +243,8 @@ fn update_main_view_2d(
     #[cfg(feature = "egui")]
     {
         main_camera_feature_mask = main_camera_feature_mask
-            .add_render_feature::<crate::features::egui::EguiRenderFeature>();
+            .add_render_feature::<rafx_plugins::features::egui::EguiRenderFeature>(
+        );
     }
 
     let main_camera_feature_mask = main_camera_feature_mask.build();

@@ -1,10 +1,10 @@
-use crate::components::{
-    DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
-};
-use crate::features::debug3d::Debug3DResource;
 use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World};
+use rafx_plugins::components::{
+    DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
+};
+use rafx_plugins::features::debug3d::Debug3DResource;
 use rand::Rng;
 
 mod shadows_scene;

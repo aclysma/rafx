@@ -1,42 +1,42 @@
-use crate::features::DemoRenderFeature;
+use crate::features::ExampleRenderFeature;
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{MaterialPassResource, ResourceArc};
 
-pub struct DemoRenderFeatureTypes;
+pub struct ExampleRenderFeatureTypes;
 
 //---------
 // EXTRACT
 //---------
 
-pub struct DemoPerFrameData {
+pub struct ExamplePerFrameData {
     pub triangle_material: Option<ResourceArc<MaterialPassResource>>,
     pub seconds: f32,
 }
 
-impl FramePacketData for DemoRenderFeatureTypes {
-    type PerFrameData = DemoPerFrameData;
+impl FramePacketData for ExampleRenderFeatureTypes {
+    type PerFrameData = ExamplePerFrameData;
     type RenderObjectInstanceData = ();
     type PerViewData = ();
     type RenderObjectInstancePerViewData = ();
 }
 
-pub type DemoFramePacket = FramePacket<DemoRenderFeatureTypes>;
+pub type ExampleFramePacket = FramePacket<ExampleRenderFeatureTypes>;
 
 //---------
 // PREPARE
 //---------
 
-impl SubmitPacketData for DemoRenderFeatureTypes {
+impl SubmitPacketData for ExampleRenderFeatureTypes {
     type PerFrameSubmitData = ();
     type RenderObjectInstanceSubmitData = ();
     type PerViewSubmitData = ();
     type RenderObjectInstancePerViewSubmitData = ();
     type SubmitNodeData = ();
 
-    type RenderFeature = DemoRenderFeature;
+    type RenderFeature = ExampleRenderFeature;
 }
 
-pub type DemoSubmitPacket = SubmitPacket<DemoRenderFeatureTypes>;
+pub type ExampleSubmitPacket = SubmitPacket<ExampleRenderFeatureTypes>;
 
 //-------
 // WRITE

@@ -1,11 +1,11 @@
-use crate::features::mesh::MeshRenderFeature;
-use crate::features::sprite::SpriteRenderFeature;
 use bevy_tasks::prelude::*;
 use bevy_tasks::{TaskPool, TaskPoolBuilder};
 use crossbeam_channel::{bounded, unbounded};
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::render_feature_renderer_prelude::RenderFeaturePlugin;
 use rafx::renderer::{RenderFrameJob, Renderer, RendererThreadPool};
+use rafx_plugins::features::mesh::MeshRenderFeature;
+use rafx_plugins::features::sprite::SpriteRenderFeature;
 use std::collections::HashMap;
 use std::sync::Arc;
 

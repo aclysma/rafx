@@ -19,28 +19,25 @@ use rafx::renderer::{AssetSource, Renderer};
 use rafx::renderer::{RendererConfigResource, ViewportsResource};
 use rafx::visibility::VisibilityRegion;
 
-pub mod assets;
-mod components;
 pub mod daemon_args;
-mod features;
 mod init;
 mod input;
-mod phases;
-mod render_graph_generator;
+use rafx_plugins::phases;
 mod scenes;
 mod time;
 
-mod demo_plugin;
 mod demo_renderer_thread_pool;
 
-use crate::assets::font::FontAsset;
-#[cfg(feature = "egui")]
-use crate::features::egui::{EguiContextResource, WinitEguiManager};
-use crate::features::text::TextResource;
-use crate::features::tile_layer::TileLayerResource;
 use crate::input::InputResource;
-pub use demo_plugin::DemoRendererPlugin;
 use rafx::distill::loader::handle::Handle;
+use rafx_plugins::assets::font::FontAsset;
+#[cfg(feature = "egui")]
+use rafx_plugins::features::egui::{EguiContextResource, WinitEguiManager};
+use rafx_plugins::features::mesh::MeshRenderOptions;
+use rafx_plugins::features::text::TextResource;
+use rafx_plugins::features::tile_layer::TileLayerResource;
+use rafx_plugins::pipelines::basic::BasicPipelineRenderOptions;
+use rafx_plugins::pipelines::basic::TonemapperType;
 use winit::event_loop::ControlFlow;
 
 #[cfg(all(feature = "profile-with-tracy-memory", not(feature = "stats_alloc")))]
@@ -80,52 +77,6 @@ impl Drop for StatsAllocMemoryRegion<'_> {
     }
 }
 
-// Should be kept in sync with the constants in tonemapper.glsl
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[repr(C)]
-pub enum TonemapperType {
-    None,
-    StephenHillACES,
-    SimplifiedLumaACES,
-    Hejl2015,
-    Hable,
-    FilmicALU,
-    LogDerivative,
-    VisualizeRGBMax,
-    VisualizeLuma,
-    MAX,
-}
-impl TonemapperType {
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            TonemapperType::None => "None",
-            TonemapperType::StephenHillACES => "Stephen Hill ACES",
-            TonemapperType::SimplifiedLumaACES => "SimplifiedLumaACES",
-            TonemapperType::Hejl2015 => "Hejl 2015",
-            TonemapperType::Hable => "Hable",
-            TonemapperType::FilmicALU => "Filmic ALU (Hable)",
-            TonemapperType::LogDerivative => "LogDerivative",
-            TonemapperType::VisualizeRGBMax => "Visualize RGB Max",
-            TonemapperType::VisualizeLuma => "Visualize RGB Luma",
-            TonemapperType::MAX => "MAX_TONEMAPPER_VALUE",
-        }
-    }
-}
-impl From<i32> for TonemapperType {
-    fn from(v: i32) -> Self {
-        assert!(v <= Self::MAX as i32);
-        unsafe { std::mem::transmute(v) }
-    }
-}
-
-impl std::fmt::Display for TonemapperType {
-    fn fmt(
-        &self,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result {
-        write!(f, "{}", self.display_name())
-    }
-}
 #[derive(Clone)]
 pub struct RenderOptions {
     pub enable_msaa: bool,
@@ -322,6 +273,8 @@ impl DemoApp {
         resources.insert(TimeState::new());
         resources.insert(InputResource::new());
         resources.insert(RenderOptions::default_2d());
+        resources.insert(MeshRenderOptions::default());
+        resources.insert(BasicPipelineRenderOptions::default());
         resources.insert(DebugUiState::default());
 
         let asset_source = args.asset_source().unwrap();
@@ -553,6 +506,35 @@ impl DemoApp {
                 .enable_visibility_update = render_options.enable_visibility_update;
         }
 
+        {
+            let render_options = self.resources.get::<RenderOptions>().unwrap();
+
+            let mut basic_pipeline_render_options = self
+                .resources
+                .get_mut::<BasicPipelineRenderOptions>()
+                .unwrap();
+            basic_pipeline_render_options.enable_msaa = render_options.enable_msaa;
+            basic_pipeline_render_options.enable_hdr = render_options.enable_hdr;
+            basic_pipeline_render_options.enable_bloom = render_options.enable_bloom;
+            basic_pipeline_render_options.enable_textures = render_options.enable_textures;
+            basic_pipeline_render_options.show_surfaces = render_options.show_surfaces;
+            basic_pipeline_render_options.show_wireframes = render_options.show_wireframes;
+            basic_pipeline_render_options.show_debug3d = render_options.show_debug3d;
+            basic_pipeline_render_options.show_text = render_options.show_text;
+            basic_pipeline_render_options.show_skybox = render_options.show_skybox;
+            basic_pipeline_render_options.show_feature_toggles =
+                render_options.show_feature_toggles;
+            basic_pipeline_render_options.blur_pass_count = render_options.blur_pass_count;
+            basic_pipeline_render_options.tonemapper_type = render_options.tonemapper_type;
+            basic_pipeline_render_options.enable_visibility_update =
+                render_options.enable_visibility_update;
+
+            let mut mesh_render_options = self.resources.get_mut::<MeshRenderOptions>().unwrap();
+            mesh_render_options.show_surfaces = render_options.show_surfaces;
+            mesh_render_options.show_shadows = render_options.show_shadows;
+            mesh_render_options.enable_lighting = render_options.enable_lighting;
+        }
+
         //
         // Close egui input for this frame
         //
@@ -595,28 +577,33 @@ impl DemoApp {
             add_to_extract_resources!(AssetManager);
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
+            add_to_extract_resources!(BasicPipelineRenderOptions);
+            add_to_extract_resources!(MeshRenderOptions);
             add_to_extract_resources!(RendererConfigResource);
             add_to_extract_resources!(TileLayerResource);
             add_to_extract_resources!(
-                crate::features::sprite::SpriteRenderObjectSet,
+                rafx_plugins::features::sprite::SpriteRenderObjectSet,
                 sprite_render_object_set
             );
             add_to_extract_resources!(
-                crate::features::mesh::MeshRenderObjectSet,
+                rafx_plugins::features::mesh::MeshRenderObjectSet,
                 mesh_render_object_set
             );
             add_to_extract_resources!(
-                crate::features::tile_layer::TileLayerRenderObjectSet,
+                rafx_plugins::features::tile_layer::TileLayerRenderObjectSet,
                 tile_layer_render_object_set
             );
             add_to_extract_resources!(
-                crate::features::debug3d::Debug3DResource,
+                rafx_plugins::features::debug3d::Debug3DResource,
                 debug_draw_3d_resource
             );
-            add_to_extract_resources!(crate::features::text::TextResource, text_resource);
+            add_to_extract_resources!(rafx_plugins::features::text::TextResource, text_resource);
 
             #[cfg(feature = "egui")]
-            add_to_extract_resources!(crate::features::egui::WinitEguiManager, winit_egui_manager);
+            add_to_extract_resources!(
+                rafx_plugins::features::egui::WinitEguiManager,
+                winit_egui_manager
+            );
 
             extract_resources.insert(&mut self.world);
 
@@ -666,7 +653,7 @@ impl DemoApp {
 
         #[cfg(feature = "egui")]
         let egui_manager = resources
-            .get::<crate::features::egui::WinitEguiManager>()
+            .get::<rafx_plugins::features::egui::WinitEguiManager>()
             .unwrap();
 
         #[cfg(feature = "egui")]

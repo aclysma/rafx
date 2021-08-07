@@ -1,10 +1,5 @@
 // NOTE(dvd): Inspired by Bevy `bevymark` example (MIT licensed) https://github.com/bevyengine/bevy/blob/81b53d15d4e038261182b8d7c8f65f9a3641fd2d/examples/tools/bevymark.rs
 
-use crate::assets::font::FontAsset;
-use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
-use crate::features::skybox::SkyboxRenderFeature;
-use crate::features::sprite::{SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet};
-use crate::features::text::{TextRenderFeature, TextResource};
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
 };
@@ -23,6 +18,14 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
+use rafx_plugins::assets::font::FontAsset;
+use rafx_plugins::components::SpriteComponent;
+use rafx_plugins::components::{TransformComponent, VisibilityComponent};
+use rafx_plugins::features::skybox::SkyboxRenderFeature;
+use rafx_plugins::features::sprite::{
+    SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet,
+};
+use rafx_plugins::features::text::{TextRenderFeature, TextResource};
 use winit::event::{ElementState, Event, MouseButton, WindowEvent};
 
 const SPRITES_PER_SECOND: u32 = 1000;
@@ -346,7 +349,8 @@ fn update_main_view_2d(
     #[cfg(feature = "egui")]
     {
         main_camera_feature_mask = main_camera_feature_mask
-            .add_render_feature::<crate::features::egui::EguiRenderFeature>();
+            .add_render_feature::<rafx_plugins::features::egui::EguiRenderFeature>(
+        );
     }
 
     let main_camera_feature_mask = main_camera_feature_mask.build();

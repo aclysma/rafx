@@ -1,10 +1,3 @@
-use crate::assets::ldtk::LdtkProjectAsset;
-use crate::components::{SpriteComponent, TransformComponent, VisibilityComponent};
-use crate::features::sprite::{SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet};
-use crate::features::text::TextRenderFeature;
-use crate::features::tile_layer::{
-    TileLayerRenderFeature, TileLayerRenderObjectSet, TileLayerResource,
-};
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
 };
@@ -21,6 +14,16 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
+use rafx_plugins::assets::ldtk::LdtkProjectAsset;
+use rafx_plugins::components::SpriteComponent;
+use rafx_plugins::components::{TransformComponent, VisibilityComponent};
+use rafx_plugins::features::sprite::{
+    SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet,
+};
+use rafx_plugins::features::text::TextRenderFeature;
+use rafx_plugins::features::tile_layer::{
+    TileLayerRenderFeature, TileLayerRenderObjectSet, TileLayerResource,
+};
 
 pub(super) struct SpriteScene {
     ldtk_handle: Handle<LdtkProjectAsset>,
@@ -180,7 +183,8 @@ fn update_main_view_2d(
     #[cfg(feature = "egui")]
     {
         main_camera_feature_mask = main_camera_feature_mask
-            .add_render_feature::<crate::features::egui::EguiRenderFeature>();
+            .add_render_feature::<rafx_plugins::features::egui::EguiRenderFeature>(
+        );
     }
 
     let main_camera_feature_mask = main_camera_feature_mask.build();
