@@ -44,6 +44,7 @@ impl Into<gpu_allocator::MemoryLocation> for RafxMemoryUsage {
         match self {
             RafxMemoryUsage::Unknown => MemoryLocation::Unknown,
             RafxMemoryUsage::GpuOnly => MemoryLocation::GpuOnly,
+            RafxMemoryUsage::CpuOnly => MemoryLocation::CpuToGpu,
             RafxMemoryUsage::CpuToGpu => MemoryLocation::CpuToGpu,
             RafxMemoryUsage::GpuToCpu => MemoryLocation::GpuToCpu,
         }
