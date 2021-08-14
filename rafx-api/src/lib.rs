@@ -220,7 +220,7 @@ pub use objc;
 #[cfg(feature = "rafx-vulkan")]
 pub use ash;
 #[cfg(feature = "rafx-vulkan")]
-pub use vk_mem;
+pub use gpu_allocator;
 
 //
 // Re-export upstream API-agnostic crates

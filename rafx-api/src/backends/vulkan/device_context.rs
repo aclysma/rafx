@@ -3,6 +3,7 @@ use crate::*;
 use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
+use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex};
 
 use crate::vulkan::{
@@ -81,7 +82,7 @@ pub struct RafxDeviceContextVulkanInner {
     pub(crate) dedicated_present_queue_lock: Mutex<()>,
 
     device: ash::Device,
-    allocator: vk_mem::Allocator,
+    allocator: ManuallyDrop<Mutex<gpu_allocator::VulkanAllocator>>,
     destroyed: AtomicBool,
     entry: Arc<VkEntry>,
     instance: ash::Instance,
@@ -102,7 +103,11 @@ impl Drop for RafxDeviceContextVulkanInner {
         if !self.destroyed.swap(true, Ordering::AcqRel) {
             unsafe {
                 log::trace!("destroying device");
-                self.allocator.destroy();
+                self.allocator
+                    .lock()
+                    .unwrap()
+                    .report_memory_leaks(log::Level::Warn);
+                ManuallyDrop::drop(&mut self.allocator);
                 self.device.destroy_device(None);
                 //self.surface_loader.destroy_surface(self.surface, None);
                 log::trace!("destroyed device");
@@ -145,17 +150,15 @@ impl RafxDeviceContextVulkanInner {
             queue_requirements,
         );
 
-        let allocator_create_info = vk_mem::AllocatorCreateInfo {
+        let allocator_create_info = gpu_allocator::VulkanAllocatorCreateDesc {
             physical_device,
             device: logical_device.clone(),
             instance: instance.instance.clone(),
-            flags: vk_mem::AllocatorCreateFlags::default(),
-            preferred_large_heap_block_size: Default::default(),
-            frame_in_use_count: 0, // Not using CAN_BECOME_LOST, so this is not needed
-            heap_size_limits: Default::default(),
+            debug_settings: Default::default(),
+            buffer_device_address: false, // Should check BufferDeviceAddressFeatures first
         };
 
-        let allocator = vk_mem::Allocator::new(&allocator_create_info)?;
+        let allocator = gpu_allocator::VulkanAllocator::new(&allocator_create_info);
 
         let limits = &physical_device_info.properties.limits;
 
@@ -193,7 +196,7 @@ impl RafxDeviceContextVulkanInner {
             physical_device,
             physical_device_info,
             device: logical_device,
-            allocator,
+            allocator: ManuallyDrop::new(Mutex::new(allocator)),
             destroyed: AtomicBool::new(false),
 
             #[cfg(debug_assertions)]
@@ -315,7 +318,7 @@ impl RafxDeviceContextVulkan {
         &self.physical_device_info().properties.limits
     }
 
-    pub fn allocator(&self) -> &vk_mem::Allocator {
+    pub fn allocator(&self) -> &Mutex<gpu_allocator::VulkanAllocator> {
         &self.inner.allocator
     }
 

@@ -38,15 +38,15 @@ impl Into<vk::ColorComponentFlags> for RafxColorFlags {
     }
 }
 
-impl Into<vk_mem::MemoryUsage> for RafxMemoryUsage {
-    fn into(self) -> vk_mem::MemoryUsage {
-        use vk_mem::MemoryUsage;
+impl Into<gpu_allocator::MemoryLocation> for RafxMemoryUsage {
+    fn into(self) -> gpu_allocator::MemoryLocation {
+        use gpu_allocator::MemoryLocation;
         match self {
-            RafxMemoryUsage::Unknown => MemoryUsage::Unknown,
-            RafxMemoryUsage::GpuOnly => MemoryUsage::GpuOnly,
-            RafxMemoryUsage::CpuOnly => MemoryUsage::CpuOnly,
-            RafxMemoryUsage::CpuToGpu => MemoryUsage::CpuToGpu,
-            RafxMemoryUsage::GpuToCpu => MemoryUsage::GpuToCpu,
+            RafxMemoryUsage::Unknown => MemoryLocation::Unknown,
+            RafxMemoryUsage::GpuOnly => MemoryLocation::GpuOnly,
+            RafxMemoryUsage::CpuOnly => MemoryLocation::CpuToGpu,
+            RafxMemoryUsage::CpuToGpu => MemoryLocation::CpuToGpu,
+            RafxMemoryUsage::GpuToCpu => MemoryLocation::GpuToCpu,
         }
     }
 }

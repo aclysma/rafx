@@ -2,18 +2,16 @@ use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use rafx_base::trust_cell::TrustCell;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct RafxBufferRaw {
     pub buffer: vk::Buffer,
-    pub allocation: vk_mem::Allocation,
+    pub allocation: gpu_allocator::SubAllocation,
 }
 
 #[derive(Debug)]
 pub struct RafxBufferVulkan {
     device_context: RafxDeviceContextVulkan,
-    allocation_info: TrustCell<vk_mem::AllocationInfo>,
     buffer_raw: Option<RafxBufferRaw>,
 
     buffer_def: RafxBufferDef,
@@ -23,7 +21,7 @@ pub struct RafxBufferVulkan {
 
 impl RafxBufferVulkan {
     pub fn vk_buffer(&self) -> vk::Buffer {
-        self.buffer_raw.unwrap().buffer
+        self.buffer_raw.as_ref().unwrap().buffer
     }
 
     pub fn vk_uniform_texel_view(&self) -> Option<vk::BufferView> {
@@ -45,35 +43,22 @@ impl RafxBufferVulkan {
     }
 
     pub fn map_buffer(&self) -> RafxResult<*mut u8> {
-        let ptr = self
-            .device_context
-            .allocator()
-            .map_memory(&self.buffer_raw.unwrap().allocation)?;
-        *self.allocation_info.borrow_mut() = self
-            .device_context
-            .allocator()
-            .get_allocation_info(&self.buffer_raw.unwrap().allocation)?;
-        Ok(ptr)
+        self.mapped_memory().ok_or(RafxError::StringError(
+            "Tried to map a buffer that is not CPU-visible".to_string(),
+        ))
     }
 
     pub fn unmap_buffer(&self) -> RafxResult<()> {
-        self.device_context
-            .allocator()
-            .unmap_memory(&self.buffer_raw.unwrap().allocation)?;
-        *self.allocation_info.borrow_mut() = self
-            .device_context
-            .allocator()
-            .get_allocation_info(&self.buffer_raw.unwrap().allocation)?;
         Ok(())
     }
 
     pub fn mapped_memory(&self) -> Option<*mut u8> {
-        let ptr = self.allocation_info.borrow().get_mapped_data();
-        if ptr.is_null() {
-            None
-        } else {
-            Some(ptr)
-        }
+        self.buffer_raw
+            .as_ref()
+            .unwrap()
+            .allocation
+            .mapped_ptr()
+            .map(|x| x.as_ptr() as *mut u8)
     }
 
     pub fn copy_to_host_visible_buffer<T: Copy>(
@@ -134,21 +119,6 @@ impl RafxBufferVulkan {
             usage_flags |= vk::BufferUsageFlags::TRANSFER_DST;
         }
 
-        let mut flags = vk_mem::AllocationCreateFlags::NONE;
-        if buffer_def.always_mapped {
-            flags |= vk_mem::AllocationCreateFlags::MAPPED;
-        }
-
-        let allocation_create_info = vk_mem::AllocationCreateInfo {
-            usage: buffer_def.memory_usage.into(),
-            flags,
-            required_flags: vk::MemoryPropertyFlags::empty(),
-            preferred_flags: vk::MemoryPropertyFlags::empty(),
-            memory_type_bits: 0, // Do not exclude any memory types
-            pool: None,
-            user_data: None,
-        };
-
         assert_ne!(allocation_size, 0);
 
         let buffer_info = vk::BufferCreateInfo::builder()
@@ -156,14 +126,23 @@ impl RafxBufferVulkan {
             .usage(usage_flags)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
-        //TODO: Better way of handling allocator errors
-        let (buffer, allocation, allocation_info) = device_context
-            .allocator()
-            .create_buffer(&buffer_info, &allocation_create_info)
-            .map_err(|e| {
-                log::error!("Error creating buffer {:?}", e);
-                vk::Result::ERROR_UNKNOWN
-            })?;
+        let device = device_context.device();
+
+        let buffer = unsafe { device.create_buffer(&buffer_info, None)? };
+        let requirements = unsafe { device.get_buffer_memory_requirements(buffer) };
+
+        let allocation = device_context.allocator().lock().unwrap().allocate(
+            &gpu_allocator::AllocationCreateDesc {
+                name: "",
+                linear: true,
+                location: buffer_def.memory_usage.into(),
+                requirements,
+            },
+        )?;
+
+        unsafe {
+            device.bind_buffer_memory(buffer, allocation.memory(), allocation.offset())?;
+        }
 
         let buffer_raw = RafxBufferRaw { buffer, allocation };
 
@@ -231,7 +210,6 @@ impl RafxBufferVulkan {
 
         Ok(RafxBufferVulkan {
             device_context: device_context.clone(),
-            allocation_info: TrustCell::new(allocation_info),
             buffer_raw: Some(buffer_raw),
             buffer_def: buffer_def.clone(),
             uniform_texel_view,
@@ -255,7 +233,7 @@ impl Drop for RafxBufferVulkan {
             }
         }
 
-        if let Some(buffer_raw) = &self.buffer_raw {
+        if let Some(buffer_raw) = self.buffer_raw.take() {
             log::trace!(
                 "Buffer {:?} destroying with size {} (always mapped: {:?})",
                 buffer_raw.buffer,
@@ -263,9 +241,16 @@ impl Drop for RafxBufferVulkan {
                 self.buffer_def.always_mapped
             );
 
+            unsafe {
+                self.device_context
+                    .device()
+                    .destroy_buffer(buffer_raw.buffer, None);
+            }
             self.device_context
                 .allocator()
-                .destroy_buffer(buffer_raw.buffer, &buffer_raw.allocation)
+                .lock()
+                .unwrap()
+                .free(buffer_raw.allocation)
                 .unwrap();
         }
 

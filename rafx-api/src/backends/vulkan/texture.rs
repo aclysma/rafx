@@ -13,7 +13,7 @@ use std::sync::Arc;
 #[derive(Debug)]
 pub struct RafxRawImageVulkan {
     pub image: vk::Image,
-    pub allocation: Option<vk_mem::Allocation>,
+    pub allocation: Option<gpu_allocator::SubAllocation>,
 }
 
 impl RafxRawImageVulkan {
@@ -24,10 +24,17 @@ impl RafxRawImageVulkan {
         if let Some(allocation) = self.allocation.take() {
             log::trace!("destroying RafxImageVulkan");
             assert_ne!(self.image, vk::Image::null());
+            unsafe {
+                device_context.device().destroy_image(self.image, None);
+            }
+
             device_context
                 .allocator()
-                .destroy_image(self.image, &allocation)
+                .lock()
+                .unwrap()
+                .free(allocation)
                 .unwrap();
+
             self.image = vk::Image::null();
             log::trace!("destroyed RafxImageVulkan");
         } else {
@@ -144,8 +151,8 @@ impl RafxTextureVulkan {
         self.inner.image.image
     }
 
-    pub fn vk_allocation(&self) -> Option<vk_mem::Allocation> {
-        self.inner.image.allocation
+    pub fn vk_allocation(&self) -> &Option<gpu_allocator::SubAllocation> {
+        &self.inner.image.allocation
     }
 
     pub fn device_context(&self) -> &RafxDeviceContextVulkan {
@@ -288,16 +295,6 @@ impl RafxTextureVulkan {
             //TODO: Could check vkGetPhysicalDeviceFormatProperties for if we support the format for
             // the various ways we might use it
 
-            let allocation_create_info = vk_mem::AllocationCreateInfo {
-                usage: vk_mem::MemoryUsage::GpuOnly,
-                flags: vk_mem::AllocationCreateFlags::NONE,
-                required_flags: vk::MemoryPropertyFlags::empty(),
-                preferred_flags: vk::MemoryPropertyFlags::empty(),
-                memory_type_bits: 0, // Do not exclude any memory types
-                pool: None,
-                user_data: None,
-            };
-
             let extent = vk::Extent3D {
                 width: texture_def.extents.width,
                 height: texture_def.extents.height,
@@ -317,14 +314,22 @@ impl RafxTextureVulkan {
                 .samples(texture_def.sample_count.into())
                 .flags(create_flags);
 
-            //let allocator = device.allocator().clone();
-            let (image, allocation, _allocation_info) = device_context
-                .allocator()
-                .create_image(&image_create_info, &allocation_create_info)
-                .map_err(|_| {
-                    log::error!("Error creating image");
-                    vk::Result::ERROR_UNKNOWN
-                })?;
+            let device = device_context.device();
+            let image = unsafe { device.create_image(&image_create_info, None)? };
+
+            let memory_requirements = unsafe { device.get_image_memory_requirements(image) };
+            let allocation = device_context.allocator().lock().unwrap().allocate(
+                &gpu_allocator::AllocationCreateDesc {
+                    name: "",
+                    requirements: memory_requirements,
+                    location: gpu_allocator::MemoryLocation::GpuOnly,
+                    linear: false, // because we use vk::ImageTiling::OPTIMAL
+                },
+            )?;
+
+            unsafe {
+                device.bind_image_memory(image, allocation.memory(), allocation.offset())?;
+            }
 
             RafxRawImageVulkan {
                 image,
