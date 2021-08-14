@@ -262,9 +262,6 @@ pub enum RafxMemoryUsage {
     /// The memory is only accessed by the GPU
     GpuOnly,
 
-    /// The memory is only accessed by the CPU
-    CpuOnly,
-
     /// The memory is written by the CPU and read by the GPU
     CpuToGpu,
 

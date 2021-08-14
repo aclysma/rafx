@@ -18,7 +18,7 @@ pub enum RafxError {
     #[cfg(feature = "rafx-vulkan")]
     VkCreateInstanceError(Arc<VkCreateInstanceError>),
     #[cfg(feature = "rafx-vulkan")]
-    VkMemError(Arc<vk_mem::Error>),
+    AllocationError(Arc<gpu_allocator::AllocationError>),
     #[cfg(any(feature = "rafx-gles2", feature = "rafx-gles3"))]
     GlError(u32),
 }
@@ -36,7 +36,7 @@ impl std::error::Error for RafxError {
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkCreateInstanceError(ref e) => Some(&**e),
             #[cfg(feature = "rafx-vulkan")]
-            RafxError::VkMemError(ref e) => Some(&**e),
+            RafxError::AllocationError(ref e) => Some(&**e),
             #[cfg(any(feature = "rafx-gles2", feature = "rafx-gles3"))]
             RafxError::GlError(_) => None,
         }
@@ -58,7 +58,7 @@ impl core::fmt::Display for RafxError {
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkCreateInstanceError(ref e) => e.fmt(fmt),
             #[cfg(feature = "rafx-vulkan")]
-            RafxError::VkMemError(ref e) => e.fmt(fmt),
+            RafxError::AllocationError(ref e) => e.fmt(fmt),
             #[cfg(any(feature = "rafx-gles2", feature = "rafx-gles3"))]
             RafxError::GlError(ref e) => e.fmt(fmt),
         }
@@ -105,8 +105,8 @@ impl From<VkCreateInstanceError> for RafxError {
 }
 
 #[cfg(feature = "rafx-vulkan")]
-impl From<vk_mem::Error> for RafxError {
-    fn from(error: vk_mem::Error) -> Self {
-        RafxError::VkMemError(Arc::new(error))
+impl From<gpu_allocator::AllocationError> for RafxError {
+    fn from(error: gpu_allocator::AllocationError) -> Self {
+        RafxError::AllocationError(Arc::new(error))
     }
 }

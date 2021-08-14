@@ -698,20 +698,6 @@ impl DemoApp {
                         return false;
                     }
 
-                    #[cfg(feature = "rafx-vulkan")]
-                    if *virtual_keycode == VirtualKeyCode::V {
-                        let stats = resources
-                            .get::<rafx::api::RafxDeviceContext>()
-                            .unwrap()
-                            .vk_device_context()
-                            .unwrap()
-                            .allocator()
-                            .calculate_stats()
-                            .unwrap();
-                        println!("{:#?}", stats);
-                        was_handled = true;
-                    }
-
                     if *virtual_keycode == VirtualKeyCode::Left {
                         scene_manager.queue_load_previous_scene();
                         was_handled = true;

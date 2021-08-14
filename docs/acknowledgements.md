@@ -19,7 +19,7 @@ General:
 
 Vulkan:
  * `ash` and `ash-window`: https://github.com/MaikKlein/ash
- * `vk-mem`: https://github.com/gwihlidal/vk-mem-rs
+ * `gpu-allocator`: https://github.com/Traverse-Research/gpu-allocator
    
 Metal:
  * `metal`: https://github.com/gfx-rs/metal-rs
