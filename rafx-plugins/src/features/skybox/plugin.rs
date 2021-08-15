@@ -3,11 +3,10 @@ use rafx::render_feature_renderer_prelude::*;
 use super::*;
 use crate::phases::OpaqueRenderPhase;
 use distill::loader::handle::Handle;
-use rafx::assets::{ImageAsset, MaterialAsset};
+use rafx::assets::MaterialAsset;
 
 pub struct SkyboxStaticResources {
     pub skybox_material: Handle<MaterialAsset>,
-    pub skybox_texture: Handle<ImageAsset>,
 }
 
 #[derive(Default)]
@@ -17,11 +16,14 @@ pub struct SkyboxRendererPlugin;
 impl SkyboxRendererPlugin {
     pub fn legion_init(
         &self,
-        _resources: &mut legion::Resources,
+        resources: &mut legion::Resources,
     ) {
+        resources.insert(SkyboxResource::default());
     }
 
-    pub fn legion_destroy(_resources: &mut legion::Resources) {}
+    pub fn legion_destroy(resources: &mut legion::Resources) {
+        resources.remove::<SkyboxResource>();
+    }
 }
 
 impl RenderFeaturePlugin for SkyboxRendererPlugin {
@@ -62,20 +64,14 @@ impl RenderFeaturePlugin for SkyboxRendererPlugin {
         let skybox_material = asset_resource
             .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/skybox.material");
 
-        let skybox_texture =
-            asset_resource.load_asset_path::<ImageAsset, _>("rafx-plugins/textures/skybox.basis");
-
         asset_manager.wait_for_asset_to_load(
             &skybox_material,
             asset_resource,
             "skybox material",
         )?;
 
-        asset_manager.wait_for_asset_to_load(&skybox_texture, asset_resource, "skybox texture")?;
-
         render_resources.insert(SkyboxStaticResources {
             skybox_material,
-            skybox_texture,
         });
 
         Ok(())
@@ -104,7 +100,6 @@ impl RenderFeaturePlugin for SkyboxRendererPlugin {
             extract_context,
             frame_packet.into_concrete(),
             static_resources.skybox_material.clone(),
-            static_resources.skybox_texture.clone(),
         )
     }
 

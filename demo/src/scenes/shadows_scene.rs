@@ -9,7 +9,7 @@ use glam::Vec3;
 use legion::IntoQuery;
 use legion::{Read, Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::AssetManager;
+use rafx::assets::{AssetManager, ImageAsset};
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
 use rafx::render_features::{
     RenderFeatureFlagMaskBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
@@ -27,7 +27,7 @@ use rafx_plugins::features::mesh::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
     MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
 };
-use rafx_plugins::features::skybox::SkyboxRenderFeature;
+use rafx_plugins::features::skybox::{SkyboxRenderFeature, SkyboxResource};
 use rafx_plugins::features::sprite::SpriteRenderFeature;
 use rafx_plugins::features::text::TextRenderFeature;
 use rafx_plugins::features::tile_layer::TileLayerRenderFeature;
@@ -58,6 +58,11 @@ impl ShadowsScene {
         let container_2_asset = asset_resource.load_asset_path("blender/storage_container2.glb");
         let blue_icosphere_asset =
             asset_resource.load_asset::<MeshAsset>("d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into());
+
+        let skybox_texture =
+            asset_resource.load_asset_path::<ImageAsset, _>("textures/skybox.basis");
+
+        *resources.get_mut::<SkyboxResource>().unwrap().skybox_texture_mut() = Some(skybox_texture);
 
         let mut load_visible_bounds = |asset_handle: &Handle<MeshAsset>| {
             asset_manager

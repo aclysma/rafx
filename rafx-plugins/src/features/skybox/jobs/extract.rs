@@ -1,15 +1,16 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
-use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, ImageAsset, MaterialAsset};
+use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::distill::loader::handle::Handle;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use rafx::base::resource_ref_map::ResourceRefBorrow;
 
 pub struct SkyboxExtractJob<'extract> {
     asset_manager: AssetManagerExtractRef,
     skybox_material: Handle<MaterialAsset>,
-    skybox_texture: Handle<ImageAsset>,
+    skybox_resource: ResourceRefBorrow<'extract, SkyboxResource>,
     phantom_data: PhantomData<&'extract ()>,
 }
 
@@ -18,7 +19,6 @@ impl<'extract> SkyboxExtractJob<'extract> {
         extract_context: &RenderJobExtractContext<'extract>,
         frame_packet: Box<SkyboxFramePacket>,
         skybox_material: Handle<MaterialAsset>,
-        skybox_texture: Handle<ImageAsset>,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
         Arc::new(ExtractJob::new(
             Self {
@@ -26,8 +26,8 @@ impl<'extract> SkyboxExtractJob<'extract> {
                     .render_resources
                     .fetch::<AssetManagerRenderResource>()
                     .extract_ref(),
+                skybox_resource: extract_context.extract_resources.fetch::<SkyboxResource>(),
                 skybox_material,
-                skybox_texture,
                 phantom_data: PhantomData,
             },
             frame_packet,
@@ -40,6 +40,10 @@ impl<'extract> ExtractJobEntryPoints<'extract> for SkyboxExtractJob<'extract> {
         &self,
         context: &ExtractPerFrameContext<'extract, '_, Self>,
     ) {
+        let skybox_texture = self.skybox_resource.skybox_texture.as_ref()
+            .map(|x| self.asset_manager.committed_asset(x).map(|x| x.image_view.clone()))
+            .flatten();
+
         context
             .frame_packet()
             .per_frame_data()
@@ -50,10 +54,7 @@ impl<'extract> ExtractJobEntryPoints<'extract> for SkyboxExtractJob<'extract> {
                     .unwrap()
                     .get_single_material_pass()
                     .ok(),
-                skybox_texture: self
-                    .asset_manager
-                    .committed_asset(&self.skybox_texture)
-                    .and_then(|x| Some(x.image_view.clone())),
+                skybox_texture
             });
     }
 
