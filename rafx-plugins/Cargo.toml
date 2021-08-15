@@ -1,18 +1,18 @@
 [package]
 name = "rafx-plugins"
-version = "0.0.1"
+version = "0.0.14"
 edition = "2018"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 description = "Rendering framework built on an extensible asset pipeline"
 license = "MIT OR Apache-2.0"
-readme = "README.md"
+readme = "../README.md"
 repository = "https://github.com/aclysma/rafx"
 homepage = "https://github.com/aclysma/rafx"
 keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
 [dependencies]
-rafx = { path = "../rafx", features = ["assets", "renderer"] }
+rafx = { path = "../rafx", version = "0.0.14", features = ["assets", "renderer"] }
 distill = { version = "=0.0.3", features = ["serde_importers"] }
 
 legion = { version = "0.4.0", default-features = false, features = ["serialize"], optional = true }

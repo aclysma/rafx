@@ -1,6 +1,6 @@
 [package]
 name = "rafx-renderer"
-version = "0.0.13"
+version = "0.0.14"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2018"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -12,11 +12,11 @@ keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
 [dependencies]
-rafx-api = { version = "=0.0.13", path = "../rafx-api" }
-rafx-base = { version = "=0.0.13", path = "../rafx-base" }
-rafx-framework = { version = "=0.0.13", path = "../rafx-framework" }
-rafx-assets = { version = "=0.0.13", path = "../rafx-assets" }
-rafx-visibility = { version = "=0.0.13", path = "../rafx-visibility" }
+rafx-api = { version = "0.0.14", path = "../rafx-api" }
+rafx-base = { version = "0.0.14", path = "../rafx-base" }
+rafx-framework = { version = "0.0.14", path = "../rafx-framework" }
+rafx-assets = { version = "0.0.14", path = "../rafx-assets" }
+rafx-visibility = { version = "0.0.14", path = "../rafx-visibility" }
 
 glam = { version = "0.13.1", features = [ "serde" ] }
 crossbeam-channel = "0.5"
