@@ -10,3 +10,6 @@ rafx::declare_render_feature!(SkyboxRenderFeature, SKYBOX_FEATURE_INDEX);
 
 mod plugin;
 pub use plugin::*;
+
+mod skybox_resource;
+pub use skybox_resource::*;
