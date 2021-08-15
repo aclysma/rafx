@@ -70,9 +70,7 @@ impl RenderFeaturePlugin for SkyboxRendererPlugin {
             "skybox material",
         )?;
 
-        render_resources.insert(SkyboxStaticResources {
-            skybox_material,
-        });
+        render_resources.insert(SkyboxStaticResources { skybox_material });
 
         Ok(())
     }

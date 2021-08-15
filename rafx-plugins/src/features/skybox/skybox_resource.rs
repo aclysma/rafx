@@ -1,5 +1,5 @@
-use rafx::assets::ImageAsset;
 use distill::loader::handle::Handle;
+use rafx::assets::ImageAsset;
 
 #[derive(Default)]
 pub struct SkyboxResource {

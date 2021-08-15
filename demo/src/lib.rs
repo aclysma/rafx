@@ -34,9 +34,9 @@ use rafx_plugins::assets::font::FontAsset;
 #[cfg(feature = "egui")]
 use rafx_plugins::features::egui::{EguiContextResource, WinitEguiManager};
 use rafx_plugins::features::mesh::MeshRenderOptions;
+use rafx_plugins::features::skybox::SkyboxResource;
 use rafx_plugins::features::text::TextResource;
 use rafx_plugins::features::tile_layer::TileLayerResource;
-use rafx_plugins::features::skybox::SkyboxResource;
 use rafx_plugins::pipelines::basic::BasicPipelineRenderOptions;
 use rafx_plugins::pipelines::basic::TonemapperType;
 use winit::event_loop::ControlFlow;

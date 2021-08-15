@@ -62,7 +62,10 @@ impl ShadowsScene {
         let skybox_texture =
             asset_resource.load_asset_path::<ImageAsset, _>("textures/skybox.basis");
 
-        *resources.get_mut::<SkyboxResource>().unwrap().skybox_texture_mut() = Some(skybox_texture);
+        *resources
+            .get_mut::<SkyboxResource>()
+            .unwrap()
+            .skybox_texture_mut() = Some(skybox_texture);
 
         let mut load_visible_bounds = |asset_handle: &Handle<MeshAsset>| {
             asset_manager
