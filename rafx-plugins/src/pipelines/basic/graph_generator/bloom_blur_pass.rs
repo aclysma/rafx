@@ -5,6 +5,7 @@ use rafx::render_features::RenderPhase;
 
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
+use crate::shaders;
 use rafx::api::RafxSampleCount;
 
 #[derive(PartialEq)]

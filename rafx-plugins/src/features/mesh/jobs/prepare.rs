@@ -7,6 +7,7 @@ use crate::phases::{
 use rafx::base::resource_map::ReadBorrow;
 use rafx::framework::{MaterialPassResource, ResourceArc, ResourceContext};
 
+use crate::shaders;
 use glam::Mat4;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 use rafx::renderer::InvalidResources;

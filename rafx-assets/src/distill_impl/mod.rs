@@ -10,6 +10,7 @@ pub use asset_storage::*;
 pub fn default_daemon() -> distill::daemon::AssetDaemon {
     use crate::assets::*;
 
+    #[allow(unused_mut)]
     let mut daemon = distill::daemon::AssetDaemon::default()
         .with_importer("sampler", SamplerImporter)
         .with_importer("material", MaterialImporter)

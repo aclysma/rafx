@@ -24,7 +24,10 @@ impl MeshRendererPlugin {
             render_objects: MeshRenderObjectSet::default(),
         }
     }
+}
 
+#[cfg(feature = "legion")]
+impl MeshRendererPlugin {
     pub fn legion_init(
         &self,
         resources: &mut legion::Resources,

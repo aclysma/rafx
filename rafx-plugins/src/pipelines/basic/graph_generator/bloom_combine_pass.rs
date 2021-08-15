@@ -7,6 +7,7 @@ use rafx::render_features::RenderPhase;
 use super::BloomExtractPass;
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
+use crate::shaders;
 
 pub(super) struct BloomCombinePass {
     #[allow(dead_code)]

@@ -166,7 +166,7 @@ impl ImageAssetData {
                 })
             }
             #[cfg(not(feature = "basis-universal"))]
-            ImageAssetDataFormatConfig::BasisCompressed(settings) => {
+            ImageAssetDataFormatConfig::BasisCompressed(_) => {
                 unimplemented!("crate not built with basis-universal feature");
             }
             #[cfg(feature = "basis-universal")]

@@ -4,10 +4,9 @@ use super::ImageAssetData;
 use super::{BufferAsset, ImageAsset};
 use crate::assets::image::ImageAssetDataFormat;
 use crate::image_upload::{ImageUploadParams, IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT};
-use crate::{
-    buffer_upload, image_upload, GpuImageData, GpuImageDataColorSpace, GpuImageDataLayer,
-    GpuImageDataMipLevel,
-};
+use crate::{buffer_upload, image_upload, GpuImageData, GpuImageDataColorSpace};
+#[cfg(feature = "basis-universal")]
+use crate::{GpuImageDataLayer, GpuImageDataMipLevel};
 #[cfg(feature = "basis-universal")]
 use basis_universal::{TranscodeParameters, TranscoderTextureFormat};
 use crossbeam_channel::{Receiver, Sender};

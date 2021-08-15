@@ -33,6 +33,9 @@ pub use rafx_base as base;
 #[doc(inline)]
 pub use rafx_api as api;
 
+#[doc(inline)]
+pub use rafx_api::RafxResult;
+
 #[cfg(feature = "assets")]
 #[doc(inline)]
 pub use rafx_assets as assets;

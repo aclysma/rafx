@@ -1,4 +1,5 @@
 use crate::assets::image::{ImageAssetColorSpace, ImageAssetData};
+#[cfg(feature = "basis-universal")]
 use crate::ImageAssetDataFormat;
 #[cfg(feature = "basis-universal")]
 use basis_universal::BasisTextureType;

@@ -40,7 +40,8 @@ OPTIONS:
         --metal-generated-src-file <metal-generated-src-file>    
         --metal-generated-src-path <metal-generated-src-path>    
         --rs-file <rs-file>                                      
-        --rs-path <rs-path>                                      
+        --rs-lib-path <rs-path>                                      
+        --rs-mod-path <rs-path>                                   
         --shader-kind <shader-kind>                              
         --spv-file <spv-file>                                    
         --spv-path <spv-path>      
@@ -61,7 +62,8 @@ OPTIONS:
    format. 
  * `--metal-generated-src-file`/`--metal-generated-src-path`: Produce MSL source code at the specified file or path. This can either be loaded at
    runtime, compiled, or just used for debugging/reference.
- * `--rs-file`/`--rs-path`: Produce rust code for `@[exported]` elements in the shader at the specified file or path
+ * `--rs-file`/`--rs-lib-path`/`rs-mod-path`: Produce rust code for `@[exported]` elements in the shader at the specified file or path. 
+   If using `--rs-lib-path` or `rs-mod-path`, a .lib or .mod file will also be produced declaring each module in the directory
  * `--spv-file`/`--spv-path`: Produce SPIR-V for the shader at the specified file or path.
 
 When the "file" variants are used, `rafx-shader-processor` reads a single file and writes single files. With the "path"
@@ -71,10 +73,10 @@ provided paths.
 
 ### Example
 
-`cargo run --package rafx-shader-processor -- --glsl-path glsl/*.vert glsl/*.frag glsl/*.comp --rs-path src --cooked-shaders-path ../../assets/shaders`
+`cargo run --package rafx-shader-processor -- --glsl-path glsl/*.vert glsl/*.frag glsl/*.comp --rs-lib-path src --cooked-shaders-path ../../assets/shaders`
 
  * Read *.vert, *.frag, *.comp files from glsl/
- * Write rust code to src/
+ * Write rust code to src/ and generate a .lib file decalring all generated modules (one per shader)
  * Write cooked shaders to ../../assets/shaders
 
 ## Supported Input Formats

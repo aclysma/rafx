@@ -1,5 +1,6 @@
 use super::*;
 use crate::assets::font::FontAsset;
+use crate::shaders;
 use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
 use rafx::framework::render_features::render_features_prelude::*;

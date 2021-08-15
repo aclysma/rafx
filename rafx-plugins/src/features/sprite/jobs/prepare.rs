@@ -2,6 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase};
+use crate::shaders;
 use fnv::FnvHashMap;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 use rafx::base::DecimalF32;

@@ -2,6 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::OpaqueRenderPhase;
+use crate::shaders;
 use rafx::framework::ResourceContext;
 
 pub struct SkyboxPrepareJob {

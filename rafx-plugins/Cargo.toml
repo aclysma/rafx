@@ -12,9 +12,7 @@ keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
 [dependencies]
-shaders = { path = "rafx-plugins-shaders", package="rafx-plugins-shaders" }
-
-rafx = { path = "../rafx", features = ["assets"] }
+rafx = { path = "../rafx", features = ["assets", "renderer"] }
 distill = { version = "=0.0.3", features = ["serde_importers"] }
 
 legion = { version = "0.4.0", default-features = false, features = ["serialize"], optional = true }
@@ -50,6 +48,8 @@ serde = "1"
 serde_bytes = "0.11"
 profiling = "1.0.1"
 
+[dev-dependencies]
+memoffset = "0.6"
 
 [features]
 # legion: if enabled, include some helper setup code
