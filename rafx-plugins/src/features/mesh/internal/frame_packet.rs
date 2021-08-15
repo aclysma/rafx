@@ -3,6 +3,7 @@ use crate::assets::mesh::MeshAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
+use crate::shaders;
 use glam::{Quat, Vec3};
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{

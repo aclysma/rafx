@@ -2,6 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::UiRenderPhase;
+use crate::shaders;
 use rafx::api::{RafxBufferDef, RafxDeviceContext};
 use rafx::base::resource_map::WriteBorrow;
 use rafx::framework::ResourceContext;

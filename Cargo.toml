@@ -9,7 +9,6 @@ members = [
     "rafx-visibility",
     "rafx-assets",
     "rafx-plugins",
-    "rafx-plugins/rafx-plugins-shaders",
     "demo",
     "demo/demo-shaders",
     "demo/cli",

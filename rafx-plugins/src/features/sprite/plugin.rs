@@ -14,6 +14,7 @@ pub struct SpriteRendererPlugin {
     render_objects: SpriteRenderObjectSet,
 }
 
+#[cfg(feature = "legion")]
 impl SpriteRendererPlugin {
     pub fn legion_init(
         &self,
