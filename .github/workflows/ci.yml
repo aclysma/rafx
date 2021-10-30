@@ -16,6 +16,7 @@ jobs:
             toolchain: beta
           - os: windows-2019
             toolchain: beta
+        fail-fast: false
     runs-on: ${{ matrix.os }}
     needs: clean
     steps:
