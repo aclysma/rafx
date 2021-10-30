@@ -11,13 +11,12 @@ pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct PushConstantIndex(pub(crate) u32);
 
+// Push constants aren't really used yet, but I'd rather leave this as placeholder than remove
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub(crate) struct PushConstantInfo {
-    #[allow(dead_code)]
     pub(crate) name: Option<String>,
-    #[allow(dead_code)]
     pub(crate) push_constant_index: PushConstantIndex,
-    #[allow(dead_code)]
     pub(crate) vk_push_constant_range: vk::PushConstantRange,
 }
 
@@ -35,22 +34,15 @@ pub(crate) struct DescriptorInfo {
     pub(crate) binding: u32,
     // Used for arrays of textures, samplers, etc.
     pub(crate) element_count: u32,
-    // Index into DescriptorSetLayoutInfo::descriptors list
-    // NOT THE BINDING INDEX!!!
-    #[allow(dead_code)]
-    pub(crate) descriptor_index: RafxDescriptorIndex,
 
     // --- vulkan-specific ---
-    // Index into DescriptorSetLayoutInfo::dynamic_descriptor_indexes
-    #[allow(dead_code)]
-    pub(crate) dynamic_descriptor_index: Option<DynamicDescriptorIndex>,
     // The index to the first descriptor in the flattened list of all descriptors in the layout
     // none for immutable samplers, which have no update data
     pub(crate) update_data_offset_in_set: Option<u32>,
     pub(crate) has_immutable_sampler: bool,
 
     pub(crate) vk_type: vk::DescriptorType,
-    #[allow(dead_code)]
+    #[allow(unused)]
     pub(crate) vk_stages: vk::ShaderStageFlags,
 }
 
@@ -75,13 +67,13 @@ pub(crate) struct RafxRootSignatureVulkanInner {
     pub(crate) descriptors: Vec<DescriptorInfo>,
     pub(crate) name_to_descriptor_index: FnvHashMap<String, RafxDescriptorIndex>,
     // Keeps them in scope so they don't drop
-    #[allow(dead_code)]
-    immutable_samplers: Vec<RafxSampler>, //empty_descriptor_sets: [vk::DescriptorSet; MAX_DESCRIPTOR_SETS],
+    _immutable_samplers: Vec<RafxSampler>, //empty_descriptor_sets: [vk::DescriptorSet; MAX_DESCRIPTOR_SETS],
 
     // --- vulkan-specific ---
-    #[allow(dead_code)]
+    // We don't use push constants right now, but leaving as placeholder for later
+    #[allow(unused)]
     pub(crate) name_to_push_constant_index: FnvHashMap<String, PushConstantIndex>,
-    #[allow(dead_code)]
+    #[allow(unused)]
     pub(crate) push_constants: Vec<PushConstantInfo>,
     pub(crate) pipeline_layout: vk::PipelineLayout,
     pub(crate) descriptor_set_layouts: [vk::DescriptorSetLayout; MAX_DESCRIPTOR_SET_LAYOUTS],
@@ -298,15 +290,9 @@ impl RafxRootSignatureVulkan {
                     // Keep a lookup for dynamic descriptors
                     //
                     let descriptor_index = RafxDescriptorIndex(descriptors.len() as u32);
-                    let dynamic_descriptor_index =
-                        if binding.descriptor_type == vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC {
-                            layout.dynamic_descriptor_indexes.push(descriptor_index);
-                            Some(DynamicDescriptorIndex(
-                                (layout.dynamic_descriptor_indexes.len() - 1) as u32,
-                            ))
-                        } else {
-                            None
-                        };
+                    if binding.descriptor_type == vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC {
+                        layout.dynamic_descriptor_indexes.push(descriptor_index);
+                    };
 
                     let update_data_offset_in_set = Some(layout.update_data_count_per_set);
 
@@ -318,8 +304,6 @@ impl RafxRootSignatureVulkan {
                         set_index: resource.set_index,
                         binding: resource.binding,
                         element_count: resource.element_count_normalized(),
-                        descriptor_index,
-                        dynamic_descriptor_index,
                         update_data_offset_in_set,
                         has_immutable_sampler: immutable_sampler.is_some(),
                         vk_type: binding.descriptor_type,
@@ -434,7 +418,7 @@ impl RafxRootSignatureVulkan {
             layouts,
             descriptors,
             name_to_descriptor_index,
-            immutable_samplers,
+            _immutable_samplers: immutable_samplers,
             push_constants,
             pipeline_layout,
             descriptor_set_layouts,

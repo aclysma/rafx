@@ -61,12 +61,12 @@ impl VkPresentMode {
 #[derive(Clone)]
 struct SwapchainInfo {
     surface_format: vk::SurfaceFormatKHR,
-    #[allow(dead_code)]
+    #[allow(unused)]
     present_mode: vk::PresentModeKHR,
     extents: vk::Extent2D,
-    #[allow(dead_code)]
+    #[allow(unused)]
     image_count: usize,
-    #[allow(dead_code)]
+    #[allow(unused)]
     image_usage_flags: vk::ImageUsageFlags,
 }
 

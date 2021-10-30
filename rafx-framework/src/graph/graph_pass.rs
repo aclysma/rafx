@@ -47,7 +47,7 @@ impl RenderGraphPassBufferBarriers {
 /// merged to be subpasses within a single pass.
 #[derive(Debug)]
 pub struct RenderGraphNodeBufferBarriers {
-    #[allow(dead_code)]
+    #[allow(unused)]
     pub(super) barriers: FnvHashMap<PhysicalBufferId, RenderGraphPassBufferBarriers>,
 }
 
