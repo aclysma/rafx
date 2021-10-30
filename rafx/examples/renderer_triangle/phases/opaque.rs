@@ -1,5 +1,5 @@
+use rafx::render_features::RenderFeatureSubmitNode;
 use rafx::render_features::RenderPhase;
-use rafx::render_features::{RenderFeatureSubmitNode, RenderPhaseIndex};
 
 //
 // A phase combines renderables that may come from different features. This example doesnt't use
