@@ -13,8 +13,11 @@ pub(crate) struct PushConstantIndex(pub(crate) u32);
 
 #[derive(Clone, Debug)]
 pub(crate) struct PushConstantInfo {
+    #[allow(dead_code)]
     pub(crate) name: Option<String>,
+    #[allow(dead_code)]
     pub(crate) push_constant_index: PushConstantIndex,
+    #[allow(dead_code)]
     pub(crate) vk_push_constant_range: vk::PushConstantRange,
 }
 
@@ -34,10 +37,12 @@ pub(crate) struct DescriptorInfo {
     pub(crate) element_count: u32,
     // Index into DescriptorSetLayoutInfo::descriptors list
     // NOT THE BINDING INDEX!!!
+    #[allow(dead_code)]
     pub(crate) descriptor_index: RafxDescriptorIndex,
 
     // --- vulkan-specific ---
     // Index into DescriptorSetLayoutInfo::dynamic_descriptor_indexes
+    #[allow(dead_code)]
     pub(crate) dynamic_descriptor_index: Option<DynamicDescriptorIndex>,
     // The index to the first descriptor in the flattened list of all descriptors in the layout
     // none for immutable samplers, which have no update data
@@ -45,6 +50,7 @@ pub(crate) struct DescriptorInfo {
     pub(crate) has_immutable_sampler: bool,
 
     pub(crate) vk_type: vk::DescriptorType,
+    #[allow(dead_code)]
     pub(crate) vk_stages: vk::ShaderStageFlags,
 }
 
@@ -69,10 +75,13 @@ pub(crate) struct RafxRootSignatureVulkanInner {
     pub(crate) descriptors: Vec<DescriptorInfo>,
     pub(crate) name_to_descriptor_index: FnvHashMap<String, RafxDescriptorIndex>,
     // Keeps them in scope so they don't drop
+    #[allow(dead_code)]
     immutable_samplers: Vec<RafxSampler>, //empty_descriptor_sets: [vk::DescriptorSet; MAX_DESCRIPTOR_SETS],
 
     // --- vulkan-specific ---
+    #[allow(dead_code)]
     pub(crate) name_to_push_constant_index: FnvHashMap<String, PushConstantIndex>,
+    #[allow(dead_code)]
     pub(crate) push_constants: Vec<PushConstantInfo>,
     pub(crate) pipeline_layout: vk::PipelineLayout,
     pub(crate) descriptor_set_layouts: [vk::DescriptorSetLayout; MAX_DESCRIPTOR_SET_LAYOUTS],

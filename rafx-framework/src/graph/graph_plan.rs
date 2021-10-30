@@ -1367,10 +1367,13 @@ struct AssignPhysicalResourcesResult {
     image_usage_to_physical: FnvHashMap<RenderGraphImageUsageId, PhysicalImageId>,
     image_usage_to_image_view: FnvHashMap<RenderGraphImageUsageId, PhysicalImageViewId>,
     image_views: Vec<RenderGraphImageView>, // indexed by physical image view id
+    #[allow(dead_code)]
     image_virtual_to_physical: FnvHashMap<VirtualImageId, PhysicalImageId>,
     image_specifications: Vec<RenderGraphImageSpecification>, // indexed by physical image id
 
+    #[allow(dead_code)]
     buffer_usage_to_physical: FnvHashMap<RenderGraphBufferUsageId, PhysicalBufferId>,
+    #[allow(dead_code)]
     buffer_virtual_to_physical: FnvHashMap<VirtualBufferId, PhysicalBufferId>,
     buffer_specifications: Vec<RenderGraphBufferSpecification>, // indexed by physical image id
 }
