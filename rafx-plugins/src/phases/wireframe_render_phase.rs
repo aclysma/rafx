@@ -1,5 +1,4 @@
-use rafx::render_features::RenderPhase;
-use rafx::render_features::{RenderFeatureSubmitNode, RenderPhaseIndex};
+use rafx::render_features::RenderFeatureSubmitNode;
 
 rafx::declare_render_phase!(
     WireframeRenderPhase,
