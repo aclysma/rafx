@@ -131,6 +131,9 @@ impl EguiManager {
         inner.raw_input.time = Some(inner.start_time.elapsed().as_secs_f64());
 
         inner.context.begin_frame(inner.raw_input.take());
+
+        // For some reason, take() clears this value
+        inner.raw_input.pixels_per_point = Some(pixels_per_point);
     }
 
     #[profiling::function]
