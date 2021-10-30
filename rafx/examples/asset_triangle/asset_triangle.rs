@@ -11,7 +11,6 @@ use rafx::graph::{
     RenderGraphImageSpecification, RenderGraphQueue, SwapchainSurfaceInfo,
 };
 use rafx::render_features::RenderFeatureSubmitNode;
-use rafx::render_features::RenderPhaseIndex;
 use rafx::render_features::{PreparedRenderData, RenderPhase};
 use std::sync::Arc;
 

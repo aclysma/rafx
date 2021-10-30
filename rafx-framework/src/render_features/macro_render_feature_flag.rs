@@ -18,11 +18,11 @@ macro_rules! declare_render_feature_flag {
 
         pub struct $struct_name;
 
-        impl RenderFeatureFlag for $struct_name {
-            fn set_feature_flag_index(index: RenderFeatureFlagIndex) {
+        impl $crate::render_features::RenderFeatureFlag for $struct_name {
+            fn set_feature_flag_index(index: $crate::render_features::RenderFeatureFlagIndex) {
                 assert_eq!(
                     $struct_name::feature_flag_index(),
-                    RenderFeatureFlagIndex::MAX,
+                    $crate::render_features::RenderFeatureFlagIndex::MAX,
                     "feature flag {} was already registered",
                     $struct_name::feature_flag_debug_name(),
                 );
@@ -33,9 +33,9 @@ macro_rules! declare_render_feature_flag {
                 );
             }
 
-            fn feature_flag_index() -> RenderFeatureFlagIndex {
+            fn feature_flag_index() -> $crate::render_features::RenderFeatureFlagIndex {
                 $atomic_constant_name.load(std::sync::atomic::Ordering::Acquire)
-                    as RenderFeatureFlagIndex
+                    as $crate::render_features::RenderFeatureFlagIndex
             }
 
             fn feature_flag_debug_name() -> &'static str {

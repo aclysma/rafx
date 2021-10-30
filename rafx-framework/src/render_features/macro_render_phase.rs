@@ -27,11 +27,11 @@ macro_rules! declare_render_phase {
 
         pub struct $struct_name;
 
-        impl RenderPhase for $struct_name {
-            fn set_render_phase_index(index: RenderPhaseIndex) {
+        impl $crate::render_features::RenderPhase for $struct_name {
+            fn set_render_phase_index(index: $crate::render_features::RenderPhaseIndex) {
                 assert_eq!(
                     $struct_name::render_phase_index(),
-                    RenderPhaseIndex::MAX,
+                    $crate::render_features::RenderPhaseIndex::MAX,
                     "render phase {} was already registered",
                     $struct_name::render_phase_debug_name(),
                 );
@@ -43,11 +43,14 @@ macro_rules! declare_render_phase {
                 );
             }
 
-            fn render_phase_index() -> RenderPhaseIndex {
-                $atomic_constant_name.load(std::sync::atomic::Ordering::Acquire) as RenderPhaseIndex
+            fn render_phase_index() -> $crate::render_features::RenderPhaseIndex {
+                $atomic_constant_name.load(std::sync::atomic::Ordering::Acquire)
+                    as $crate::render_features::RenderPhaseIndex
             }
 
-            fn sort_submit_nodes(submit_nodes: &mut Vec<RenderFeatureSubmitNode>) {
+            fn sort_submit_nodes(
+                submit_nodes: &mut Vec<$crate::render_features::RenderFeatureSubmitNode>
+            ) {
                 $sort_fn(submit_nodes)
             }
 

@@ -54,6 +54,7 @@ pub enum RenderGraphBufferUser {
 /// A usage of a particular buffer
 #[derive(Debug)]
 pub struct RenderGraphBufferUsage {
+    #[allow(unused)]
     pub(super) user: RenderGraphBufferUser,
     pub(super) usage_type: RenderGraphBufferUsageType,
     pub(super) version: RenderGraphBufferVersionId,

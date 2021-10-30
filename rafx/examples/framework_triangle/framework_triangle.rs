@@ -449,7 +449,6 @@ fn run() -> RafxResult<()> {
 //
 use rafx::framework::render_features::{RenderJobWriteContext, SubmitNodeBlocks};
 use rafx::render_features::RenderPhase;
-use rafx::render_features::RenderPhaseIndex;
 use rafx_framework::MaterialPass;
 use std::path::Path;
 

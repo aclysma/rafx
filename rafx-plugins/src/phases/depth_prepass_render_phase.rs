@@ -1,5 +1,5 @@
+use rafx::render_features::RenderFeatureSubmitNode;
 use rafx::render_features::RenderPhase;
-use rafx::render_features::{RenderFeatureSubmitNode, RenderPhaseIndex};
 
 rafx::declare_render_phase!(
     DepthPrepassRenderPhase,

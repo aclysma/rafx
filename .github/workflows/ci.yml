@@ -8,6 +8,7 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         toolchain: [stable, beta]
         os: [windows-2019, ubuntu-20.04, macos-10.15]

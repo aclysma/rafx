@@ -95,6 +95,7 @@ struct CachedGraphicsPipeline {
 #[derive(Debug)]
 struct RegisteredRenderTargetMeta {
     keep_until_frame: u64,
+    #[allow(unused)]
     meta: GraphicsPipelineRenderTargetMeta,
 }
 
@@ -130,10 +131,13 @@ pub struct GraphicsPipelineCacheInner {
 
 #[derive(Debug)]
 pub struct GraphicsPipelineCacheMetrics {
+    #[allow(unused)]
     pipeline_count: usize,
 
+    #[allow(unused)]
     #[cfg(debug_assertions)]
     lock_call_count_previous_frame: u64,
+    #[allow(unused)]
     #[cfg(debug_assertions)]
     pipeline_create_count_previous_frame: u64,
 }
