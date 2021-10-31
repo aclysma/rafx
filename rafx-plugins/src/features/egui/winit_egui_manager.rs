@@ -252,8 +252,8 @@ impl WinitEguiManager {
         window: &Window,
     ) -> RafxResult<()> {
         // raw pixels
-        let physical_size = window.inner_size();
-        let pixels_per_point = window.scale_factor() as f32;
+        let pixels_per_point = window.scale_factor();
+        let inner_size = window.inner_size().to_logical(pixels_per_point);
 
         let mut inner = self.inner.lock().unwrap();
         if inner.cursor != inner.pending_cursor || inner.cursor.is_none() {
@@ -268,8 +268,11 @@ impl WinitEguiManager {
             inner.cursor = inner.pending_cursor;
         }
 
-        self.egui_manager
-            .begin_frame(physical_size.width, physical_size.height, pixels_per_point);
+        self.egui_managercar.begin_frame(
+            inner_size.width,
+            inner_size.height,
+            pixels_per_point as f32,
+        );
         Ok(())
     }
 
