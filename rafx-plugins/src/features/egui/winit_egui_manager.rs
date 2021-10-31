@@ -268,11 +268,8 @@ impl WinitEguiManager {
             inner.cursor = inner.pending_cursor;
         }
 
-        self.egui_managercar.begin_frame(
-            inner_size.width,
-            inner_size.height,
-            pixels_per_point as f32,
-        );
+        self.egui_manager
+            .begin_frame(inner_size.width, inner_size.height, pixels_per_point as f32);
         Ok(())
     }
 
