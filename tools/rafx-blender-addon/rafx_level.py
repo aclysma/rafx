@@ -1,9 +1,9 @@
 from genericpath import exists
-import rafx_errors
 import bpy
 import json
 import os
 
+from . import rafx_errors
 from . import rafx_utils
 
 import logging
