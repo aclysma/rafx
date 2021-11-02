@@ -36,13 +36,12 @@ control and access to the very latest features in the underlying platform API.
 intended to be exposed in web browsers - where any form of undefined behavior is unacceptable. GPU resources are tracked
 so that they are not dropped while in use and can be placed in the correct state for the GPU to use them. This safety 
 combined with a less vulkan-centric API design makes it much easier to use than `gfx-hal` and it has become very popular
-in the rust community. It is under the MPL license which is more restrictive than licenses like MIT or Apache 2.0.
+in the rust community.
 
 `rafx-api` does not have these safety guarantees (or complexity/overhead required to support them). However,
 `rafx-framework` provides higher-level tools and abstractions that mitigate this unsafety. For example, the render graph
 automatically handles placing resources into the correct state. It can potentially do this in a more optimal way because
-it has a holistic view of what will happen during the entire frame. `rafx-api` is available under the very permissive
-Apache-2.0/MIT license.
+it has a holistic view of what will happen during the entire frame.
 
 ## rafx-framework
 
