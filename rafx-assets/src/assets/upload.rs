@@ -663,7 +663,7 @@ impl UploadManager {
 
         let t0 = rafx_base::Instant::now();
         let image_data = match request.asset.format {
-            ImageAssetDataFormat::RawRGBA32 => GpuImageData::new_simple(
+            ImageAssetDataFormat::RGBA32Uncompressed => GpuImageData::new_simple(
                 request.asset.width,
                 request.asset.height,
                 color_space.rgba8(),

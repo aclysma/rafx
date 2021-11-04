@@ -56,7 +56,7 @@ def get_socket(blender_material: bpy.types.Material, name: str):
     return None
 
 
-def get_factor_from_socket(socket, kind):
+def get_factor_from_socket(socket, kind, default_value):
     """
     For baseColorFactor, metallicFactor, etc.
     Get a constant value from a socket, or a constant value
@@ -82,7 +82,7 @@ def get_factor_from_socket(socket, kind):
         if x1 is not None and x2 is None: return x1
         if x2 is not None and x1 is None: return x2
 
-    return None
+    return default_value
 
 
 def get_const_from_socket(socket, kind):

@@ -85,7 +85,9 @@ vec4 normal_map(
     // Sample the normal and unflatten it from the texture (i.e. convert
     // range of [0, 1] to [-1, 1])
     vec3 normal = texture(sampler2D(normal_texture, smp), uv).xyz;
-    normal = normal * 2.0 - 1.0;
+    normal = normalize(normal * 2.0 - 1.0);
+    normal.x = -normal.x;
+    normal.y = -normal.y;
 
     // Transform the normal from the texture with the TNB matrix, which will put
     // it into the TNB's space (view space))
@@ -526,6 +528,9 @@ float ndf_ggx(
     vec3 h,
     float roughness
 ) {
+    //n = normalize(n);
+    //h = normalize(h);
+    roughness = clamp(roughness, 0.0, 1.0);
     // disney/epic remap alpha, squaring roughness as it produces better results
     // https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
     float a = roughness * roughness;
@@ -571,6 +576,8 @@ vec3 fresnel_schlick(
     vec3 h,
     vec3 fresnel_base
 ) {
+    //v = normalize(v);
+    //h = normalize(h);
     float v_dot_h = max(dot(v, h), 0.0);
 
     // approximation for pow(1 - v_dot_h, 5)
@@ -909,7 +916,7 @@ vec4 pbr_main() {
 #ifdef PBR_TEXTURES
     if (per_material_data.data.has_metallic_roughness_texture) {
         vec4 sampled = texture(sampler2D(metallic_roughness_texture, smp), in_uv);
-        metalness *= sampled.r;
+        metalness *= sampled.b;
         roughness *= sampled.g;
     }
 #endif
@@ -963,6 +970,14 @@ vec4 pbr_main() {
         normal_vs
     );
     //out_color = vec4(vec3(dot(normal_vs, -in_shadow_map_light_dir_vs)), 1.0);
+    //out_color = vec4(metalness);
+
+    //out_color = vec4(normal_vs, 1.0);
+    //out_color = vec4(in_normal_vs, 1.0);
+    //out_color = vec4(in_tangent_vs, 1.0);
+    //out_color = vec4(in_binormal_vs, 1.0);
+    //out_color = vec4(normal_vs, 1.0);
+    //out_color = vec4(in_uv.x, in_uv.y, 0.0, 1.0);
 
     return out_color;
 }

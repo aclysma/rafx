@@ -201,12 +201,12 @@ def export(material: bpy.types.Material, project_settings):
     bsdf = find_bsdf_node(material)
         
     attributes = {}
-    base_color_factor = gltf_export.get_factor_from_socket(bsdf.inputs["Base Color"], 'RGB') or [1.0,1.0,1.0]
-    base_color_factor.append(gltf_export.get_factor_from_socket(bsdf.inputs["Alpha"], 'VALUE') or 1.0)
+    base_color_factor = gltf_export.get_factor_from_socket(bsdf.inputs["Base Color"], 'RGB', [1.0,1.0,1.0])
+    base_color_factor.append(gltf_export.get_factor_from_socket(bsdf.inputs["Alpha"], 'VALUE', 1.0))
     attributes['base_color_factor'] = base_color_factor
-    attributes['roughness_factor'] = gltf_export.get_factor_from_socket(bsdf.inputs["Roughness"], 'VALUE') or 1.0
-    attributes['metallic_factor'] = gltf_export.get_factor_from_socket(bsdf.inputs["Metallic"], 'VALUE') or 1.0
-    attributes['emissive_factor'] = gltf_export.get_factor_from_socket(bsdf.inputs["Emission"], 'RGB') or [0.0,0.0,0.0]
+    attributes['roughness_factor'] = gltf_export.get_factor_from_socket(bsdf.inputs["Roughness"], 'VALUE', 1.0)
+    attributes['metallic_factor'] = gltf_export.get_factor_from_socket(bsdf.inputs["Metallic"], 'VALUE', 1.0)
+    attributes['emissive_factor'] = gltf_export.get_factor_from_socket(bsdf.inputs["Emission"], 'RGB', [0.0,0.0,0.0])
     attributes['normal_texture_scale'] = 1.0
     attributes['occlusion_texture_strength'] = 1.0
     attributes['alpha_cutoff'] = 0.5

@@ -14,9 +14,8 @@ use std::marker::PhantomData;
 pub struct MeshVertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
-    // w component is a sign value (-1 or +1) indicating handedness of the tangent basis
-    // see GLTF spec for more info
-    pub tangent: [f32; 4],
+    pub tangent: [f32; 3],
+    pub binormal: [f32; 3],
     pub tex_coord: [f32; 2],
 }
 
@@ -33,7 +32,8 @@ lazy_static::lazy_static! {
         let per_vertex = VertexDataLayout::build_vertex_layout(&MeshVertex::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
             builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
             builder.add_member(&vertex.normal, "NORMAL", RafxFormat::R32G32B32_SFLOAT);
-            builder.add_member(&vertex.tangent, "TANGENT", RafxFormat::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.tangent, "TANGENT", RafxFormat::R32G32B32_SFLOAT);
+            builder.add_member(&vertex.binormal, "BINORMAL", RafxFormat::R32G32B32_SFLOAT);
             builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
         });
 

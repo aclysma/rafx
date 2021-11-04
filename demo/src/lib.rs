@@ -710,6 +710,12 @@ impl DemoApp {
                         was_handled = true;
                     }
 
+                    if *virtual_keycode == VirtualKeyCode::G {
+                        window
+                            .set_cursor_grab(true)
+                            .expect("Failed to grab mouse cursor");
+                    }
+
                     if *virtual_keycode == VirtualKeyCode::M {
                         let metrics = resources.get::<AssetManager>().unwrap().metrics();
                         println!("{:#?}", metrics);
