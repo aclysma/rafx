@@ -12,37 +12,41 @@ industry practices where possible.
 
 ## rafx-api
 
-Rust already has an amazing selection of low-level rendering crates: `gfx-hal`, `wgpu`, `vulkano`, `glium`, lots of
+Rust already has an amazing selection of low-level rendering crates: `wgpu`, `vulkano`, `glium`, lots of
 raw bindings to platform APIs like `ash` and `metal`, and more. So it's fair to ask, why make another one?
 
-Rafx intends to support multiple platform APIs, so as of this writing, `gfx-hal` or other APIs built on top of it like
-`wgpu` are the only choices that meet this criteria.
+Rafx intends to support multiple platform APIs, and as of late 2020 when `rafx-api` was created, `gfx-hal` and `wgpu`
+were the only choices that met this criteria. (As of late 2021, `gfx-hal` is deprecated and `wgpu` is the only choice
+I'm aware of.)
 
 ### Compared with gfx-hal
 
-`gfx-hal` is an unsafe API that closely follows the API design of vulkan. Like vulkan, it heavily favors flexibility
-and performance over ease of use. The API exposes concepts and features that do not always exist in other platform APIs
-or may be difficult to emulate. When necessary, `gfx-hal` goes to great length to hide a platform API's lack of native
-support for the exposed API.
+`gfx-hal` was deprecated in mid-2021. [This issue](https://github.com/gfx-rs/gfx/discussions/3768) describes why, and
+some of the issues mentioned there were factors in choosing not to use it. It was unsafe API that closely followed the 
+API design of vulkan. Because it so closely followed vulkan, it had concepts and features that did not map cleanly to
+other APIs we want to support. When necessary, `gfx-hal` went to great length to hide this, adding complexity.
 
-`rafx-api` is also unsafe, but has a reduced API footprint that is easily supported across modern platform APIs.
+`rafx-api` is also unsafe, but has a reduced API footprint that is more easily supported across modern platform APIs.
 This keeps backends simple to read and debug, while hopefully improving ease of use. In some cases, the provided API
 will not be sufficient, so `rafx-api` fully exposes the underlying platform APIs and resources. This allows full, native
 control and access to the very latest features in the underlying platform API.
 
 ### Compared with wgpu
 
-`wgpu` is a fully safe API that closely follows the webgpu standard. It pursues safety at any cost because the API is
-intended to be exposed in web browsers - where any form of undefined behavior is unacceptable. GPU resources are tracked
-so that they are not dropped while in use and can be placed in the correct state for the GPU to use them. This safety 
-combined with a less vulkan-centric API design makes it much easier to use than `gfx-hal` and it has become very popular
-in the rust community. It is under the MPL license which is more restrictive than licenses like MIT or Apache 2.0.
+`wgpu` is a fully safe API that closely follows the webgpu standard. To ensure safety, GPU resources are tracked at
+runtime so that they are not dropped while in use. Additionally, resources are automatically placed in the correct 
+state for the GPU to use them. This safety combined with a less vulkan-centric API design made it much easier to use
+than `gfx-hal`. It has since become very popular in the rust community.
 
-`rafx-api` does not have these safety guarantees (or complexity/overhead required to support them). However,
+`rafx-api` does not have these safety guarantees (or complexity/overhead required to support them). Instead,
 `rafx-framework` provides higher-level tools and abstractions that mitigate this unsafety. For example, the render graph
 automatically handles placing resources into the correct state. It can potentially do this in a more optimal way because
-it has a holistic view of what will happen during the entire frame. `rafx-api` is available under the very permissive
-Apache-2.0/MIT license.
+it has a holistic view of what will happen during the entire frame.
+
+In mid-2020, `wgpu` was relicensed from MPL to the less restrictive MIT/Apache-2.0 license. Additionally, the structure
+of the project was drastically simplified. In my opinion, these are great changes that make `wgpu` an easy
+recommendation for many projects. Even so, I think `rafx-api` is sufficiently different from `wgpu` in engineering
+tradeoffs to make it worth considering for certain kinds of projects.
 
 ## rafx-framework
 
@@ -75,17 +79,4 @@ shader translation/compilation on end-user devices. This permits many heavy non-
 the game itself.
 
 Additionally, the shader processor can [generate rust code](shaders/generated_rust_code.md) that provides a type-safe
-interface for working with descriptor sets compatible with a given shader. 
-
-
-
-
-
-
-
-
-
-
-
-
-
+interface for working with descriptor sets compatible with a given shader.
