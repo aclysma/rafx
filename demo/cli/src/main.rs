@@ -43,14 +43,14 @@ fn create_daemon(args: &CliArgs) -> AssetDaemon {
         .with_db_path(&args.daemon_args.db_dir)
         .with_address(args.daemon_args.address)
         .with_asset_dirs(args.daemon_args.asset_dirs.clone())
-        .with_importer("ttf", FontImporter)
-        .with_importer("gltf", GltfImporter)
-        .with_importer("glb", GltfImporter)
-        .with_importer("blender_material", BlenderMaterialImporter)
-        .with_importer("blender_model", BlenderModelImporter)
-        .with_importer("blender_mesh", BlenderMeshImporter)
-        .with_importer("blender_prefab", BlenderPrefabImporter)
-        .with_importer("blender_anim", BlenderAnimImporter)
+        .with_importer(&["ttf"], FontImporter)
+        .with_importer(&["gltf"], GltfImporter)
+        .with_importer(&["glb"], GltfImporter)
+        .with_importer(&["blender_material"], BlenderMaterialImporter)
+        .with_importer(&["blender_model"], BlenderModelImporter)
+        .with_importer(&["blender_mesh"], BlenderMeshImporter)
+        .with_importer(&["blender_prefab"], BlenderPrefabImporter)
+        .with_importer(&["blender_anim"], BlenderAnimImporter)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
