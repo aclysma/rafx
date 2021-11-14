@@ -11,7 +11,7 @@ impl RendererAssetPlugin for AnimAssetTypeRendererPlugin {
         &self,
         asset_daemon: AssetDaemon,
     ) -> AssetDaemon {
-        asset_daemon.with_importer("blender_anim", super::BlenderAnimImporter)
+        asset_daemon.with_importer(&["blender_anim"], super::BlenderAnimImporter)
     }
 
     fn register_asset_types(

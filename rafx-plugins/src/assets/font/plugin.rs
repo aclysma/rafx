@@ -12,7 +12,7 @@ impl RendererAssetPlugin for FontAssetTypeRendererPlugin {
         &self,
         asset_daemon: AssetDaemon,
     ) -> AssetDaemon {
-        asset_daemon.with_importer("ttf", super::FontImporter)
+        asset_daemon.with_importer(&["ttf"], super::FontImporter)
     }
 
     fn register_asset_types(

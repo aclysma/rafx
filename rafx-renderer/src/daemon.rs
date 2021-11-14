@@ -1,3 +1,4 @@
+use rafx_assets::distill::loader::rpc_io::RpcConnectionType;
 use rafx_assets::distill::loader::storage::DefaultIndirectionResolver;
 use rafx_assets::distill::loader::{Loader, PackfileReader, RpcIO};
 use rafx_assets::distill_impl::AssetResource;
@@ -21,7 +22,7 @@ impl Default for AssetDaemonOpt {
 }
 
 pub fn init_distill_daemon(connect_string: String) -> AssetResource {
-    let rpc_loader = RpcIO::new(connect_string).unwrap();
+    let rpc_loader = RpcIO::new(RpcConnectionType::TCP(connect_string)).unwrap();
     let loader = Loader::new(Box::new(rpc_loader));
     let resolver = Box::new(DefaultIndirectionResolver);
     AssetResource::new(loader, resolver)
@@ -29,7 +30,7 @@ pub fn init_distill_daemon(connect_string: String) -> AssetResource {
 
 pub fn init_distill_packfile(pack_file: &std::path::Path) -> AssetResource {
     let packfile = std::fs::File::open(pack_file).unwrap();
-    let packfile_loader = PackfileReader::new(packfile).unwrap();
+    let packfile_loader = PackfileReader::new_from_file(packfile).unwrap();
     let loader = Loader::new(Box::new(packfile_loader));
     let resolver = Box::new(DefaultIndirectionResolver);
     AssetResource::new(loader, resolver)

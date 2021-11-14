@@ -139,7 +139,7 @@ impl AssetStorageSet {
 // forwards the call
 impl AssetStorage for AssetStorageSet {
     fn update_asset(
-        &self,
+        &mut self,
         loader_info: &dyn LoaderInfoProvider,
         asset_data_type_id: &AssetTypeId,
         data: Vec<u8>,
@@ -162,7 +162,7 @@ impl AssetStorage for AssetStorageSet {
     }
 
     fn commit_asset_version(
-        &self,
+        &mut self,
         asset_data_type_id: &AssetTypeId,
         load_handle: LoadHandle,
         version: u32,
@@ -182,7 +182,7 @@ impl AssetStorage for AssetStorageSet {
     }
 
     fn free(
-        &self,
+        &mut self,
         asset_data_type_id: &AssetTypeId,
         load_handle: LoadHandle,
         version: u32,

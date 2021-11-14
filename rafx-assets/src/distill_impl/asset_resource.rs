@@ -71,7 +71,7 @@ impl AssetResource {
     pub fn update(&mut self) {
         distill::loader::handle::process_ref_ops(&self.loader, &self.rx);
         self.loader
-            .process(&self.storage, &*self.resolver)
+            .process(&mut self.storage, &*self.resolver)
             .expect("failed to process loader");
     }
 
@@ -124,13 +124,6 @@ impl AssetResource {
         handle: &Handle<T>,
     ) -> Option<u32> {
         handle.asset_version::<T, _>(&self.storage)
-    }
-
-    pub fn with_serde_context<R>(
-        &self,
-        f: impl FnMut() -> R,
-    ) -> R {
-        self.loader.with_serde_context(&self.tx, f)
     }
 
     pub fn load_status<T>(

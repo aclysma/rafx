@@ -53,43 +53,35 @@ pub fn default_daemon() -> distill::daemon::AssetDaemon {
 
     #[allow(unused_mut)]
     let mut daemon = distill::daemon::AssetDaemon::default()
-        .with_importer("sampler", SamplerImporter)
-        .with_importer("material", MaterialImporter)
-        .with_importer("materialinstance", MaterialInstanceImporter)
-        .with_importer("compute", ComputePipelineImporter)
-        .with_importer("cookedshaderpackage", ShaderImporterCooked)
+        .with_importer(&["sampler"], SamplerImporter)
+        .with_importer(&["material"], MaterialImporter)
+        .with_importer(&["materialinstance"], MaterialInstanceImporter)
+        .with_importer(&["compute"], ComputePipelineImporter)
+        .with_importer(&["cookedshaderpackage"], ShaderImporterCooked)
         .with_importer(
-            "png",
+            &["png"],
             ImageImporter(ImageFileFormat::Png, image_importer_config.clone()),
         )
         .with_importer(
-            "jpg",
+            &["jpg", "jpeg"],
             ImageImporter(ImageFileFormat::Jpeg, image_importer_config.clone()),
         )
         .with_importer(
-            "jpeg",
-            ImageImporter(ImageFileFormat::Jpeg, image_importer_config.clone()),
-        )
-        .with_importer(
-            "tga",
+            &["tga"],
             ImageImporter(ImageFileFormat::Tga, image_importer_config.clone()),
         )
         .with_importer(
-            "tif",
+            &["tif", "tiff"],
             ImageImporter(ImageFileFormat::Tiff, image_importer_config.clone()),
         )
         .with_importer(
-            "tiff",
-            ImageImporter(ImageFileFormat::Tiff, image_importer_config.clone()),
-        )
-        .with_importer(
-            "bmp",
+            &["bmp"],
             ImageImporter(ImageFileFormat::Bmp, image_importer_config.clone()),
         );
 
     #[cfg(feature = "basis-universal")]
     {
-        daemon = daemon.with_importer("basis", BasisImageImporter);
+        daemon = daemon.with_importer(&["basis"], BasisImageImporter);
     }
 
     daemon

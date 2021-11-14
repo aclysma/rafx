@@ -649,7 +649,7 @@ impl DemoApp {
         world: &mut World,
         resources: &Resources,
         event: &winit::event::Event<()>,
-        _window: &winit::window::Window,
+        window: &winit::window::Window,
     ) -> bool {
         use winit::event::*;
 
