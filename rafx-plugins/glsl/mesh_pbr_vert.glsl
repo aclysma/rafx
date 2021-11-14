@@ -7,16 +7,19 @@ layout (location = 1) in vec3 in_normal;
 // w component is a sign value (-1 or +1) indicating handedness of the tangent basis
 // see GLTF spec for more info
 // @[semantic("TANGENT")]
-layout (location = 2) in vec4 in_tangent;
+layout (location = 2) in vec3 in_tangent;
+
+// @[semantic("BINORMAL")]
+layout (location = 3) in vec3 in_binormal;
 
 // @[semantic("TEXCOORD")]
-layout (location = 3) in vec2 in_uv;
+layout (location = 4) in vec2 in_uv;
 
 // @[semantic("MODELMATRIX")]
-layout (location = 4) in mat4 in_model_matrix; // Uses locations 4-7. The semantic will be named `MODELMATRIX0` through `MODELMATRIX3`.
-// layout (location = 5) in mat4 in_model_matrix;
+layout (location = 5) in mat4 in_model_matrix; // Uses locations 4-7. The semantic will be named `MODELMATRIX0` through `MODELMATRIX3`.
 // layout (location = 6) in mat4 in_model_matrix;
 // layout (location = 7) in mat4 in_model_matrix;
+// layout (location = 8) in mat4 in_model_matrix;
 
 // Do all math in view space so that it is more easily portable to deferred/clustered
 // forward rendering (vs = view space)
@@ -38,14 +41,16 @@ void pbr_main() {
     gl_Position = model_view_proj * vec4(in_pos, 1.0);
     out_position_vs = (model_view * vec4(in_pos, 1.0)).xyz;
 
-    // NOTE: Not sure if I need to normalize after the matrix multiply
-    out_normal_vs = mat3(model_view) * in_normal;
-    out_tangent_vs = mat3(model_view) * in_tangent.xyz;
-
-    vec3 binormal = cross(in_normal, in_tangent.xyz) * in_tangent.w;
-    out_binormal_vs = mat3(model_view) * binormal;
+    // This can be skipped if just using rotation/uniform scale. Required for non-uniform scale/shear
+    mat3 normalMatrix = transpose(inverse(mat3(model_view)));
+    vec3 n = normalize(normalMatrix * in_normal);
+    vec3 t = normalize(normalMatrix * in_tangent);
+    vec3 b = normalize(normalMatrix * in_binormal);
 
     out_uv = in_uv;
+    out_normal_vs = n;
+    out_tangent_vs = t;
+    out_binormal_vs = b;
 
     // Used to sample the shadow map
     out_position_ws = in_model_matrix * vec4(in_pos, 1.0);

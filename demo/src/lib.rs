@@ -649,7 +649,7 @@ impl DemoApp {
         world: &mut World,
         resources: &Resources,
         event: &winit::event::Event<()>,
-        _window: &winit::window::Window,
+        window: &winit::window::Window,
     ) -> bool {
         use winit::event::*;
 
@@ -708,6 +708,12 @@ impl DemoApp {
                     if *virtual_keycode == VirtualKeyCode::Right {
                         scene_manager.queue_load_next_scene();
                         was_handled = true;
+                    }
+
+                    if *virtual_keycode == VirtualKeyCode::G {
+                        window
+                            .set_cursor_grab(true)
+                            .expect("Failed to grab mouse cursor");
                     }
 
                     if *virtual_keycode == VirtualKeyCode::M {

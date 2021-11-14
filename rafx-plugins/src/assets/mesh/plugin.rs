@@ -13,12 +13,12 @@ impl RendererAssetPlugin for GltfAssetTypeRendererPlugin {
         asset_daemon: AssetDaemon,
     ) -> AssetDaemon {
         asset_daemon
-            .with_importer("gltf", super::GltfImporter)
-            .with_importer("glb", super::GltfImporter)
-            .with_importer("blender_material", super::BlenderMaterialImporter)
-            .with_importer("blender_model", super::BlenderModelImporter)
-            .with_importer("blender_mesh", super::BlenderMeshImporter)
-            .with_importer("blender_prefab", super::BlenderPrefabImporter)
+            .with_importer(&["gltf"], super::GltfImporter)
+            .with_importer(&["glb"], super::GltfImporter)
+            .with_importer(&["blender_material"], super::BlenderMaterialImporter)
+            .with_importer(&["blender_model"], super::BlenderModelImporter)
+            .with_importer(&["blender_mesh"], super::BlenderMeshImporter)
+            .with_importer(&["blender_prefab"], super::BlenderPrefabImporter)
     }
 
     fn register_asset_types(

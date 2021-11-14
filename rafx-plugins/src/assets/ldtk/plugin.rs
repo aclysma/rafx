@@ -12,7 +12,7 @@ impl RendererAssetPlugin for LdtkAssetTypeRendererPlugin {
         &self,
         asset_daemon: AssetDaemon,
     ) -> AssetDaemon {
-        asset_daemon.with_importer("ldtk", super::LdtkImporter)
+        asset_daemon.with_importer(&["ldtk"], super::LdtkImporter)
     }
 
     fn register_asset_types(

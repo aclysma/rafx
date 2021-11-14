@@ -39,7 +39,8 @@ def export(object: bpy.types.Object, project_settings):
     if use_normals:
         mesh.calc_normals_split()
     
-    use_tangents = True
+    # We now calculate these in rafx
+    use_tangents = False
     if use_normals and use_tangents:
         try:
             mesh.calc_tangents()

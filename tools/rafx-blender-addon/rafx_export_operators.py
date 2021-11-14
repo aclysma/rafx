@@ -289,16 +289,19 @@ class RafxExportAllOp(bpy.types.Operator):
         model_count = 0
         prefab_count = 0
 
+        logging.info("Exporting images")
         for image in bpy.data.images:
             if image.users != 0 or image.use_fake_user:
                 do_export_image(self, image, project_settings)
                 image_count += 1
         
+        logging.info("Exporting materials")
         for material in bpy.data.materials:
             if material.users != 0 or material.use_fake_user:
                 do_export_material(self, material, project_settings)
                 material_count += 1
         
+        logging.info("Exporting models and scenes")
         # models stored in this blend file can be found by iterating scenes
         exported_scenes = set()
         for collection in bpy.data.collections:

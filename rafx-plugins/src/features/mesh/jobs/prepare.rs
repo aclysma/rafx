@@ -358,7 +358,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                 per_view_frag_data.view = view.view_matrix().to_cols_array_2d();
                 per_view_frag_data.view_proj = view.view_proj().to_cols_array_2d();
                 per_view_frag_data.ambient_light = if is_lit {
-                    glam::Vec4::new(0.03, 0.03, 0.03, 1.0).into()
+                    //glam::Vec4::new(0.005, 0.005, 0.005, 1.0).into()
+                    glam::Vec4::new(0.05, 0.05, 0.05, 1.0).into()
                 } else {
                     glam::Vec4::ONE.into()
                 };

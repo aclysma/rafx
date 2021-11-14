@@ -789,18 +789,12 @@ fn extract_meshes_to_import(
 
                 let positions = reader.read_positions();
                 let normals = reader.read_normals();
-                let tangents = reader.read_tangents();
                 //let colors = reader.read_colors();
                 let tex_coords = reader.read_tex_coords(0);
                 let indices = reader.read_indices();
 
-                if let (
-                    Some(indices),
-                    Some(positions),
-                    Some(normals),
-                    Some(tangents),
-                    Some(tex_coords),
-                ) = (indices, positions, normals, tangents, tex_coords)
+                if let (Some(indices), Some(positions), Some(normals), Some(tex_coords)) =
+                    (indices, positions, normals, tex_coords)
                 {
                     let indices_u32: Vec<u32> = indices.into_u32().collect();
                     let indices_u16 = try_convert_to_u16(&indices_u32);
@@ -808,12 +802,46 @@ fn extract_meshes_to_import(
                     //TODO: Consider computing binormal (bitangent) here
                     let positions: Vec<_> = positions.collect();
                     let normals: Vec<_> = normals.collect();
-                    let tangents: Vec<_> = tangents.collect();
                     let tex_coords: Vec<_> = tex_coords.into_f32().collect();
+
+                    let mut tangents = Vec::<glam::Vec3>::new();
+                    tangents.resize(positions.len(), glam::Vec3::default());
+
+                    let mut binormals = Vec::<glam::Vec3>::new();
+                    binormals.resize(positions.len(), glam::Vec3::default());
+
+                    assert_eq!(indices_u32.len() % 3, 0);
+                    for i in 0..(indices_u32.len() / 3) {
+                        let i0 = indices_u32[i * 3] as usize;
+                        let i1 = indices_u32[i * 3 + 1] as usize;
+                        let i2 = indices_u32[i * 3 + 2] as usize;
+
+                        let p0 = glam::Vec3::from(positions[i0]);
+                        let p1 = glam::Vec3::from(positions[i1]);
+                        let p2 = glam::Vec3::from(positions[i2]);
+
+                        let uv0 = glam::Vec2::from(tex_coords[i0]);
+                        let uv1 = glam::Vec2::from(tex_coords[i1]);
+                        let uv2 = glam::Vec2::from(tex_coords[i2]);
+
+                        let (t, b) = super::calculate_tangent_binormal(p0, p1, p2, uv0, uv1, uv2);
+
+                        tangents[i0] += t;
+                        tangents[i1] += t;
+                        tangents[i2] += t;
+                        binormals[i0] += b;
+                        binormals[i1] += b;
+                        binormals[i2] += b;
+                    }
 
                     let vertex_offset =
                         all_vertices.pad_to_alignment(std::mem::size_of::<MeshVertex>());
                     for i in 0..positions.len() {
+                        let (t, b) = super::fix_tangent_binormal(
+                            glam::Vec3::from(normals[i]),
+                            tangents[i],
+                            binormals[i],
+                        );
                         all_positions.push(Vec3::new(
                             positions[i][0],
                             positions[i][1],
@@ -824,7 +852,8 @@ fn extract_meshes_to_import(
                                 &[MeshVertex {
                                     position: positions[i],
                                     normal: normals[i],
-                                    tangent: tangents[i],
+                                    tangent: t.into(),
+                                    binormal: b.into(),
                                     tex_coord: tex_coords[i],
                                 }],
                                 1,

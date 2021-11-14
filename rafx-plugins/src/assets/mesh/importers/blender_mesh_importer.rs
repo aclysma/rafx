@@ -71,7 +71,7 @@ impl Importer for BlenderMeshImporter {
     where
         Self: Sized,
     {
-        5
+        6
     }
 
     fn version(&self) -> u32 {
@@ -126,18 +126,14 @@ impl Importer for BlenderMeshImporter {
             let positions =
                 b3f_reader.get_block(mesh_part.position.ok_or("No position data")? as usize);
             let normals = b3f_reader.get_block(mesh_part.normal.ok_or("No normal data")? as usize);
-            let tangents =
-                b3f_reader.get_block(mesh_part.tangent.ok_or("No tangent data")? as usize);
-            let tex_coords =
-                b3f_reader.get_block(*mesh_part.uv.get(0).ok_or("No position data")? as usize);
+            let tex_coords = b3f_reader
+                .get_block(*mesh_part.uv.get(0).ok_or("No texture coordinate data")? as usize);
             let part_indices = b3f_reader.get_block(mesh_part.indices as usize);
 
             let positions = try_cast_u8_slice::<[f32; 3]>(positions)
                 .ok_or("Could not cast due to alignment")?;
             let normals =
                 try_cast_u8_slice::<[f32; 3]>(normals).ok_or("Could not cast due to alignment")?;
-            let tangents =
-                try_cast_u8_slice::<[f32; 4]>(tangents).ok_or("Could not cast due to alignment")?;
             let tex_coords = try_cast_u8_slice::<[f32; 2]>(tex_coords)
                 .ok_or("Could not cast due to alignment")?;
             let part_indices =
@@ -146,13 +142,50 @@ impl Importer for BlenderMeshImporter {
             let vertex_offset = all_vertices.len();
             let indices_offset = all_indices.len();
 
+            let mut tangents = Vec::<glam::Vec3>::new();
+            tangents.resize(positions.len(), glam::Vec3::default());
+
+            let mut binormals = Vec::<glam::Vec3>::new();
+            binormals.resize(positions.len(), glam::Vec3::default());
+
+            assert_eq!(part_indices.len() % 3, 0);
+            for i in 0..(part_indices.len() / 3) {
+                let i0 = part_indices[i * 3] as usize;
+                let i1 = part_indices[i * 3 + 1] as usize;
+                let i2 = part_indices[i * 3 + 2] as usize;
+
+                let p0 = glam::Vec3::from(positions[i0]);
+                let p1 = glam::Vec3::from(positions[i1]);
+                let p2 = glam::Vec3::from(positions[i2]);
+
+                let uv0 = glam::Vec2::from(tex_coords[i0]);
+                let uv1 = glam::Vec2::from(tex_coords[i1]);
+                let uv2 = glam::Vec2::from(tex_coords[i2]);
+
+                let (t, b) = super::calculate_tangent_binormal(p0, p1, p2, uv0, uv1, uv2);
+
+                tangents[i0] += t;
+                tangents[i1] += t;
+                tangents[i2] += t;
+                binormals[i0] += b;
+                binormals[i1] += b;
+                binormals[i2] += b;
+            }
+
             for i in 0..positions.len() {
+                let (t, b) = super::fix_tangent_binormal(
+                    glam::Vec3::from(normals[i]),
+                    tangents[i],
+                    binormals[i],
+                );
+
                 all_positions.push(Vec3::new(positions[i][0], positions[i][1], positions[i][2]));
                 all_vertices.push(
                     &[MeshVertex {
                         position: positions[i],
                         normal: normals[i],
-                        tangent: tangents[i],
+                        tangent: t.into(),
+                        binormal: b.into(),
                         tex_coord: tex_coords[i],
                     }],
                     1,

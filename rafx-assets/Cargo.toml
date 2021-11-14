@@ -22,7 +22,7 @@ categories = [
 rafx-api = { version = "0.0.14", path = "../rafx-api" }
 rafx-base = { version = "0.0.14", path = "../rafx-base" }
 rafx-framework = { version = "0.0.14", path = "../rafx-framework" }
-distill = { version = "=0.0.3", features = ["serde_importers"] }
+distill = { version = "=0.0.3", features = ["serde_importers", "distill-daemon"] }
 basis-universal = { version = "0.1.1", optional = true }
 type-uuid = "0.1"
 uuid = "0.8"

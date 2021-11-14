@@ -10,12 +10,14 @@ use serde::{Deserialize, Serialize};
 use std::any::TypeId;
 use type_uuid::*;
 
+//NOTE: This is serialized in image asset options, so may require asset schema change if modifying it
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum ImageAssetColorSpace {
     Srgb,
     Linear,
 }
 
+//NOTE: This is serialized in image asset options, so may require asset schema change if modifying it
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum ImageAssetMipGeneration {
     NoMips,
@@ -32,6 +34,7 @@ impl Into<crate::GpuImageDataColorSpace> for ImageAssetColorSpace {
     }
 }
 
+//NOTE: This is serialized in image asset options, so may require asset schema change if modifying it
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum ImageAssetBasisCompressionType {
     Etc1S,
@@ -48,6 +51,7 @@ impl Into<basis_universal::BasisTextureFormat> for ImageAssetBasisCompressionTyp
     }
 }
 
+//NOTE: This is serialized in image asset options, so may require asset schema change if modifying it
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct ImageAssetBasisCompressionSettings {
     compression_type: ImageAssetBasisCompressionType,
@@ -73,13 +77,14 @@ impl ImageAssetBasisCompressionSettings {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum ImageAssetDataFormat {
-    RawRGBA32,
+    RGBA32Uncompressed,
     BasisCompressed,
 }
 
+//NOTE: This is serialized in image asset options, so may require asset schema change if modifying it
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum ImageAssetDataFormatConfig {
-    RawRGBA32,
+    Uncompressed,
     BasisCompressed(ImageAssetBasisCompressionSettings),
 }
 
@@ -130,7 +135,7 @@ impl ImageAssetData {
                 unimplemented!("Not built with basis-universal feature")
             }
         } else {
-            let format_config = ImageAssetDataFormatConfig::RawRGBA32;
+            let format_config = ImageAssetDataFormatConfig::Uncompressed;
             let mipmap_generation = ImageAssetMipGeneration::Runtime;
             (format_config, mipmap_generation)
         }
@@ -146,12 +151,12 @@ impl ImageAssetData {
         raw_rgba32: &[u8],
     ) -> RafxResult<ImageAssetData> {
         match format_config {
-            ImageAssetDataFormatConfig::RawRGBA32 => {
+            ImageAssetDataFormatConfig::Uncompressed => {
                 let generate_mips_at_runtime = match mip_generation {
                     ImageAssetMipGeneration::NoMips => false,
-                    ImageAssetMipGeneration::Precomupted => {
-                        Err("RawRGBA32 cannot store precomputed mipmaps")?
-                    }
+                    ImageAssetMipGeneration::Precomupted => Err(
+                        "Uncompressed ImageAssetDataFormatConfig cannot store precomputed mipmaps",
+                    )?,
                     ImageAssetMipGeneration::Runtime => true,
                 };
 
@@ -159,7 +164,7 @@ impl ImageAssetData {
                     width,
                     height,
                     color_space,
-                    format: ImageAssetDataFormat::RawRGBA32,
+                    format: ImageAssetDataFormat::RGBA32Uncompressed,
                     generate_mips_at_runtime,
                     resource_type,
                     data: raw_rgba32.to_vec(),

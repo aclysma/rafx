@@ -1,6 +1,7 @@
 use log::LevelFilter;
 
 use rafx::api::*;
+use rafx::assets::distill::loader::rpc_io::RpcConnectionType;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::MaterialAsset;
 use rafx::distill::loader::{storage::DefaultIndirectionResolver, Loader, RpcIO};
@@ -119,7 +120,8 @@ fn run() -> RafxResult<()> {
         // system and is something you can insert into an ECS.
         //
         let mut asset_resource = {
-            let rpc_loader = RpcIO::new(connect_string.to_string()).unwrap();
+            let rpc_loader =
+                RpcIO::new(RpcConnectionType::TCP(connect_string.to_string())).unwrap();
             let loader = Loader::new(Box::new(rpc_loader));
             let resolver = Box::new(DefaultIndirectionResolver);
             AssetResource::new(loader, resolver)
