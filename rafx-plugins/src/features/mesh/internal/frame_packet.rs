@@ -35,6 +35,7 @@ pub struct MeshPerViewData {
     pub num_directional_lights: u32,
     pub num_point_lights: u32,
     pub num_spot_lights: u32,
+    pub ambient_light: glam::Vec3,
 }
 
 pub struct ExtractedDirectionalLight {

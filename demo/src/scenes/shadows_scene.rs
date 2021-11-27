@@ -25,7 +25,8 @@ use rafx_plugins::components::{SpotLightComponent, VisibilityComponent};
 use rafx_plugins::features::debug3d::Debug3DRenderFeature;
 use rafx_plugins::features::mesh::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
-    MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
+    MeshRenderOptions, MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag,
+    MeshWireframeRenderFeatureFlag,
 };
 use rafx_plugins::features::skybox::{SkyboxRenderFeature, SkyboxResource};
 use rafx_plugins::features::sprite::SpriteRenderFeature;
@@ -47,6 +48,9 @@ impl ShadowsScene {
 
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
+
+        let mut mesh_render_options = resources.get_mut::<MeshRenderOptions>().unwrap();
+        mesh_render_options.ambient_light = glam::Vec3::new(0.02, 0.02, 0.02);
 
         let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
 

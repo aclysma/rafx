@@ -7,6 +7,9 @@ use rafx_plugins::components::{
 use rafx_plugins::features::debug3d::Debug3DResource;
 use rand::Rng;
 
+mod pbr_test;
+use pbr_test::PbrTestScene;
+
 mod shadows_scene;
 use shadows_scene::ShadowsScene;
 
@@ -28,6 +31,7 @@ use many_cubes_scene::ManyCubesScene;
 #[derive(Copy, Clone, Debug)]
 pub enum Scene {
     Shadows,
+    PbrTest,
     Sprite,
     Animation,
     Rafxmark,
@@ -35,8 +39,9 @@ pub enum Scene {
     ManyCubes,
 }
 
-pub const ALL_SCENES: [Scene; 6] = [
+pub const ALL_SCENES: [Scene; 7] = [
     Scene::Shadows,
+    Scene::PbrTest,
     Scene::Sprite,
     Scene::Animation,
     Scene::Rafxmark,
@@ -59,6 +64,7 @@ fn create_scene(
 ) -> Box<dyn TestScene> {
     match scene {
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
+        Scene::PbrTest => Box::new(PbrTestScene::new(world, resources)),
         Scene::Sprite => Box::new(SpriteScene::new(world, resources)),
         Scene::Animation => Box::new(AnimationScene::new(world, resources)),
         Scene::Rafxmark => Box::new(RafxmarkScene::new(world, resources)),

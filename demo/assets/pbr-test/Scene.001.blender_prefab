@@ -1,0 +1,881 @@
+{
+    "objects": [
+        {
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    6.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.001.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    12.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.002.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    18.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.003.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    24.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.004.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    30.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.005.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    6.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.006.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    6.0,
+                    0.0,
+                    6.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.007.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    6.0,
+                    0.0,
+                    12.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.008.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    6.0,
+                    0.0,
+                    18.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.009.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    6.0,
+                    0.0,
+                    24.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.010.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    6.0,
+                    0.0,
+                    30.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.011.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    12.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.012.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    12.0,
+                    0.0,
+                    6.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.013.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    12.0,
+                    0.0,
+                    12.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.014.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    12.0,
+                    0.0,
+                    18.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.015.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    12.0,
+                    0.0,
+                    24.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.016.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    12.0,
+                    0.0,
+                    30.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.017.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    18.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.018.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    18.0,
+                    0.0,
+                    6.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.019.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    18.0,
+                    0.0,
+                    12.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.020.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    18.0,
+                    0.0,
+                    18.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.021.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    18.0,
+                    0.0,
+                    24.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.022.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    18.0,
+                    0.0,
+                    30.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.023.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    24.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.024.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    24.0,
+                    0.0,
+                    6.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.025.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    24.0,
+                    0.0,
+                    12.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.026.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    24.0,
+                    0.0,
+                    18.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.027.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    24.0,
+                    0.0,
+                    24.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.028.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    24.0,
+                    0.0,
+                    30.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.029.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    30.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.030.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    30.0,
+                    0.0,
+                    6.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.031.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    30.0,
+                    0.0,
+                    12.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.032.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    30.0,
+                    0.0,
+                    18.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.033.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    30.0,
+                    0.0,
+                    24.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.034.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    30.0,
+                    0.0,
+                    30.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "model": {
+                "model": "/Users/pmd/dev/rust/rafx/demo/assets/pbr-test/Icosphere.035.blender_model"
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    15.0,
+                    -25.0,
+                    15.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "light": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "kind": "Point",
+                "intensity": 5000.0
+            }
+        },
+        {
+            "transform": {
+                "position": [
+                    15.0,
+                    -90.0,
+                    15.0
+                ],
+                "rotation": [
+                    0.7070726752281189,
+                    0.0,
+                    0.0,
+                    0.7071408629417419
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,9 @@
+(
+    version: 2,
+    importer_options: (),
+    importer_state: (
+        mesh_id: Some("533a5b45-2eb5-4bad-be15-5a9465d7b75a"),
+        vertex_buffer_id: Some("74ea8e8c-657e-4a43-9490-d484c9c93e8a"),
+        index_buffer_id: Some("d214338e-7c52-439f-8f14-6620a0844324"),
+    ),
+)
