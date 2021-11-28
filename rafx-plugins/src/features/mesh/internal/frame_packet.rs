@@ -12,6 +12,13 @@ use rafx::framework::{
 
 pub struct MeshRenderFeatureTypes;
 
+//TODO: Pull this const from the shader
+pub const MAX_SHADOW_MAPS_2D: usize = 32;
+pub const MAX_SHADOW_MAPS_CUBE: usize = 16;
+pub const MAX_DIRECTIONAL_LIGHTS: usize = 16;
+pub const MAX_POINT_LIGHTS: usize = 16;
+pub const MAX_SPOT_LIGHTS: usize = 16;
+
 //---------
 // EXTRACT
 //---------
@@ -29,9 +36,9 @@ pub struct MeshRenderObjectInstanceData {
 
 #[derive(Default)]
 pub struct MeshPerViewData {
-    pub directional_lights: [Option<ExtractedDirectionalLight>; 16],
-    pub point_lights: [Option<ExtractedPointLight>; 16],
-    pub spot_lights: [Option<ExtractedSpotLight>; 16],
+    pub directional_lights: [Option<ExtractedDirectionalLight>; MAX_DIRECTIONAL_LIGHTS],
+    pub point_lights: [Option<ExtractedPointLight>; MAX_POINT_LIGHTS],
+    pub spot_lights: [Option<ExtractedSpotLight>; MAX_SPOT_LIGHTS],
     pub num_directional_lights: u32,
     pub num_point_lights: u32,
     pub num_spot_lights: u32,
@@ -67,10 +74,6 @@ pub type MeshFramePacket = FramePacket<MeshRenderFeatureTypes>;
 //---------
 // PREPARE
 //---------
-
-//TODO: Pull this const from the shader
-pub const MAX_SHADOW_MAPS_2D: usize = 32;
-pub const MAX_SHADOW_MAPS_CUBE: usize = 16;
 
 #[derive(Clone)]
 pub struct MeshPartMaterialDescriptorSetPair {

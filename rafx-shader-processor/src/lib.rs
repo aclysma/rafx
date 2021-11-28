@@ -265,6 +265,25 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
     }
 }
 
+fn try_load_override_src(
+    original_path: &Path,
+    extension: &str,
+) -> std::io::Result<Option<String>> {
+    let mut override_path = original_path.as_os_str().to_os_string();
+    override_path.push(extension);
+    let override_path = PathBuf::from(override_path);
+    if override_path.exists() {
+        log::info!(
+            "Override shader {:?} with {:?}",
+            original_path,
+            override_path.to_string_lossy()
+        );
+        Ok(Some(std::fs::read_to_string(override_path)?))
+    } else {
+        Ok(None)
+    }
+}
+
 fn process_glsl_shader(
     glsl_file: &Path,
     spv_file: Option<&PathBuf>,
@@ -451,7 +470,9 @@ fn process_glsl_shader(
         unoptimized_compile_spirv_result.as_binary_u8().to_vec()
     };
 
-    let metal_src = if metal_generated_src_file.is_some() || package_metal {
+    let metal_src = if let Some(src) = try_load_override_src(glsl_file, ".metal")? {
+        Some(src)
+    } else if metal_generated_src_file.is_some() || package_metal {
         log::trace!("{:?}: create msl", glsl_file);
         let mut msl_ast =
             spirv_cross::spirv::Ast::<spirv_cross::msl::Target>::parse(&spirv_cross_module)?;
@@ -478,7 +499,9 @@ fn process_glsl_shader(
         None
     };
 
-    let gles2_src = if gles2_generated_src_file.is_some() || package_gles2 {
+    let gles2_src = if let Some(src) = try_load_override_src(glsl_file, ".gles2")? {
+        Some(src)
+    } else if gles2_generated_src_file.is_some() || package_gles2 {
         log::trace!("{:?}: create gles2", glsl_file);
         let mut gles2_ast =
             spirv_cross::spirv::Ast::<spirv_cross::glsl::Target>::parse(&spirv_cross_module)?;
@@ -512,7 +535,9 @@ fn process_glsl_shader(
         None
     };
 
-    let gles3_src = if gles3_generated_src_file.is_some() || package_gles3 {
+    let gles3_src = if let Some(src) = try_load_override_src(glsl_file, ".gles3")? {
+        Some(src)
+    } else if gles3_generated_src_file.is_some() || package_gles3 {
         log::trace!("{:?}: create gles3", glsl_file);
         let mut gles3_ast =
             spirv_cross::spirv::Ast::<spirv_cross::glsl::Target>::parse(&spirv_cross_module)?;
