@@ -5,6 +5,7 @@
         buffer_asset_uuids: [
             (Index(0), "873ee9cd-9c1c-4ce1-9f41-806adae6a4c6"),
             (Index(1), "09d6e7ed-d9f5-4c62-ba50-ee1f415341e7"),
+            (Index(2), "32fe8399-8e94-45f4-bc94-7b3aba5b03b9"),
         ],
         image_asset_uuids: [
             (Name("storage-container2-albedo"), "1b711326-fe38-438f-b75e-dca2e31498f0"),

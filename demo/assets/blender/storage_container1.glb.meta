@@ -5,6 +5,7 @@
         buffer_asset_uuids: [
             (Index(0), "6e4d6aac-fdef-47ae-b9b7-b7c63e5c05aa"),
             (Index(1), "97446bb8-df80-4bde-870b-7d31fb80c9b3"),
+            (Index(2), "cf06d2ad-ef44-44b7-ae20-fe0b75b67d12"),
         ],
         image_asset_uuids: [
             (Name("space-crate1-albedo"), "b7f19cfe-196a-4ccd-9683-2f2c415a9c40"),
