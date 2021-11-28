@@ -425,7 +425,7 @@ impl DemoApp {
             let mut render_options = self.resources.get_mut::<RenderOptions>().unwrap();
             let asset_manager = self.resources.get::<AssetResource>().unwrap();
 
-            egui::TopPanel::top("top_panel").show(&ctx, |ui| {
+            egui::TopBottomPanel::top("top_panel").show(&ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
                     egui::menu::menu(ui, "Windows", |ui| {
                         ui.checkbox(&mut debug_ui_state.show_render_options, "Render Options");
@@ -468,7 +468,7 @@ impl DemoApp {
                 egui::Window::new("Asset List")
                     .open(&mut debug_ui_state.show_asset_list)
                     .show(&ctx, |ui| {
-                        egui::ScrollArea::auto_sized().show(ui, |ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
                             let loader = asset_manager.loader();
                             let mut asset_info = loader
                                 .get_active_loads()
