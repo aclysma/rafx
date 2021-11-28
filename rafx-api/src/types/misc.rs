@@ -96,12 +96,17 @@ pub enum RafxColorType {
 bitflags::bitflags! {
     /// The current state of a resource. When an operation is performed that references a resource,
     /// it must be in the correct state. Resources are moved between state using barriers.
+    ///
+    /// The implementation of resource_state_to_access_flags() in the vulkan backend gives a more
+    /// thorough explanation for what these states imply about syncrhonization. See also
+    /// determine_pipeline_stage_flags() and resource_state_to_image_layout() in the vulkan backend.
     pub struct RafxResourceState: u32 {
         const UNDEFINED = 0;
         const VERTEX_AND_CONSTANT_BUFFER = 0x1;
         const INDEX_BUFFER = 0x2;
         /// Similar to vulkan's COLOR_ATTACHMENT_OPTIMAL image layout
         const RENDER_TARGET = 0x4;
+        /// Shader read/write
         const UNORDERED_ACCESS = 0x8;
         /// Similar to vulkan's DEPTH_STENCIL_ATTACHMENT_OPTIMAL image layout
         const DEPTH_WRITE = 0x10;

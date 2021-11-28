@@ -58,6 +58,27 @@ pub(crate) struct DescriptorSetLayoutInfo {
 }
 
 #[derive(Debug)]
+pub(crate) struct ArgumentDescriptor {
+    pub(crate) data_type: metal_rs::MTLDataType,
+    pub(crate) index: u64,
+    pub(crate) access: metal_rs::MTLArgumentAccess,
+    pub(crate) array_length: u64,
+    pub(crate) texture_type: MTLTextureType,
+}
+
+impl Into<metal_rs::ArgumentDescriptor> for &ArgumentDescriptor {
+    fn into(self) -> metal_rs::ArgumentDescriptor {
+        let argument_descriptor = metal_rs::ArgumentDescriptor::new().to_owned();
+        argument_descriptor.set_access(self.access);
+        argument_descriptor.set_array_length(self.array_length as _);
+        argument_descriptor.set_data_type(self.data_type);
+        argument_descriptor.set_index(self.index as _);
+        argument_descriptor.set_texture_type(self.texture_type);
+        argument_descriptor
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct RafxRootSignatureMetalInner {
     pub(crate) device_context: RafxDeviceContextMetal,
     pub(crate) pipeline_type: RafxPipelineType,
@@ -69,8 +90,7 @@ pub(crate) struct RafxRootSignatureMetalInner {
     // Keeps them in scope so they don't drop
     //TODO: Can potentially remove, they are held in DescriptorInfo too
     //immutable_samplers: Vec<RafxSampler>,
-    pub(crate) argument_descriptors:
-        [Vec<metal_rs::ArgumentDescriptor>; MAX_DESCRIPTOR_SET_LAYOUTS],
+    pub(crate) argument_descriptors: [Vec<ArgumentDescriptor>; MAX_DESCRIPTOR_SET_LAYOUTS],
     pub(crate) argument_buffer_resource_usages:
         [Arc<Vec<MTLResourceUsage>>; MAX_DESCRIPTOR_SET_LAYOUTS],
 }
@@ -260,18 +280,23 @@ impl RafxRootSignatureMetal {
             for &resource_index in &layouts[i].descriptors {
                 let descriptor = &descriptors[resource_index.0 as usize];
 
-                let argument_descriptor = metal_rs::ArgumentDescriptor::new();
-
                 let access =
                     super::util::resource_type_mtl_argument_access(descriptor.resource_type);
                 let data_type =
                     super::util::resource_type_mtl_data_type(descriptor.resource_type).unwrap();
-                argument_descriptor.set_access(access);
-                argument_descriptor.set_array_length(descriptor.element_count as _);
-                argument_descriptor.set_data_type(data_type);
-                argument_descriptor.set_index(descriptor.argument_buffer_id as _);
-                argument_descriptor.set_texture_type(MTLTextureType::D2); //TODO: Temp, not sure if it's this gets changed when bound
-                argument_descriptors[i].push(argument_descriptor.to_owned());
+
+                //TODO: Can we generate list of arg descriptors or arg buffer encoder here and reuse?
+
+                let argument_descriptor = ArgumentDescriptor {
+                    access: access,
+                    array_length: descriptor.element_count as _,
+                    data_type: data_type,
+                    index: descriptor.argument_buffer_id as _,
+                    //TODO: Temp, not sure if it's this gets changed when bound
+                    texture_type: MTLTextureType::D2,
+                };
+
+                argument_descriptors[i].push(argument_descriptor);
             }
         }
 

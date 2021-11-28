@@ -6,7 +6,7 @@ use distill::loader::handle::Handle;
 use rafx_api::RafxResult;
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
-use rafx_framework::{ComputePipelineResource, DescriptorSetLayout, ResourceArc};
+use rafx_framework::{ComputePipelineResource, DescriptorSetLayout, ReflectedShader, ResourceArc};
 use std::hash::Hash;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
@@ -59,10 +59,20 @@ impl DefaultAssetTypeLoadHandler<ComputePipelineAssetData, ComputePipelineAsset>
             .resources()
             .get_or_create_shader(&[shader_module.shader_module.clone()], &[&reflection_data])?;
 
-        let root_signature =
-            asset_manager
-                .resources()
-                .get_or_create_root_signature(&[shader.clone()], &[], &[])?;
+        let reflected_shader = ReflectedShader::new(&[reflection_data])?;
+
+        let resource_context = asset_manager.resource_manager().resource_context();
+        let (immutable_rafx_sampler_keys, immutable_rafx_sampler_lists) =
+            ReflectedShader::create_immutable_samplers(
+                &resource_context,
+                &reflected_shader.descriptor_set_layout_defs,
+            )?;
+
+        let root_signature = asset_manager.resources().get_or_create_root_signature(
+            &[shader.clone()],
+            &immutable_rafx_sampler_keys,
+            &immutable_rafx_sampler_lists,
+        )?;
 
         //
         // Create the push constant ranges
