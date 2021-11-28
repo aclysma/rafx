@@ -3,7 +3,8 @@
     importer_options: (),
     importer_state: (
         mesh_id: Some("cb36ba2b-e272-4ab3-a847-e4bcb59bca3b"),
-        vertex_buffer_id: Some("d54eec3c-1d28-4ceb-b493-b39ecd7b0d9d"),
+        vertex_full_buffer_id: Some("57fef8d7-11e7-456d-9df9-2b3da1a586ce"),
+        vertex_position_buffer_id: Some("7687bbd9-19b0-4e86-9c8a-3e2973f0b35a"),
         index_buffer_id: Some("39edf0c9-151b-4063-a671-32074efde6e5"),
     ),
 )

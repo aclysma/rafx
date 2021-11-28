@@ -15,6 +15,12 @@
             (Index(9), "4f35e1cc-0b69-4b13-902c-7e4f798658d6"),
             (Index(10), "f05b6f32-d284-48bc-9293-368d20470d6e"),
             (Index(11), "54581eff-6077-4be2-822b-cc9a04790ef1"),
+            (Index(12), "cddcde08-01c2-4643-bf86-67f4ecf5e3fb"),
+            (Index(13), "44683647-7c03-4f5d-b64e-77d47c2bd19f"),
+            (Index(14), "7c96575c-75b8-467a-9745-5399f634c409"),
+            (Index(15), "6ce55037-0b71-4ff3-8962-159c507f3e54"),
+            (Index(16), "7cdd140c-23ec-437a-a710-6d8643316a4f"),
+            (Index(17), "59f1a386-d0b5-4ebb-add2-6eb0262504ee"),
         ],
         image_asset_uuids: [],
         material_asset_uuids: [

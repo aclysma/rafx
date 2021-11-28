@@ -5,6 +5,7 @@
         buffer_asset_uuids: [
             (Index(0), "ff4306c9-4842-4ad1-bd95-743440f36d3c"),
             (Index(1), "5bda5810-2a45-4d1a-9f3e-c8b9c37e435c"),
+            (Index(2), "a576d069-a0e4-4f81-9edd-042e081a9aed"),
         ],
         image_asset_uuids: [
             (Name("patchy_cement1_Base_Color"), "15878e86-5fe1-4f06-826f-fd9de19afc3a"),
