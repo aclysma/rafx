@@ -23,7 +23,7 @@ class RafxLevel:
 # and "level_data" which is all keys but the slices
 def load_level(level_file: str) -> RafxLevel:
     level_path = bpy.path.abspath(level_file)
-    level_dir = os.path.dirname(level_file)
+    level_dir = bpy.path.relpath(os.path.dirname(level_path), os.path.dirname(bpy.data.filepath))
 
     with open(level_path, 'r') as myfile:
         text=myfile.read()
