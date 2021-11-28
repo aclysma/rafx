@@ -368,6 +368,12 @@ impl ParsedLayoutParts {
     }
 }
 
+// The layout (...) ...;
+pub(crate) enum ParseBindingOrGroupSizeResult {
+    Binding(ParseBindingResult),
+    GroupSize(ParseGroupSizeResult),
+}
+
 #[derive(Debug)]
 pub(crate) struct ParseBindingResult {
     pub(crate) layout_parts: ParsedLayoutParts,
@@ -376,6 +382,13 @@ pub(crate) struct ParseBindingResult {
     pub(crate) fields: Option<Arc<Vec<ParseFieldResult>>>,
     pub(crate) instance_name: String,
     pub(crate) array_sizes: Vec<usize>,
+}
+
+#[derive(Debug)]
+pub(crate) struct ParseGroupSizeResult {
+    pub(crate) local_size_x: u32,
+    pub(crate) local_size_y: u32,
+    pub(crate) local_size_z: u32,
 }
 
 fn parse_layout_part(
@@ -441,7 +454,10 @@ fn parse_layout_parts(
     Ok(layout_parts)
 }
 
-fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String> {
+// The syntax for both is very similar, so look for both at the same time
+fn try_parse_binding_or_group_size(
+    code: &[char]
+) -> Result<Option<ParseBindingOrGroupSizeResult>, String> {
     let mut position = 0;
 
     //
@@ -484,6 +500,49 @@ fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String
             crate::parse_source::characters_to_string(&code)
         ))?;
         identifiers.push(instance_name);
+    }
+
+    // If we see the special compute shader group size info, parse this "binding" differently
+    if identifiers.len() == 1 && identifiers[0] == "in" {
+        let mut local_size_x = 1;
+        let mut local_size_y = 1;
+        let mut local_size_z = 1;
+        for layout_part in &layout_parts {
+            fn convert_to_group_size(layout_part: &LayoutPart) -> Result<u32, String> {
+                let value = match &layout_part.value {
+                    Some(value) => value,
+                    None => {
+                        return Err(format!(
+                        "Compute shader group size for key {} has no value, it must be an integer",
+                        layout_part.key
+                    ))
+                    }
+                };
+                let value = str::parse::<i32>(value).map_err(|_| format!("Compute shader group size for key {} value {:?} could not be converted to an integer value", layout_part.key, value))?;
+                if value < 1 {
+                    return Err(format!(
+                        "Compute shader group size for key {} is {} but must be >= 1",
+                        layout_part.key, value
+                    ));
+                }
+
+                Ok(value as u32)
+            }
+
+            match layout_part.key.as_str() {
+                "local_size_x" => local_size_x = convert_to_group_size(&layout_part)?,
+                "local_size_y" => local_size_y = convert_to_group_size(&layout_part)?,
+                "local_size_z" => local_size_z = convert_to_group_size(&layout_part)?,
+                _ => return Err(format!("Unrecognized layout part in compute shader local size declaration. Expected string starting with 'local_size_' but found {}", layout_part.key)),
+            }
+        }
+        return Ok(Some(ParseBindingOrGroupSizeResult::GroupSize(
+            ParseGroupSizeResult {
+                local_size_x,
+                local_size_y,
+                local_size_z,
+            },
+        )));
     }
 
     let modifiers = &identifiers[0..(identifiers.len() - 2)];
@@ -545,14 +604,16 @@ fn try_parse_binding(code: &[char]) -> Result<Option<ParseBindingResult>, String
         )
     })?;
 
-    Ok(Some(ParseBindingResult {
-        layout_parts,
-        binding_type,
-        type_name,
-        fields,
-        instance_name,
-        array_sizes,
-    }))
+    Ok(Some(ParseBindingOrGroupSizeResult::Binding(
+        ParseBindingResult {
+            layout_parts,
+            binding_type,
+            type_name,
+            fields,
+            instance_name,
+            array_sizes,
+        },
+    )))
 }
 
 fn try_parse_const(code: &[char]) -> Result<Option<()>, String> {
@@ -587,6 +648,7 @@ pub(crate) struct ParsedBindingWithAnnotations {
 pub(crate) struct ParseDeclarationsResult {
     pub(crate) structs: Vec<ParsedStructWithAnnotations>,
     pub(crate) bindings: Vec<ParsedBindingWithAnnotations>,
+    pub(crate) group_size: Option<ParseGroupSizeResult>,
 }
 
 pub(crate) fn parse_declarations(
@@ -594,11 +656,17 @@ pub(crate) fn parse_declarations(
 ) -> Result<ParseDeclarationsResult, String> {
     let mut structs = Vec::default();
     let mut bindings = Vec::default();
+    let mut group_size = None;
 
     //
     // Parse all declarations and their annotations
     //
     for declaration in declarations {
+        // println!("****found a declaration {}", declaration.text.iter().collect::<String>());
+        // for annotation in &declaration.annotations {
+        //     println!("****annotation {}", annotation.text.iter().collect::<String>());
+        //     println!("{:?}", annotation.text)
+        // }
         if let Some(struct_result) = try_parse_struct(&declaration.text)? {
             //
             // Handle struct
@@ -618,25 +686,42 @@ pub(crate) fn parse_declarations(
                 parsed: struct_result,
                 annotations: struct_annotations,
             });
-        } else if let Some(binding_result) = try_parse_binding(&declaration.text)? {
+        } else if let Some(binding_or_group_size) =
+            try_parse_binding_or_group_size(&declaration.text)?
+        {
             //
             // Handle Binding
             //
-            //println!("Parsed a binding {:?}", binding_result);
+            match binding_or_group_size {
+                ParseBindingOrGroupSizeResult::Binding(binding_result) => {
+                    log::trace!("Parsed a binding {:?}", binding_result);
+                    let binding_annotations = BindingAnnotations::new(&declaration.annotations)
+                        .map_err(|e| {
+                            format!(
+                                "Failed to parse annotations for binding:\n\n{}\n\n{}",
+                                crate::parse_source::characters_to_string(&declaration.text),
+                                e,
+                            )
+                        })?;
 
-            let binding_annotations =
-                BindingAnnotations::new(&declaration.annotations).map_err(|e| {
-                    format!(
-                        "Failed to parse annotations for binding:\n\n{}\n\n{}",
-                        crate::parse_source::characters_to_string(&declaration.text),
-                        e,
-                    )
-                })?;
+                    bindings.push(ParsedBindingWithAnnotations {
+                        parsed: binding_result,
+                        annotations: binding_annotations,
+                    });
+                }
+                ParseBindingOrGroupSizeResult::GroupSize(group_size_result) => {
+                    log::trace!("Parsed a group size {:?}", group_size_result);
+                    // Only allow declaring this once in a single shader
+                    if let Some(group_size) = &group_size {
+                        return Err(format!(
+                            "Found two group size declarations:\n    {:?}\n    {:?}",
+                            group_size, group_size_result
+                        ));
+                    }
 
-            bindings.push(ParsedBindingWithAnnotations {
-                parsed: binding_result,
-                annotations: binding_annotations,
-            });
+                    group_size = Some(group_size_result);
+                }
+            }
         } else if try_parse_const(&declaration.text)?.is_some() {
             //
             // Stub for constants, not yet supported
@@ -655,5 +740,9 @@ pub(crate) fn parse_declarations(
         }
     }
 
-    Ok(ParseDeclarationsResult { structs, bindings })
+    Ok(ParseDeclarationsResult {
+        structs,
+        bindings,
+        group_size,
+    })
 }
