@@ -4,10 +4,10 @@
 
 struct PointLight {
     vec3 position_ws;
-    vec3 position_vs;
-    vec4 color;
     float range;
+    vec3 position_vs;
     float intensity;
+    vec4 color;
 
     // Index into shadow_map_images_cube and per_view_data.shadow_map_cube_data
     int shadow_map;
@@ -15,24 +15,24 @@ struct PointLight {
 
 struct DirectionalLight {
     vec3 direction_ws;
-    vec3 direction_vs;
-    vec4 color;
     float intensity;
+    vec4 color;
 
+    vec3 direction_vs;
     // Index into shadow_map_images and per_view_data.shadow_map_2d_data
     int shadow_map;
 };
 
 struct SpotLight {
     vec3 position_ws;
-    vec3 direction_ws;
-    vec3 position_vs;
-    vec3 direction_vs;
-    vec4 color;
     float spotlight_half_angle;
+    vec3 direction_ws;
     float range;
+    vec3 position_vs;
     float intensity;
+    vec4 color;
 
+    vec3 direction_vs;
     // Index into shadow_map_images and per_view_data.shadow_map_2d_data
     int shadow_map;
 };
