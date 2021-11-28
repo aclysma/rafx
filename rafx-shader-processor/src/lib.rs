@@ -342,6 +342,7 @@ fn process_glsl_shader(
     let unoptimized_compile_spirv_result = {
         let mut compile_options = shaderc::CompileOptions::new().unwrap();
         compile_options.set_include_callback(include::shaderc_include_callback);
+        compile_options.set_generate_debug_info();
 
         compiler.compile_into_spirv(
             &code,
@@ -376,6 +377,12 @@ fn process_glsl_shader(
     //
     log::trace!("{:?}: parse declarations", glsl_file);
     let parsed_declarations = parse_declarations::parse_declarations(&parsed_source.declarations)?;
+    let is_compute_shader = normalize_shader_kind(shader_kind) == ShaderKind::Compute;
+    if parsed_declarations.group_size.is_some() && !is_compute_shader {
+        Err("The shader is not a compute shader but a group size was specified")?;
+    } else if parsed_declarations.group_size.is_none() && is_compute_shader {
+        Err("The shader is a compute shader but a group size was not specified. Expected to find something like `layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;` in the shader")?;
+    }
 
     // example usage of spirv_cross. We can provide options here to modify the shader
     // programmatically. This could use annotations to drive this
@@ -487,6 +494,7 @@ fn process_glsl_shader(
             .unwrap()
             .msl_argument_buffer_assignments
             .clone();
+        //println!(" binding overrides {:?}", spirv_cross_msl_options.resource_binding_overrides);
         //spirv_cross_msl_options.vertex_attribute_overrides
         spirv_cross_msl_options.const_samplers =
             reflected_data.as_ref().unwrap().msl_const_samplers.clone();
