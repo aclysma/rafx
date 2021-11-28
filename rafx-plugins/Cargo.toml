@@ -23,7 +23,7 @@ ttf-parser = "0.8.3"
 rectangle-pack = "0.2.0"
 
 # Egui
-egui = { version = "0.12", features = ["default_fonts"], optional = true }
+egui = { version = "0.15", features = ["default_fonts"], optional = true }
 winit = { version = "0.24", optional = true }
 
 # Animation
