@@ -24,7 +24,8 @@ rafx::declare_render_feature_flag!(MeshNoShadowsRenderFeatureFlag, MESH_NO_SHADO
 mod plugin;
 pub use plugin::*;
 
-pub use jobs::MeshVertex;
+pub use jobs::MeshVertexFull;
+pub use jobs::MeshVertexPosition;
 
 mod render_object;
 pub use render_object::*;

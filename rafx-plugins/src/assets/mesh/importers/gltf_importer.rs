@@ -1,7 +1,7 @@
 use crate::assets::mesh::{
     MeshAssetData, MeshMaterialData, MeshMaterialDataShaderParam, MeshPartAssetData,
 };
-use crate::features::mesh::MeshVertex;
+use crate::features::mesh::{MeshVertexFull, MeshVertexPosition};
 use distill::core::AssetUuid;
 use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
 use distill::loader::handle::Handle;
@@ -774,7 +774,8 @@ fn extract_meshes_to_import(
         let mut all_positions = Vec::with_capacity(1024);
         let mut all_position_indices = Vec::with_capacity(8192);
 
-        let mut all_vertices = PushBuffer::new(16384);
+        let mut all_vertices_full = PushBuffer::new(16384);
+        let mut all_vertices_position = PushBuffer::new(16384);
         let mut all_indices = PushBuffer::new(16384);
 
         let mut mesh_parts: Vec<MeshPartAssetData> = Vec::with_capacity(mesh.primitives().len());
@@ -834,8 +835,10 @@ fn extract_meshes_to_import(
                         binormals[i2] += b;
                     }
 
-                    let vertex_offset =
-                        all_vertices.pad_to_alignment(std::mem::size_of::<MeshVertex>());
+                    let vertex_full_offset =
+                        all_vertices_full.pad_to_alignment(std::mem::size_of::<MeshVertexFull>());
+                    let vertex_position_offset = all_vertices_position
+                        .pad_to_alignment(std::mem::size_of::<MeshVertexPosition>());
                     for i in 0..positions.len() {
                         let (t, b) = super::fix_tangent_binormal(
                             glam::Vec3::from(normals[i]),
@@ -847,14 +850,22 @@ fn extract_meshes_to_import(
                             positions[i][1],
                             positions[i][2],
                         ));
-                        all_vertices
+                        all_vertices_full
                             .push(
-                                &[MeshVertex {
+                                &[MeshVertexFull {
                                     position: positions[i],
                                     normal: normals[i],
                                     tangent: t.into(),
                                     binormal: b.into(),
                                     tex_coord: tex_coords[i],
+                                }],
+                                1,
+                            )
+                            .offset();
+                        all_vertices_position
+                            .push(
+                                &[MeshVertexPosition {
+                                    position: positions[i],
                                 }],
                                 1,
                             )
@@ -874,7 +885,8 @@ fn extract_meshes_to_import(
 
                     all_position_indices.extend_from_slice(&indices_u32);
 
-                    let vertex_size = all_vertices.len() - vertex_offset;
+                    let vertex_full_size = all_vertices_full.len() - vertex_full_offset;
+                    let vertex_position_size = all_vertices_position.len() - vertex_position_offset;
                     let indices_size = all_indices.len() - indices_offset;
 
                     let material_instance =
@@ -888,8 +900,10 @@ fn extract_meshes_to_import(
 
                     Some(MeshPartAssetData {
                         material_instance,
-                        vertex_buffer_offset_in_bytes: vertex_offset as u32,
-                        vertex_buffer_size_in_bytes: vertex_size as u32,
+                        vertex_full_buffer_offset_in_bytes: vertex_full_offset as u32,
+                        vertex_full_buffer_size_in_bytes: vertex_full_size as u32,
+                        vertex_position_buffer_offset_in_bytes: vertex_position_offset as u32,
+                        vertex_position_buffer_size_in_bytes: vertex_position_size as u32,
                         index_buffer_offset_in_bytes: indices_offset as u32,
                         index_buffer_size_in_bytes: indices_size as u32,
                         index_type: RafxIndexType::Uint16,
@@ -911,27 +925,50 @@ fn extract_meshes_to_import(
         }
 
         //
-        // Vertex Buffer
+        // Vertex Full Buffer
         //
-        let vertex_buffer_asset = BufferAssetData {
+        let vertex_full_buffer_asset = BufferAssetData {
             resource_type: RafxResourceType::VERTEX_BUFFER,
-            data: all_vertices.into_data(),
+            data: all_vertices_full.into_data(),
         };
 
-        let vertex_buffer_id = GltfObjectId::Index(buffers_to_import.len());
-        let vertex_buffer_to_import = BufferToImport {
-            asset: vertex_buffer_asset,
-            id: vertex_buffer_id.clone(),
+        let vertex_full_buffer_id = GltfObjectId::Index(buffers_to_import.len());
+        let vertex_full_buffer_to_import = BufferToImport {
+            asset: vertex_full_buffer_asset,
+            id: vertex_full_buffer_id.clone(),
         };
 
-        let vertex_buffer_uuid = *state
+        let vertex_full_buffer_uuid = *state
             .buffer_asset_uuids
-            .entry(vertex_buffer_id)
+            .entry(vertex_full_buffer_id)
             .or_insert_with(|| op.new_asset_uuid());
 
-        buffers_to_import.push(vertex_buffer_to_import);
+        buffers_to_import.push(vertex_full_buffer_to_import);
 
-        let vertex_buffer_handle = make_handle(vertex_buffer_uuid);
+        let vertex_full_buffer_handle = make_handle(vertex_full_buffer_uuid);
+
+        //
+        // Vertex Position Buffer
+        //
+        let vertex_position_buffer_asset = BufferAssetData {
+            resource_type: RafxResourceType::VERTEX_BUFFER,
+            data: all_vertices_position.into_data(),
+        };
+
+        let vertex_position_buffer_id = GltfObjectId::Index(buffers_to_import.len());
+        let vertex_position_buffer_to_import = BufferToImport {
+            asset: vertex_position_buffer_asset,
+            id: vertex_position_buffer_id.clone(),
+        };
+
+        let vertex_position_buffer_uuid = *state
+            .buffer_asset_uuids
+            .entry(vertex_position_buffer_id)
+            .or_insert_with(|| op.new_asset_uuid());
+
+        buffers_to_import.push(vertex_position_buffer_to_import);
+
+        let vertex_position_buffer_handle = make_handle(vertex_position_buffer_uuid);
 
         //
         // Index Buffer
@@ -963,7 +1000,8 @@ fn extract_meshes_to_import(
 
         let asset = MeshAssetData {
             mesh_parts,
-            vertex_buffer: vertex_buffer_handle,
+            vertex_full_buffer: vertex_full_buffer_handle,
+            vertex_position_buffer: vertex_position_buffer_handle,
             index_buffer: index_buffer_handle,
             visible_bounds: VisibleBounds::from(mesh_data),
         };

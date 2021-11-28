@@ -78,8 +78,10 @@ impl Into<MeshMaterialDataShaderParam> for MeshMaterialData {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MeshPartAssetData {
-    pub vertex_buffer_offset_in_bytes: u32,
-    pub vertex_buffer_size_in_bytes: u32,
+    pub vertex_full_buffer_offset_in_bytes: u32,
+    pub vertex_full_buffer_size_in_bytes: u32,
+    pub vertex_position_buffer_offset_in_bytes: u32,
+    pub vertex_position_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
     pub material_instance: Handle<MaterialInstanceAsset>,
@@ -90,8 +92,9 @@ pub struct MeshPartAssetData {
 #[uuid = "cf232526-3757-4d94-98d1-c2f7e27c979f"]
 pub struct MeshAssetData {
     pub mesh_parts: Vec<MeshPartAssetData>,
-    pub vertex_buffer: Handle<BufferAsset>, //Vec<MeshVertex>,
-    pub index_buffer: Handle<BufferAsset>,  //Vec<u16>,
+    pub vertex_full_buffer: Handle<BufferAsset>, // Vertex type is MeshVertexFull
+    pub vertex_position_buffer: Handle<BufferAsset>, // Vertex type is MeshVertexPosition
+    pub index_buffer: Handle<BufferAsset>,       // u16 indices
     pub visible_bounds: VisibleBounds,
 }
 
@@ -100,8 +103,10 @@ pub struct MeshAssetPart {
     pub textured_pass_index: usize,
     pub untextured_pass_index: usize,
     pub wireframe_pass_index: usize,
-    pub vertex_buffer_offset_in_bytes: u32,
-    pub vertex_buffer_size_in_bytes: u32,
+    pub vertex_full_buffer_offset_in_bytes: u32,
+    pub vertex_full_buffer_size_in_bytes: u32,
+    pub vertex_position_buffer_offset_in_bytes: u32,
+    pub vertex_position_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
     pub index_type: RafxIndexType,
@@ -157,7 +162,8 @@ impl MeshAssetPart {
 
 pub struct MeshAssetInner {
     pub mesh_parts: Vec<Option<MeshAssetPart>>,
-    pub vertex_buffer: ResourceArc<BufferResource>,
+    pub vertex_full_buffer: ResourceArc<BufferResource>,
+    pub vertex_position_buffer: ResourceArc<BufferResource>,
     pub index_buffer: ResourceArc<BufferResource>,
     pub asset_data: MeshAssetData,
 }
@@ -176,8 +182,13 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
         asset_manager: &mut AssetManager,
         mesh_asset: MeshAssetData,
     ) -> RafxResult<MeshAsset> {
-        let vertex_buffer = asset_manager
-            .latest_asset(&mesh_asset.vertex_buffer)
+        let vertex_full_buffer = asset_manager
+            .latest_asset(&mesh_asset.vertex_full_buffer)
+            .unwrap()
+            .buffer
+            .clone();
+        let vertex_position_buffer = asset_manager
+            .latest_asset(&mesh_asset.vertex_position_buffer)
             .unwrap()
             .buffer
             .clone();
@@ -237,8 +248,13 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
                     textured_pass_index,
                     untextured_pass_index,
                     wireframe_pass_index,
-                    vertex_buffer_offset_in_bytes: mesh_part.vertex_buffer_offset_in_bytes,
-                    vertex_buffer_size_in_bytes: mesh_part.vertex_buffer_size_in_bytes,
+                    vertex_full_buffer_offset_in_bytes: mesh_part
+                        .vertex_full_buffer_offset_in_bytes,
+                    vertex_full_buffer_size_in_bytes: mesh_part.vertex_full_buffer_size_in_bytes,
+                    vertex_position_buffer_offset_in_bytes: mesh_part
+                        .vertex_position_buffer_offset_in_bytes,
+                    vertex_position_buffer_size_in_bytes: mesh_part
+                        .vertex_position_buffer_size_in_bytes,
                     index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
                     index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
                     index_type: mesh_part.index_type,
@@ -247,7 +263,8 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
             .collect();
 
         let inner = MeshAssetInner {
-            vertex_buffer,
+            vertex_full_buffer,
+            vertex_position_buffer,
             index_buffer,
             asset_data: mesh_asset,
             mesh_parts,

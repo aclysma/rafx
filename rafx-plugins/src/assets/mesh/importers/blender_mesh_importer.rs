@@ -1,5 +1,5 @@
 use crate::assets::mesh::{MeshAssetData, MeshPartAssetData};
-use crate::features::mesh::MeshVertex;
+use crate::features::mesh::{MeshVertexFull, MeshVertexPosition};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use glam::Vec3;
@@ -59,7 +59,8 @@ fn try_cast_u8_slice<T: Copy + 'static>(data: &[u8]) -> Option<&[T]> {
 #[uuid = "1411cdbc-d63f-45aa-b9cf-adf610e43989"]
 pub struct BlenderMeshImporterState {
     mesh_id: Option<AssetUuid>,
-    vertex_buffer_id: Option<AssetUuid>,
+    vertex_full_buffer_id: Option<AssetUuid>,
+    vertex_position_buffer_id: Option<AssetUuid>,
     index_buffer_id: Option<AssetUuid>,
 }
 
@@ -94,15 +95,19 @@ impl Importer for BlenderMeshImporter {
         let mesh_id = state
             .mesh_id
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        let vertex_buffer_id = state
-            .vertex_buffer_id
+        let vertex_full_buffer_id = state
+            .vertex_full_buffer_id
+            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+        let vertex_position_buffer_id = state
+            .vertex_position_buffer_id
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         let index_buffer_id = state
             .index_buffer_id
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
         *state = BlenderMeshImporterState {
             mesh_id: Some(mesh_id),
-            vertex_buffer_id: Some(vertex_buffer_id),
+            vertex_full_buffer_id: Some(vertex_full_buffer_id),
+            vertex_position_buffer_id: Some(vertex_position_buffer_id),
             index_buffer_id: Some(index_buffer_id),
         };
         let mut bytes = Vec::new();
@@ -116,7 +121,8 @@ impl Importer for BlenderMeshImporter {
         let mut all_positions = Vec::<glam::Vec3>::with_capacity(1024);
         let mut all_position_indices = Vec::<u16>::with_capacity(8192);
 
-        let mut all_vertices = PushBuffer::new(16384);
+        let mut all_vertices_full = PushBuffer::new(16384);
+        let mut all_vertices_position = PushBuffer::new(16384);
         let mut all_indices = PushBuffer::new(16384);
 
         let mut mesh_parts: Vec<MeshPartAssetData> =
@@ -139,7 +145,8 @@ impl Importer for BlenderMeshImporter {
             let part_indices =
                 try_cast_u8_slice::<u16>(part_indices).ok_or("Could not cast due to alignment")?;
 
-            let vertex_offset = all_vertices.len();
+            let vertex_full_offset = all_vertices_full.len();
+            let vertex_position_offset = all_vertices_position.len();
             let indices_offset = all_indices.len();
 
             let mut tangents = Vec::<glam::Vec3>::new();
@@ -180,8 +187,8 @@ impl Importer for BlenderMeshImporter {
                 );
 
                 all_positions.push(Vec3::new(positions[i][0], positions[i][1], positions[i][2]));
-                all_vertices.push(
-                    &[MeshVertex {
+                all_vertices_full.push(
+                    &[MeshVertexFull {
                         position: positions[i],
                         normal: normals[i],
                         tangent: t.into(),
@@ -190,12 +197,19 @@ impl Importer for BlenderMeshImporter {
                     }],
                     1,
                 );
+                all_vertices_position.push(
+                    &[MeshVertexPosition {
+                        position: positions[i],
+                    }],
+                    1,
+                );
             }
 
             all_indices.push(&part_indices, 1);
             all_position_indices.extend_from_slice(&part_indices);
 
-            let vertex_size = all_vertices.len() - vertex_offset;
+            let vertex_full_size = all_vertices_full.len() - vertex_full_offset;
+            let vertex_position_size = all_vertices_position.len() - vertex_position_offset;
             let indices_size = all_indices.len() - indices_offset;
 
             let material_instance = mesh_part.material.clone();
@@ -207,8 +221,10 @@ impl Importer for BlenderMeshImporter {
 
             mesh_parts.push(MeshPartAssetData {
                 material_instance,
-                vertex_buffer_offset_in_bytes: vertex_offset as u32,
-                vertex_buffer_size_in_bytes: vertex_size as u32,
+                vertex_full_buffer_offset_in_bytes: vertex_full_offset as u32,
+                vertex_full_buffer_size_in_bytes: vertex_full_size as u32,
+                vertex_position_buffer_offset_in_bytes: vertex_position_offset as u32,
+                vertex_position_buffer_size_in_bytes: vertex_position_size as u32,
                 index_buffer_offset_in_bytes: indices_offset as u32,
                 index_buffer_size_in_bytes: indices_size as u32,
                 index_type,
@@ -218,14 +234,24 @@ impl Importer for BlenderMeshImporter {
         let mut imported_assets = Vec::with_capacity(3);
 
         //
-        // Vertex Buffer
+        // Vertex Full Buffer
         //
-        let vertex_buffer_asset = BufferAssetData {
+        let vertex_full_buffer_asset = BufferAssetData {
             resource_type: RafxResourceType::VERTEX_BUFFER,
-            data: all_vertices.into_data(),
+            data: all_vertices_full.into_data(),
         };
 
-        let vertex_buffer_handle = make_handle(vertex_buffer_id);
+        let vertex_full_buffer_handle = make_handle(vertex_full_buffer_id);
+
+        //
+        // Vertex Position Buffer
+        //
+        let vertex_position_buffer_asset = BufferAssetData {
+            resource_type: RafxResourceType::VERTEX_BUFFER,
+            data: all_vertices_position.into_data(),
+        };
+
+        let vertex_position_buffer_handle = make_handle(vertex_position_buffer_id);
 
         //
         // Index Buffer
@@ -244,7 +270,8 @@ impl Importer for BlenderMeshImporter {
 
         let asset_data = MeshAssetData {
             mesh_parts,
-            vertex_buffer: vertex_buffer_handle,
+            vertex_full_buffer: vertex_full_buffer_handle,
+            vertex_position_buffer: vertex_position_buffer_handle,
             index_buffer: index_buffer_handle,
             visible_bounds: VisibleBounds::from(mesh_data),
         };
@@ -259,12 +286,21 @@ impl Importer for BlenderMeshImporter {
         });
 
         imported_assets.push(ImportedAsset {
-            id: vertex_buffer_id,
+            id: vertex_full_buffer_id,
             search_tags: vec![],
             build_deps: vec![],
             load_deps: vec![],
             build_pipeline: None,
-            asset_data: Box::new(vertex_buffer_asset),
+            asset_data: Box::new(vertex_full_buffer_asset),
+        });
+
+        imported_assets.push(ImportedAsset {
+            id: vertex_position_buffer_id,
+            search_tags: vec![],
+            build_deps: vec![],
+            load_deps: vec![],
+            build_pipeline: None,
+            asset_data: Box::new(vertex_position_buffer_asset),
         });
 
         imported_assets.push(ImportedAsset {
