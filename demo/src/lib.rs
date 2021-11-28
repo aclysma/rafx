@@ -360,6 +360,9 @@ impl DemoApp {
                     renderer.clear_temporary_work();
                 }
 
+                *self.resources.get_mut::<MeshRenderOptions>().unwrap() = Default::default();
+                *self.resources.get_mut::<RenderOptions>().unwrap() = RenderOptions::default_3d();
+
                 self.scene_manager
                     .try_create_next_scene(&mut self.world, &self.resources);
             }
