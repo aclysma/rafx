@@ -278,7 +278,7 @@ impl RafxShaderStageDef {
 }
 
 /// Indicates which immutable sampler is being set
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub enum RafxImmutableSamplerKey<'a> {
     Name(&'a str),
     Binding(u32, u32),
@@ -298,6 +298,7 @@ impl<'a> RafxImmutableSamplerKey<'a> {
 }
 
 /// Describes an immutable sampler key/value pair
+#[derive(Debug)]
 pub struct RafxImmutableSamplers<'a> {
     pub key: RafxImmutableSamplerKey<'a>,
     pub samplers: &'a [RafxSampler],

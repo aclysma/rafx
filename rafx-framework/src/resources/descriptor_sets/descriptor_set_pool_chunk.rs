@@ -144,7 +144,7 @@ fn copy_data_to_buffer<T: Copy>(
         .get_mut(&DescriptorSetBindingKey {
             dst_binding: element_key.dst_binding,
         })
-        .unwrap();
+        .expect("Tried to copy data into descriptor set internal buffer but could not find buffer for this binding. Is @[internal_buffer] missing in the shader?");
 
     if data.len() as u32 > buffer.buffer_info.per_descriptor_size {
         panic!(

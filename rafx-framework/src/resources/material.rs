@@ -3,8 +3,7 @@ use crate::{
     RafxResult, ReflectedEntryPoint, ReflectedShader, ResourceArc, ResourceContext,
     ShaderModuleResource, SlotNameLookup,
 };
-use fnv::FnvHashSet;
-use rafx_api::{RafxImmutableSamplerKey, RafxShaderStageFlags};
+use rafx_api::RafxShaderStageFlags;
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -80,39 +79,11 @@ impl MaterialPass {
         //
         // Root Signature
         //
-        // Put all samplers into a hashmap so that we avoid collecting duplicates, and keep them
-        // around to prevent the ResourceArcs from dropping out of scope and being destroyed
-        let mut immutable_samplers = FnvHashSet::default();
-
-        // We also need to save vecs of samplers that
-        let mut immutable_rafx_sampler_lists = Vec::default();
-        let mut immutable_rafx_sampler_keys = Vec::default();
-
-        for (set_index, descriptor_set_layout_def) in reflected_shader
-            .descriptor_set_layout_defs
-            .iter()
-            .enumerate()
-        {
-            // Get or create samplers and add them to the two above structures
-            for binding in &descriptor_set_layout_def.bindings {
-                if let Some(sampler_defs) = &binding.immutable_samplers {
-                    let mut samplers = Vec::with_capacity(sampler_defs.len());
-                    for sampler_def in sampler_defs {
-                        let sampler = resource_context
-                            .resources()
-                            .get_or_create_sampler(sampler_def)?;
-                        samplers.push(sampler.clone());
-                        immutable_samplers.insert(sampler);
-                    }
-
-                    immutable_rafx_sampler_keys.push(RafxImmutableSamplerKey::Binding(
-                        set_index as u32,
-                        binding.resource.binding,
-                    ));
-                    immutable_rafx_sampler_lists.push(samplers);
-                }
-            }
-        }
+        let (immutable_rafx_sampler_keys, immutable_rafx_sampler_lists) =
+            ReflectedShader::create_immutable_samplers(
+                resource_context,
+                &reflected_shader.descriptor_set_layout_defs,
+            )?;
 
         let root_signature = resource_context.resources().get_or_create_root_signature(
             &[shader.clone()],

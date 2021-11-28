@@ -1,10 +1,11 @@
 use crate::{
-    DescriptorSetLayout, DescriptorSetLayoutBinding, MaterialPassVertexInput, ShaderModuleHash,
+    DescriptorSetLayout, DescriptorSetLayoutBinding, MaterialPassVertexInput, ResourceArc,
+    ResourceContext, SamplerResource, ShaderModuleHash,
 };
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::{
-    RafxResult, RafxSamplerDef, RafxShaderPackage, RafxShaderResource, RafxShaderStageFlags,
-    RafxShaderStageReflection,
+    RafxImmutableSamplerKey, RafxResult, RafxSamplerDef, RafxShaderPackage, RafxShaderResource,
+    RafxShaderStageFlags, RafxShaderStageReflection,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -246,5 +247,44 @@ impl ReflectedShader {
             descriptor_set_layout_defs,
             slot_name_lookup,
         })
+    }
+
+    pub fn create_immutable_samplers<'a>(
+        resource_context: &'a ResourceContext,
+        descriptor_set_layouts: &'a [DescriptorSetLayout],
+    ) -> RafxResult<(
+        Vec<RafxImmutableSamplerKey<'a>>,
+        Vec<Vec<ResourceArc<SamplerResource>>>,
+    )> {
+        // Put all samplers into a hashmap so that we avoid collecting duplicates, and keep them
+        // around to prevent the ResourceArcs from dropping out of scope and being destroyed
+        let mut immutable_samplers = FnvHashSet::default();
+
+        // We also need to save vecs of samplers that are immutable
+        let mut immutable_rafx_sampler_lists = Vec::default();
+        let mut immutable_rafx_sampler_keys = Vec::default();
+
+        for (set_index, descriptor_set_layout_def) in descriptor_set_layouts.iter().enumerate() {
+            // Get or create samplers and add them to the two above structures
+            for binding in &descriptor_set_layout_def.bindings {
+                if let Some(sampler_defs) = &binding.immutable_samplers {
+                    let mut samplers = Vec::with_capacity(sampler_defs.len());
+                    for sampler_def in sampler_defs {
+                        let sampler = resource_context
+                            .resources()
+                            .get_or_create_sampler(sampler_def)?;
+                        samplers.push(sampler.clone());
+                        immutable_samplers.insert(sampler);
+                    }
+
+                    immutable_rafx_sampler_keys.push(RafxImmutableSamplerKey::Binding(
+                        set_index as u32,
+                        binding.resource.binding,
+                    ));
+                    immutable_rafx_sampler_lists.push(samplers);
+                }
+            }
+        }
+        Ok((immutable_rafx_sampler_keys, immutable_rafx_sampler_lists))
     }
 }
