@@ -32,6 +32,10 @@ mod extra_ffi {
             match msg_send![device, supportsFamily: family] {
                 YES => true,
                 NO => false,
+                // Github CI warns this match has non-exhaustive patterns but I have not reproduced
+                // it locally (and get warnings about this pattern being unreachable :)
+                #[allow(unreachable_patterns)]
+                _ => unreachable!()
             }
         }
     }
