@@ -37,6 +37,7 @@ pub(super) fn bloom_extract_pass(
         Default::default(),
     );
     context.graph.set_image_name(sdr_image, "sdr");
+
     let hdr_image = context.graph.create_color_attachment(
         node,
         1,

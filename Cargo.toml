@@ -47,4 +47,4 @@ split-debuginfo = "unpacked"
 #basis-universal-sys = { path = "../basis-universal-rs/basis-universal-sys" }
 
 #distill = { path = "../distill" }
-distill = { git = "https://github.com/aclysma/distill.git", rev = "4da6b5bacff88f86ec9f80736d4113cf057512e5" }
+distill = { git = "https://github.com/amethyst/distill.git", rev = "852e48272ab3dad76c7490fce8df52461f94ebc0" }

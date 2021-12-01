@@ -70,8 +70,7 @@ impl RenderGraphGenerator for ExampleRenderGraphGenerator {
         // intended output image where possible. It only creates additional resources if
         // necessary.
         //
-        let _ = graph_builder.set_output_image(
-            color_attachment,
+        let external_image_id = graph_builder.add_external_image(
             swapchain_image,
             RenderGraphImageSpecification {
                 samples: RafxSampleCount::SampleCount1,
@@ -83,7 +82,10 @@ impl RenderGraphGenerator for ExampleRenderGraphGenerator {
             },
             Default::default(),
             RafxResourceState::PRESENT,
+            RafxResourceState::PRESENT,
         );
+
+        let _ = graph_builder.write_external_image(external_image_id, color_attachment);
 
         let prepared_render_graph = PreparedRenderGraph::new(
             &device_context,

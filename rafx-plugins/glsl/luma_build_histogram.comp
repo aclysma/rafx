@@ -1,0 +1,83 @@
+// Uses binning similar to http://www.alextardif.com/HistogramLuminance.html
+//
+// This shader looks at every pixel, determines luminance, and places it in a bin. We bin by log2(luminance) across a
+// range provided in the config.
+
+#version 450
+
+// @[export]
+// @[internal_buffer]
+layout(set = 0, binding = 0) uniform BuildHistogramConfig
+{
+    // Size of image in pixels
+    uint input_width;
+    uint input_height;
+
+    // For example, to bin across range [-10.0, 2.0], use values min_log_luma=-10.0 and one_over_log_luma_range=1.0/12.0.
+    // This would bin across luminance values of [0.001, 4]   (log2(x) - min) / max
+    float min_log_luma;
+    float one_over_log_luma_range;
+} config;
+
+// @[export]
+layout (set = 0, binding = 1) uniform texture2D tex;
+
+// @[immutable_samplers([
+//         (
+//             mag_filter: Nearest,
+//             min_filter: Nearest,
+//             mip_map_mode: Linear,
+//             address_mode_u: ClampToEdge,
+//             address_mode_v: ClampToEdge,
+//             address_mode_w: ClampToEdge,
+//         )
+// ])]
+layout (set = 0, binding = 2) uniform sampler smp;
+
+// @[export]
+layout(set = 0, binding = 3) buffer HistogramData
+{
+    uint data[256];
+} histogram_data;
+
+shared uint HistogramShared[256];
+
+uint color_to_bin(vec3 color)
+{
+    // Constant from https://en.wikipedia.org/wiki/Relative_luminance
+    float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+
+    // Avoid div/0
+    if (luminance < 0.00075)
+    {
+        return 0;
+    }
+
+    // Map luminance from [min_log_luma, log_luma_range] to [1,255] (zero returned by previous conditional)
+    // log2(x) where x < 1 is negative and x > 1 is positive
+    float log_luminance = clamp((log2(luminance) - config.min_log_luma) * config.one_over_log_luma_range, 0.0, 1.0);
+    return uint(log_luminance * 254.0 + 1.0);
+}
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+void main()
+{
+    // Clear the shared memory
+    HistogramShared[gl_LocalInvocationIndex] = 0u;
+    barrier();
+
+    // Sample the pixel and increment the appropriate bin
+    if ((gl_GlobalInvocationID.x < config.input_width) && (gl_GlobalInvocationID.y < config.input_height))
+    {
+        // Sample the HDR texture
+        vec3 c = texture(sampler2D(tex, smp), gl_GlobalInvocationID.xy / vec2(config.input_width, config.input_height)).rgb;
+
+        // Assign it to a histogram bin and increment the bin
+        uint bin_index = color_to_bin(c);
+        atomicAdd(HistogramShared[bin_index], 1);
+    }
+
+    // Merge shared group memory of all groups into output buffer
+    barrier();
+    atomicAdd(histogram_data.data[gl_LocalInvocationIndex], HistogramShared[gl_LocalInvocationIndex]);
+}

@@ -125,6 +125,14 @@ impl RafxSwapchainVulkan {
         self.swapchain.swapchain_info.surface_format.format.into()
     }
 
+    pub fn color_space(&self) -> RafxSwapchainColorSpace {
+        self.swapchain
+            .swapchain_info
+            .surface_format
+            .color_space
+            .into()
+    }
+
     pub fn new(
         device_context: &RafxDeviceContextVulkan,
         raw_window_handle: &dyn HasRawWindowHandle,
@@ -154,6 +162,7 @@ impl RafxSwapchainVulkan {
             &surface_loader,
             None,
             present_mode_priority,
+            swapchain_def.color_space.into(),
             vk::Extent2D {
                 width: swapchain_def.width,
                 height: swapchain_def.height,
@@ -189,6 +198,7 @@ impl RafxSwapchainVulkan {
             &self.surface_loader,
             Some(self.swapchain.swapchain),
             present_mode_priority,
+            self.swapchain_def.color_space.into(),
             vk::Extent2D {
                 width: swapchain_def.width,
                 height: swapchain_def.height,
@@ -339,6 +349,7 @@ impl RafxSwapchainVulkanInstance {
         surface_loader: &Arc<khr::Surface>,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[VkPresentMode],
+        color_space: RafxSwapchainColorSpace,
         window_inner_size: Extent2D,
     ) -> VkResult<RafxSwapchainVulkanInstance> {
         let (available_formats, available_present_modes, surface_capabilities) =
@@ -348,7 +359,7 @@ impl RafxSwapchainVulkanInstance {
                 &surface_loader,
             )?;
 
-        let surface_format = Self::choose_swapchain_format(&available_formats);
+        let surface_format = Self::choose_swapchain_format(color_space, &available_formats);
         log::info!("Surface format: {:?}", surface_format);
 
         let present_mode =
@@ -474,12 +485,31 @@ impl RafxSwapchainVulkanInstance {
         ))
     }
 
-    fn choose_swapchain_format(available_formats: &[vk::SurfaceFormatKHR]) -> vk::SurfaceFormatKHR {
+    fn choose_swapchain_format(
+        color_space: RafxSwapchainColorSpace,
+        available_formats: &[vk::SurfaceFormatKHR],
+    ) -> vk::SurfaceFormatKHR {
         let mut best_format = None;
 
+        let (preferred_color_space, preferred_format) = match color_space {
+            RafxSwapchainColorSpace::Srgb => {
+                (vk::ColorSpaceKHR::SRGB_NONLINEAR, vk::Format::B8G8R8A8_SRGB)
+            }
+            RafxSwapchainColorSpace::SrgbExtended => (
+                vk::ColorSpaceKHR::EXTENDED_SRGB_LINEAR_EXT,
+                vk::Format::R16G16B16A16_SFLOAT,
+            ),
+            RafxSwapchainColorSpace::DisplayP3Extended => unimplemented!(),
+        };
+
         for available_format in available_formats {
-            if available_format.format == ash::vk::Format::B8G8R8A8_SRGB
-                && available_format.color_space == ash::vk::ColorSpaceKHR::SRGB_NONLINEAR
+            log::debug!(
+                "Available Format: {:?} {:?}",
+                available_format.format,
+                available_format.color_space
+            );
+            if available_format.format == preferred_format
+                && available_format.color_space == preferred_color_space
             {
                 best_format = Some(available_format);
             }

@@ -77,4 +77,9 @@ pub use cleanup::ResourceDropSink;
 pub mod cooked_shader;
 pub use cooked_shader::*;
 
+pub mod reflected_shader;
+pub use reflected_shader::*;
+
+mod builtin_pipelines;
+
 pub use rafx_base::resource_map::ResourceMap as RenderResources;

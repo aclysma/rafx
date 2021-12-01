@@ -1,4 +1,12 @@
-// Should be kept in sync with the constants in tonemapper.glsl
+// Should be kept in sync with the constants in bloom_combine.frag prefixed with OUTPUT_COLOR_SPACE_
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
+pub enum OutputColorSpace {
+    Srgb,
+    P3,
+}
+
+// Should be kept in sync with the constants in tonemapper.glsl prefixed with TM_
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
 pub enum TonemapperType {
@@ -11,6 +19,7 @@ pub enum TonemapperType {
     LogDerivative,
     VisualizeRGBMax,
     VisualizeLuma,
+    AutoExposureOld,
     MAX,
 }
 impl TonemapperType {
@@ -25,6 +34,7 @@ impl TonemapperType {
             TonemapperType::LogDerivative => "LogDerivative",
             TonemapperType::VisualizeRGBMax => "Visualize RGB Max",
             TonemapperType::VisualizeLuma => "Visualize RGB Luma",
+            TonemapperType::AutoExposureOld => "Autoexposure Old",
             TonemapperType::MAX => "MAX_TONEMAPPER_VALUE",
         }
     }

@@ -1,0 +1,25 @@
+#version 450
+
+// @[export]
+// @[internal_buffer]
+layout(set = 0, binding = 0) uniform ClearBufferConfig
+{
+    uint buffer_bytes_div_by_four;
+    uint fill_value;
+} config;
+
+// @[export]
+layout(set = 0, binding = 1) buffer Buffer
+{
+    uint data[];
+} data;
+
+// Expected to invoke workgroup size of (bytes/4, 1, 1)
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    if (gl_GlobalInvocationID.x < config.buffer_bytes_div_by_four)
+    {
+        data.data[gl_GlobalInvocationID.x] = config.fill_value;
+    }
+}

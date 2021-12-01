@@ -6,6 +6,7 @@ use rafx_framework::visibility::{VisibilityConfig, VisibilityRegion};
 use rafx_framework::{DynResourceAllocatorSet, RenderResources};
 use rafx_framework::{ImageViewResource, ResourceArc};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use super::*;
 
@@ -126,6 +127,7 @@ impl Renderer {
         let mut render_resources = RenderResources::default();
         render_resources.insert(SwapchainRenderResource::default());
         render_resources.insert(AssetManagerRenderResource::default());
+        render_resources.insert(TimeRenderResource::default());
 
         for plugin in &*feature_plugins {
             plugin.initialize_static_resources(
@@ -210,6 +212,7 @@ impl Renderer {
     pub fn start_rendering_next_frame(
         &self,
         extract_resources: &mut ExtractResources,
+        previous_update_time: Duration,
     ) -> RafxResult<()> {
         //
         // Block until the previous frame completes being submitted to GPU
@@ -239,7 +242,12 @@ impl Renderer {
             (t1 - t0).as_secs_f32() * 1000.0
         );
 
-        Self::create_and_start_render_job(self, extract_resources, presentable_frame);
+        Self::create_and_start_render_job(
+            self,
+            extract_resources,
+            presentable_frame,
+            previous_update_time,
+        );
 
         Ok(())
     }
@@ -248,8 +256,14 @@ impl Renderer {
         renderer: &Renderer,
         extract_resources: &mut ExtractResources,
         presentable_frame: RafxPresentableFrame,
+        previous_update_time: Duration,
     ) {
-        let result = Self::try_create_render_job(&renderer, extract_resources, &presentable_frame);
+        let result = Self::try_create_render_job(
+            &renderer,
+            extract_resources,
+            &presentable_frame,
+            previous_update_time,
+        );
 
         match result {
             Ok(prepared_frame) => {
@@ -271,6 +285,7 @@ impl Renderer {
         renderer: &Renderer,
         extract_resources: &mut ExtractResources,
         presentable_frame: &RafxPresentableFrame,
+        previous_update_time: Duration,
     ) -> RafxResult<RenderFrameJob> {
         //
         // Fetch resources
@@ -291,6 +306,10 @@ impl Renderer {
         let mut guard = renderer.inner.lock().unwrap();
         let renderer_inner = &mut *guard;
         let render_resources = &renderer.render_resources;
+
+        render_resources
+            .fetch_mut::<TimeRenderResource>()
+            .update(previous_update_time);
 
         let renderer_config = extract_resources
             .try_fetch::<RendererConfigResource>()

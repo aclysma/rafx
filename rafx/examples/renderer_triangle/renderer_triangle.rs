@@ -21,6 +21,7 @@ use rafx::renderer::{
 use rafx_renderer::daemon::AssetDaemonOpt;
 use std::sync::Arc;
 use std::time;
+use std::time::Duration;
 
 mod example_plugin;
 use example_plugin::ExampleRendererPlugin;
@@ -275,7 +276,10 @@ fn run() -> RafxResult<()> {
 
                 extract_resources.insert(&mut world);
 
-                renderer.start_rendering_next_frame(&mut extract_resources)?;
+                renderer.start_rendering_next_frame(
+                    &mut extract_resources,
+                    Duration::from_secs_f32(1.0 / 60.0),
+                )?;
             }
         }
     }

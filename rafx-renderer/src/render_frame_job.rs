@@ -54,7 +54,9 @@ impl RenderFrameJob {
             Ok(command_buffers) => {
                 // ignore the error, we will receive it when we try to acquire the next image
                 let refs: Vec<&RafxCommandBuffer> = command_buffers.iter().map(|x| &**x).collect();
+                //graphics_queue.wait_for_queue_idle().unwrap();
                 let _ = presentable_frame.present(&graphics_queue, &refs);
+                //graphics_queue.wait_for_queue_idle().unwrap();
             }
             Err(err) => {
                 log::error!("Render thread failed with error {:?}", err);

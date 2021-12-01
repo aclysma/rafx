@@ -8,6 +8,7 @@ use crate::{
 
 use crate::graph::RenderGraphCache;
 use crate::render_features::RenderRegistry;
+use crate::resources::builtin_pipelines::BuiltinPipelines;
 use crate::resources::descriptor_sets::DescriptorSetAllocatorManager;
 use crate::resources::dyn_commands::DynCommandPoolAllocator;
 use crate::resources::dyn_resources::{
@@ -35,6 +36,7 @@ struct ResourceContextInner {
     resources: ResourceLookupSet,
     graphics_pipeline_cache: GraphicsPipelineCache,
     render_graph_cache: RenderGraphCache,
+    builtin_pipelines: BuiltinPipelines,
 }
 
 #[derive(Clone)]
@@ -70,6 +72,10 @@ impl ResourceContext {
     pub fn create_descriptor_set_allocator(&self) -> DescriptorSetAllocatorRef {
         self.inner.descriptor_set_allocator_provider.get_allocator()
     }
+
+    pub fn builtin_pipelines(&self) -> &BuiltinPipelines {
+        &self.inner.builtin_pipelines
+    }
 }
 
 pub struct ResourceManager {
@@ -80,6 +86,9 @@ pub struct ResourceManager {
     render_graph_cache: RenderGraphCache,
     descriptor_set_allocator: DescriptorSetAllocatorManager,
     graphics_pipeline_cache: GraphicsPipelineCache,
+
+    // This is Some() until ResourceManager is dropped
+    builtin_pipelines: Option<BuiltinPipelines>,
 }
 
 impl ResourceManager {
@@ -88,6 +97,8 @@ impl ResourceManager {
         render_registry: &RenderRegistry,
     ) -> Self {
         let resources = ResourceLookupSet::new(device_context, MAX_FRAMES_IN_FLIGHT as u32);
+        let builtin_pipelines =
+            BuiltinPipelines::new(&resources).expect("Failed to load a built-in resource");
 
         ResourceManager {
             render_registry: render_registry.clone(),
@@ -100,6 +111,7 @@ impl ResourceManager {
             render_graph_cache: RenderGraphCache::new(MAX_FRAMES_IN_FLIGHT as u32),
             descriptor_set_allocator: DescriptorSetAllocatorManager::new(device_context),
             graphics_pipeline_cache: GraphicsPipelineCache::new(render_registry, resources),
+            builtin_pipelines: Some(builtin_pipelines),
         }
     }
 
@@ -119,6 +131,7 @@ impl ResourceManager {
             resources: self.resources.clone(),
             graphics_pipeline_cache: self.graphics_pipeline_cache.clone(),
             render_graph_cache: self.render_graph_cache.clone(),
+            builtin_pipelines: self.builtin_pipelines.as_ref().unwrap().clone(),
         };
 
         ResourceContext {
@@ -186,6 +199,8 @@ impl Drop for ResourceManager {
     fn drop(&mut self) {
         log::info!("Cleaning up resource manager");
         log::trace!("Resource Manager Metrics:\n{:#?}", self.metrics());
+
+        self.builtin_pipelines = None;
 
         // Wipe caches to ensure we don't keep anything alive
         self.render_graph_cache.clear();

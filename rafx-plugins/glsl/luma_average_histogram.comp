@@ -1,0 +1,150 @@
+// Uses binning similar to http://www.alextardif.com/HistogramLuminance.html but with additional statistic gathering
+
+#version 450
+#extension GL_EXT_control_flow_attributes : require
+
+#include "luma_histogram_types.glsl"
+
+#define NUM_HISTOGRAM_BINS 256
+
+// @[export]
+layout(set = 0, binding = 0) buffer HistogramData
+{
+    uint data[256];
+} histogram_data;
+
+// @[export]
+// @[internal_buffer]
+layout(set = 0, binding = 1) uniform AverageHistogramConfig
+{
+    uint pixel_count;
+    float min_log_luma;
+    float log_luma_range;
+    float dt;
+    float low_percentile;
+    float high_percentile;
+    float low_adjust_speed;
+    float high_adjust_speed;
+} config;
+
+// @[export]
+layout(set = 0, binding = 2) buffer HistogramResultBuffer
+{
+    HistogramResult result;
+} histogram_result;
+
+shared float HistogramShared[NUM_HISTOGRAM_BINS];
+
+// Convert histogram bin to luminance (map bin [0..255] -> [0..1] -> [0..luma_range] -> [min_log_luma..(min+range)] -> "undo" log2(luma value) with exp2 -> luminosity)
+float bin_to_luminosity(float bin, float min_log_luma, float log_luma_range) {
+    return exp2(((bin / float(NUM_HISTOGRAM_BINS - 1)) * log_luma_range) + min_log_luma);
+}
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+void main()
+{
+    // Multiply bin count by index + 1. We can sum resulting values and divide by bin count to get average bin
+    float count_for_this_bin = histogram_data.data[gl_LocalInvocationIndex];
+    HistogramShared[gl_LocalInvocationIndex] = count_for_this_bin * float(gl_LocalInvocationIndex + 1);
+    barrier();
+
+    // Successively sum 128 pairs, 64 pairs, 32 pairs, etc. until all values are summed
+    //TODO: We walk the bins later anyways to get the min, max, p05 and p95 values. We could get the avarage as part
+    // of that later work. That said, this does produce a more precise value and the below method only has to the
+    // nearest bin
+    [[unroll]]
+    for (uint histogram_sample_index = NUM_HISTOGRAM_BINS/2; histogram_sample_index > 0; histogram_sample_index >>= 1)
+    {
+        if (gl_LocalInvocationIndex < histogram_sample_index)
+        {
+            HistogramShared[gl_LocalInvocationIndex] += HistogramShared[gl_LocalInvocationIndex + histogram_sample_index];
+        }
+
+        barrier();
+    }
+
+    if (gl_LocalInvocationIndex == 0)
+    {
+        uint zero_pixel_count = uint(count_for_this_bin);
+
+        // maximum and minimum bin with non-zero pixel count
+        uint max_bin = 0;
+        uint min_bin = NUM_HISTOGRAM_BINS - 1;
+
+        // Walk the histogram from high bins to low bins, counting number of pixels included in the bins seen so far
+        uint pixels_seen = 0;
+
+        // Count pixels and update high_bin we have seen 5% of them
+        uint high_bin = 0;
+        uint high_pixel_thresh = uint((1 - config.high_percentile) * float(config.pixel_count - zero_pixel_count));
+
+        // Count pixels and update low_bin we have seen 95% of them
+        uint low_bin = 0;
+        uint low_pixel_thresh = uint((1 - config.low_percentile) * float(config.pixel_count - zero_pixel_count));
+
+        for (int i = NUM_HISTOGRAM_BINS - 1; i >= 0; --i)
+        {
+            uint data = histogram_data.data[i];
+            if (data > 0)
+            {
+                max_bin = max(max_bin, i);
+                min_bin = i;
+            }
+
+            pixels_seen += data;
+            if (pixels_seen > high_pixel_thresh)
+            {
+                high_bin = max(high_bin, i);
+            }
+
+            if (pixels_seen > low_pixel_thresh)
+            {
+                low_bin = max(low_bin, i);
+            }
+        }
+
+        // Divide weighted sum by number of non-zero pixels (the bin counts are multiplied by [1, NUM_HISTOGRAM_BINS] so subtract one
+        // to get zero-based index)
+        float average_bin_include_zero = (HistogramShared[0] / config.pixel_count) - 1.0;
+
+        // VERSION THAT IGNORES NON-ZERO
+        // Divide weighted sum by number of non-zero pixels (since we're excluding bin zero, this is a one-based index)
+        float non_zero_pixel_count = float(config.pixel_count) - zero_pixel_count;
+        float average_bin_non_zero = ((HistogramShared[0] - non_zero_pixel_count) / max(non_zero_pixel_count, 1.0));
+
+        float average_bin = average_bin_include_zero;
+
+        histogram_result.result.average_luminosity_last_frame = histogram_result.result.average_luminosity_interpolated;
+        histogram_result.result.min_luminosity_last_frame = histogram_result.result.min_luminosity_interpolated;
+        histogram_result.result.max_luminosity_last_frame = histogram_result.result.max_luminosity_interpolated;
+        histogram_result.result.low_luminosity_last_frame = histogram_result.result.low_luminosity_interpolated;
+        histogram_result.result.high_luminosity_last_frame = histogram_result.result.high_luminosity_interpolated;
+
+        histogram_result.result.average_luminosity_this_frame = bin_to_luminosity(average_bin, config.min_log_luma, config.log_luma_range);
+        histogram_result.result.min_luminosity_this_frame = bin_to_luminosity(min_bin, config.min_log_luma, config.log_luma_range);
+        histogram_result.result.max_luminosity_this_frame = bin_to_luminosity(max_bin, config.min_log_luma, config.log_luma_range);
+        histogram_result.result.low_luminosity_this_frame = bin_to_luminosity(low_bin, config.min_log_luma, config.log_luma_range);
+        histogram_result.result.high_luminosity_this_frame = bin_to_luminosity(high_bin, config.min_log_luma, config.log_luma_range);
+
+        float interp_high = clamp(1 - exp(-config.high_adjust_speed * config.dt), 0.0, 1.0);
+        const float LOW_SPEED = 1.2;
+        float interp_low = clamp(1 - exp(-config.low_adjust_speed * config.dt), 0.0, 1.0);
+        histogram_result.result.average_luminosity_interpolated = mix(histogram_result.result.average_luminosity_interpolated, histogram_result.result.average_luminosity_this_frame, histogram_result.result.average_luminosity_interpolated < histogram_result.result.average_luminosity_this_frame ? interp_high : interp_low);
+        histogram_result.result.min_luminosity_interpolated = mix(histogram_result.result.min_luminosity_interpolated, histogram_result.result.min_luminosity_this_frame, histogram_result.result.min_luminosity_interpolated < histogram_result.result.min_luminosity_this_frame ? interp_high : interp_low);
+        histogram_result.result.max_luminosity_interpolated = mix(histogram_result.result.max_luminosity_interpolated, histogram_result.result.max_luminosity_this_frame, histogram_result.result.max_luminosity_interpolated < histogram_result.result.max_luminosity_this_frame ? interp_high : interp_low);
+        histogram_result.result.low_luminosity_interpolated = mix(histogram_result.result.low_luminosity_interpolated, histogram_result.result.low_luminosity_this_frame, histogram_result.result.low_luminosity_interpolated < histogram_result.result.low_luminosity_this_frame ? interp_high : interp_low);
+        histogram_result.result.high_luminosity_interpolated = mix(histogram_result.result.high_luminosity_interpolated, histogram_result.result.high_luminosity_this_frame, histogram_result.result.high_luminosity_interpolated < histogram_result.result.high_luminosity_this_frame ? interp_high : interp_low);
+
+        // ensure invariants
+        histogram_result.result.low_luminosity_interpolated = max(histogram_result.result.min_luminosity_interpolated, histogram_result.result.low_luminosity_interpolated);
+        histogram_result.result.high_luminosity_interpolated = max(histogram_result.result.low_luminosity_interpolated, histogram_result.result.high_luminosity_interpolated);
+        histogram_result.result.max_luminosity_interpolated = max(histogram_result.result.high_luminosity_interpolated, histogram_result.result.max_luminosity_interpolated);
+
+        histogram_result.result.average_bin_include_zero = average_bin_include_zero;
+        histogram_result.result.average_bin_non_zero = average_bin_non_zero;
+        histogram_result.result.min_bin = min_bin;
+        histogram_result.result.max_bin = max_bin;
+        histogram_result.result.low_bin = low_bin;
+        histogram_result.result.high_bin = high_bin;
+    }
+}

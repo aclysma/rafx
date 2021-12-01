@@ -14,6 +14,9 @@ pub use viewports_resource::ViewportsResource;
 mod render_thread;
 use render_thread::RenderThread;
 
+mod time_render_resource;
+pub use time_render_resource::TimeRenderResource;
+
 mod swapchain_render_resource;
 pub use swapchain_render_resource::SwapchainRenderResource;
 

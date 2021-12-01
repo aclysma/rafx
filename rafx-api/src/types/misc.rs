@@ -710,6 +710,46 @@ impl<'a> RafxTextureBarrier<'a> {
     }
 }
 
+// Recommended format/color space options for desktop vulkan are:
+// HDR: R16G16B16A16_SFLOAT/EXTENDED_SRGB_LINEAR_EXT (windows only)
+// Non-HDR: B8G8R8A8_SRGB/SRGB_NONLINEAR_KHR
+//
+// Both of these work well on apple/metal
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub enum RafxSwapchainColorSpace {
+    Srgb,
+    SrgbExtended,
+
+    // Only supported on apple/metal, SrgbExtended is recommended for all HDR, including
+    // on apple devices.
+    DisplayP3Extended,
+}
+
+impl RafxSwapchainColorSpace {
+    pub fn is_extended(self) -> bool {
+        match self {
+            RafxSwapchainColorSpace::Srgb => false,
+            RafxSwapchainColorSpace::SrgbExtended => true,
+            RafxSwapchainColorSpace::DisplayP3Extended => true,
+        }
+    }
+
+    pub fn is_srgb(self) -> bool {
+        match self {
+            RafxSwapchainColorSpace::Srgb => true,
+            RafxSwapchainColorSpace::SrgbExtended => true,
+            RafxSwapchainColorSpace::DisplayP3Extended => false,
+        }
+    }
+}
+
+impl Default for RafxSwapchainColorSpace {
+    fn default() -> Self {
+        RafxSwapchainColorSpace::Srgb
+    }
+}
+
 /// Represents an image owned by the swapchain
 #[derive(Clone)]
 pub struct RafxSwapchainImage {

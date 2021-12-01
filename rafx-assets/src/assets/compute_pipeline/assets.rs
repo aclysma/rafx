@@ -6,7 +6,7 @@ use distill::loader::handle::Handle;
 use rafx_api::RafxResult;
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
-use rafx_framework::{ComputePipelineResource, DescriptorSetLayout, ReflectedShader, ResourceArc};
+use rafx_framework::{ComputePipelineResource, ReflectedShader, ResourceArc};
 use std::hash::Hash;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
@@ -55,86 +55,12 @@ impl DefaultAssetTypeLoadHandler<ComputePipelineAssetData, ComputePipelineAsset>
             error_message
         })?;
 
-        let shader = asset_manager
-            .resources()
-            .get_or_create_shader(&[shader_module.shader_module.clone()], &[&reflection_data])?;
-
-        let reflected_shader = ReflectedShader::new(&[reflection_data])?;
-
-        let resource_context = asset_manager.resource_manager().resource_context();
-        let (immutable_rafx_sampler_keys, immutable_rafx_sampler_lists) =
-            ReflectedShader::create_immutable_samplers(
-                &resource_context,
-                &reflected_shader.descriptor_set_layout_defs,
-            )?;
-
-        let root_signature = asset_manager.resources().get_or_create_root_signature(
-            &[shader.clone()],
-            &immutable_rafx_sampler_keys,
-            &immutable_rafx_sampler_lists,
+        let reflected_shader = ReflectedShader::new(
+            asset_manager.resources(),
+            &[shader_module.shader_module.clone()],
+            &[&reflection_data],
         )?;
-
-        //
-        // Create the push constant ranges
-        //
-
-        // Currently unused, can be handled by the rafx api layer
-        // let mut push_constant_ranges = vec![];
-        // for (range_index, range) in reflection_data.push_constants.iter().enumerate() {
-        //     log::trace!("    Add range index {} {:?}", range_index, range);
-        //     push_constant_ranges.push(range.push_constant.clone());
-        // }
-
-        //
-        // Gather the descriptor set bindings
-        //
-        let mut descriptor_set_layout_defs = Vec::default();
-        for (set_index, layout) in reflection_data.descriptor_set_layouts.iter().enumerate() {
-            // Expand the layout def to include the given set index
-            while descriptor_set_layout_defs.len() <= set_index {
-                descriptor_set_layout_defs.push(DescriptorSetLayout::default());
-            }
-
-            if let Some(layout) = layout.as_ref() {
-                for binding in &layout.bindings {
-                    log::trace!(
-                        "    Add descriptor binding set={} binding={} for stage {:?}",
-                        set_index,
-                        binding.resource.binding,
-                        binding.resource.used_in_shader_stages
-                    );
-                    let def = binding.clone().into();
-
-                    descriptor_set_layout_defs[set_index].bindings.push(def);
-                }
-            }
-        }
-
-        //
-        // Create the descriptor set layout
-        //
-        let mut descriptor_set_layouts = Vec::with_capacity(descriptor_set_layout_defs.len());
-
-        for (set_index, descriptor_set_layout_def) in descriptor_set_layout_defs.iter().enumerate()
-        {
-            let descriptor_set_layout = asset_manager
-                .resources()
-                .get_or_create_descriptor_set_layout(
-                    &root_signature,
-                    set_index as u32,
-                    &descriptor_set_layout_def,
-                )?;
-            descriptor_set_layouts.push(descriptor_set_layout);
-        }
-
-        //
-        // Create the compute pipeline
-        //
-        let compute_pipeline = asset_manager.resources().get_or_create_compute_pipeline(
-            &shader,
-            &root_signature,
-            descriptor_set_layouts,
-        )?;
+        let compute_pipeline = reflected_shader.load_compute_pipeline(asset_manager.resources())?;
 
         Ok(ComputePipelineAsset { compute_pipeline })
     }

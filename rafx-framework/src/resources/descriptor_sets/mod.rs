@@ -113,6 +113,9 @@ pub fn what_to_bind(element_write: &DescriptorSetElementWrite) -> WhatToBind {
         RafxResourceType::BUFFER => {
             what.bind_buffers = true;
         }
+        RafxResourceType::BUFFER_READ_WRITE => {
+            what.bind_buffers = true;
+        }
         _ => unimplemented!(),
     }
 

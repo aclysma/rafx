@@ -12,4 +12,6 @@ pub mod visibility;
 
 pub use rafx_api::RafxResult;
 
+mod shaders;
+
 pub const MAX_FRAMES_IN_FLIGHT: usize = 2;

@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 mod main_native;
+
 pub use main_native::*;
 
 use legion::*;
@@ -37,8 +38,8 @@ use rafx_plugins::features::mesh::MeshRenderOptions;
 use rafx_plugins::features::skybox::SkyboxResource;
 use rafx_plugins::features::text::TextResource;
 use rafx_plugins::features::tile_layer::TileLayerResource;
-use rafx_plugins::pipelines::basic::BasicPipelineRenderOptions;
 use rafx_plugins::pipelines::basic::TonemapperType;
+use rafx_plugins::pipelines::basic::{BasicPipelineRenderOptions, BasicPipelineTonemapDebugData};
 use winit::event_loop::ControlFlow;
 
 #[cfg(all(feature = "profile-with-tracy-memory", not(feature = "stats_alloc")))]
@@ -133,7 +134,7 @@ impl RenderOptions {
             show_shadows: true,
             show_feature_toggles: true,
             blur_pass_count: 5,
-            tonemapper_type: TonemapperType::LogDerivative,
+            tonemapper_type: TonemapperType::AutoExposureOld,
             enable_visibility_update: true,
         }
     }
@@ -213,6 +214,7 @@ impl RenderOptions {
 pub struct DebugUiState {
     show_render_options: bool,
     show_asset_list: bool,
+    show_tonemap_debug: bool,
 
     #[cfg(feature = "profile-with-puffin")]
     show_profiler: bool,
@@ -276,6 +278,7 @@ impl DemoApp {
         resources.insert(RenderOptions::default_2d());
         resources.insert(MeshRenderOptions::default());
         resources.insert(BasicPipelineRenderOptions::default());
+        resources.insert(BasicPipelineTonemapDebugData::default());
         resources.insert(DebugUiState::default());
 
         let asset_source = args.asset_source().unwrap();
@@ -423,6 +426,10 @@ impl DemoApp {
             let time_state = self.resources.get::<TimeState>().unwrap();
             let mut debug_ui_state = self.resources.get_mut::<DebugUiState>().unwrap();
             let mut render_options = self.resources.get_mut::<RenderOptions>().unwrap();
+            let tonemap_debug_data = self
+                .resources
+                .get::<BasicPipelineTonemapDebugData>()
+                .unwrap();
             let asset_manager = self.resources.get::<AssetResource>().unwrap();
 
             egui::TopBottomPanel::top("top_panel").show(&ctx, |ui| {
@@ -431,6 +438,7 @@ impl DemoApp {
                         ui.checkbox(&mut debug_ui_state.show_render_options, "Render Options");
 
                         ui.checkbox(&mut debug_ui_state.show_asset_list, "Asset List");
+                        ui.checkbox(&mut debug_ui_state.show_tonemap_debug, "Tonemap Debug");
 
                         #[cfg(feature = "profile-with-puffin")]
                         if ui
@@ -455,6 +463,49 @@ impl DemoApp {
                     });
                 })
             });
+
+            if debug_ui_state.show_tonemap_debug {
+                egui::Window::new("Tonemap Debug")
+                    .open(&mut debug_ui_state.show_tonemap_debug)
+                    .show(&ctx, |ui| {
+                        let data = tonemap_debug_data.inner.lock().unwrap();
+
+                        ui.add(egui::Label::new(format!(
+                            "histogram_sample_count: {}",
+                            data.histogram_sample_count
+                        )));
+                        ui.add(egui::Label::new(format!(
+                            "histogram_max_value: {}",
+                            data.histogram_max_value
+                        )));
+
+                        use egui::plot::{Line, Plot, VLine, Value, Values};
+                        let line_values: Vec<_> = data
+                            .histogram
+                            .iter()
+                            //.skip(1) // don't include index 0
+                            .enumerate()
+                            .map(|(i, value)| Value::new(i as f64, *value as f64))
+                            .collect();
+                        let line =
+                            Line::new(Values::from_values_iter(line_values.into_iter())).fill(0.0);
+                        let average_line = VLine::new(data.result_average_bin);
+                        let low_line = VLine::new(data.result_low_bin);
+                        let high_line = VLine::new(data.result_high_bin);
+                        Some(
+                            ui.add(
+                                Plot::new("my_plot")
+                                    .line(line)
+                                    .vline(average_line)
+                                    .vline(low_line)
+                                    .vline(high_line)
+                                    .include_y(0.0)
+                                    .include_y(1.0)
+                                    .show_axes([false, false]),
+                            ),
+                        )
+                    });
+            }
 
             if debug_ui_state.show_render_options {
                 egui::Window::new("Render Options")
@@ -558,6 +609,12 @@ impl DemoApp {
         // Redraw
         //
         {
+            let dt = self
+                .resources
+                .get::<TimeState>()
+                .unwrap()
+                .previous_update_time();
+
             profiling::scope!("Start Next Frame Render");
             let renderer = self.resources.get::<Renderer>().unwrap();
 
@@ -582,6 +639,7 @@ impl DemoApp {
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
             add_to_extract_resources!(BasicPipelineRenderOptions);
+            add_to_extract_resources!(BasicPipelineTonemapDebugData);
             add_to_extract_resources!(MeshRenderOptions);
             add_to_extract_resources!(RendererConfigResource);
             add_to_extract_resources!(TileLayerResource);
@@ -613,7 +671,7 @@ impl DemoApp {
             extract_resources.insert(&mut self.world);
 
             renderer
-                .start_rendering_next_frame(&mut extract_resources)
+                .start_rendering_next_frame(&mut extract_resources, dt)
                 .unwrap();
         }
 

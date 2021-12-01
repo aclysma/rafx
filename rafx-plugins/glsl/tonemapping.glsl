@@ -1,4 +1,6 @@
 #include "exposure.glsl"
+#include "tonemapping_bgfx.glsl"
+
 // The code for ACESFitted was originally written by Stephen Hill (@self_shadow), who deserves all
 // credit for coming up with this fit and implementing it. Buy him a beer next time you see him. :)
 // The code is licensed under the MIT license. The code has been converted to glsl, and was originally found at:
@@ -109,7 +111,7 @@ vec3 tonemap_Hejl2015(vec3 hdr)
     vec4 vh = vec4(hdr, WHITE_POINT_HEJL);
     vec4 va = (1.435f * vh) + 0.05;
     vec4 vf = ((vh * va + 0.004f) / ((vh * (va + 0.55f) + 0.0491f))) - 0.0821f;
-    return linear_to_srgb(vf.xyz / vf.www);
+    return vf.xyz / vf.www;
 }
 
 vec3 hable_function(in vec3 x) {
@@ -129,8 +131,37 @@ vec3 tonemap_hable(in vec3 color) {
     vec3 numerator = hable_function(color);
     vec3 denominator = hable_function(vec3(WHITE_POINT_HABLE));
 
-    return linear_to_srgb(numerator / denominator);
+    return numerator / denominator;
 }
+
+//////////////////// OLD TONEMAPPING //////////////////////
+// Based on tutorial at https://bruop.github.io/tonemapping/
+//
+// Uses color correction functions from bgfx
+
+float reinhard2(float x, float whitepoint) {
+    return (x * (1.0 + (x / (whitepoint * whitepoint)))) / (1.0 + x);
+}
+
+vec3 old_autoexposure_tonemapping(vec3 in_color, float histogram_result_average_luminosity_interpolated) {
+    // Below color conversion won't work on pure black, but just map black to black to avoid NaN
+    if (dot(in_color, vec3(1.0)) < 0.0001) {
+        return vec3(0.0);
+    }
+
+    float average_luma = clamp(histogram_result_average_luminosity_interpolated, 0.0005, 0.7);
+
+    vec3 Yxy = convertRGB2Yxy(in_color);
+    float gray = 0.03;
+    float white_squared = 1.0;
+
+    float lp = Yxy.x * gray / (average_luma + 0.0001);
+    Yxy.x = reinhard2(lp, white_squared);
+
+    return convertYxy2RGB(Yxy);
+}
+
+//////////////////// DEBUG TONEMAPPING //////////////////////
 
 float luma(vec3 color) {
   return dot(color, vec3(0.299, 0.587, 0.114));
@@ -144,7 +175,7 @@ vec3 visualize_value(float val) {
     float b = val;
     float r = 1 - 1 / (0.5 * val - 0.5);
     // the transition blue -> green is hard, to make it easier to spot when values go over 1
-    if (val > 1.0) { 
+    if (val > 1.0) {
         b = 0;
     }
     if (val < 3.0) {
@@ -155,6 +186,7 @@ vec3 visualize_value(float val) {
 
 
 // Should be kept in sync with the constants in TonemapperType
+const int TM_None = 0;
 const int TM_StephenHillACES = 1;
 const int TM_SimplifiedLumaACES = 2;
 const int TM_Hejl2015 = 3;
@@ -163,9 +195,16 @@ const int TM_FilmicALU = 5;
 const int TM_LogDerivative = 6;
 const int TM_VisualizeRGBMax = 7;
 const int TM_VisualizeLuma = 8;
+const int TM_AutoExposureOld = 9;
 
-vec3 tonemap(vec3 color, int tonemapper_type) {
-    // tonemapping.. TODO: implement auto-exposure
+vec3 tonemap(
+    vec3 color,
+    int tonemapper_type,
+    float histogram_result_low_luminosity_interpolated,
+    float histogram_result_average_luminosity_interpolated,
+    float histogram_result_high_luminosity_interpolated,
+    float histogram_result_max_luminosity_interpolated
+) {
     switch (tonemapper_type) {
         case TM_StephenHillACES:  {
             return linear_to_srgb(tonemap_aces_fitted(color));
@@ -192,6 +231,12 @@ vec3 tonemap(vec3 color, int tonemapper_type) {
         case TM_VisualizeLuma: {
             float l = luma(color);
             return visualize_value(l);
+        } break;
+        case TM_AutoExposureOld: {
+            return old_autoexposure_tonemapping(
+                color,
+                histogram_result_average_luminosity_interpolated
+            );
         } break;
         default: {
             return color;

@@ -3,7 +3,7 @@ use super::Renderer;
 use rafx_api::raw_window_handle::HasRawWindowHandle;
 use rafx_api::{
     RafxDeviceContext, RafxExtents2D, RafxPresentableFrame, RafxResult, RafxSwapchain,
-    RafxSwapchainDef, RafxSwapchainEventListener, RafxSwapchainHelper,
+    RafxSwapchainColorSpace, RafxSwapchainDef, RafxSwapchainEventListener, RafxSwapchainHelper,
 };
 use rafx_assets::AssetManager;
 use rafx_framework::graph::SwapchainSurfaceInfo;
@@ -30,6 +30,7 @@ impl<'a> SwapchainHandler<'a> {
                     height,
                     width,
                     enable_vsync: true,
+                    color_space: RafxSwapchainColorSpace::SrgbExtended,
                 },
             )?;
 
@@ -102,6 +103,7 @@ impl<'a> RafxSwapchainEventListener for SwapchainHandler<'a> {
         let swapchain_surface_info = SwapchainSurfaceInfo {
             extents,
             format: swapchain.format(),
+            color_space: swapchain.color_space(),
         };
 
         //

@@ -62,71 +62,21 @@ impl MaterialPass {
         shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
         entry_points: &[&ReflectedEntryPoint],
     ) -> RafxResult<MaterialPass> {
-        // Combine reflection data from all stages in the shader
-        let reflected_shader = ReflectedShader::new(entry_points)?;
+        let reflected_shader =
+            ReflectedShader::new(resource_context.resources(), &shader_modules, entry_points)?;
+
+        let material_pass = reflected_shader
+            .load_material_pass(resource_context.resources(), fixed_function_state)?;
 
         let vertex_inputs = reflected_shader
+            .metadata
             .vertex_inputs
             .ok_or_else(|| "The material pass does not specify a vertex shader")?;
-
-        //
-        // Shader
-        //
-        let shader = resource_context
-            .resources()
-            .get_or_create_shader(&shader_modules, entry_points)?;
-
-        //
-        // Root Signature
-        //
-        let (immutable_rafx_sampler_keys, immutable_rafx_sampler_lists) =
-            ReflectedShader::create_immutable_samplers(
-                resource_context,
-                &reflected_shader.descriptor_set_layout_defs,
-            )?;
-
-        let root_signature = resource_context.resources().get_or_create_root_signature(
-            &[shader.clone()],
-            &immutable_rafx_sampler_keys,
-            &immutable_rafx_sampler_lists,
-        )?;
-
-        //
-        // Descriptor set layout
-        //
-        let mut descriptor_set_layouts =
-            Vec::with_capacity(reflected_shader.descriptor_set_layout_defs.len());
-
-        for (set_index, descriptor_set_layout_def) in reflected_shader
-            .descriptor_set_layout_defs
-            .iter()
-            .enumerate()
-        {
-            let descriptor_set_layout = resource_context
-                .resources()
-                .get_or_create_descriptor_set_layout(
-                    &root_signature,
-                    set_index as u32,
-                    &descriptor_set_layout_def,
-                )?;
-            descriptor_set_layouts.push(descriptor_set_layout);
-        }
-
-        //
-        // Create the material pass
-        //
-        let material_pass = resource_context.resources().get_or_create_material_pass(
-            shader,
-            root_signature,
-            descriptor_set_layouts,
-            fixed_function_state,
-            vertex_inputs.clone(),
-        )?;
 
         let inner = MaterialPassInner {
             shader_modules,
             material_pass_resource: material_pass.clone(),
-            pass_slot_name_lookup: Arc::new(reflected_shader.slot_name_lookup),
+            pass_slot_name_lookup: Arc::new(reflected_shader.metadata.slot_name_lookup),
             vertex_inputs,
         };
 

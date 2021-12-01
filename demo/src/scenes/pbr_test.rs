@@ -140,10 +140,10 @@ impl FlyCamera {
         //println!("pitch: {:?} yaw: {:?} velocity: {:?}", pitch_dt, yaw_dt, velocity);
         //println!("pitch: {:?} yaw: {:?} velocity: {:?}", self.pitch, self.yaw, self.position);
         //println!("yaw: {} pitch: {} look: {:?} up: {:?} right: {:?}", self.yaw.to_degrees(), self.pitch.to_degrees(), look_dir, up_dir, right_dir);
-        println!(
-            "pos: {} pitch: {} yaw: {}",
-            self.position, self.pitch, self.yaw
-        );
+        // println!(
+        //     "pos: {} pitch: {} yaw: {}",
+        //     self.position, self.pitch, self.yaw
+        // );
     }
 }
 

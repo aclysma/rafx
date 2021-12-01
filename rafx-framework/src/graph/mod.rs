@@ -3,6 +3,7 @@ pub use graph_builder::RenderGraphBuilder;
 pub use graph_builder::RenderGraphQueue;
 
 mod graph_image;
+pub use graph_image::RenderGraphExternalImageId;
 pub use graph_image::RenderGraphImageConstraint;
 pub use graph_image::RenderGraphImageExtents;
 pub use graph_image::RenderGraphImageSpecification;
@@ -14,6 +15,7 @@ mod graph_buffer;
 pub use graph_buffer::RenderGraphBufferConstraint;
 pub use graph_buffer::RenderGraphBufferSpecification;
 pub use graph_buffer::RenderGraphBufferUsageId;
+pub use graph_buffer::RenderGraphExternalBufferId;
 use graph_buffer::*;
 
 mod graph_node;

@@ -96,6 +96,9 @@ pub struct ShaderProcessorArgs {
     pub package_gles3: bool,
     #[structopt(name = "package-all", long)]
     pub package_all: bool,
+
+    #[structopt(name = "for-rafx-framework-crate", long)]
+    pub for_rafx_framework_crate: bool,
 }
 
 pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
@@ -439,6 +442,7 @@ fn process_glsl_shader(
             &parsed_declarations,
             &spirv_reflect_module,
             &reflected_entry_point,
+            args.for_rafx_framework_crate,
         )?)
     } else {
         None

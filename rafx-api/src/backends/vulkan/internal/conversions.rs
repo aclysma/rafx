@@ -1,11 +1,34 @@
+use crate::ash::vk::ColorSpaceKHR;
 use crate::{
     RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxColorClearValue, RafxColorFlags,
     RafxCompareOp, RafxCullMode, RafxDepthStencilClearValue, RafxFillMode, RafxFilterType,
     RafxFrontFace, RafxIndexType, RafxLoadOp, RafxMemoryUsage, RafxMipMapMode,
     RafxPrimitiveTopology, RafxSampleCount, RafxShaderStageFlags, RafxStencilOp, RafxStoreOp,
-    RafxVertexAttributeRate,
+    RafxSwapchainColorSpace, RafxVertexAttributeRate,
 };
 use ash::vk;
+
+impl Into<vk::ColorSpaceKHR> for RafxSwapchainColorSpace {
+    fn into(self) -> vk::ColorSpaceKHR {
+        match self {
+            RafxSwapchainColorSpace::Srgb => vk::ColorSpaceKHR::SRGB_NONLINEAR,
+            RafxSwapchainColorSpace::SrgbExtended => vk::ColorSpaceKHR::EXTENDED_SRGB_LINEAR_EXT,
+            // Vulkan API only supports non-extended P3 and hardware support for even that is pretty
+            // much non-existent
+            RafxSwapchainColorSpace::DisplayP3Extended => unimplemented!(),
+        }
+    }
+}
+
+impl From<vk::ColorSpaceKHR> for RafxSwapchainColorSpace {
+    fn from(color_space: ColorSpaceKHR) -> Self {
+        match color_space {
+            ColorSpaceKHR::SRGB_NONLINEAR => RafxSwapchainColorSpace::Srgb,
+            ColorSpaceKHR::EXTENDED_SRGB_LINEAR_EXT => RafxSwapchainColorSpace::SrgbExtended,
+            _ => unimplemented!(),
+        }
+    }
+}
 
 impl Into<vk::SampleCountFlags> for RafxSampleCount {
     fn into(self) -> vk::SampleCountFlags {

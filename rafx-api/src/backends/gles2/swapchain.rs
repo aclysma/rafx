@@ -1,8 +1,9 @@
 use crate::backends::gles2::RafxTextureGles2;
 use crate::gles2::{GlContext, RafxDeviceContextGles2, RafxFenceGles2, RafxSemaphoreGles2};
 use crate::{
-    RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
-    RafxSwapchainImage, RafxTexture, RafxTextureDef, RafxTextureDimensions,
+    RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount,
+    RafxSwapchainColorSpace, RafxSwapchainDef, RafxSwapchainImage, RafxTexture, RafxTextureDef,
+    RafxTextureDimensions,
 };
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
@@ -33,6 +34,10 @@ impl RafxSwapchainGles2 {
         self.format
     }
 
+    pub fn color_space(&self) -> RafxSwapchainColorSpace {
+        self.swapchain_def.color_space
+    }
+
     pub fn surface_context(&self) -> &Arc<GlContext> {
         &self.surface_context
     }
@@ -45,6 +50,10 @@ impl RafxSwapchainGles2 {
         let surface_context = device_context
             .gl_context_manager()
             .create_surface_context(raw_window_handle)?;
+
+        if swapchain_def.color_space != RafxSwapchainColorSpace::Srgb {
+            unimplemented!("GLES2 backend only supports sRGB Non-Linear color space");
+        }
 
         //TODO: GL swap interval is not being set (vsync). Doesn't seem to be a good cross-platform way to do
         // this. And some platforms don't respect it even if a configuration method is present.

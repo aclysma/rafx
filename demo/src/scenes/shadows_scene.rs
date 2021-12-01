@@ -6,8 +6,8 @@ use crate::time::TimeState;
 use crate::RenderOptions;
 use distill::loader::handle::Handle;
 use glam::Vec3;
-use legion::IntoQuery;
-use legion::{Read, Resources, World, Write};
+use legion::{IntoQuery, Read};
+use legion::{Resources, World, Write};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ImageAsset};
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
@@ -19,9 +19,9 @@ use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
 use rafx_plugins::assets::mesh::MeshAsset;
 use rafx_plugins::components::{
-    DirectionalLightComponent, MeshComponent, PointLightComponent, TransformComponent,
+    DirectionalLightComponent, SpotLightComponent, VisibilityComponent,
 };
-use rafx_plugins::components::{SpotLightComponent, VisibilityComponent};
+use rafx_plugins::components::{MeshComponent, PointLightComponent, TransformComponent};
 use rafx_plugins::features::debug3d::Debug3DRenderFeature;
 use rafx_plugins::features::mesh::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
@@ -50,7 +50,7 @@ impl ShadowsScene {
         *render_options = RenderOptions::default_3d();
 
         let mut mesh_render_options = resources.get_mut::<MeshRenderOptions>().unwrap();
-        mesh_render_options.ambient_light = glam::Vec3::new(0.02, 0.02, 0.02);
+        mesh_render_options.ambient_light = glam::Vec3::new(0.005, 0.005, 0.005);
 
         let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
 

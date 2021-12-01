@@ -13,15 +13,17 @@ use rafx::framework::{
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct ConfigStd140 {
-    pub tonemapper_type: i32, // +0 (size: 4)
-    pub _padding0: [u8; 12],  // +4 (size: 12)
+    pub tonemapper_type: i32,    // +0 (size: 4)
+    pub output_color_space: i32, // +4 (size: 4)
+    pub _padding0: [u8; 8],      // +8 (size: 8)
 } // 16 bytes
 
 impl Default for ConfigStd140 {
     fn default() -> Self {
         ConfigStd140 {
             tonemapper_type: <i32>::default(),
-            _padding0: [u8::default(); 12],
+            output_color_space: <i32>::default(),
+            _padding0: [u8::default(); 8],
         }
     }
 }
@@ -36,6 +38,8 @@ pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const SMP_DESCRIPTOR_BINDING_INDEX: usize = 2;
 pub const CONFIG_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const CONFIG_DESCRIPTOR_BINDING_INDEX: usize = 3;
+pub const HISTOGRAM_RESULT_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const HISTOGRAM_RESULT_DESCRIPTOR_BINDING_INDEX: usize = 4;
 
 pub struct DescriptorSet0Args<'a> {
     pub in_color: &'a ResourceArc<ImageViewResource>,
@@ -140,8 +144,11 @@ mod test {
         assert_eq!(std::mem::size_of::<i32>(), 4);
         assert_eq!(std::mem::align_of::<i32>(), 4);
         assert_eq!(memoffset::offset_of!(ConfigStd140, tonemapper_type), 0);
-        assert_eq!(std::mem::size_of::<[u8; 12]>(), 12);
-        assert_eq!(std::mem::align_of::<[u8; 12]>(), 1);
-        assert_eq!(memoffset::offset_of!(ConfigStd140, _padding0), 4);
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
+        assert_eq!(memoffset::offset_of!(ConfigStd140, output_color_space), 4);
+        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
+        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
+        assert_eq!(memoffset::offset_of!(ConfigStd140, _padding0), 8);
     }
 }

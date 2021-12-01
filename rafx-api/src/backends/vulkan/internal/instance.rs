@@ -111,6 +111,7 @@ impl VkInstance {
 
         let mut layer_names = vec![];
         let mut extension_names = ash_window::enumerate_required_extensions(window)?;
+
         if !validation_layer_debug_report_flags.is_empty() {
             // Find the best validation layer that's available
             let best_validation_layer = VkInstance::find_best_validation_layer(&layers);
@@ -143,6 +144,13 @@ impl VkInstance {
                     extension_names.push(DebugUtils::name());
                 }
             }
+        }
+
+        let swapchain_extension_name = CString::new("VK_EXT_swapchain_colorspace").unwrap();
+        if extensions.iter().any(|extension| unsafe {
+            CStr::from_ptr(extension.extension_name.as_ptr()) == swapchain_extension_name.as_c_str()
+        }) {
+            extension_names.push(swapchain_extension_name.as_c_str());
         }
 
         if log::log_enabled!(log::Level::Debug) {
