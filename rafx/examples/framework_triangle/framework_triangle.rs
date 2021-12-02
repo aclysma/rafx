@@ -113,30 +113,16 @@ fn run() -> RafxResult<()> {
         let cooked_shaders_base_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("examples/framework_triangle/cooked_shaders");
 
-        // Create the vertex shader module and find the entry point
+        // Load the vertex shader module
         let cooked_vertex_shader_stage =
             load_cooked_shader_stage(&cooked_shaders_base_path, "shader.vert.cookedshaderpackage")?;
-        let vertex_shader_module = resource_context
-            .resources()
-            .get_or_create_shader_module_from_cooked_package(&cooked_vertex_shader_stage)?;
-        let vertex_entry_point = cooked_vertex_shader_stage
-            .find_entry_point("main")
-            .unwrap()
-            .clone();
 
-        // Create the fragment shader module and find the entry point
+        // Load the fragment shader module
         let cooked_fragment_shader_stage =
             load_cooked_shader_stage(&cooked_shaders_base_path, "shader.frag.cookedshaderpackage")?;
-        let fragment_shader_module = resource_context
-            .resources()
-            .get_or_create_shader_module_from_cooked_package(&cooked_fragment_shader_stage)?;
-        let fragment_entry_point = cooked_fragment_shader_stage
-            .find_entry_point("main")
-            .unwrap()
-            .clone();
 
         //
-        // Now set up the fixed function and vertex input state. LOTS of things can be configured
+        // Set up the fixed function and vertex input state. LOTS of things can be configured
         // here, but aside from the vertex layout most of it can be left as default.
         //
         let fixed_function_state = Arc::new(FixedFunctionState {
@@ -145,14 +131,12 @@ fn run() -> RafxResult<()> {
             blend_state: Default::default(),
         });
 
-        // Creating a material automatically registers the necessary resources in the resource
-        // manager and caches references to them. (This is almost the same as loading a material
-        // asset, although a material asset can have multiple passes).
-        let material_pass = MaterialPass::new(
-            &resource_context,
+        // Create the material pass (which can later be used to create a graphics pipeline)
+        let material_pass = CookedShaderPackage::load_material_pass(
+            resource_context.resources(),
+            &[&cooked_vertex_shader_stage, &cooked_fragment_shader_stage],
+            &["main", "main"],
             fixed_function_state,
-            vec![vertex_shader_module, fragment_shader_module],
-            &[&vertex_entry_point, &fragment_entry_point],
         )?;
 
         // It's good practice to register materials with the render phase they will be used in. This
@@ -162,7 +146,7 @@ fn run() -> RafxResult<()> {
         resource_manager
             .graphics_pipeline_cache()
             .register_material_to_phase_index(
-                &material_pass.material_pass_resource,
+                &material_pass,
                 OpaqueRenderPhase::render_phase_index(),
             );
 
@@ -316,7 +300,7 @@ fn run() -> RafxResult<()> {
                 // The allocator should be used and dropped, not kept around. It is pooled/re-used.
                 // flush_changes is automatically called on drop.
                 //
-                let descriptor_set_layout = material_pass.material_pass_resource
+                let descriptor_set_layout = material_pass
                     .get_raw()
                     .descriptor_set_layouts[0]
                     .clone();
@@ -345,7 +329,7 @@ fn run() -> RafxResult<()> {
                     .graphics_pipeline_cache()
                     .get_or_create_graphics_pipeline(
                     OpaqueRenderPhase::render_phase_index(),
-                    &material_pass.material_pass_resource,
+                    &material_pass,
                     &args.render_target_meta,
                     &vertex_layout
                 )?;
@@ -453,7 +437,6 @@ fn run() -> RafxResult<()> {
 //
 use rafx::framework::render_features::{RenderJobWriteContext, SubmitNodeBlocks};
 use rafx::render_features::RenderPhase;
-use rafx_framework::MaterialPass;
 use std::path::Path;
 
 rafx::declare_render_phase!(
