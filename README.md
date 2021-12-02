@@ -19,20 +19,22 @@ Rafx also provides tools for building shaders and packing assets.
 
 Rafx supports most mainstream platforms. Proprietary platforms can be supported by adding an additional backend.
 
-| Platform | Vulkan   | Metal | GL ES 2.0 (4) |
-| -------- | -------- | ----- | ------------- |
-| Windows  |   ✅     |       |      ✅       |
-| macOS    |   ✅     |  ✅   |      ✅       |
-| Linux    |   ✅ (1) |       |      ✅ (1)   |
-| iOS      |   ✅     |  ✅   |      🟥 (3)   |
-| Android  |   🟨 (2) |       |      🟥 (3)   |
-| WebGL    |          |       |      ✅       |
+| Platform  | Vulkan   | Metal | GL ES 2.0 (4,6) | GL ES 3.0 (4,5,6) |
+| --------- | -------- | ----- | --------------- | ----------------- |
+| Windows   |   ✅     |       |      ✅         |        ✅         |
+| macOS     |   ✅     |  ✅   |      ✅         |        ✅         |
+| Linux     |   ✅ (1) |       |      ✅ (1)     |        ✅ (1)     |
+| iOS       |   ✅     |  ✅   |      🟥 (3)     |        🟥 (3)     |
+| Android   |   🟨 (2) |       |      🟥 (3)     |        🟥 (3)     |
+| WebGL (6) |          |       |      ✅         |        ✅         |
 
 **Caveats**: 
- 1. Some backend/driver/window manager combinations might not work. We primarily test with Ubuntu 20.04 LTS.
+ 1. Some backend/driver/window manager combinations might not work. Most recently tested with Ubuntu 20.04 LTS.
  2. Android might work with vulkan but has not been tested. (It likely can be made to work) 
  3. Mobile OpenGL devices might work but may need improvements to create the initial OpenGL graphics context.
- 4. Limitations in the OpenGL ES 2.0 API prevent full implementation. The main demo does not work in GL ES 2.0.
+ 4. Limitations in the OpenGL ES 2.0/3.0 API prevent full implementation. The main demo does not work in GL ES 2.0/3.0.
+ 5. OpenGL ES 3.0 backend still uses 2.0 paths for some functionality. There is room for improvement!
+ 6. OpenGL/WebGL will not receive much improvement/support going forward.
 
 Please keep in mind, this crate is still in pre-0.1.0 status!
 
@@ -115,8 +117,8 @@ is highly recommeneded. Asset processing is extremely slow in debug mode.** (i.e
 * Assets can be streamed to remote hardware (i.e. a phone)
 * OR assets can be cooked into a binary blob for shipping
 * Hot-reloading assets (needs more work, some asset types do not work reliably)
-* Render graph can be used for efficient and flexible definition of a render pipeline, including rendering to textures
-  and multiple cameras.
+* Render graph can be used for efficient and flexible definition of a render pipeline, including rendering to textures, 
+  multiple cameras, and compute shaders.
 * Auto-generated shader bindings make working with descriptor sets convenient and less error prone.
 * Material System supporting multiple passes
 * Multi-camera support (to produce shadow maps, for example)
@@ -124,8 +126,9 @@ is highly recommeneded. Asset processing is extremely slow in debug mode.** (i.e
 * PBR Meshes
 * Sprites
 * Debug Draw
-* imgui
-* HDR Pipeline with Bloom
+* imgui/egui
+* HDR Pipeline with Bloom/Auto-exposure
+* HDR display support (only tested on macOS, might work with vulkan)
 * Point, Spot, and Directional Lights
 * Multiple Spot/Directional/Point light soft shadows
 * Font Rendering
