@@ -179,6 +179,7 @@ impl RafxSwapchainEmpty {
     pub fn swapchain_def(&self) -> &RafxSwapchainDef { unimplemented!() }
     pub fn image_count(&self) -> usize { unimplemented!() }
     pub fn format(&self) -> RafxFormat { unimplemented!() }
+    pub fn color_space(&self) -> RafxSwapchainColorSpace { unimplemented!() }
     pub fn acquire_next_image_fence(&mut self, fence: &RafxFenceEmpty) -> RafxResult<RafxSwapchainImage> { unimplemented!() }
     pub fn acquire_next_image_semaphore(&mut self, semaphore: &RafxSemaphoreEmpty) -> RafxResult<RafxSwapchainImage> { unimplemented!() }
     pub fn rebuild(&mut self, swapchain_def: &RafxSwapchainDef) -> RafxResult<()> { unimplemented!() }

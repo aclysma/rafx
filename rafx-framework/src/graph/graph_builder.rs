@@ -4,8 +4,8 @@ use crate::resources::{ImageViewResource, ResourceArc};
 use crate::BufferResource;
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::{
-    RafxColorClearValue, RafxDepthStencilClearValue, RafxResourceState, RafxResourceType,
-    RafxResult,
+    RafxColorClearValue, RafxDepthStencilClearValue, RafxLoadOp, RafxResourceState,
+    RafxResourceType, RafxResult,
 };
 
 #[derive(Copy, Clone)]
@@ -14,38 +14,41 @@ pub enum RenderGraphQueue {
     Index(u32),
 }
 
-// /// An image that is being provided to the render graph that can be read from
-// #[derive(Debug)]
-// pub struct RenderGraphInputImage {
-//     pub usage: RenderGraphImageUsageId,
-//     pub specification: RenderGraphImageSpecification,
-// }
-
-/// An image that is being provided to the render graph that can be written to
+/// An image that is being provided to the render graph that can be read/written by the graph
 #[derive(Debug)]
-pub struct RenderGraphOutputImage {
-    pub output_image_id: RenderGraphOutputImageId,
-    pub usage: RenderGraphImageUsageId,
+pub struct RenderGraphExternalImage {
+    pub external_image_id: RenderGraphExternalImageId,
     pub specification: RenderGraphImageSpecification,
-    pub dst_image: ResourceArc<ImageViewResource>,
+    pub view_options: RenderGraphImageViewOptions,
+    pub image_resource: ResourceArc<ImageViewResource>,
+    pub image_resource_index: usize,
 
+    // These are set when calling read_external_image/write_external_image
+    pub input_usage: Option<RenderGraphImageUsageId>,
+    pub output_usage: Option<RenderGraphImageUsageId>,
+
+    //TODO: Use initial state
+    #[allow(dead_code)]
+    pub(super) initial_state: RafxResourceState,
     pub(super) final_state: RafxResourceState,
 }
 
-// /// A buffer that is being provided to the render graph that can be read from
-// #[derive(Debug)]
-// pub struct RenderGraphInputBuffer {
-//     pub usage: RenderGraphBufferUsageId,
-//     pub specification: RenderGraphBufferSpecification,
-// }
-
-/// A buffer that is being provided to the render graph that can be written to
+/// A buffer that is being provided to the render graph that can be read/written by the graph
 #[derive(Debug)]
-pub struct RenderGraphOutputBuffer {
-    pub output_buffer_id: RenderGraphOutputBufferId,
-    pub usage: RenderGraphBufferUsageId,
+pub struct RenderGraphExternalBuffer {
+    pub external_buffer_id: RenderGraphExternalBufferId,
     pub specification: RenderGraphBufferSpecification,
-    pub dst_buffer: ResourceArc<BufferResource>,
+    pub buffer_resource: ResourceArc<BufferResource>,
+    pub buffer_resource_index: usize,
+
+    pub input_usage: Option<RenderGraphBufferUsageId>,
+    pub output_usage: Option<RenderGraphBufferUsageId>,
+
+    //TODO: Use initial/final state
+    #[allow(dead_code)]
+    pub(super) initial_state: RafxResourceState,
+    #[allow(dead_code)]
+    pub(super) final_state: RafxResourceState,
 }
 
 /// A collection of nodes and resources. Nodes represent an event or process that will occur at
@@ -70,12 +73,9 @@ pub struct RenderGraphBuilder {
     pub(super) image_usages: Vec<RenderGraphImageUsage>,
     pub(super) buffer_usages: Vec<RenderGraphBufferUsage>,
 
-    /// Images that are passed into the graph that can be read from
-    //pub(super) input_images: Vec<RenderGraphInputImage>,
-
-    /// Images that are passed into the graph to be written to.
-    pub(super) output_images: Vec<RenderGraphOutputImage>,
-    pub(super) output_buffers: Vec<RenderGraphOutputBuffer>,
+    /// Images that are passed into the graph that can be read/written by the graph
+    pub(super) external_images: Vec<RenderGraphExternalImage>,
+    pub(super) external_buffers: Vec<RenderGraphExternalBuffer>,
 
     //
     // Callbacks
@@ -106,6 +106,16 @@ impl RenderGraphBuilder {
             view_options,
         });
         usage_id
+    }
+
+    // This call assumes a write barrier is going to be placed before the prepass clear (due to
+    // barriers being placed by calls like create_storage_image() and write_storage_image()
+    pub(super) fn add_image_prepass_clear(
+        &mut self,
+        node: RenderGraphNodeId,
+        image: RenderGraphImageUsageId,
+    ) {
+        self.nodes[node.0].image_prepass_clears.push(image);
     }
 
     // Add an image that can be used by nodes
@@ -555,39 +565,6 @@ impl RenderGraphBuilder {
         usage
     }
 
-    pub fn set_output_image(
-        &mut self,
-        image_id: RenderGraphImageUsageId,
-        dst_image: ResourceArc<ImageViewResource>,
-        specification: RenderGraphImageSpecification,
-        view_options: RenderGraphImageViewOptions,
-        final_state: RafxResourceState,
-    ) -> RenderGraphOutputImageId {
-        let output_image_id = RenderGraphOutputImageId(self.output_images.len());
-
-        let version_id = self.image_version_id(image_id);
-        let usage_id = self.add_image_usage(
-            RenderGraphImageUser::Output(output_image_id),
-            version_id,
-            RenderGraphImageUsageType::Output,
-            view_options,
-        );
-
-        let image_version = self.image_version_info_mut(image_id);
-        image_version.read_usages.push(usage_id);
-
-        let output_image = RenderGraphOutputImage {
-            output_image_id,
-            usage: usage_id,
-            specification,
-            dst_image,
-            final_state,
-        };
-
-        self.output_images.push(output_image);
-        output_image_id
-    }
-
     //NOTE: While the buffer aspect flags may seem redundant with subresource_range here, the
     // subresource_range should indicate the buffer view's supported aspects and the provided
     // buffer aspect flags the aspects that are actually being used
@@ -604,6 +581,16 @@ impl RenderGraphBuilder {
             version,
         });
         usage_id
+    }
+
+    // This call assumes a write barrier is going to be placed before the prepass clear (due to
+    // barriers being placed by calls like create_storage_buffer() and write_storage_buffer()
+    pub(super) fn add_buffer_prepass_clear(
+        &mut self,
+        node: RenderGraphNodeId,
+        buffer: RenderGraphBufferUsageId,
+    ) {
+        self.nodes[node.0].buffer_prepass_clears.push(buffer);
     }
 
     // Add a buffer that can be used by nodes
@@ -712,50 +699,48 @@ impl RenderGraphBuilder {
         (read_usage_id, write_usage_id)
     }
 
-    pub fn create_buffer(
-        &mut self,
-        create_node: RenderGraphNodeId,
-        constraint: RenderGraphBufferConstraint,
-    ) -> RenderGraphBufferUsageId {
-        self.add_buffer_create(create_node, constraint)
-    }
-
     pub fn read_vertex_buffer(
         &mut self,
-        read_node: RenderGraphNodeId,
+        node: RenderGraphNodeId,
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
         constraint.resource_type |= RafxResourceType::VERTEX_BUFFER;
 
-        self.add_buffer_read(read_node, buffer, constraint)
+        let usage = self.add_buffer_read(node, buffer, constraint);
+        self.node_mut(node).vertex_buffer_reads.push(buffer);
+        usage
     }
 
     pub fn read_index_buffer(
         &mut self,
-        read_node: RenderGraphNodeId,
+        node: RenderGraphNodeId,
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
         constraint.resource_type |= RafxResourceType::INDEX_BUFFER;
 
-        self.add_buffer_read(read_node, buffer, constraint)
+        let usage = self.add_buffer_read(node, buffer, constraint);
+        self.node_mut(node).index_buffer_reads.push(buffer);
+        usage
     }
 
     pub fn read_indirect_buffer(
         &mut self,
-        read_node: RenderGraphNodeId,
+        node: RenderGraphNodeId,
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
         constraint.resource_type |= RafxResourceType::INDIRECT_BUFFER;
 
-        self.add_buffer_read(read_node, buffer, constraint)
+        let usage = self.add_buffer_read(node, buffer, constraint);
+        self.node_mut(node).indirect_buffer_reads.push(buffer);
+        usage
     }
 
     pub fn read_uniform_buffer(
         &mut self,
-        read_node: RenderGraphNodeId,
+        node: RenderGraphNodeId,
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
@@ -763,64 +748,296 @@ impl RenderGraphBuilder {
 
         //TODO: In the future could consider options for determining stage flags to be compute or
         // fragment. Check node queue? Check if attachments exist? Explicit?
-        self.add_buffer_read(read_node, buffer, constraint)
+        let usage = self.add_buffer_read(node, buffer, constraint);
+        self.node_mut(node).uniform_buffer_reads.push(buffer);
+        usage
     }
 
     pub fn create_storage_buffer(
         &mut self,
-        create_node: RenderGraphNodeId,
+        node: RenderGraphNodeId,
         mut constraint: RenderGraphBufferConstraint,
+        load_op: RafxLoadOp,
     ) -> RenderGraphBufferUsageId {
         constraint.resource_type |= RafxResourceType::BUFFER_READ_WRITE;
 
         //TODO: In the future could consider options for determining stage flags to be compute or
         // fragment. Check node queue? Check if attachments exist? Explicit?
-        self.add_buffer_create(create_node, constraint)
+        let usage = self.add_buffer_create(node, constraint);
+        match load_op {
+            // Don't clear the buffer
+            RafxLoadOp::DontCare => {},
+            // If you hit this, call modify_storage_image instead
+            RafxLoadOp::Load => unimplemented!("RafxLoadOp::Load not supported in create_storage_buffer call. Use modify_storage_image instead."),
+            RafxLoadOp::Clear => self.add_buffer_prepass_clear(node, usage),
+        }
+
+        self.node_mut(node).storage_buffer_creates.push(usage);
+
+        usage
     }
 
     pub fn read_storage_buffer(
         &mut self,
-        read_node: RenderGraphNodeId,
+        node: RenderGraphNodeId,
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
+        // load_op is assumed to be Load, otherwise use create_storage_image
     ) -> RenderGraphBufferUsageId {
         constraint.resource_type |= RafxResourceType::BUFFER_READ_WRITE;
 
         //TODO: In the future could consider options for determining stage flags to be compute or
         // fragment. Check node queue? Check if attachments exist? Explicit?
-        self.add_buffer_read(read_node, buffer, constraint)
+        let usage = self.add_buffer_read(node, buffer, constraint);
+        self.node_mut(node).storage_buffer_reads.push(usage);
+        usage
     }
 
     pub fn modify_storage_buffer(
         &mut self,
-        read_node: RenderGraphNodeId,
+        node: RenderGraphNodeId,
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
+        load_op: RafxLoadOp,
     ) -> RenderGraphBufferUsageId {
         constraint.resource_type |= RafxResourceType::BUFFER_READ_WRITE;
 
         //TODO: In the future could consider options for determining stage flags to be compute or
         // fragment. Check node queue? Check if attachments exist? Explicit?
-        let (_read_buffer, write_buffer) = self.add_buffer_modify(read_node, buffer, constraint);
+        let (read_buffer, write_buffer) = self.add_buffer_modify(node, buffer, constraint);
+        match load_op {
+            // Don't clear the buffer
+            RafxLoadOp::DontCare => {}
+            RafxLoadOp::Load => {}
+            RafxLoadOp::Clear => self.add_buffer_prepass_clear(node, read_buffer),
+        }
 
+        self.node_mut(node)
+            .storage_buffer_modifies
+            .push(read_buffer);
         write_buffer
     }
 
-    pub fn set_output_buffer(
+    //NOTE: Image will not be cleared, use clear_image_before_pass() on the returned value if it needs to be
+    // initialized to zero
+    pub fn create_storage_image(
         &mut self,
-        buffer_id: RenderGraphBufferUsageId,
-        dst_buffer: ResourceArc<BufferResource>,
-        specification: RenderGraphBufferSpecification,
-    ) -> RenderGraphOutputBufferId {
-        if specification.resource_type == RafxResourceType::UNDEFINED {
-            panic!("An output buffer with empty resource_type in the specification is almost certainly a mistake.");
+        node: RenderGraphNodeId,
+        mut constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
+        load_op: RafxLoadOp,
+    ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::TEXTURE_READ_WRITE;
+
+        //TODO: In the future could consider options for determining stage flags to be compute or
+        // fragment. Check node queue? Check if attachments exist? Explicit?
+        let usage = self.add_image_create(node, constraint, view_options);
+        match load_op {
+            // Don't clear the buffer
+            RafxLoadOp::DontCare => {},
+            // If you hit this, call modify_storage_image instead
+            RafxLoadOp::Load => unimplemented!("RafxLoadOp::Load not supported in create_storage_image call. Use modify_storage_image instead."),
+            RafxLoadOp::Clear => self.add_image_prepass_clear(node, usage),
         }
 
-        let output_buffer_id = RenderGraphOutputBufferId(self.output_buffers.len());
+        self.node_mut(node).storage_image_creates.push(usage);
+        usage
+    }
 
+    pub fn read_storage_image(
+        &mut self,
+        node: RenderGraphNodeId,
+        image: RenderGraphImageUsageId,
+        mut constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
+        // load_op is assumed to be Load, otherwise use create_storage_image
+    ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::TEXTURE_READ_WRITE;
+
+        //TODO: In the future could consider options for determining stage flags to be compute or
+        // fragment. Check node queue? Check if attachments exist? Explicit?
+        let usage = self.add_image_read(node, image, constraint, view_options);
+        self.node_mut(node).storage_image_reads.push(usage);
+
+        usage
+    }
+
+    pub fn modify_storage_image(
+        &mut self,
+        node: RenderGraphNodeId,
+        image: RenderGraphImageUsageId,
+        mut constraint: RenderGraphImageConstraint,
+        view_options: RenderGraphImageViewOptions,
+        load_op: RafxLoadOp,
+    ) -> RenderGraphImageUsageId {
+        constraint.resource_type |= RafxResourceType::TEXTURE_READ_WRITE;
+
+        //TODO: In the future could consider options for determining stage flags to be compute or
+        // fragment. Check node queue? Check if attachments exist? Explicit?
+        let (read_image, write_image) =
+            self.add_image_modify(node, image, constraint, view_options);
+        match load_op {
+            // Don't clear the buffer
+            RafxLoadOp::DontCare => {}
+            RafxLoadOp::Load => {}
+            RafxLoadOp::Clear => self.add_image_prepass_clear(node, read_image),
+        }
+
+        self.node_mut(node).storage_image_modifies.push(read_image);
+        write_image
+    }
+
+    pub fn add_external_image(
+        &mut self,
+        image_resource: ResourceArc<ImageViewResource>,
+        specification: RenderGraphImageSpecification,
+        view_options: RenderGraphImageViewOptions,
+        initial_state: RafxResourceState,
+        final_state: RafxResourceState,
+    ) -> RenderGraphExternalImageId {
+        if specification.resource_type == RafxResourceType::UNDEFINED {
+            panic!("An input image with empty resource_type in the specification is almost certainly a mistake.");
+        }
+
+        let external_image_id = RenderGraphExternalImageId(self.external_images.len());
+
+        // Add it to the graph
+        let image_resource_index = self.image_resources.len();
+        self.image_resources.push(RenderGraphImageResource::new());
+
+        let external_image = RenderGraphExternalImage {
+            external_image_id,
+            specification,
+            view_options,
+            image_resource,
+            image_resource_index,
+            input_usage: None,
+            output_usage: None,
+            initial_state,
+            final_state,
+        };
+
+        self.external_images.push(external_image);
+        external_image_id
+    }
+
+    pub fn add_external_buffer(
+        &mut self,
+        buffer_resource: ResourceArc<BufferResource>,
+        specification: RenderGraphBufferSpecification,
+        initial_state: RafxResourceState,
+        final_state: RafxResourceState,
+    ) -> RenderGraphExternalBufferId {
+        if specification.resource_type == RafxResourceType::UNDEFINED {
+            panic!("An input buffer with empty resource_type in the specification is almost certainly a mistake.");
+        }
+
+        let external_buffer_id = RenderGraphExternalBufferId(self.external_buffers.len());
+
+        let buffer_resource_index = self.buffer_resources.len();
+        self.buffer_resources.push(RenderGraphBufferResource::new());
+
+        let external_buffer = RenderGraphExternalBuffer {
+            external_buffer_id,
+            specification,
+            buffer_resource,
+            buffer_resource_index,
+            input_usage: None,
+            output_usage: None,
+            initial_state,
+            final_state,
+        };
+
+        self.external_buffers.push(external_buffer);
+        external_buffer_id
+    }
+
+    pub fn read_external_image(
+        &mut self,
+        external_image_id: RenderGraphExternalImageId,
+    ) -> RenderGraphImageUsageId {
+        let external_image = &self.external_images[external_image_id.0];
+        let image_resource_index = external_image.image_resource_index;
+        let view_options = external_image.view_options.clone();
+
+        let version_id = RenderGraphImageVersionId {
+            index: image_resource_index,
+            version: 0,
+        };
+
+        let input_usage = self.add_image_usage(
+            RenderGraphImageUser::Input(external_image_id),
+            version_id,
+            RenderGraphImageUsageType::Input,
+            view_options,
+        );
+
+        let version_info =
+            RenderGraphImageResourceVersionInfo::new(RenderGraphNodeId(0), input_usage);
+        let resource = &mut self.image_resources[image_resource_index];
+        resource.versions.push(version_info);
+
+        self.external_images[external_image_id.0].input_usage = Some(input_usage);
+        input_usage
+    }
+
+    pub fn read_external_buffer(
+        &mut self,
+        external_buffer_id: RenderGraphExternalBufferId,
+    ) -> RenderGraphBufferUsageId {
+        let external_buffer = &self.external_buffers[external_buffer_id.0];
+        let buffer_resource_index = external_buffer.buffer_resource_index;
+
+        let version_id = RenderGraphBufferVersionId {
+            index: buffer_resource_index,
+            version: 0,
+        };
+
+        let input_usage = self.add_buffer_usage(
+            RenderGraphBufferUser::Input(external_buffer_id),
+            version_id,
+            RenderGraphBufferUsageType::Input,
+        );
+
+        let version_info =
+            RenderGraphBufferResourceVersionInfo::new(RenderGraphNodeId(0), input_usage);
+        let resource = &mut self.buffer_resources[buffer_resource_index];
+        resource.versions.push(version_info);
+
+        self.external_buffers[external_buffer_id.0].input_usage = Some(input_usage);
+        input_usage
+    }
+
+    pub fn write_external_image(
+        &mut self,
+        external_image_id: RenderGraphExternalImageId,
+        image_id: RenderGraphImageUsageId,
+    ) {
+        let external_image = &self.external_images[external_image_id.0];
+        let view_options = external_image.view_options.clone();
+
+        let version_id = self.image_version_id(image_id);
+        let usage_id = self.add_image_usage(
+            RenderGraphImageUser::Output(external_image_id),
+            version_id,
+            RenderGraphImageUsageType::Output,
+            view_options,
+        );
+
+        let image_version = self.image_version_info_mut(image_id);
+        image_version.read_usages.push(usage_id);
+
+        self.external_images[external_image_id.0].output_usage = Some(usage_id);
+    }
+
+    pub fn write_external_buffer(
+        &mut self,
+        external_buffer_id: RenderGraphExternalBufferId,
+        buffer_id: RenderGraphBufferUsageId,
+    ) {
         let version_id = self.buffer_version_id(buffer_id);
         let usage_id = self.add_buffer_usage(
-            RenderGraphBufferUser::Output(output_buffer_id),
+            RenderGraphBufferUser::Output(external_buffer_id),
             version_id,
             RenderGraphBufferUsageType::Output,
         );
@@ -828,15 +1045,7 @@ impl RenderGraphBuilder {
         let buffer_version = self.buffer_version_info_mut(buffer_id);
         buffer_version.read_usages.push(usage_id);
 
-        let output_buffer = RenderGraphOutputBuffer {
-            output_buffer_id,
-            usage: usage_id,
-            specification,
-            dst_buffer,
-        };
-
-        self.output_buffers.push(output_buffer);
-        output_buffer_id
+        self.external_buffers[external_buffer_id.0].output_usage = Some(usage_id);
     }
 
     // Add a node which can use resources
@@ -969,6 +1178,13 @@ impl RenderGraphBuilder {
     //
     // Get image version infos
     //
+    pub(super) fn image_usage(
+        &self,
+        usage_id: RenderGraphImageUsageId,
+    ) -> &RenderGraphImageUsage {
+        &self.image_usages[usage_id.0]
+    }
+
     pub(super) fn image_version_info(
         &self,
         usage_id: RenderGraphImageUsageId,
@@ -1011,7 +1227,7 @@ impl RenderGraphBuilder {
     }
 
     //
-    // Get images
+    // Get buffers
     //
     pub(super) fn buffer_resource(
         &self,
@@ -1068,6 +1284,37 @@ impl RenderGraphBuilder {
     ) -> RenderGraphBufferUsageId {
         let version = self.buffer_usage(usage).version;
         self.buffer_resources[version.index].versions[version.version].create_usage
+    }
+
+    //
+    // Internal debug functions
+    //
+    pub(super) fn debug_user_name_of_image_usage(
+        &self,
+        usage: RenderGraphImageUsageId,
+    ) -> String {
+        let user = self.image_usage(usage).user;
+        match user {
+            RenderGraphImageUser::Node(node_id) => {
+                format!("Node {:?} {:?}", node_id, self.node(node_id).name)
+            }
+            RenderGraphImageUser::Input(image_id) => format!("InputImage {:?}", image_id),
+            RenderGraphImageUser::Output(image_id) => format!("OutputImage {:?}", image_id),
+        }
+    }
+
+    pub(super) fn debug_user_name_of_buffer_usage(
+        &self,
+        usage: RenderGraphBufferUsageId,
+    ) -> String {
+        let user = self.buffer_usage(usage).user;
+        match user {
+            RenderGraphBufferUser::Node(node_id) => {
+                format!("Node {:?} {:?}", node_id, self.node(node_id).name)
+            }
+            RenderGraphBufferUser::Input(buffer_id) => format!("InputBuffer {:?}", buffer_id),
+            RenderGraphBufferUser::Output(buffer_id) => format!("OutputBuffer {:?}", buffer_id),
+        }
     }
 
     pub fn build_plan(self) -> RenderGraphPlan {

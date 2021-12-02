@@ -20,14 +20,17 @@ mod bloom_extract_pass;
 use super::BasicPipelineRenderOptions;
 use super::BasicPipelineStaticResources;
 use crate::features::mesh::ShadowMapResource;
+use crate::pipelines::basic::BasicPipelineTonemapDebugData;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;
-use rafx::renderer::RenderGraphGenerator;
 use rafx::renderer::SwapchainRenderResource;
+use rafx::renderer::{RenderGraphGenerator, TimeRenderResource};
 
 mod bloom_blur_pass;
 
 mod bloom_combine_pass;
+
+mod luma_pass;
 
 mod ui_pass;
 
@@ -78,6 +81,9 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
         let swapchain_render_resource = render_resources.fetch::<SwapchainRenderResource>();
         let swapchain_info = swapchain_render_resource.get();
         let static_resources = render_resources.fetch::<BasicPipelineStaticResources>();
+        let previous_update_dt = render_resources
+            .fetch::<TimeRenderResource>()
+            .previous_update_dt();
 
         let graph_config = {
             let render_options = extract_resources
@@ -108,6 +114,10 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
             }
         };
 
+        let tonemap_debug_data = extract_resources
+            .try_fetch::<BasicPipelineTonemapDebugData>()
+            .map(|x| x.clone());
+
         let mut graph = RenderGraphBuilder::default();
 
         let mut graph_context = RenderGraphContext {
@@ -118,6 +128,51 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
             render_resources,
             extract_resources,
         };
+
+        let swapchain_image_id = graph_context.graph.add_external_image(
+            swapchain_image,
+            RenderGraphImageSpecification {
+                samples: RafxSampleCount::SampleCount1,
+                format: graph_config.swapchain_format,
+                resource_type: RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR,
+                extents: RenderGraphImageExtents::MatchSurface,
+                layer_count: 1,
+                mip_count: 1,
+            },
+            Default::default(),
+            RafxResourceState::PRESENT,
+            RafxResourceState::PRESENT,
+        );
+
+        let tonemap_histogram_data = graph_context.graph.add_external_buffer(
+            static_resources.tonemap_histogram_data.clone(),
+            RenderGraphBufferSpecification {
+                resource_type: RafxResourceType::BUFFER_READ_WRITE,
+                size: static_resources
+                    .tonemap_histogram_data
+                    .get_raw()
+                    .buffer
+                    .buffer_def()
+                    .size,
+            },
+            RafxResourceState::UNORDERED_ACCESS,
+            RafxResourceState::UNORDERED_ACCESS,
+        );
+
+        let tonemap_histogram_result = graph_context.graph.add_external_buffer(
+            static_resources.tonemap_histogram_result.clone(),
+            RenderGraphBufferSpecification {
+                resource_type: RafxResourceType::BUFFER_READ_WRITE,
+                size: static_resources
+                    .tonemap_histogram_result
+                    .get_raw()
+                    .buffer
+                    .buffer_def()
+                    .size,
+            },
+            RafxResourceState::UNORDERED_ACCESS,
+            RafxResourceState::UNORDERED_ACCESS,
+        );
 
         let depth_prepass = depth_prepass::depth_prepass(&mut graph_context);
 
@@ -144,10 +199,40 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
                 .get_single_material_pass()
                 .unwrap();
 
+            let luma_build_histogram = asset_manager
+                .committed_asset(&static_resources.luma_build_histogram)
+                .unwrap()
+                .compute_pipeline
+                .clone();
+
+            let luma_average_histogram = asset_manager
+                .committed_asset(&static_resources.luma_average_histogram)
+                .unwrap()
+                .compute_pipeline
+                .clone();
+
             let bloom_extract_pass = bloom_extract_pass::bloom_extract_pass(
                 &mut graph_context,
                 bloom_extract_material_pass,
                 &opaque_pass,
+            );
+
+            let luma_build_histogram_pass = luma_pass::luma_build_histogram_pass(
+                &mut graph_context,
+                &luma_build_histogram,
+                &opaque_pass,
+                Some(tonemap_histogram_data),
+                &swapchain_info.swapchain_surface_info,
+            );
+
+            let luma_average_histogram_pass = luma_pass::luma_average_histogram_pass(
+                &mut graph_context,
+                &luma_build_histogram_pass,
+                &luma_average_histogram,
+                tonemap_histogram_result,
+                tonemap_debug_data.clone(),
+                &swapchain_info.swapchain_surface_info,
+                previous_update_dt,
             );
 
             let blurred_color = if graph_config.enable_bloom && graph_config.blur_pass_count > 0 {
@@ -166,6 +251,8 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
                 bloom_combine_material_pass,
                 &bloom_extract_pass,
                 blurred_color,
+                &luma_average_histogram_pass,
+                &swapchain_info.swapchain_surface_info,
             );
 
             bloom_combine_pass.color
@@ -175,20 +262,7 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
 
         let ui_pass = ui_pass::ui_pass(&mut graph_context, previous_pass_color);
 
-        let _swapchain_output_image_id = graph.set_output_image(
-            ui_pass.color,
-            swapchain_image,
-            RenderGraphImageSpecification {
-                samples: RafxSampleCount::SampleCount1,
-                format: graph_config.swapchain_format,
-                resource_type: RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR,
-                extents: RenderGraphImageExtents::MatchSurface,
-                layer_count: 1,
-                mip_count: 1,
-            },
-            Default::default(),
-            RafxResourceState::PRESENT,
-        );
+        graph.write_external_image(swapchain_image_id, ui_pass.color);
 
         let prepared_render_graph = PreparedRenderGraph::new(
             &device_context,

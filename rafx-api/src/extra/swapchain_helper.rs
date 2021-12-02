@@ -1,7 +1,7 @@
 use crate::{
     RafxCommandBuffer, RafxDeviceContext, RafxError, RafxFence, RafxFormat,
     RafxPresentSuccessResult, RafxQueue, RafxResult, RafxSemaphore, RafxSwapchain,
-    RafxSwapchainDef, RafxSwapchainImage, RafxTexture,
+    RafxSwapchainColorSpace, RafxSwapchainDef, RafxSwapchainImage, RafxTexture,
 };
 use crossbeam_channel::{Receiver, Sender};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -204,6 +204,7 @@ pub struct RafxSwapchainHelper {
     device_context: RafxDeviceContext,
     shared_state: Option<Arc<RafxSwapchainHelperSharedState>>,
     format: RafxFormat,
+    color_space: RafxSwapchainColorSpace,
     swapchain_def: RafxSwapchainDef,
     image_count: usize,
 
@@ -219,6 +220,7 @@ impl RafxSwapchainHelper {
         mut event_listener: Option<&mut dyn RafxSwapchainEventListener>,
     ) -> RafxResult<Self> {
         let format = swapchain.format();
+        let color_space = swapchain.color_space();
         let image_count = swapchain.image_count();
         let swapchain_def = swapchain.swapchain_def().clone();
 
@@ -236,6 +238,7 @@ impl RafxSwapchainHelper {
             device_context: device_context.clone(),
             shared_state: Some(shared_state),
             format,
+            color_space,
             image_count,
             swapchain_def,
             expect_result_from_previous_frame: false,
@@ -290,6 +293,10 @@ impl RafxSwapchainHelper {
 
     pub fn format(&self) -> RafxFormat {
         self.format
+    }
+
+    pub fn color_space(&self) -> RafxSwapchainColorSpace {
+        self.color_space
     }
 
     pub fn image_count(&self) -> usize {

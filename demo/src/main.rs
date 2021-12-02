@@ -19,7 +19,6 @@ pub fn logging_init() {
         )
         .filter_module("rafx_framework::nodes", log::LevelFilter::Info)
         .filter_module("rafx_framework::visibility", log::LevelFilter::Info)
-        .filter_module("rafx_assets::graph", log::LevelFilter::Debug)
         .filter_module("rafx_framework::graph", log::LevelFilter::Debug)
         .filter_module("rafx_framework::resources", log::LevelFilter::Debug)
         .filter_module("rafx_framework::graph::graph_plan", log::LevelFilter::Info)

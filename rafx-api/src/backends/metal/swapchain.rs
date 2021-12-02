@@ -1,9 +1,12 @@
+use super::extra_ffi;
 use crate::backends::metal::RafxTextureMetal;
 use crate::metal::{RafxDeviceContextMetal, RafxFenceMetal, RafxRawImageMetal, RafxSemaphoreMetal};
 use crate::{
-    RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount, RafxSwapchainDef,
-    RafxSwapchainImage, RafxTexture, RafxTextureDef, RafxTextureDimensions,
+    RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxSampleCount,
+    RafxSwapchainColorSpace, RafxSwapchainDef, RafxSwapchainImage, RafxTexture, RafxTextureDef,
+    RafxTextureDimensions,
 };
+use core_graphics_types::geometry::CGSize;
 use rafx_base::trust_cell::TrustCell;
 use raw_window_handle::HasRawWindowHandle;
 
@@ -11,6 +14,7 @@ const SWAPCHAIN_IMAGE_COUNT: u32 = 3;
 
 pub struct RafxSwapchainMetal {
     device_context: RafxDeviceContextMetal,
+    window: extra_ffi::NSWindowWrapper,
     layer: metal_rs::MetalLayer,
     drawable: TrustCell<Option<metal_rs::MetalDrawable>>,
     swapchain_def: RafxSwapchainDef,
@@ -36,6 +40,10 @@ impl RafxSwapchainMetal {
         self.format
     }
 
+    pub fn color_space(&self) -> RafxSwapchainColorSpace {
+        self.swapchain_def.color_space
+    }
+
     pub fn metal_layer(&self) -> &metal_rs::MetalLayerRef {
         self.layer.as_ref()
     }
@@ -44,19 +52,42 @@ impl RafxSwapchainMetal {
         self.drawable.borrow_mut().take()
     }
 
+    //
+    // Some extra metal-specific HDR-related values
+    //
+    pub fn max_edr_color_component_value(&self) -> f32 {
+        self.window.max_edr_color_component_value()
+    }
+
+    pub fn max_potential_edr_color_component_value(&self) -> f32 {
+        self.window.max_potential_edr_color_component_value()
+    }
+
+    pub fn max_reference_edr_color_component_value(&self) -> f32 {
+        self.window.max_reference_edr_color_component_value()
+    }
+
     pub fn new(
         device_context: &RafxDeviceContextMetal,
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainMetal> {
-        let layer = match raw_window_handle.raw_window_handle() {
+        let (window, _view, layer) = match raw_window_handle.raw_window_handle() {
             #[cfg(target_os = "macos")]
             raw_window_handle::RawWindowHandle::MacOS(handle) => unsafe {
-                raw_window_metal::macos::metal_layer_from_handle(handle)
+                (
+                    handle.ns_window,
+                    handle.ns_view,
+                    raw_window_metal::macos::metal_layer_from_handle(handle),
+                )
             },
             #[cfg(target_os = "ios")]
             raw_window_handle::RawWindowHandle::IOS(handle) => unsafe {
-                raw_window_metal::ios::metal_layer_from_handle(handle)
+                (
+                    handle.ns_window,
+                    handle.ns_view,
+                    raw_window_metal::ios::metal_layer_from_handle(handle),
+                )
             },
             _ => return Err("Cannot create RafxSurfaceMetal on this operating system".into()),
         };
@@ -69,16 +100,37 @@ impl RafxSwapchainMetal {
         .unwrap();
 
         let layer = unsafe { std::mem::transmute::<_, &metal_rs::MetalLayerRef>(layer).to_owned() };
+        let window = extra_ffi::NSWindowWrapper::new(window as *mut objc::runtime::Object);
+
+        let (pixel_format, swapchain_format, is_extended) = match swapchain_def.color_space {
+            RafxSwapchainColorSpace::Srgb => (
+                metal_rs::MTLPixelFormat::BGRA8Unorm_sRGB,
+                RafxFormat::B8G8R8A8_SRGB,
+                false,
+            ),
+            RafxSwapchainColorSpace::SrgbExtended | RafxSwapchainColorSpace::DisplayP3Extended => (
+                metal_rs::MTLPixelFormat::RGBA16Float,
+                RafxFormat::R16G16B16A16_SFLOAT,
+                true,
+            ),
+        };
+
+        let color_space = core_graphics::color_space::CGColorSpace::create_with_name(
+            swapchain_def.color_space.into(),
+        )
+        .unwrap();
 
         layer.set_device(device_context.device());
         //TODO: Don't hardcode pixel format
         // https://developer.apple.com/documentation/quartzcore/cametallayer/1478155-pixelformat
-        layer.set_pixel_format(metal_rs::MTLPixelFormat::BGRA8Unorm_sRGB);
+        layer.set_pixel_format(pixel_format);
         layer.set_presents_with_transaction(false);
         layer.set_display_sync_enabled(swapchain_def.enable_vsync);
+        layer.set_wants_extended_dynamic_range_content(is_extended);
+        extra_ffi::set_colorspace(&layer, &color_space);
 
         //TODO: disable timeout on acquire drawable?
-        layer.set_drawable_size(metal_rs::CGSize::new(
+        layer.set_drawable_size(CGSize::new(
             swapchain_def.width as f64,
             swapchain_def.height as f64,
         ));
@@ -87,11 +139,12 @@ impl RafxSwapchainMetal {
 
         Ok(RafxSwapchainMetal {
             device_context: device_context.clone(),
+            window,
             layer,
             drawable: Default::default(),
             swapchain_def,
             next_swapchain_image_index: 0,
-            format: RafxFormat::B8G8R8A8_SRGB,
+            format: swapchain_format,
         })
     }
 
@@ -99,7 +152,7 @@ impl RafxSwapchainMetal {
         &mut self,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<()> {
-        self.layer.set_drawable_size(metal_rs::CGSize::new(
+        self.layer.set_drawable_size(CGSize::new(
             swapchain_def.width as f64,
             swapchain_def.height as f64,
         ));

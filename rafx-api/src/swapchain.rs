@@ -17,7 +17,8 @@ use crate::metal::RafxSwapchainMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxSwapchainVulkan;
 use crate::{
-    RafxFence, RafxFormat, RafxResult, RafxSemaphore, RafxSwapchainDef, RafxSwapchainImage,
+    RafxFence, RafxFormat, RafxResult, RafxSemaphore, RafxSwapchainColorSpace, RafxSwapchainDef,
+    RafxSwapchainImage,
 };
 
 /// A set of images that act as a "backbuffer" of a window.
@@ -90,6 +91,30 @@ impl RafxSwapchain {
                 ))
             ))]
             RafxSwapchain::Empty(inner) => inner.format(),
+        }
+    }
+
+    /// Get the color space of the images used in the swapchain
+    pub fn color_space(&self) -> RafxSwapchainColorSpace {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxSwapchain::Vk(inner) => inner.color_space(),
+            #[cfg(feature = "rafx-metal")]
+            RafxSwapchain::Metal(inner) => inner.color_space(),
+            #[cfg(feature = "rafx-gles2")]
+            RafxSwapchain::Gles2(inner) => inner.color_space(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxSwapchain::Gles3(inner) => inner.color_space(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxSwapchain::Empty(inner) => inner.color_space(),
         }
     }
 

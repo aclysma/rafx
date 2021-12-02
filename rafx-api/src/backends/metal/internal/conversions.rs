@@ -1,15 +1,33 @@
 use crate::{
     RafxBlendFactor, RafxBlendOp, RafxColorClearValue, RafxCompareOp, RafxCullMode, RafxFillMode,
     RafxFilterType, RafxFrontFace, RafxIndexType, RafxLoadOp, RafxMemoryUsage, RafxMipMapMode,
-    RafxPrimitiveTopology, RafxSampleCount, RafxStencilOp, RafxStoreOp, RafxVertexAttributeRate,
+    RafxPrimitiveTopology, RafxSampleCount, RafxStencilOp, RafxStoreOp, RafxSwapchainColorSpace,
+    RafxVertexAttributeRate,
 };
 use cocoa_foundation::foundation::NSUInteger;
+use core_foundation::string::CFStringRef;
 use metal_rs::{
     MTLBlendFactor, MTLBlendOperation, MTLCPUCacheMode, MTLClearColor, MTLCompareFunction,
     MTLCullMode, MTLIndexType, MTLLoadAction, MTLPrimitiveTopologyClass, MTLPrimitiveType,
     MTLResourceOptions, MTLSamplerMinMagFilter, MTLSamplerMipFilter, MTLStencilOperation,
     MTLStorageMode, MTLStoreAction, MTLTriangleFillMode, MTLVertexStepFunction, MTLWinding,
 };
+
+impl Into<CFStringRef> for RafxSwapchainColorSpace {
+    fn into(self) -> CFStringRef {
+        unsafe {
+            match self {
+                RafxSwapchainColorSpace::Srgb => super::extra_ffi::kCGColorSpaceSRGB,
+                RafxSwapchainColorSpace::SrgbExtended => {
+                    super::extra_ffi::kCGColorSpaceExtendedLinearSRGB
+                }
+                RafxSwapchainColorSpace::DisplayP3Extended => {
+                    super::extra_ffi::kCGColorSpaceExtendedLinearDisplayP3
+                }
+            }
+        }
+    }
+}
 
 impl Into<MTLSamplerMinMagFilter> for RafxFilterType {
     fn into(self) -> MTLSamplerMinMagFilter {

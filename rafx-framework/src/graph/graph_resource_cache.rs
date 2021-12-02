@@ -89,8 +89,8 @@ impl RenderGraphCacheInner {
         // Using a buffer will bump the keep_until_frame for that buffer
         let keep_until_frame = self.current_frame_index + self.frames_to_persist;
 
-        for (&physical_id, buffer) in &graph.output_buffers {
-            buffer_resources.insert(physical_id, buffer.dst_buffer.clone());
+        for (&physical_id, buffer) in &graph.external_buffers {
+            buffer_resources.insert(physical_id, buffer.resource.clone());
         }
 
         // Iterate all intermediate buffers, assigning an existing buffer from a previous frame or
@@ -175,9 +175,9 @@ impl RenderGraphCacheInner {
         // Using an image will bump the keep_until_frame for that image
         let keep_until_frame = self.current_frame_index + self.frames_to_persist;
 
-        for (id, image) in &graph.output_images {
+        for (id, image) in &graph.external_images {
             let physical_id = graph.image_views[id.0].physical_image;
-            image_resources.insert(physical_id, image.dst_image.get_raw().image);
+            image_resources.insert(physical_id, image.resource.get_raw().image);
         }
 
         // Iterate all intermediate images, assigning an existing image from a previous frame or
@@ -263,8 +263,8 @@ impl RenderGraphCacheInner {
 
         // For output images, the physical id just needs to be associated with the image provided by
         // the user
-        for (id, image) in &graph.output_images {
-            image_view_resources.insert(*id, image.dst_image.clone());
+        for (id, image) in &graph.external_images {
+            image_view_resources.insert(*id, image.resource.clone());
         }
 
         for (id, view) in graph.image_views.iter().enumerate() {

@@ -235,6 +235,7 @@ pub struct RafxSwapchainDef {
     pub width: u32,
     pub height: u32,
     pub enable_vsync: bool,
+    pub color_space: RafxSwapchainColorSpace,
     // image count?
 }
 

@@ -1,4 +1,4 @@
-use rafx_framework::cooked_shader::{
+use rafx_framework::reflected_shader::{
     ReflectedDescriptorSetLayout, ReflectedDescriptorSetLayoutBinding, ReflectedEntryPoint,
     ReflectedVertexInput,
 };
@@ -278,7 +278,8 @@ where
         ast,
         declarations,
         &shader_resources.storage_buffers,
-        RafxResourceType::BUFFER,
+        //TODO: Detect read/write in shader to narrow this down? Or use readonly/writeonly/readwrite keywords in some way?
+        RafxResourceType::BUFFER_READ_WRITE,
         stage_flags,
     )?;
     get_reflected_bindings(

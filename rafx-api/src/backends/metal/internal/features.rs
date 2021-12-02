@@ -1,6 +1,49 @@
-use metal_rs::{MTLArgumentBuffersTier, MTLFeatureSet, MTLGPUFamily, MTLPixelFormat};
+use metal_rs::{MTLArgumentBuffersTier, MTLFeatureSet, MTLPixelFormat};
 
-const GPU_FAMILIES_APPLE: [MTLGPUFamily; 6] = [
+// More up to date than published metal-rs has
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum MTLGPUFamily {
+    Common1 = 3001,
+    Common2 = 3002,
+    Common3 = 3003,
+    Apple1 = 1001,
+    Apple2 = 1002,
+    Apple3 = 1003,
+    Apple4 = 1004,
+    Apple5 = 1005,
+    Apple6 = 1006,
+    Apple7 = 1007,
+    Apple8 = 1008,
+    Mac1 = 2001,
+    Mac2 = 2002,
+    MacCatalyst1 = 4001,
+    MacCatalyst2 = 4002,
+}
+
+mod extra_ffi {
+    use objc::runtime::{NO, YES};
+    use objc::{msg_send, sel, sel_impl};
+
+    pub fn supports_family(
+        device: &metal_rs::DeviceRef,
+        family: super::MTLGPUFamily,
+    ) -> bool {
+        unsafe {
+            match msg_send![device, supportsFamily: family] {
+                YES => true,
+                NO => false,
+                // Github CI warns this match has non-exhaustive patterns but I have not reproduced
+                // it locally (and get warnings about this pattern being unreachable :)
+                #[allow(unreachable_patterns)]
+                _ => unreachable!(),
+            }
+        }
+    }
+}
+
+const GPU_FAMILIES_APPLE: [MTLGPUFamily; 8] = [
+    MTLGPUFamily::Apple8,
+    MTLGPUFamily::Apple7,
     MTLGPUFamily::Apple6,
     MTLGPUFamily::Apple5,
     MTLGPUFamily::Apple4,
@@ -59,7 +102,7 @@ fn find_supported_family(
     gpu_families: &[MTLGPUFamily],
 ) -> Option<MTLGPUFamily> {
     for &family in gpu_families {
-        if device.supports_family(family) {
+        if extra_ffi::supports_family(device, family) {
             return Some(family);
         }
     }

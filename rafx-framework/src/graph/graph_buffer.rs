@@ -13,9 +13,9 @@ pub struct VirtualBufferId(pub(super) usize);
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PhysicalBufferId(pub(super) usize);
 
-/// Unique ID provided for any buffer registered as an output buffer
+/// Unique ID provided for any buffer registered as an external buffer
 #[derive(Debug, Copy, Clone)]
-pub struct RenderGraphOutputBufferId(pub(super) usize);
+pub struct RenderGraphExternalBufferId(pub(super) usize);
 
 /// Unique ID for a particular version of a buffer. Any time a buffer is modified, a new version is
 /// produced
@@ -45,10 +45,11 @@ impl RenderGraphBufferResource {
 }
 
 /// Defines what created a RenderGraphBufferUsage
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RenderGraphBufferUser {
     Node(RenderGraphNodeId),
-    Output(RenderGraphOutputBufferId),
+    Input(RenderGraphExternalBufferId),
+    Output(RenderGraphExternalBufferId),
 }
 
 /// A usage of a particular buffer
@@ -202,7 +203,7 @@ impl RenderGraphBufferConstraint {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RenderGraphBufferUsageType {
     Create,
-    //Input,
+    Input,
     Read,
     ModifyRead,
     ModifyWrite,
@@ -217,7 +218,7 @@ impl RenderGraphBufferUsageType {
             RenderGraphBufferUsageType::Output => true,
             RenderGraphBufferUsageType::ModifyRead => false,
             RenderGraphBufferUsageType::Create => false,
-            // RenderGraphBufferUsageType::Input => false,
+            RenderGraphBufferUsageType::Input => false,
             RenderGraphBufferUsageType::ModifyWrite => false,
         }
     }

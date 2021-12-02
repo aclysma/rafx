@@ -224,6 +224,9 @@ pub struct RenderGraphOutputRenderPass {
     pub(super) color_render_targets: Vec<RenderGraphColorRenderTarget>,
     pub(super) depth_stencil_render_target: Option<RenderGraphDepthStencilRenderTarget>,
     pub(super) render_target_meta: GraphicsPipelineRenderTargetMeta,
+
+    pub(super) image_clears: Vec<PhysicalImageId>,
+    pub(super) buffer_clears: Vec<PhysicalBufferId>,
 }
 
 impl std::fmt::Debug for RenderGraphOutputRenderPass {
@@ -245,6 +248,9 @@ pub struct RenderGraphOutputComputePass {
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
     pub(super) post_pass_barrier: Option<PostpassBarrier>,
     pub(super) debug_name: Option<RenderGraphNodeName>,
+
+    pub(super) image_clears: Vec<PhysicalImageId>,
+    pub(super) buffer_clears: Vec<PhysicalBufferId>,
 }
 
 #[derive(Debug)]
@@ -279,6 +285,21 @@ impl RenderGraphOutputPass {
         match self {
             RenderGraphOutputPass::Renderpass(pass) => pass.debug_name,
             RenderGraphOutputPass::Compute(pass) => pass.debug_name,
+        }
+    }
+
+    // TODO: Maybe this needs to return PhysicalImageViewIds?
+    pub fn image_clears(&self) -> &[PhysicalImageId] {
+        match self {
+            RenderGraphOutputPass::Renderpass(pass) => &pass.image_clears,
+            RenderGraphOutputPass::Compute(pass) => &pass.image_clears,
+        }
+    }
+
+    pub fn buffer_clears(&self) -> &[PhysicalBufferId] {
+        match self {
+            RenderGraphOutputPass::Renderpass(pass) => &pass.buffer_clears,
+            RenderGraphOutputPass::Compute(pass) => &pass.buffer_clears,
         }
     }
 }

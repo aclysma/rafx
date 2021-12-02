@@ -59,6 +59,7 @@ fn run() -> RafxResult<()> {
                 width: window_width,
                 height: window_height,
                 enable_vsync: true,
+                color_space: RafxSwapchainColorSpace::Srgb,
             },
         )?;
 
@@ -374,8 +375,7 @@ fn run() -> RafxResult<()> {
             // intended output image where possible. It only creates additional resources if
             // necessary.
             //
-            graph_builder.set_output_image(
-                color_attachment,
+            let external_image_id = graph_builder.add_external_image(
                 swapchain_image_view,
                 RenderGraphImageSpecification {
                     samples: RafxSampleCount::SampleCount1,
@@ -388,7 +388,10 @@ fn run() -> RafxResult<()> {
                 },
                 Default::default(),
                 RafxResourceState::PRESENT,
+                RafxResourceState::PRESENT,
             );
+
+            let _ = graph_builder.write_external_image(external_image_id, color_attachment);
 
             //
             // Prepare to run the graph. We create an executor to allocate resources and run through
@@ -397,6 +400,7 @@ fn run() -> RafxResult<()> {
             let swapchain_def = swapchain_helper.swapchain_def();
             let swapchain_surface_info = SwapchainSurfaceInfo {
                 format: swapchain_helper.format(),
+                color_space: swapchain_helper.color_space(),
                 extents: RafxExtents2D {
                     width: swapchain_def.width,
                     height: swapchain_def.height,

@@ -16,7 +16,8 @@ use fnv::FnvHashMap;
 use rafx_api::{
     RafxBarrierQueueTransition, RafxBufferBarrier, RafxColorRenderTargetBinding, RafxCommandBuffer,
     RafxCommandBufferDef, RafxCommandPoolDef, RafxDepthStencilRenderTargetBinding,
-    RafxDeviceContext, RafxExtents2D, RafxFormat, RafxQueue, RafxResult, RafxTextureBarrier,
+    RafxDeviceContext, RafxExtents2D, RafxFormat, RafxQueue, RafxResourceState, RafxResult,
+    RafxSwapchainColorSpace, RafxTextureBarrier,
 };
 use std::hash::Hash;
 
@@ -24,6 +25,7 @@ use std::hash::Hash;
 pub struct SwapchainSurfaceInfo {
     pub extents: RafxExtents2D,
     pub format: RafxFormat,
+    pub color_space: RafxSwapchainColorSpace,
 }
 
 #[derive(Copy, Clone)]
@@ -326,6 +328,10 @@ impl PreparedRenderGraph {
                 )?;
             }
 
+            //TODO: Do we really need barriers here? We only do prepass clears when creating/modifying
+            // storage buffers/storage images
+            self.handle_resource_clears(&command_buffer, render_graph_context, pass)?;
+
             match pass {
                 RenderGraphOutputPass::Renderpass(pass) => {
                     let color_images: Vec<_> = pass
@@ -423,5 +429,66 @@ impl PreparedRenderGraph {
         command_buffer.end()?;
 
         Ok(vec![command_buffer])
+    }
+
+    fn handle_resource_clears(
+        &self,
+        command_buffer: &DynCommandBuffer,
+        render_graph_context: RenderGraphContext,
+        pass: &RenderGraphOutputPass,
+    ) -> RafxResult<()> {
+        if !pass.image_clears().is_empty() {
+            unimplemented!("Image clears for storage buffers not yet implemented");
+        }
+
+        // Dispatch compute shader to clear buffers as needed
+        if !pass.buffer_clears().is_empty() {
+            let mut descriptor_set_allocator = render_graph_context
+                .resource_context()
+                .create_descriptor_set_allocator();
+
+            let util_fill_buffer_pipeline = &self
+                .resource_context
+                .builtin_pipelines()
+                .util_fill_buffer_pipeline;
+
+            command_buffer.cmd_bind_pipeline(&*util_fill_buffer_pipeline.get_raw().pipeline)?;
+
+            // Do the clear, there should be a barrier included in the pre_pass barrier to avoid
+            // write after read hazards and other similar hazards
+            for buffer_clear in pass.buffer_clears() {
+                let buffer = &self.buffer_resources[buffer_clear];
+                self.resource_context
+                    .builtin_pipelines()
+                    .do_fill_buffer_compute_pass(
+                        &command_buffer,
+                        &mut descriptor_set_allocator,
+                        buffer,
+                        0,
+                    )?;
+            }
+
+            // We need a local list of buffers so we can make a list of barriers that reference them
+            let buffers_to_clear: Vec<_> = pass
+                .buffer_clears()
+                .iter()
+                .map(|buffer_id| self.buffer_resources[buffer_id].get_raw().buffer.clone())
+                .collect();
+
+            // Create the list of barriers
+            let clear_barriers: Vec<_> = buffers_to_clear
+                .iter()
+                .map(|buffer| RafxBufferBarrier {
+                    buffer,
+                    src_state: RafxResourceState::UNORDERED_ACCESS,
+                    dst_state: RafxResourceState::UNORDERED_ACCESS,
+                    queue_transition: RafxBarrierQueueTransition::None,
+                })
+                .collect();
+
+            command_buffer.cmd_resource_barrier(&clear_barriers, &[])?;
+        }
+
+        Ok(())
     }
 }

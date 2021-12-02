@@ -17,9 +17,9 @@ pub struct PhysicalImageId(pub(super) usize);
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PhysicalImageViewId(pub(super) usize);
 
-/// Unique ID provided for any image registered as an output image
+/// Unique ID provided for any image registered as an external image
 #[derive(Debug, Copy, Clone)]
-pub struct RenderGraphOutputImageId(pub(super) usize);
+pub struct RenderGraphExternalImageId(pub(super) usize);
 
 /// Unique ID for a particular version of an image. Any time an image is modified, a new version is
 /// produced
@@ -56,10 +56,11 @@ pub struct RenderGraphImageView {
 }
 
 /// Defines what created a RenderGraphImageUsage
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RenderGraphImageUser {
     Node(RenderGraphNodeId),
-    Output(RenderGraphOutputImageId),
+    Input(RenderGraphExternalImageId),
+    Output(RenderGraphExternalImageId),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -355,7 +356,7 @@ impl RenderGraphImageConstraint {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RenderGraphImageUsageType {
     Create,
-    //Input,
+    Input,
     Read,
     ModifyRead,
     ModifyWrite,
@@ -370,7 +371,7 @@ impl RenderGraphImageUsageType {
             RenderGraphImageUsageType::Output => true,
             RenderGraphImageUsageType::ModifyRead => false,
             RenderGraphImageUsageType::Create => false,
-            //RenderGraphImageUsageType::Input => false,
+            RenderGraphImageUsageType::Input => false,
             RenderGraphImageUsageType::ModifyWrite => false,
         }
     }

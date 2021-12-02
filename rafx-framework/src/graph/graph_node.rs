@@ -124,8 +124,10 @@ pub struct RenderGraphNode {
     #[allow(dead_code)]
     pub(super) queue: RenderGraphQueue,
 
-    // This stores creates/reads/modifies for all images.. more detailed information about them
-    // may be included in other lists (like color_attachments)
+    // This stores creates/reads/modifies for all images/buffers.. more detailed information about
+    // them may be included in other lists (like color_attachments). This is mainly used to
+    // determine image/buffer reuse compatibility across nodes. NOT for barriers/resource state
+    // managements
     pub(super) image_creates: Vec<RenderGraphImageCreate>,
     pub(super) image_reads: Vec<RenderGraphImageRead>,
     pub(super) image_modifies: Vec<RenderGraphImageModify>,
@@ -134,12 +136,28 @@ pub struct RenderGraphNode {
     pub(super) buffer_reads: Vec<RenderGraphBufferRead>,
     pub(super) buffer_modifies: Vec<RenderGraphBufferModify>,
 
-    // Indexed by attachment index
+    // Attachments are indexed by attachment index
     pub(super) color_attachments: Vec<Option<RenderGraphPassColorAttachmentInfo>>,
     pub(super) depth_attachment: Option<RenderGraphPassDepthAttachmentInfo>,
     pub(super) resolve_attachments: Vec<Option<RenderGraphPassResolveAttachmentInfo>>,
-
     pub(super) sampled_images: Vec<RenderGraphImageUsageId>,
+    pub(super) storage_image_creates: Vec<RenderGraphImageUsageId>,
+    pub(super) storage_image_reads: Vec<RenderGraphImageUsageId>,
+    pub(super) storage_image_modifies: Vec<RenderGraphImageUsageId>,
+
+    pub(super) vertex_buffer_reads: Vec<RenderGraphBufferUsageId>,
+    pub(super) index_buffer_reads: Vec<RenderGraphBufferUsageId>,
+    pub(super) indirect_buffer_reads: Vec<RenderGraphBufferUsageId>,
+    pub(super) uniform_buffer_reads: Vec<RenderGraphBufferUsageId>,
+    pub(super) storage_buffer_creates: Vec<RenderGraphBufferUsageId>,
+    pub(super) storage_buffer_reads: Vec<RenderGraphBufferUsageId>,
+    pub(super) storage_buffer_modifies: Vec<RenderGraphBufferUsageId>,
+
+    // Some create/read operations (not including renderpass attachments) may take a RafxLoadOp,
+    // where RafxLoadOp::Clear will add the image/buffer to these lists. This is mainly intended
+    // for storage images/buffers used by a compute shader
+    pub(super) image_prepass_clears: Vec<RenderGraphImageUsageId>,
+    pub(super) buffer_prepass_clears: Vec<RenderGraphBufferUsageId>,
 }
 
 impl std::fmt::Debug for RenderGraphNode {
@@ -160,6 +178,16 @@ impl std::fmt::Debug for RenderGraphNode {
             .field("depth_attachment", &self.depth_attachment)
             .field("resolve_attachments", &self.resolve_attachments)
             .field("sampled_images", &self.sampled_images)
+            .field("storage_image_create", &self.storage_image_creates)
+            .field("storage_image_read", &self.storage_image_reads)
+            .field("storage_image_modify", &self.storage_image_modifies)
+            .field("vertex_buffer_reads", &self.vertex_buffer_reads)
+            .field("index_buffer_reads", &self.index_buffer_reads)
+            .field("indirect_buffer_reads", &self.indirect_buffer_reads)
+            .field("uniform_buffer_reads", &self.uniform_buffer_reads)
+            .field("storage_buffer_creates", &self.storage_buffer_creates)
+            .field("storage_buffer_reads", &self.storage_buffer_reads)
+            .field("storage_buffer_modifies", &self.storage_buffer_modifies)
             .finish()
     }
 }
@@ -185,6 +213,18 @@ impl RenderGraphNode {
             depth_attachment: Default::default(),
             resolve_attachments: Default::default(),
             sampled_images: Default::default(),
+            storage_image_creates: Default::default(),
+            storage_image_reads: Default::default(),
+            storage_image_modifies: Default::default(),
+            vertex_buffer_reads: Default::default(),
+            index_buffer_reads: Default::default(),
+            indirect_buffer_reads: Default::default(),
+            uniform_buffer_reads: Default::default(),
+            storage_buffer_creates: Default::default(),
+            storage_buffer_reads: Default::default(),
+            storage_buffer_modifies: Default::default(),
+            image_prepass_clears: Default::default(),
+            buffer_prepass_clears: Default::default(),
         }
     }
 

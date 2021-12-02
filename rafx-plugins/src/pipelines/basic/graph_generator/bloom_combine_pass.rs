@@ -1,6 +1,9 @@
 use super::BasicPipelineRenderOptions;
 use crate::phases::PostProcessRenderPhase;
-use rafx::framework::{MaterialPassResource, ResourceArc};
+use crate::pipelines::basic::graph_generator::luma_pass::LumaAverageHistogramPass;
+use crate::pipelines::basic::OutputColorSpace;
+use rafx::api::RafxSwapchainColorSpace;
+use rafx::framework::{DescriptorSetBindings, MaterialPassResource, ResourceArc};
 use rafx::graph::*;
 use rafx::render_features::RenderPhase;
 
@@ -20,6 +23,8 @@ pub(super) fn bloom_combine_pass(
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
     bloom_extract_pass: &BloomExtractPass,
     blurred_color: RenderGraphImageUsageId,
+    luma_average_histogram_pass: &LumaAverageHistogramPass,
+    swapchain_surface_info: &SwapchainSurfaceInfo,
 ) -> BloomCombinePass {
     let render_options = context
         .extract_resources
@@ -55,10 +60,19 @@ pub(super) fn bloom_combine_pass(
             .sample_image(node, blurred_color, Default::default(), Default::default());
     context.graph.set_image_name(hdr_image, "hdr");
 
+    let histogram_result = context.graph.read_storage_buffer(
+        node,
+        luma_average_histogram_pass.histogram_result,
+        Default::default(),
+    );
+
+    let swapchain_color_space = swapchain_surface_info.color_space;
+
     context.graph.set_renderpass_callback(node, move |args| {
         // Get the color image from before
         let sdr_image = args.graph_context.image_view(sdr_image).unwrap();
         let hdr_image = args.graph_context.image_view(hdr_image).unwrap();
+        let histogram_result = args.graph_context.buffer(histogram_result).unwrap();
 
         // Get the pipeline
         let pipeline = args
@@ -78,27 +92,45 @@ pub(super) fn bloom_combine_pass(
             .resource_context()
             .create_descriptor_set_allocator();
 
-        let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
-        let bloom_combine_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
-            &descriptor_set_layouts[shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX],
-            shaders::bloom_combine_frag::DescriptorSet0Args {
-                in_color: &sdr_image,
-                in_blur: &hdr_image,
-                config: &shaders::bloom_combine_frag::ConfigStd140 {
-                    tonemapper_type: render_options.tonemapper_type as i32,
-                    ..Default::default()
-                },
-            },
-        )?;
+        let output_color_space = match swapchain_color_space {
+            RafxSwapchainColorSpace::Srgb => OutputColorSpace::Srgb,
+            RafxSwapchainColorSpace::SrgbExtended => OutputColorSpace::Srgb,
+            RafxSwapchainColorSpace::DisplayP3Extended => OutputColorSpace::P3,
+        };
 
+        let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
+        let mut bloom_combine_material_dyn_set = descriptor_set_allocator
+            .create_dyn_descriptor_set(
+                &descriptor_set_layouts[shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX],
+                shaders::bloom_combine_frag::DescriptorSet0Args {
+                    in_color: &sdr_image,
+                    in_blur: &hdr_image,
+                    config: &shaders::bloom_combine_frag::ConfigStd140 {
+                        tonemapper_type: render_options.tonemapper_type as i32,
+                        output_color_space: output_color_space as i32,
+                        ..Default::default()
+                    },
+                },
+            )?;
+
+        bloom_combine_material_dyn_set.0.set_buffer(
+            shaders::bloom_combine_frag::HISTOGRAM_RESULT_DESCRIPTOR_BINDING_INDEX as u32,
+            &histogram_result,
+        );
+
+        bloom_combine_material_dyn_set.flush(&mut descriptor_set_allocator)?;
         descriptor_set_allocator.flush_changes()?;
 
         // Draw calls
         let command_buffer = &args.command_buffer;
+
         command_buffer
             .cmd_bind_pipeline(&*pipeline.get_raw().pipeline)
             .unwrap();
-        bloom_combine_material_dyn_set.bind(command_buffer).unwrap();
+        bloom_combine_material_dyn_set
+            .0
+            .bind(command_buffer)
+            .unwrap();
         command_buffer.cmd_draw(3, 0).unwrap();
 
         Ok(())
