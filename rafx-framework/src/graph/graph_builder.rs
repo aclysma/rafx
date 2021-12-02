@@ -28,7 +28,7 @@ pub struct RenderGraphExternalImage {
     pub output_usage: Option<RenderGraphImageUsageId>,
 
     //TODO: Use initial state
-    #[allow(unused_variables)]
+    #[allow(dead_code)]
     pub(super) initial_state: RafxResourceState,
     pub(super) final_state: RafxResourceState,
 }
@@ -45,9 +45,9 @@ pub struct RenderGraphExternalBuffer {
     pub output_usage: Option<RenderGraphBufferUsageId>,
 
     //TODO: Use initial/final state
-    #[allow(unused_variables)]
+    #[allow(dead_code)]
     pub(super) initial_state: RafxResourceState,
-    #[allow(unused_variables)]
+    #[allow(dead_code)]
     pub(super) final_state: RafxResourceState,
 }
 
