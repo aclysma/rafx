@@ -8,6 +8,7 @@ pub trait RenderGraphGenerator: 'static + Send {
         &self,
         asset_manager: &AssetManager,
         swapchain_image: ResourceArc<ImageViewResource>,
+        rotating_frame_index: usize,
         main_view: RenderView,
         extract_resources: &ExtractResources,
         render_resources: &RenderResources,

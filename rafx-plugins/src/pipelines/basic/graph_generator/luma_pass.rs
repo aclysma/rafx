@@ -20,31 +20,23 @@ pub(super) fn luma_build_histogram_pass(
     context: &mut RenderGraphContext,
     luma_build_histogram: &ResourceArc<ComputePipelineResource>,
     opaque_pass: &OpaquePass,
-    histogram_buffer: Option<RenderGraphExternalBufferId>,
     swapchain_surface_info: &SwapchainSurfaceInfo,
 ) -> LumaBuildHistogramPass {
     let node = context
         .graph
         .add_node("LumaBuildHistogram", RenderGraphQueue::DefaultGraphics);
 
-    let luma_histogram_data = if let Some(histogram_buffer) = histogram_buffer {
-        let usage = context.graph.read_external_buffer(histogram_buffer);
-
-        context
-            .graph
-            .modify_storage_buffer(node, usage, Default::default(), RafxLoadOp::Clear)
-    } else {
-        context.graph.create_storage_buffer(
-            node,
-            RenderGraphBufferConstraint {
-                size: Some(std::mem::size_of::<
-                    shaders::luma_average_histogram_comp::HistogramDataBuffer,
-                >() as u64),
-                ..Default::default()
-            },
-            RafxLoadOp::Clear,
-        )
-    };
+    let luma_histogram_data = context.graph.create_storage_buffer(
+        node,
+        RenderGraphBufferConstraint {
+            size: Some(
+                std::mem::size_of::<shaders::luma_average_histogram_comp::HistogramDataBuffer>()
+                    as u64,
+            ),
+            ..Default::default()
+        },
+        RafxLoadOp::Clear,
+    );
 
     let luma_sample_hdr_image = context.graph.sample_image(
         node,
@@ -128,6 +120,7 @@ pub(super) fn luma_average_histogram_pass(
     luma_average_histogram: &ResourceArc<ComputePipelineResource>,
     histogram_result: RenderGraphExternalBufferId,
     tonemap_debug_data: Option<BasicPipelineTonemapDebugData>,
+    tonemap_debug_output: RenderGraphExternalBufferId,
     swapchain_surface_info: &SwapchainSurfaceInfo,
     previous_update_dt: f32,
 ) -> LumaAverageHistogramPass {
@@ -135,23 +128,26 @@ pub(super) fn luma_average_histogram_pass(
         .graph
         .add_node("LumaAverageHistogram", RenderGraphQueue::DefaultGraphics);
 
-    // We assume 16x16 workgroup size
     let luma_histogram_data = context.graph.read_storage_buffer(
         node,
         luma_build_histogram_pass.luma_histogram_data,
-        RenderGraphBufferConstraint {
-            size: Some(256 * std::mem::size_of::<u32>() as u64),
-            ..Default::default()
-        },
+        Default::default(),
     );
 
     let histogram_result = context.graph.read_external_buffer(histogram_result);
-
     let histogram_result = context.graph.modify_storage_buffer(
         node,
         histogram_result,
         Default::default(),
         RafxLoadOp::Load,
+    );
+
+    let debug_output = context.graph.read_external_buffer(tonemap_debug_output);
+    let debug_output = context.graph.modify_storage_buffer(
+        node,
+        debug_output,
+        Default::default(),
+        RafxLoadOp::Clear,
     );
 
     let luma_average_histogram = luma_average_histogram.clone();
@@ -169,38 +165,38 @@ pub(super) fn luma_average_histogram_pass(
 
         let histogram_data = args.graph_context.buffer(luma_histogram_data).unwrap();
         let histogram_result = args.graph_context.buffer(histogram_result).unwrap();
+        let debug_output = args.graph_context.buffer(debug_output).unwrap();
+
+        let mut enable_debug_data_collection = false;
 
         // Copy the result of previous frame's histogram to debug data resource
         unsafe {
-            let histogram_data_ptr = histogram_data.get_raw().buffer.map_buffer()?;
-            let histogram_data_ptr = &*(histogram_data_ptr
-                as *mut shaders::luma_average_histogram_comp::HistogramDataBuffer);
-
-            let histogram_result_ptr = histogram_result.get_raw().buffer.map_buffer()?;
-            let histogram_result_ptr = &*(histogram_result_ptr
-                as *mut shaders::luma_average_histogram_comp::HistogramResultBuffer);
+            let debug_output_ptr = debug_output.get_raw().buffer.map_buffer()?;
+            let debug_output_ptr = &*(debug_output_ptr
+                as *mut shaders::luma_average_histogram_comp::DebugOutputBuffer);
 
             if let Some(tonemap_debug_data) = &tonemap_debug_data {
                 let mut guard = tonemap_debug_data.inner.lock().unwrap();
                 guard.histogram_sample_count = 0;
                 guard.histogram_max_value = 0;
                 for i in 0..256 {
-                    let d = histogram_data_ptr.data[i];
+                    let d = debug_output_ptr.data[i];
                     guard.histogram[i] = d;
                     guard.histogram_sample_count += d;
                     guard.histogram_max_value = guard.histogram_max_value.max(d);
                 }
 
-                guard.result_average = histogram_result_ptr.average_luminosity_interpolated;
-                guard.result_average_bin = histogram_result_ptr.average_bin_non_zero as f32;
-                guard.result_min_bin = histogram_result_ptr.min_bin;
-                guard.result_max_bin = histogram_result_ptr.max_bin;
-                guard.result_low_bin = histogram_result_ptr.low_bin;
-                guard.result_high_bin = histogram_result_ptr.high_bin;
+                guard.result_average = debug_output_ptr.result.average_luminosity_interpolated;
+                guard.result_average_bin = debug_output_ptr.result.average_bin_non_zero as f32;
+                guard.result_min_bin = debug_output_ptr.result.min_bin;
+                guard.result_max_bin = debug_output_ptr.result.max_bin;
+                guard.result_low_bin = debug_output_ptr.result.low_bin;
+                guard.result_high_bin = debug_output_ptr.result.high_bin;
                 // println!("{:?}", *guard);
+
+                enable_debug_data_collection = guard.enable_debug_data_collection;
             }
             histogram_result.get_raw().buffer.unmap_buffer()?;
-            histogram_data.get_raw().buffer.unmap_buffer()?;
         }
 
         use crate::shaders::luma_average_histogram_comp;
@@ -219,6 +215,8 @@ pub(super) fn luma_average_histogram_pass(
                 high_adjust_speed: 1.7,
                 low_percentile: 0.1,
                 high_percentile: 0.95,
+                write_debug_output: if enable_debug_data_collection { 1 } else { 0 },
+                ..Default::default()
             },
         );
         descriptor_set.set_buffer(
@@ -228,6 +226,10 @@ pub(super) fn luma_average_histogram_pass(
         descriptor_set.set_buffer(
             luma_average_histogram_comp::HISTOGRAM_RESULT_DESCRIPTOR_BINDING_INDEX as u32,
             &histogram_result,
+        );
+        descriptor_set.set_buffer(
+            luma_average_histogram_comp::DEBUG_OUTPUT_DESCRIPTOR_BINDING_INDEX as u32,
+            &debug_output,
         );
         descriptor_set.flush(&mut descriptor_set_allocator)?;
         descriptor_set_allocator.flush_changes()?;

@@ -13,15 +13,17 @@ use rafx::framework::{
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct AverageHistogramConfigStd140 {
-    pub pixel_count: u32,       // +0 (size: 4)
-    pub min_log_luma: f32,      // +4 (size: 4)
-    pub log_luma_range: f32,    // +8 (size: 4)
-    pub dt: f32,                // +12 (size: 4)
-    pub low_percentile: f32,    // +16 (size: 4)
-    pub high_percentile: f32,   // +20 (size: 4)
-    pub low_adjust_speed: f32,  // +24 (size: 4)
-    pub high_adjust_speed: f32, // +28 (size: 4)
-} // 32 bytes
+    pub pixel_count: u32,        // +0 (size: 4)
+    pub min_log_luma: f32,       // +4 (size: 4)
+    pub log_luma_range: f32,     // +8 (size: 4)
+    pub dt: f32,                 // +12 (size: 4)
+    pub low_percentile: f32,     // +16 (size: 4)
+    pub high_percentile: f32,    // +20 (size: 4)
+    pub low_adjust_speed: f32,   // +24 (size: 4)
+    pub high_adjust_speed: f32,  // +28 (size: 4)
+    pub write_debug_output: u32, // +32 (size: 4)
+    pub _padding0: [u8; 12],     // +36 (size: 12)
+} // 48 bytes
 
 impl Default for AverageHistogramConfigStd140 {
     fn default() -> Self {
@@ -34,6 +36,8 @@ impl Default for AverageHistogramConfigStd140 {
             high_percentile: <f32>::default(),
             low_adjust_speed: <f32>::default(),
             high_adjust_speed: <f32>::default(),
+            write_debug_output: <u32>::default(),
+            _padding0: [u8::default(); 12],
         }
     }
 }
@@ -78,6 +82,15 @@ pub type HistogramResultBuffer = HistogramResultStd430;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
+pub struct DebugOutputStd430 {
+    pub result: HistogramResultStd430, // +0 (size: 84)
+    pub data: [u32; 256],              // +84 (size: 1024)
+} // 1108 bytes
+
+pub type DebugOutputBuffer = DebugOutputStd430;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
 pub struct HistogramResultBufferStd430 {
     pub result: HistogramResultStd430, // +0 (size: 84)
 } // 84 bytes
@@ -90,11 +103,14 @@ pub const CONFIG_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const CONFIG_DESCRIPTOR_BINDING_INDEX: usize = 1;
 pub const HISTOGRAM_RESULT_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const HISTOGRAM_RESULT_DESCRIPTOR_BINDING_INDEX: usize = 2;
+pub const DEBUG_OUTPUT_DESCRIPTOR_SET_INDEX: usize = 0;
+pub const DEBUG_OUTPUT_DESCRIPTOR_BINDING_INDEX: usize = 3;
 
 pub struct DescriptorSet0Args<'a> {
     pub histogram_data: &'a HistogramDataBuffer,
     pub config: &'a AverageHistogramConfigUniform,
     pub histogram_result: &'a HistogramResultBufferBuffer,
+    pub debug_output: &'a DebugOutputBuffer,
 }
 
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
@@ -134,6 +150,10 @@ impl<'a> DescriptorSetWriter<'a> for DescriptorSet0Args<'a> {
             HISTOGRAM_RESULT_DESCRIPTOR_BINDING_INDEX as u32,
             args.histogram_result,
         );
+        descriptor_set.set_buffer_data(
+            DEBUG_OUTPUT_DESCRIPTOR_BINDING_INDEX as u32,
+            args.debug_output,
+        );
     }
 }
 
@@ -153,6 +173,10 @@ impl DescriptorSet0 {
             HISTOGRAM_RESULT_DESCRIPTOR_BINDING_INDEX as u32,
             args.histogram_result,
         );
+        descriptor_set.set_buffer_data(
+            DEBUG_OUTPUT_DESCRIPTOR_BINDING_INDEX as u32,
+            args.debug_output,
+        );
     }
 
     pub fn set_args(
@@ -162,6 +186,7 @@ impl DescriptorSet0 {
         self.set_histogram_data(args.histogram_data);
         self.set_config(args.config);
         self.set_histogram_result(args.histogram_result);
+        self.set_debug_output(args.debug_output);
     }
 
     pub fn set_histogram_data(
@@ -192,6 +217,14 @@ impl DescriptorSet0 {
         );
     }
 
+    pub fn set_debug_output(
+        &mut self,
+        debug_output: &DebugOutputBuffer,
+    ) {
+        self.0
+            .set_buffer_data(DEBUG_OUTPUT_DESCRIPTOR_BINDING_INDEX as u32, debug_output);
+    }
+
     pub fn flush(
         &mut self,
         descriptor_set_allocator: &mut DescriptorSetAllocator,
@@ -206,7 +239,7 @@ mod test {
 
     #[test]
     fn test_struct_average_histogram_config_std140() {
-        assert_eq!(std::mem::size_of::<AverageHistogramConfigStd140>(), 32);
+        assert_eq!(std::mem::size_of::<AverageHistogramConfigStd140>(), 48);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
@@ -251,6 +284,18 @@ mod test {
         assert_eq!(
             memoffset::offset_of!(AverageHistogramConfigStd140, high_adjust_speed),
             28
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(AverageHistogramConfigStd140, write_debug_output),
+            32
+        );
+        assert_eq!(std::mem::size_of::<[u8; 12]>(), 12);
+        assert_eq!(std::mem::align_of::<[u8; 12]>(), 1);
+        assert_eq!(
+            memoffset::offset_of!(AverageHistogramConfigStd140, _padding0),
+            36
         );
     }
 
@@ -379,6 +424,17 @@ mod test {
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(memoffset::offset_of!(HistogramResultStd430, high_bin), 80);
+    }
+
+    #[test]
+    fn test_struct_debug_output_std430() {
+        assert_eq!(std::mem::size_of::<DebugOutputStd430>(), 1108);
+        assert_eq!(std::mem::size_of::<HistogramResultStd430>(), 84);
+        assert_eq!(std::mem::align_of::<HistogramResultStd430>(), 4);
+        assert_eq!(memoffset::offset_of!(DebugOutputStd430, result), 0);
+        assert_eq!(std::mem::size_of::<[u32; 256]>(), 1024);
+        assert_eq!(std::mem::align_of::<[u32; 256]>(), 4);
+        assert_eq!(memoffset::offset_of!(DebugOutputStd430, data), 84);
     }
 
     #[test]
