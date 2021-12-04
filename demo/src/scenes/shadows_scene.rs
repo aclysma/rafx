@@ -211,7 +211,7 @@ impl ShadowsScene {
             glam::Vec3::new(5.0, 5.0, 2.0),
             PointLightComponent {
                 color: [0.0, 1.0, 0.0, 1.0].into(),
-                intensity: 50.0,
+                intensity: 75.0,
                 range: 25.0,
                 view_frustums,
             },
@@ -249,7 +249,7 @@ impl ShadowsScene {
                 spotlight_half_angle: 40.0 * (std::f32::consts::PI / 180.0),
                 range: 12.0,
                 color: [1.0, 0.0, 0.0, 1.0].into(),
-                intensity: 500.0,
+                intensity: 150.0,
                 view_frustum: visibility_region.register_view_frustum(),
             },
         );
