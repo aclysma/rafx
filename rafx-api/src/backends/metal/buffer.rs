@@ -3,7 +3,7 @@ use crate::{RafxBufferDef, RafxMemoryUsage, RafxResourceType, RafxResult};
 
 #[derive(Debug)]
 pub struct RafxBufferMetal {
-    device_context: RafxDeviceContextMetal,
+    _device_context: RafxDeviceContextMetal,
     buffer_def: RafxBufferDef,
     buffer: metal_rs::Buffer,
 }
@@ -97,7 +97,7 @@ impl RafxBufferMetal {
         );
 
         Ok(RafxBufferMetal {
-            device_context: device_context.clone(),
+            _device_context: device_context.clone(),
             buffer_def: buffer_def.clone(),
             buffer,
         })

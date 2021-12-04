@@ -31,7 +31,7 @@ impl RafxRawImageMetal {
 
 #[derive(Debug)]
 pub struct RafxTextureMetalInner {
-    device_context: RafxDeviceContextMetal,
+    _device_context: RafxDeviceContextMetal,
     texture_def: RafxTextureDef,
     image: RafxRawImageMetal,
     mip_level_uav_views: Vec<metal_rs::Texture>,
@@ -219,7 +219,7 @@ impl RafxTextureMetal {
 
         let inner = RafxTextureMetalInner {
             texture_def: texture_def.clone(),
-            device_context: device_context.clone(),
+            _device_context: device_context.clone(),
             image,
             mip_level_uav_views,
             texture_id,
