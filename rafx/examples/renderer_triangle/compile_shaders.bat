@@ -3,7 +3,7 @@ setlocal
 cd /D "%~dp0"
 
 cargo run --package rafx-shader-processor -- ^
---glsl-path *.vert *.frag *.comp ^
+--glsl-path . ^
 --spv-path processed_shaders ^
 --metal-generated-src-path processed_shaders ^
 --gles2-generated-src-path processed_shaders ^
