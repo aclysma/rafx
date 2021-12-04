@@ -35,11 +35,15 @@ default = []
 #
 # Backends
 #
-rafx-empty = ["rafx-api/rafx-empty"]
-rafx-vulkan = ["rafx-api/rafx-vulkan"]
-rafx-metal = ["rafx-api/rafx-metal"]
-rafx-gles2 = ["rafx-api/rafx-gles2"]
-rafx-gles3 = ["rafx-api/rafx-gles3"]
+#TODO: There is currently no way to enable backend-specific feature flags in rafx-renderer without enabling
+# rafx-renderer. When weak-dep-features https://github.com/rust-lang/cargo/issues/8832 is stabilized we can fix this.
+# For now, the workaround for users not wanting to include higher-level crates is to use the crates pulled in by the top
+# level crate directly.
+rafx-empty = ["rafx-api/rafx-empty", "rafx-renderer/rafx-empty"]
+rafx-vulkan = ["rafx-api/rafx-vulkan", "rafx-renderer/rafx-vulkan"]
+rafx-metal = ["rafx-api/rafx-metal", "rafx-renderer/rafx-metal"]
+rafx-gles2 = ["rafx-api/rafx-gles2", "rafx-renderer/rafx-gles2"]
+rafx-gles3 = ["rafx-api/rafx-gles3", "rafx-renderer/rafx-gles3"]
 
 # Vulkan-specific feature, use statically-linked vulkan instead of dynamically loading it
 static-vulkan = ["rafx-api/static-vulkan"]
