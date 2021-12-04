@@ -44,7 +44,7 @@ fn run() -> RafxResult<()> {
                 width: window_width,
                 height: window_height,
                 enable_vsync: true,
-                color_space: RafxSwapchainColorSpace::Srgb,
+                color_space_priority: vec![RafxSwapchainColorSpace::Srgb],
             },
         )?;
 

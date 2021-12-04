@@ -41,7 +41,7 @@ pub fn update_loop(
                 width: window_size.width,
                 height: window_size.height,
                 enable_vsync: true,
-                color_space: RafxSwapchainColorSpace::Srgb,
+                color_space_priority: vec![RafxSwapchainColorSpace::Srgb],
             },
         )?;
 

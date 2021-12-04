@@ -38,6 +38,7 @@ pub struct RafxSwapchainMetal {
     drawable: TrustCell<Option<metal_rs::MetalDrawable>>,
     swapchain_def: RafxSwapchainDef,
     format: RafxFormat,
+    color_space: RafxSwapchainColorSpace,
     // Just fake this
     next_swapchain_image_index: u32,
     edr_info: RafxSwapchainMetalEdrInfo,
@@ -61,7 +62,7 @@ impl RafxSwapchainMetal {
     }
 
     pub fn color_space(&self) -> RafxSwapchainColorSpace {
-        self.swapchain_def.color_space
+        self.color_space
     }
 
     pub fn metal_layer(&self) -> &metal_rs::MetalLayerRef {
@@ -114,7 +115,10 @@ impl RafxSwapchainMetal {
         let layer = unsafe { std::mem::transmute::<_, &metal_rs::MetalLayerRef>(layer).to_owned() };
         let window = extra_ffi::NSWindowWrapper::new(window as *mut objc::runtime::Object);
 
-        let (pixel_format, swapchain_format, is_extended) = match swapchain_def.color_space {
+        // Metal backend support all color spaces, so we can just use the first one in the list
+        let preferred_color_space = swapchain_def.color_space_priority[0];
+
+        let (pixel_format, swapchain_format, is_extended) = match preferred_color_space {
             RafxSwapchainColorSpace::Srgb => (
                 metal_rs::MTLPixelFormat::BGRA8Unorm_sRGB,
                 RafxFormat::B8G8R8A8_SRGB,
@@ -127,8 +131,10 @@ impl RafxSwapchainMetal {
             ),
         };
 
+        // Metal supports all color spaces
+        let preferred_color_space = swapchain_def.color_space_priority[0];
         let color_space = core_graphics::color_space::CGColorSpace::create_with_name(
-            swapchain_def.color_space.into(),
+            preferred_color_space.into(),
         )
         .unwrap();
 
@@ -159,6 +165,7 @@ impl RafxSwapchainMetal {
             next_swapchain_image_index: 0,
             format: swapchain_format,
             edr_info,
+            color_space: preferred_color_space,
         })
     }
 
