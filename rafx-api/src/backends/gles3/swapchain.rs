@@ -35,7 +35,8 @@ impl RafxSwapchainGles3 {
     }
 
     pub fn color_space(&self) -> RafxSwapchainColorSpace {
-        self.swapchain_def.color_space
+        // Only SRGB supported
+        RafxSwapchainColorSpace::Srgb
     }
 
     pub fn surface_context(&self) -> &Arc<GlContext> {
@@ -51,7 +52,10 @@ impl RafxSwapchainGles3 {
             .gl_context_manager()
             .create_surface_context(raw_window_handle)?;
 
-        if swapchain_def.color_space != RafxSwapchainColorSpace::Srgb {
+        if !swapchain_def
+            .color_space_priority
+            .contains(&RafxSwapchainColorSpace::Srgb)
+        {
             unimplemented!("GLES3 backend only supports sRGB Non-Linear color space");
         }
 

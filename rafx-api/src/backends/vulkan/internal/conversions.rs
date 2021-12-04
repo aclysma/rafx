@@ -1,4 +1,3 @@
-use crate::ash::vk::ColorSpaceKHR;
 use crate::{
     RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxColorClearValue, RafxColorFlags,
     RafxCompareOp, RafxCullMode, RafxDepthStencilClearValue, RafxFillMode, RafxFilterType,
@@ -16,16 +15,6 @@ impl Into<vk::ColorSpaceKHR> for RafxSwapchainColorSpace {
             // Vulkan API only supports non-extended P3 and hardware support for even that is pretty
             // much non-existent
             RafxSwapchainColorSpace::DisplayP3Extended => unimplemented!(),
-        }
-    }
-}
-
-impl From<vk::ColorSpaceKHR> for RafxSwapchainColorSpace {
-    fn from(color_space: ColorSpaceKHR) -> Self {
-        match color_space {
-            ColorSpaceKHR::SRGB_NONLINEAR => RafxSwapchainColorSpace::Srgb,
-            ColorSpaceKHR::EXTENDED_SRGB_LINEAR_EXT => RafxSwapchainColorSpace::SrgbExtended,
-            _ => unimplemented!(),
         }
     }
 }
