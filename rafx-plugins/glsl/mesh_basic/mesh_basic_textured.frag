@@ -3,9 +3,9 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 #define PBR_TEXTURES
-#include "mesh_pbr_uniform.glsl"
-#include "mesh_pbr_textures.glsl"
-#include "mesh_pbr_frag.glsl"
+#include "mesh_basic_pbr_uniform.glsl"
+#include "mesh_basic_pbr_textures.glsl"
+#include "mesh_basic_pbr_frag.glsl"
 
 layout (location = 0) out vec4 out_color;
 

@@ -2,10 +2,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-#include "mesh_wireframe.glsl"
-
-layout (location = 0) out vec4 out_color;
+#include "mesh_basic_pbr_uniform.glsl"
+#include "mesh_basic_pbr_vert.glsl"
 
 void main() {
-    out_color = vec4(1, 1, 1, 1);
+    pbr_main();
 }
