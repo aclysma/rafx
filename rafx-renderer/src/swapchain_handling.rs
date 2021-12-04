@@ -30,7 +30,10 @@ impl<'a> SwapchainHandler<'a> {
                     height,
                     width,
                     enable_vsync: true,
-                    color_space: RafxSwapchainColorSpace::SrgbExtended,
+                    color_space_priority: vec![
+                        RafxSwapchainColorSpace::SrgbExtended,
+                        RafxSwapchainColorSpace::Srgb,
+                    ],
                 },
             )?;
 

@@ -9,6 +9,7 @@ use std::sync::Arc;
 use ash::extensions::khr;
 use ash::prelude::VkResult;
 
+use crate::ash::vk::SurfaceFormatKHR;
 use crate::backends::vulkan::RafxTextureVulkan;
 use crate::*;
 use ash::vk::Extent2D;
@@ -60,6 +61,7 @@ impl VkPresentMode {
 
 #[derive(Clone)]
 struct SwapchainInfo {
+    color_space: RafxSwapchainColorSpace,
     surface_format: vk::SurfaceFormatKHR,
     #[allow(unused)]
     present_mode: vk::PresentModeKHR,
@@ -126,11 +128,7 @@ impl RafxSwapchainVulkan {
     }
 
     pub fn color_space(&self) -> RafxSwapchainColorSpace {
-        self.swapchain
-            .swapchain_info
-            .surface_format
-            .color_space
-            .into()
+        self.swapchain.swapchain_info.color_space
     }
 
     pub fn new(
@@ -162,7 +160,7 @@ impl RafxSwapchainVulkan {
             &surface_loader,
             None,
             present_mode_priority,
-            swapchain_def.color_space.into(),
+            &swapchain_def.color_space_priority,
             vk::Extent2D {
                 width: swapchain_def.width,
                 height: swapchain_def.height,
@@ -198,7 +196,7 @@ impl RafxSwapchainVulkan {
             &self.surface_loader,
             Some(self.swapchain.swapchain),
             present_mode_priority,
-            self.swapchain_def.color_space.into(),
+            &self.swapchain_def.color_space_priority,
             vk::Extent2D {
                 width: swapchain_def.width,
                 height: swapchain_def.height,
@@ -349,7 +347,7 @@ impl RafxSwapchainVulkanInstance {
         surface_loader: &Arc<khr::Surface>,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[VkPresentMode],
-        color_space: RafxSwapchainColorSpace,
+        color_space_priority: &[RafxSwapchainColorSpace],
         window_inner_size: Extent2D,
     ) -> VkResult<RafxSwapchainVulkanInstance> {
         let (available_formats, available_present_modes, surface_capabilities) =
@@ -359,7 +357,8 @@ impl RafxSwapchainVulkanInstance {
                 &surface_loader,
             )?;
 
-        let surface_format = Self::choose_swapchain_format(color_space, &available_formats);
+        let (color_space, surface_format) =
+            Self::choose_swapchain_format(color_space_priority, &available_formats);
         log::info!("Surface format: {:?}", surface_format);
 
         let present_mode =
@@ -399,6 +398,7 @@ impl RafxSwapchainVulkanInstance {
         };
 
         let swapchain_info = SwapchainInfo {
+            color_space,
             surface_format,
             extents,
             present_mode,
@@ -486,39 +486,81 @@ impl RafxSwapchainVulkanInstance {
     }
 
     fn choose_swapchain_format(
-        color_space: RafxSwapchainColorSpace,
+        color_space_priority: &[RafxSwapchainColorSpace],
         available_formats: &[vk::SurfaceFormatKHR],
-    ) -> vk::SurfaceFormatKHR {
-        let mut best_format = None;
-
-        let (preferred_color_space, preferred_format) = match color_space {
-            RafxSwapchainColorSpace::Srgb => {
-                (vk::ColorSpaceKHR::SRGB_NONLINEAR, vk::Format::B8G8R8A8_SRGB)
+    ) -> (RafxSwapchainColorSpace, vk::SurfaceFormatKHR) {
+        // For all preferred formats, see if any available format matches. If so, return it
+        fn try_find_format(
+            available_formats: &[SurfaceFormatKHR],
+            preferred_formats: &[PreferredFormat],
+        ) -> Option<(RafxSwapchainColorSpace, vk::SurfaceFormatKHR)> {
+            for preferred_format in preferred_formats {
+                for available_format in available_formats {
+                    if preferred_format.matches_vk_surface_format(available_format) {
+                        return Some((preferred_format.color_space, *available_format));
+                    }
+                }
             }
-            RafxSwapchainColorSpace::SrgbExtended => (
-                vk::ColorSpaceKHR::EXTENDED_SRGB_LINEAR_EXT,
-                vk::Format::R16G16B16A16_SFLOAT,
-            ),
-            RafxSwapchainColorSpace::DisplayP3Extended => unimplemented!(),
-        };
+
+            None
+        }
+
+        // Turn the given list of color spaces into compatible vulkan formats
+        let mut preferred_formats = vec![];
+        for &color_space in color_space_priority {
+            add_compatible_surface_formats(&mut preferred_formats, color_space);
+        }
+
+        for preferred_format in &preferred_formats {
+            log::debug!(
+                "Preferred format: {:?} {:?} {:?}",
+                preferred_format.color_space,
+                preferred_format.vk_format,
+                preferred_format.vk_color_space
+            );
+        }
 
         for available_format in available_formats {
             log::debug!(
-                "Available Format: {:?} {:?}",
+                "Available format: {:?} {:?}",
                 available_format.format,
                 available_format.color_space
             );
-            if available_format.format == preferred_format
-                && available_format.color_space == preferred_color_space
-            {
-                best_format = Some(available_format);
-            }
         }
 
-        match best_format {
-            Some(format) => *format,
-            None => available_formats[0],
+        // Try to pick a preferred format
+        if let Some(result) = try_find_format(available_formats, &preferred_formats) {
+            log::debug!(
+                "Choosing format: {:?} {:?} {:?}",
+                result.0,
+                result.1.format,
+                result.1.color_space
+            );
+            return result;
         }
+
+        // If we can't find a preferred format, try to pick something SRGB
+        let mut fallback_formats = vec![];
+        add_compatible_surface_formats(&mut fallback_formats, RafxSwapchainColorSpace::Srgb);
+        if let Some(result) = try_find_format(available_formats, &fallback_formats) {
+            log::debug!(
+                "No preferred format found, choosing any SRGB format: {:?} {:?} {:?}",
+                result.0,
+                result.1.format,
+                result.1.color_space
+            );
+            return result;
+        }
+
+        // We failed to find something SRGB compatible, just pick the first thing that exists
+        log::debug!(
+            "No preferred format found, choosing any format: {:?} {:?}",
+            available_formats[0].format,
+            available_formats[0].color_space
+        );
+
+        // We don't really know that it's Srgb
+        return (RafxSwapchainColorSpace::Srgb, available_formats[0]);
     }
 
     fn choose_present_mode(
@@ -758,5 +800,63 @@ impl Drop for RafxSwapchainVulkanInstance {
         }
 
         log::trace!("destroyed VkSwapchain");
+    }
+}
+
+struct PreferredFormat {
+    color_space: RafxSwapchainColorSpace,
+    vk_format: vk::Format,
+    vk_color_space: vk::ColorSpaceKHR,
+}
+
+impl PreferredFormat {
+    fn new(
+        color_space: RafxSwapchainColorSpace,
+        vk_format: vk::Format,
+        vk_color_space: vk::ColorSpaceKHR,
+    ) -> Self {
+        PreferredFormat {
+            color_space,
+            vk_format,
+            vk_color_space,
+        }
+    }
+
+    fn matches_vk_surface_format(
+        &self,
+        vk_surface_format: &vk::SurfaceFormatKHR,
+    ) -> bool {
+        return self.vk_format == vk_surface_format.format
+            && self.vk_color_space == vk_surface_format.color_space;
+    }
+}
+
+fn add_compatible_surface_formats(
+    formats: &mut Vec<PreferredFormat>,
+    color_space: RafxSwapchainColorSpace,
+) {
+    match color_space {
+        RafxSwapchainColorSpace::Srgb => {
+            formats.push(PreferredFormat::new(
+                RafxSwapchainColorSpace::Srgb,
+                vk::Format::B8G8R8A8_SRGB,
+                vk::ColorSpaceKHR::SRGB_NONLINEAR,
+            ));
+            formats.push(PreferredFormat::new(
+                RafxSwapchainColorSpace::Srgb,
+                vk::Format::R8G8B8A8_SRGB,
+                vk::ColorSpaceKHR::SRGB_NONLINEAR,
+            ));
+        }
+        RafxSwapchainColorSpace::SrgbExtended => {
+            formats.push(PreferredFormat::new(
+                RafxSwapchainColorSpace::Srgb,
+                vk::Format::R16G16B16A16_SFLOAT,
+                vk::ColorSpaceKHR::EXTENDED_SRGB_LINEAR_EXT,
+            ));
+        }
+        RafxSwapchainColorSpace::DisplayP3Extended => {
+            unimplemented!("Not supported in vulkan backend");
+        }
     }
 }
