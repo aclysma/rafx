@@ -22,7 +22,6 @@ pub(crate) enum RafxSamplerIndexGles3 {
 #[derive(Debug)]
 pub(crate) struct ImmutableSampler {
     pub(crate) sampler: RafxSamplerGles3,
-    pub(crate) gl_name: CString,
 }
 
 #[derive(Clone, Debug)]
@@ -54,8 +53,6 @@ pub(crate) struct DescriptorInfo {
 
     // A quick lookup to get the sampler associated with a texture
     pub(crate) sampler_descriptor_index: Option<RafxSamplerIndexGles3>,
-
-    pub(crate) gl_name: CString,
 
     // Indexes into location_names
     pub(crate) first_location_index: Option<u32>,
@@ -274,7 +271,6 @@ impl RafxRootSignatureGles3 {
             let layout: &mut DescriptorSetLayoutInfo = &mut layouts[resource.set_index as usize];
 
             let gl_name = resource.gles_name.as_ref().unwrap();
-            let gl_name_cstr = CString::new(gl_name.as_str()).unwrap();
 
             if let Some(immutable_sampler_def_index) = immutable_sampler_def_index {
                 assert!(resource.resource_type.intersects(RafxResourceType::SAMPLER));
@@ -297,10 +293,7 @@ impl RafxRootSignatureGles3 {
 
                 let immutable_sampler_index = immutable_samplers.len();
 
-                immutable_samplers.push(ImmutableSampler {
-                    sampler,
-                    gl_name: gl_name_cstr,
-                });
+                immutable_samplers.push(ImmutableSampler { sampler });
 
                 let old = sampler_by_gl_name.insert(
                     resource.gles_name.as_ref().unwrap(),
@@ -337,7 +330,6 @@ impl RafxRootSignatureGles3 {
                     uniform_block_binding,
                     descriptor_data_offset_in_set,
                     sampler_descriptor_index: None, // we set this later
-                    gl_name: gl_name_cstr,
                     first_location_index,
                 });
 

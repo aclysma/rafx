@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct RafxSamplerGles3Inner {
-    pub(crate) device_context: RafxDeviceContextGles3,
+    pub(crate) _device_context: RafxDeviceContextGles3,
     pub(crate) gl_mip_map_mode: GLenum,
     pub(crate) gl_min_filter: GLenum,
     pub(crate) gl_mag_filter: GLenum,
@@ -65,7 +65,7 @@ impl RafxSamplerGles3 {
         //TODO: sampler objects (ES3 only)
 
         let inner = RafxSamplerGles3Inner {
-            device_context: device_context.clone(),
+            _device_context: device_context.clone(),
             gl_mip_map_mode,
             gl_min_filter,
             gl_mag_filter,
