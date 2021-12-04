@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct RafxSamplerMetalInner {
-    device_context: RafxDeviceContextMetal,
+    _device_context: RafxDeviceContextMetal,
     sampler: metal_rs::SamplerState,
 }
 
@@ -53,7 +53,7 @@ impl RafxSamplerMetal {
         let sampler = device_context.device().new_sampler(&descriptor);
 
         let inner = RafxSamplerMetalInner {
-            device_context: device_context.clone(),
+            _device_context: device_context.clone(),
             sampler,
         };
 

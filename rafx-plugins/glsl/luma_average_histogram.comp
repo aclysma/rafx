@@ -25,6 +25,7 @@ layout(set = 0, binding = 1) uniform AverageHistogramConfig
     float high_percentile;
     float low_adjust_speed;
     float high_adjust_speed;
+    bool write_debug_output;
 } config;
 
 // @[export]
@@ -32,6 +33,12 @@ layout(set = 0, binding = 2) buffer HistogramResultBuffer
 {
     HistogramResult result;
 } histogram_result;
+
+// @[export]
+layout(set = 0, binding = 3) buffer DebugOutput {
+    HistogramResult result;
+    uint data[256];
+} debug_output;
 
 shared float HistogramShared[NUM_HISTOGRAM_BINS];
 
@@ -146,5 +153,10 @@ void main()
         histogram_result.result.max_bin = max_bin;
         histogram_result.result.low_bin = low_bin;
         histogram_result.result.high_bin = high_bin;
+
+        if (config.write_debug_output) {
+            debug_output.result = histogram_result.result;
+            debug_output.data = histogram_data.data;
+        }
     }
 }

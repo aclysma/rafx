@@ -22,7 +22,6 @@ pub(crate) enum RafxSamplerIndexGles3 {
 #[derive(Debug)]
 pub(crate) struct ImmutableSampler {
     pub(crate) sampler: RafxSamplerGles3,
-    pub(crate) gl_name: CString,
 }
 
 #[derive(Clone, Debug)]
@@ -297,10 +296,7 @@ impl RafxRootSignatureGles3 {
 
                 let immutable_sampler_index = immutable_samplers.len();
 
-                immutable_samplers.push(ImmutableSampler {
-                    sampler,
-                    gl_name: gl_name_cstr,
-                });
+                immutable_samplers.push(ImmutableSampler { sampler });
 
                 let old = sampler_by_gl_name.insert(
                     resource.gles_name.as_ref().unwrap(),

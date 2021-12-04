@@ -1,4 +1,4 @@
-use crate::metal::{RafxDeviceContextMetal, RafxSamplerMetal};
+use crate::metal::RafxDeviceContextMetal;
 use crate::{
     RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
     MAX_DESCRIPTOR_SET_LAYOUTS,
@@ -7,14 +7,6 @@ use cocoa_foundation::foundation::NSUInteger;
 use fnv::FnvHashMap;
 use metal_rs::{MTLResourceUsage, MTLTextureType};
 use std::sync::Arc;
-
-#[derive(Debug)]
-pub(crate) struct ImmutableSampler {
-    //pub(crate) binding: u32,
-    pub(crate) samplers: Vec<RafxSamplerMetal>,
-
-    pub(crate) argument_buffer_id: NSUInteger,
-}
 
 //TODO: Could compact this down quite a bit
 #[derive(Clone, Debug)]
@@ -32,10 +24,9 @@ pub(crate) struct DescriptorInfo {
     pub(crate) element_count: u32,
     // Index into DescriptorSetLayoutInfo::descriptors list
     // NOT THE BINDING INDEX!!!
-    pub(crate) descriptor_index: RafxDescriptorIndex,
+    //pub(crate) descriptor_index: RafxDescriptorIndex,
 
     // --- metal-specific ---
-    //pub(crate) immutable_sampler: Option<Vec<RafxSampler>>,
     //pub(crate) usage: metal::MTLResourceUsage,
     pub(crate) argument_buffer_id: NSUInteger,
 }
@@ -48,8 +39,6 @@ pub(crate) struct DescriptorSetLayoutInfo {
     pub(crate) binding_to_descriptor_index: FnvHashMap<u32, RafxDescriptorIndex>,
 
     // --- metal-specific ---
-    // Now embedded by spirv_cross in the shader
-    //pub(crate) immutable_samplers: Vec<ImmutableSampler>,
     // All argument buffer IDs must be within 0..argument_buffer_id_range
     pub(crate) argument_buffer_id_range: u32,
     // pub(crate) sampler_count: u32,
@@ -87,9 +76,6 @@ pub(crate) struct RafxRootSignatureMetalInner {
     pub(crate) name_to_descriptor_index: FnvHashMap<String, RafxDescriptorIndex>,
 
     // --- metal-specific ---
-    // Keeps them in scope so they don't drop
-    //TODO: Can potentially remove, they are held in DescriptorInfo too
-    //immutable_samplers: Vec<RafxSampler>,
     pub(crate) argument_descriptors: [Vec<ArgumentDescriptor>; MAX_DESCRIPTOR_SET_LAYOUTS],
     pub(crate) argument_buffer_resource_usages:
         [Arc<Vec<MTLResourceUsage>>; MAX_DESCRIPTOR_SET_LAYOUTS],
@@ -241,7 +227,7 @@ impl RafxRootSignatureMetal {
                     set_index: resource.set_index,
                     binding: resource.binding,
                     element_count: resource.element_count_normalized(),
-                    descriptor_index,
+                    //descriptor_index,
                     //immutable_sampler: immutable_sampler.map(|x| immutable_samplers[x].clone()),
                     //update_data_offset_in_set,
                     //usage

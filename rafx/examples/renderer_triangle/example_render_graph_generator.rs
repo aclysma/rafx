@@ -17,6 +17,7 @@ impl RenderGraphGenerator for ExampleRenderGraphGenerator {
         &self,
         asset_manager: &AssetManager,
         swapchain_image: ResourceArc<ImageViewResource>,
+        _rotating_frame_index: usize,
         main_view: RenderView,
         _extract_resources: &ExtractResources,
         render_resources: &RenderResources,

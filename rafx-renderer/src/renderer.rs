@@ -456,6 +456,7 @@ impl Renderer {
         let prepared_render_graph = renderer.render_graph_generator.generate_render_graph(
             asset_manager,
             swapchain_image,
+            presentable_frame.rotating_frame_index(),
             main_view.clone(),
             extract_resources,
             render_resources,

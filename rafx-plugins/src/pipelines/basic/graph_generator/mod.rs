@@ -70,6 +70,7 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
         &self,
         asset_manager: &AssetManager,
         swapchain_image: ResourceArc<ImageViewResource>,
+        rotating_frame_index: usize,
         main_view: RenderView,
         extract_resources: &ExtractResources,
         render_resources: &RenderResources,
@@ -144,12 +145,12 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
             RafxResourceState::PRESENT,
         );
 
-        let tonemap_histogram_data = graph_context.graph.add_external_buffer(
-            static_resources.tonemap_histogram_data.clone(),
+        let tonemap_histogram_result = graph_context.graph.add_external_buffer(
+            static_resources.tonemap_histogram_result.clone(),
             RenderGraphBufferSpecification {
                 resource_type: RafxResourceType::BUFFER_READ_WRITE,
                 size: static_resources
-                    .tonemap_histogram_data
+                    .tonemap_histogram_result
                     .get_raw()
                     .buffer
                     .buffer_def()
@@ -159,12 +160,11 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
             RafxResourceState::UNORDERED_ACCESS,
         );
 
-        let tonemap_histogram_result = graph_context.graph.add_external_buffer(
-            static_resources.tonemap_histogram_result.clone(),
+        let tonemap_debug_output = graph_context.graph.add_external_buffer(
+            static_resources.tonemap_debug_output[rotating_frame_index].clone(),
             RenderGraphBufferSpecification {
                 resource_type: RafxResourceType::BUFFER_READ_WRITE,
-                size: static_resources
-                    .tonemap_histogram_result
+                size: static_resources.tonemap_debug_output[rotating_frame_index]
                     .get_raw()
                     .buffer
                     .buffer_def()
@@ -221,7 +221,6 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
                 &mut graph_context,
                 &luma_build_histogram,
                 &opaque_pass,
-                Some(tonemap_histogram_data),
                 &swapchain_info.swapchain_surface_info,
             );
 
@@ -230,7 +229,8 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
                 &luma_build_histogram_pass,
                 &luma_average_histogram,
                 tonemap_histogram_result,
-                tonemap_debug_data.clone(),
+                tonemap_debug_data,
+                tonemap_debug_output,
                 &swapchain_info.swapchain_surface_info,
                 previous_update_dt,
             );

@@ -12,7 +12,6 @@ pub struct FieldIndex(pub u32);
 
 #[derive(Debug)]
 pub struct UniformInfo {
-    pub(crate) name: CString,
     pub(crate) first_field_index: FieldIndex,
     pub(crate) field_count: u32,
 }
@@ -130,7 +129,6 @@ impl UniformReflectionData {
         for (uniform_name, uniform_fields) in uniform_lookup {
             let uniform_name_str = uniform_name.clone().into_string().unwrap();
             let uniform_info = UniformInfo {
-                name: uniform_name,
                 field_count: uniform_fields.len() as u32,
                 first_field_index: FieldIndex(fields.len() as u32),
             };

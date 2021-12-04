@@ -807,6 +807,12 @@ where
             }
         }
 
+        if let Some(group_size) = &declarations.group_size {
+            assert_eq!(entry_point.work_group_size.x, group_size.x);
+            assert_eq!(entry_point.work_group_size.y, group_size.y);
+            assert_eq!(entry_point.work_group_size.z, group_size.z);
+        }
+
         let rafx_reflection = RafxShaderStageReflection {
             shader_stage: stage_flags,
             resources: rafx_bindings,

@@ -10,7 +10,7 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ComputePipelineAsset, MaterialAsset};
 use rafx::base::resource_map::ResourceMap;
 use rafx::distill::loader::handle::Handle;
-use rafx::framework::{BufferResource, ResourceArc};
+use rafx::framework::{BufferResource, ResourceArc, MAX_FRAMES_IN_FLIGHT};
 use rafx::render_features::{ExtractResources, RenderRegistryBuilder};
 use rafx::renderer::RendererAssetPlugin;
 use std::sync::{Arc, Mutex};
@@ -19,6 +19,9 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub struct BasicPipelineTonemapDebugDataInner {
+    // The values will only be updated if this is set to true
+    pub enable_debug_data_collection: bool,
+
     pub result_average: f32,
     pub result_average_bin: f32,
     pub result_min_bin: u32,
@@ -33,6 +36,7 @@ pub struct BasicPipelineTonemapDebugDataInner {
 impl Default for BasicPipelineTonemapDebugDataInner {
     fn default() -> Self {
         BasicPipelineTonemapDebugDataInner {
+            enable_debug_data_collection: false,
             result_average: 0.0,
             result_average_bin: 0.0,
             result_min_bin: 0,
@@ -66,7 +70,7 @@ pub struct BasicPipelineStaticResources {
     pub luma_build_histogram: Handle<ComputePipelineAsset>,
     pub luma_average_histogram: Handle<ComputePipelineAsset>,
     pub tonemap_histogram_result: ResourceArc<BufferResource>,
-    pub tonemap_histogram_data: ResourceArc<BufferResource>,
+    pub tonemap_debug_output: Vec<ResourceArc<BufferResource>>,
 }
 
 pub struct BasicPipelineRendererPlugin;
@@ -153,27 +157,6 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
             "luma_average_histogram",
         )?;
 
-        let tonemap_histogram_data =
-            asset_manager
-                .device_context()
-                .create_buffer(&RafxBufferDef {
-                    size: std::mem::size_of::<
-                        crate::shaders::luma_average_histogram_comp::HistogramDataBuffer,
-                    >() as u64,
-                    alignment: 256,
-                    memory_usage: RafxMemoryUsage::GpuToCpu,
-                    queue_type: RafxQueueType::Graphics,
-                    resource_type: RafxResourceType::BUFFER_READ_WRITE,
-                    elements: Default::default(),
-                    format: RafxFormat::UNDEFINED,
-                    always_mapped: false,
-                })?;
-
-        let tonemap_histogram_data = asset_manager
-            .resource_manager()
-            .resources()
-            .insert_buffer(tonemap_histogram_data);
-
         let tonemap_histogram_result =
             asset_manager
                 .device_context()
@@ -182,7 +165,7 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
                         crate::shaders::luma_average_histogram_comp::HistogramResultBuffer,
                     >() as u64,
                     alignment: 256,
-                    memory_usage: RafxMemoryUsage::GpuToCpu,
+                    memory_usage: RafxMemoryUsage::GpuOnly,
                     queue_type: RafxQueueType::Graphics,
                     resource_type: RafxResourceType::BUFFER_READ_WRITE,
                     elements: Default::default(),
@@ -195,6 +178,31 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
             .resources()
             .insert_buffer(tonemap_histogram_result);
 
+        let mut tonemap_debug_output = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT + 1);
+        for _ in 0..=MAX_FRAMES_IN_FLIGHT {
+            let tonemap_debug_output_buffer =
+                asset_manager
+                    .device_context()
+                    .create_buffer(&RafxBufferDef {
+                        size: std::mem::size_of::<
+                            crate::shaders::luma_average_histogram_comp::DebugOutputBuffer,
+                        >() as u64,
+                        alignment: 256,
+                        memory_usage: RafxMemoryUsage::GpuToCpu,
+                        queue_type: RafxQueueType::Graphics,
+                        resource_type: RafxResourceType::BUFFER_READ_WRITE,
+                        elements: Default::default(),
+                        format: RafxFormat::UNDEFINED,
+                        always_mapped: false,
+                    })?;
+            tonemap_debug_output.push(
+                asset_manager
+                    .resource_manager()
+                    .resources()
+                    .insert_buffer(tonemap_debug_output_buffer),
+            );
+        }
+
         render_resources.insert(BasicPipelineStaticResources {
             bloom_extract_material,
             bloom_blur_material,
@@ -202,7 +210,7 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
             luma_build_histogram,
             luma_average_histogram,
             tonemap_histogram_result,
-            tonemap_histogram_data,
+            tonemap_debug_output,
         });
 
         Ok(())
