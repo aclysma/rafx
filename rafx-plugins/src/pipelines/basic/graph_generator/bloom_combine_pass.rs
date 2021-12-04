@@ -6,6 +6,7 @@ use rafx::api::RafxSwapchainColorSpace;
 use rafx::framework::{DescriptorSetBindings, MaterialPassResource, ResourceArc};
 use rafx::graph::*;
 use rafx::render_features::RenderPhase;
+use rafx::renderer::SwapchainRenderResource;
 
 use super::BloomExtractPass;
 use super::RenderGraphContext;
@@ -24,7 +25,7 @@ pub(super) fn bloom_combine_pass(
     bloom_extract_pass: &BloomExtractPass,
     blurred_color: RenderGraphImageUsageId,
     luma_average_histogram_pass: &LumaAverageHistogramPass,
-    swapchain_surface_info: &SwapchainSurfaceInfo,
+    swapchain_render_resource: &SwapchainRenderResource,
 ) -> BloomCombinePass {
     let render_options = context
         .extract_resources
@@ -66,7 +67,12 @@ pub(super) fn bloom_combine_pass(
         Default::default(),
     );
 
-    let swapchain_color_space = swapchain_surface_info.color_space;
+    let swapchain_color_space = swapchain_render_resource
+        .surface_info()
+        .unwrap()
+        .swapchain_surface_info
+        .color_space;
+    let max_color_component_value = swapchain_render_resource.max_color_component_value;
 
     context.graph.set_renderpass_callback(node, move |args| {
         // Get the color image from before
@@ -108,6 +114,7 @@ pub(super) fn bloom_combine_pass(
                     config: &shaders::bloom_combine_frag::ConfigStd140 {
                         tonemapper_type: render_options.tonemapper_type as i32,
                         output_color_space: output_color_space as i32,
+                        max_color_component_value,
                         ..Default::default()
                     },
                 },

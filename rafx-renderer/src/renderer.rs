@@ -332,6 +332,20 @@ impl Renderer {
                 .get_or_create_image_view(&swapchain_image, None)?
         };
 
+        let swapchain_guard = presentable_frame.swapchain().lock().unwrap();
+        let max_color_component_value = match &*swapchain_guard {
+            #[cfg(feature = "rafx-metal")]
+            rafx_api::RafxSwapchain::Metal(swapchain) => {
+                swapchain.edr_info().max_edr_color_component_value
+            }
+            #[allow(unreachable_patterns)]
+            _ => 1.0,
+        };
+
+        render_resources
+            .fetch_mut::<SwapchainRenderResource>()
+            .set_max_color_component_value(max_color_component_value);
+
         let render_view_set = RenderViewSet::default();
 
         //
