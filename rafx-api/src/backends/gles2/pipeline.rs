@@ -61,7 +61,7 @@ pub struct RafxPipelineGles2 {
     pipeline_type: RafxPipelineType,
     // It's a RafxRootSignatureGles2, but stored as RafxRootSignature so we can return refs to it
     root_signature: RafxRootSignature,
-    shader: RafxShaderGles2,
+    _shader: RafxShaderGles2,
     gl_pipeline_info: Arc<Gles2PipelineInfo>,
 }
 
@@ -206,7 +206,7 @@ impl RafxPipelineGles2 {
         Ok(RafxPipelineGles2 {
             root_signature: pipeline_def.root_signature.clone(),
             pipeline_type: RafxPipelineType::Graphics,
-            shader: shader.clone(),
+            _shader: shader.clone(),
             gl_pipeline_info: Arc::new(gl_pipeline_info),
         })
     }

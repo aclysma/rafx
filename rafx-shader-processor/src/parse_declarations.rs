@@ -141,7 +141,7 @@ pub(crate) struct ParseFieldResult {
 pub(crate) struct ParseStructResult {
     pub(crate) type_name: String,
     pub(crate) fields: Arc<Vec<ParseFieldResult>>,
-    pub(crate) instance_name: Option<String>,
+    pub(crate) _instance_name: Option<String>,
 }
 
 fn parse_array_sizes(
@@ -280,7 +280,7 @@ fn try_parse_struct(code: &[char]) -> Result<Option<ParseStructResult>, String> 
     Ok(Some(ParseStructResult {
         type_name,
         fields,
-        instance_name,
+        _instance_name: instance_name,
     }))
 }
 
@@ -386,9 +386,9 @@ pub(crate) struct ParseBindingResult {
 
 #[derive(Debug)]
 pub(crate) struct ParseGroupSizeResult {
-    pub(crate) local_size_x: u32,
-    pub(crate) local_size_y: u32,
-    pub(crate) local_size_z: u32,
+    pub(crate) x: u32,
+    pub(crate) y: u32,
+    pub(crate) z: u32,
 }
 
 fn parse_layout_part(
@@ -538,9 +538,9 @@ fn try_parse_binding_or_group_size(
         }
         return Ok(Some(ParseBindingOrGroupSizeResult::GroupSize(
             ParseGroupSizeResult {
-                local_size_x,
-                local_size_y,
-                local_size_z,
+                x: local_size_x,
+                y: local_size_y,
+                z: local_size_z,
             },
         )));
     }

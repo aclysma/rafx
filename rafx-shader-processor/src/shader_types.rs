@@ -32,7 +32,7 @@ pub(crate) struct TypeAlignmentInfo {
 
 #[derive(Debug)]
 pub(crate) struct UserType {
-    pub(crate) struct_or_binding: StructOrBinding,
+    pub(crate) _struct_or_binding: StructOrBinding,
     pub(crate) type_name: String,
     pub(crate) fields: Arc<Vec<ParseFieldResult>>,
     //export_name: Option<String>,
@@ -76,7 +76,7 @@ pub(crate) fn create_user_type_lookup(
         let old = user_types.insert(
             s.parsed.type_name.clone(),
             UserType {
-                struct_or_binding: StructOrBinding::Struct(index),
+                _struct_or_binding: StructOrBinding::Struct(index),
                 type_name: s.parsed.type_name.clone(),
                 fields: s.parsed.fields.clone(),
                 //export_name,
@@ -108,7 +108,7 @@ pub(crate) fn create_user_type_lookup(
             let old = user_types.insert(
                 b.parsed.type_name.clone(),
                 UserType {
-                    struct_or_binding: StructOrBinding::Binding(index),
+                    _struct_or_binding: StructOrBinding::Binding(index),
                     type_name: b.parsed.type_name.clone(),
                     fields: fields.clone(),
                     //export_name,

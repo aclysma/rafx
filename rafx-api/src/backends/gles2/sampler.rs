@@ -1,7 +1,7 @@
 use crate::gles2::gles2_bindings;
 use crate::gles2::gles2_bindings::types::GLenum;
 use crate::gles2::RafxDeviceContextGles2;
-use crate::{RafxFilterType, RafxMipMapMode, RafxResult, RafxSamplerDef};
+use crate::{RafxCompareOp, RafxFilterType, RafxMipMapMode, RafxResult, RafxSamplerDef};
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -12,7 +12,6 @@ pub struct RafxSamplerGles2Inner {
     pub(crate) gl_mag_filter: GLenum,
     pub(crate) gl_address_mode_s: GLenum,
     pub(crate) gl_address_mode_t: GLenum,
-    pub(crate) gl_compare_op: GLenum,
 }
 
 #[derive(Debug, Clone)]
@@ -59,7 +58,12 @@ impl RafxSamplerGles2 {
                         sampler_def.address_mode_v
                     )
                 })?;
-        let gl_compare_op = sampler_def.compare_op.gles2_compare_op();
+
+        if sampler_def.compare_op != RafxCompareOp::Never
+            && sampler_def.compare_op != RafxCompareOp::Always
+        {
+            unimplemented!("GLES 2.0 does not support sampler compare ops");
+        }
 
         //TODO: address_mode_w, mip_lod_bias, max_anisotropy, ClampToBorder
         //TODO: sampler objects (ES3 only)
@@ -71,7 +75,6 @@ impl RafxSamplerGles2 {
             gl_mag_filter,
             gl_address_mode_s,
             gl_address_mode_t,
-            gl_compare_op,
         };
 
         Ok(RafxSamplerGles2 {
