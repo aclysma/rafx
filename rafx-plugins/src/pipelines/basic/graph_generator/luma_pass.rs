@@ -211,10 +211,10 @@ pub(super) fn luma_average_histogram_pass(
                 dt: previous_update_dt,
                 min_log_luma: LOG_LUMA_MIN,
                 log_luma_range: LOG_LUMA_RANGE,
-                low_adjust_speed: 1.2,
-                high_adjust_speed: 1.7,
+                low_adjust_speed: 1.5,
+                high_adjust_speed: 2.0,
                 low_percentile: 0.1,
-                high_percentile: 0.95,
+                high_percentile: 0.9,
                 write_debug_output: if enable_debug_data_collection { 1 } else { 0 },
                 ..Default::default()
             },
