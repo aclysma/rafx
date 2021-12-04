@@ -63,6 +63,7 @@ void main()
     vec3 color_srgb_linear = tonemap(
         color,
         config.tonemapper_type,
+        config.max_color_component_value,
         histogram_result.result.low_luminosity_interpolated,
         histogram_result.result.average_luminosity_interpolated,
         histogram_result.result.high_luminosity_interpolated,

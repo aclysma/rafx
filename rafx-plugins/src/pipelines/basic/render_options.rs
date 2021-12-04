@@ -20,6 +20,7 @@ pub enum TonemapperType {
     VisualizeRGBMax,
     VisualizeLuma,
     AutoExposureOld,
+    Bergstrom,
     MAX,
 }
 impl TonemapperType {
@@ -35,6 +36,7 @@ impl TonemapperType {
             TonemapperType::VisualizeRGBMax => "Visualize RGB Max",
             TonemapperType::VisualizeLuma => "Visualize RGB Luma",
             TonemapperType::AutoExposureOld => "Autoexposure Old",
+            TonemapperType::Bergstrom => "Bergstrom",
             TonemapperType::MAX => "MAX_TONEMAPPER_VALUE",
         }
     }

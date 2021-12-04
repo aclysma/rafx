@@ -134,7 +134,7 @@ vec3 tonemap_hable(in vec3 color) {
     return numerator / denominator;
 }
 
-//////////////////// OLD TONEMAPPING //////////////////////
+//////////////////// BRUNO OPSENICA //////////////////////
 // Based on tutorial at https://bruop.github.io/tonemapping/
 //
 // Uses color correction functions from bgfx
@@ -142,6 +142,7 @@ vec3 tonemap_hable(in vec3 color) {
 float reinhard2(float x, float whitepoint) {
     return (x * (1.0 + (x / (whitepoint * whitepoint)))) / (1.0 + x);
 }
+
 
 vec3 old_autoexposure_tonemapping(vec3 in_color, float histogram_result_average_luminosity_interpolated) {
     // Below color conversion won't work on pure black, but just map black to black to avoid NaN
@@ -159,6 +160,119 @@ vec3 old_autoexposure_tonemapping(vec3 in_color, float histogram_result_average_
     Yxy.x = reinhard2(lp, white_squared);
 
     return convertYxy2RGB(Yxy);
+}
+
+//////////////////// Karl Bergström Tonemapper //////////////////////
+// A hue-preserving tonemapper which maps a luminance range 
+// onto an output range. It supports HDR output ranges.
+// It uses a modified reinhard function in the bottom and upper parts
+// to ensure a continuous function, and desaturates colors as they
+// approach a maximum luminance value to avoid changing channel ratios.
+
+const mat3 sRGB_to_Oklab_LMS = mat3(
+    0.41224208, 0.21194293, 0.08835888, 
+    0.53626156, 0.68070215, 0.28184745,
+    0.051428035, 0.10737409, 0.63012964);
+
+const mat3 Oklab_LMS_to_sRGB = mat3(
+    4.0765376, -1.2686057, -0.0041975603,
+    -3.307096, 2.6097474, -0.70356846,
+    0.23082244, -0.34116364, 1.7072057);
+
+const mat3 OKLAB_M_2 =
+        mat3(0.2104542553,1.9779984951,0.02599040371,
+             0.7936177850,-2.4285922050,0.7827717662,
+             -0.0040720468,0.4505937099,-0.8086757660);
+
+const mat3 OKLAB_M_2_INVERSE =
+        mat3(0.99998146, 1.0000056, 1.0001117,
+             0.39633045, -0.10555917, -0.08943998,
+             0.21579975, -0.06385299, -1.2914615);
+
+vec3 Oklab_lms_to_Oklab(vec3 lms) {
+    lms = pow(max(lms, 0.0), vec3(1.0/3.0));
+    return OKLAB_M_2 * lms;
+}
+
+vec3 Oklab_to_Oklab_lms(vec3 oklab) {
+    vec3 lms = OKLAB_M_2_INVERSE * oklab;
+    return pow(lms, vec3(3.0));
+}
+
+// modified reinhard with derivative control (k)
+float modified_reinhard(float x, float m, float k) {
+    float kx = k * x;
+    return (kx * (1 + (x / (k*m*m)))) / (1 + kx);
+}
+
+vec3 oklab_to_linear_srgb(vec3 oklab) {
+    return Oklab_LMS_to_sRGB * Oklab_to_Oklab_lms(oklab);
+}
+vec3 linear_srgb_to_oklab(vec3 rgb) {
+    return Oklab_lms_to_Oklab(sRGB_to_Oklab_LMS * rgb);
+}
+
+vec3 tonemap_bergstrom(
+    vec3 in_color,
+    float max_component_value,
+    float histogram_result_low_luminosity_interpolated,
+    float histogram_result_high_luminosity_interpolated,
+    float histogram_result_max_luminosity_interpolated
+) {
+    // Range of luminance we are mapping from.
+    float l_low = histogram_result_low_luminosity_interpolated;
+    float l_high = max(histogram_result_high_luminosity_interpolated, l_low + 0.01);
+    // The upper range's modified reinhard converges on 1 at l_max,
+    // which we set to the max of the most luminant pixel on the screen and l_high * l_max_scale
+    // The value of l_max_scale is fairly arbitrary
+    float l_max_scale = 5;
+    float l_max = max(histogram_result_max_luminosity_interpolated, l_high * l_max_scale);
+
+    // Range of linear srgb we are mapping into. Values between [l_low, l_high] are linearly mapped to [k_low, k_high]
+    const float k_low = 0.01; // srgb_eotf(k_low) = 0.1 
+    float k_max = max_component_value; // this could be the monitor max brightness
+    // srgb_eotf(0.214) = 0.5, meaning we map the [l_low,l_high] luminance range into 0.1-0.5 post-sRGB
+    const float k_high = 0.214; 
+    float k_desaturation = mix(k_high, k_max, 0.5);
+
+    float v = (k_high - k_low) / (l_high - l_low);
+
+    float luminance = dot(in_color, vec3(0.2126, 0.7152, 0.0722));
+
+    // Piecewise function maps from luminance to value to emit to screen
+    float adjusted_luminance = 0.0;
+    if (luminance < l_low) {
+        // lower range is an inverted modified reinhard
+        adjusted_luminance = k_low - k_low * modified_reinhard(l_low - luminance, l_low, v / k_low);
+    } else if (luminance < l_high) {
+        // luminance range [l_low, l_high] is linearly mapped to [k_low, k_high]
+        adjusted_luminance = k_low + (luminance - l_low) * v;
+    } else {
+        // upper range is modified reinhard towards k_max, converging on k_max at l_max
+        adjusted_luminance = k_high + (k_max - k_high) * modified_reinhard(luminance - l_high, l_max, v/(k_max - k_high));
+    }
+
+    if (adjusted_luminance < 0.0001) {
+        return vec3(0.0);
+    } else {
+        vec3 out_color = in_color * (adjusted_luminance / (luminance + 0.000001));
+        float max_element = max(out_color.x, max(out_color.y, out_color.z));
+        
+        // conversions to oklab don't work well outside 0-1 sRGB range
+        // so scale back into range, then scale back after we're done in oklab
+        if (max_element > 1) {
+            out_color = (out_color / max_element);
+        }
+        vec3 oklab = linear_srgb_to_oklab(out_color);
+        // desaturate between k_desaturation and k_max to make things feel brighter
+        oklab.yz *= 1.0 - clamp((adjusted_luminance - k_desaturation) / (k_max - k_desaturation), 0.0, 1.0);
+        out_color = oklab_to_linear_srgb(oklab);
+        if (max_element > 1) {
+            out_color *= max_element;
+        }
+
+        return out_color;
+    }
 }
 
 //////////////////// DEBUG TONEMAPPING //////////////////////
@@ -196,10 +310,14 @@ const int TM_LogDerivative = 6;
 const int TM_VisualizeRGBMax = 7;
 const int TM_VisualizeLuma = 8;
 const int TM_AutoExposureOld = 9;
+const int TM_Bergstrom = 10;
+
+
 
 vec3 tonemap(
     vec3 color,
     int tonemapper_type,
+    float max_component_value,
     float histogram_result_low_luminosity_interpolated,
     float histogram_result_average_luminosity_interpolated,
     float histogram_result_high_luminosity_interpolated,
@@ -236,6 +354,15 @@ vec3 tonemap(
             return old_autoexposure_tonemapping(
                 color,
                 histogram_result_average_luminosity_interpolated
+            );
+        } break;
+        case TM_Bergstrom: {
+            return tonemap_bergstrom(
+                color,
+                max_component_value,
+                histogram_result_low_luminosity_interpolated,
+                histogram_result_high_luminosity_interpolated,
+                histogram_result_max_luminosity_interpolated
             );
         } break;
         default: {
