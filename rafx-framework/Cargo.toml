@@ -39,6 +39,7 @@ memoffset = "0.6"
 
 [features]
 default = []
+rafx-empty = ["rafx-api/rafx-empty"]
 rafx-vulkan = ["rafx-api/rafx-vulkan"]
 rafx-metal = ["rafx-api/rafx-metal"]
 rafx-gles2 = ["rafx-api/rafx-gles2"]

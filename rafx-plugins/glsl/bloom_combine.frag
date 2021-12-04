@@ -30,6 +30,7 @@ const int OUTPUT_COLOR_SPACE_P3 = 1;
 layout (set = 0, binding = 3) uniform Config {
     int tonemapper_type;
     int output_color_space;
+    float max_color_component_value;
 } config;
 
 layout(set = 0, binding = 4) buffer HistogramResultBuffer

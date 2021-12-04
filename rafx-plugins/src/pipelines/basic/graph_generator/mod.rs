@@ -80,7 +80,7 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
         let device_context = asset_manager.device_context();
         let resource_context = asset_manager.resource_manager().resource_context();
         let swapchain_render_resource = render_resources.fetch::<SwapchainRenderResource>();
-        let swapchain_info = swapchain_render_resource.get();
+        let swapchain_info = swapchain_render_resource.surface_info().unwrap();
         let static_resources = render_resources.fetch::<BasicPipelineStaticResources>();
         let previous_update_dt = render_resources
             .fetch::<TimeRenderResource>()
@@ -252,7 +252,7 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
                 &bloom_extract_pass,
                 blurred_color,
                 &luma_average_histogram_pass,
-                &swapchain_info.swapchain_surface_info,
+                &*swapchain_render_resource,
             );
 
             bloom_combine_pass.color

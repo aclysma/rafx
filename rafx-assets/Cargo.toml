@@ -17,6 +17,13 @@ categories = [
     "rendering::engine"
 ]
 
+[features]
+rafx-empty = ["rafx-framework/rafx-empty"]
+rafx-vulkan = ["rafx-framework/rafx-vulkan"]
+rafx-metal = ["rafx-framework/rafx-metal"]
+rafx-gles2 = ["rafx-framework/rafx-gles2"]
+rafx-gles3 = ["rafx-framework/rafx-gles3"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 rafx-api = { version = "0.0.14", path = "../rafx-api" }

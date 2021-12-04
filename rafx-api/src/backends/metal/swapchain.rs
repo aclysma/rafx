@@ -12,6 +12,25 @@ use raw_window_handle::HasRawWindowHandle;
 
 const SWAPCHAIN_IMAGE_COUNT: u32 = 3;
 
+#[derive(Clone)]
+pub struct RafxSwapchainMetalEdrInfo {
+    pub max_edr_color_component_value: f32,
+    pub max_potential_edr_color_component_value: f32,
+    pub max_reference_edr_color_component_value: f32,
+}
+
+impl RafxSwapchainMetalEdrInfo {
+    fn new(window: &extra_ffi::NSWindowWrapper) -> Self {
+        RafxSwapchainMetalEdrInfo {
+            max_edr_color_component_value: window.max_edr_color_component_value(),
+            max_potential_edr_color_component_value: window
+                .max_potential_edr_color_component_value(),
+            max_reference_edr_color_component_value: window
+                .max_reference_edr_color_component_value(),
+        }
+    }
+}
+
 pub struct RafxSwapchainMetal {
     device_context: RafxDeviceContextMetal,
     window: extra_ffi::NSWindowWrapper,
@@ -21,6 +40,7 @@ pub struct RafxSwapchainMetal {
     format: RafxFormat,
     // Just fake this
     next_swapchain_image_index: u32,
+    edr_info: RafxSwapchainMetalEdrInfo,
 }
 
 // for metal_rs::CAMetalDrawable
@@ -55,16 +75,8 @@ impl RafxSwapchainMetal {
     //
     // Some extra metal-specific HDR-related values
     //
-    pub fn max_edr_color_component_value(&self) -> f32 {
-        self.window.max_edr_color_component_value()
-    }
-
-    pub fn max_potential_edr_color_component_value(&self) -> f32 {
-        self.window.max_potential_edr_color_component_value()
-    }
-
-    pub fn max_reference_edr_color_component_value(&self) -> f32 {
-        self.window.max_reference_edr_color_component_value()
+    pub fn edr_info(&self) -> &RafxSwapchainMetalEdrInfo {
+        &self.edr_info
     }
 
     pub fn new(
@@ -136,6 +148,7 @@ impl RafxSwapchainMetal {
         ));
 
         let swapchain_def = swapchain_def.clone();
+        let edr_info = RafxSwapchainMetalEdrInfo::new(&window);
 
         Ok(RafxSwapchainMetal {
             device_context: device_context.clone(),
@@ -145,6 +158,7 @@ impl RafxSwapchainMetal {
             swapchain_def,
             next_swapchain_image_index: 0,
             format: swapchain_format,
+            edr_info,
         })
     }
 
@@ -217,6 +231,8 @@ impl RafxSwapchainMetal {
             if self.next_swapchain_image_index >= SWAPCHAIN_IMAGE_COUNT {
                 self.next_swapchain_image_index = 0;
             }
+
+            self.edr_info = RafxSwapchainMetalEdrInfo::new(&self.window);
 
             Ok(RafxSwapchainImage {
                 texture: RafxTexture::Metal(image),

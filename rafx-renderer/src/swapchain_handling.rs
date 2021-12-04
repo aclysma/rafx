@@ -114,7 +114,7 @@ impl<'a> RafxSwapchainEventListener for SwapchainHandler<'a> {
             .renderer
             .render_resources
             .fetch_mut::<SwapchainRenderResource>();
-        swapchain_render_resource.set_swapchain(device_context, swapchain_surface_info)?;
+        swapchain_render_resource.set_swapchain_info(device_context, swapchain_surface_info)?;
 
         log::debug!("renderer swapchain_created finished");
 
@@ -133,7 +133,7 @@ impl<'a> RafxSwapchainEventListener for SwapchainHandler<'a> {
             .renderer
             .render_resources
             .fetch_mut::<SwapchainRenderResource>();
-        swapchain_render_resource.clear_swapchain();
+        swapchain_render_resource.clear_swapchain_info();
 
         //TODO: Explicitly remove the images instead of just dropping them. This prevents anything
         // from accidentally using them after they've been freed

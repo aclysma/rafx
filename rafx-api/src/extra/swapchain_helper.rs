@@ -99,6 +99,13 @@ impl RafxPresentableFrame {
         &self.swapchain_image.texture
     }
 
+    /// Returns the swapchain. The swapchain helper code generally assumes ownership/management of
+    /// the swapchain. Messing with it may invalidate assumptions in the swapchain helper code, so
+    /// mutating operations on it are not recommended
+    pub fn swapchain(&self) -> &Arc<Mutex<RafxSwapchain>> {
+        &self.shared_state.as_ref().unwrap().swapchain
+    }
+
     /// Submits the given command buffers and schedules the swapchain image to be presented after
     /// their completion
     pub fn present(

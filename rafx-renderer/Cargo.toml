@@ -11,6 +11,13 @@ homepage = "https://github.com/aclysma/rafx"
 keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
+[features]
+rafx-empty = ["rafx-assets/rafx-empty"]
+rafx-vulkan = ["rafx-assets/rafx-vulkan"]
+rafx-metal = ["rafx-assets/rafx-metal"]
+rafx-gles2 = ["rafx-assets/rafx-gles2"]
+rafx-gles3 = ["rafx-assets/rafx-gles3"]
+
 [dependencies]
 rafx-api = { version = "0.0.14", path = "../rafx-api" }
 rafx-base = { version = "0.0.14", path = "../rafx-base" }
