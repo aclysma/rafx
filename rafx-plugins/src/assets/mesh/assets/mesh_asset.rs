@@ -1,4 +1,4 @@
-use crate::features::mesh_basic::MeshUntexturedRenderFeatureFlag;
+use crate::features::mesh_basic::MeshBasicUntexturedRenderFeatureFlag;
 use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, WireframeRenderPhase};
 use crate::shaders::mesh_basic::mesh_basic_textured_frag;
 use distill::loader::handle::Handle;
@@ -122,7 +122,7 @@ impl MeshAssetPart {
     ) -> usize {
         if render_phase_index == OpaqueRenderPhase::render_phase_index() {
             let offset = !view.phase_is_relevant::<DepthPrepassRenderPhase>() as usize;
-            return if view.feature_flag_is_relevant::<MeshUntexturedRenderFeatureFlag>() {
+            return if view.feature_flag_is_relevant::<MeshBasicUntexturedRenderFeatureFlag>() {
                 self.untextured_pass_index + offset
             } else {
                 self.textured_pass_index + offset

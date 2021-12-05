@@ -1,6 +1,6 @@
 use super::RenderGraphContext;
-use crate::features::mesh_basic::ShadowMapRenderView;
-use crate::features::mesh_basic::ShadowMapResource;
+use crate::features::mesh_basic::MeshBasicShadowMapRenderView;
+use crate::features::mesh_basic::MeshBasicShadowMapResource;
 use crate::phases::ShadowMapRenderPhase;
 use rafx::api::{RafxDepthStencilClearValue, RafxResourceType};
 use rafx::graph::*;
@@ -18,13 +18,15 @@ pub(super) enum ShadowMapImageResources {
 }
 
 pub(super) fn shadow_map_passes(context: &mut RenderGraphContext) -> Vec<ShadowMapImageResources> {
-    let mut shadow_map_resource = context.render_resources.fetch_mut::<ShadowMapResource>();
+    let mut shadow_map_resource = context
+        .render_resources
+        .fetch_mut::<MeshBasicShadowMapResource>();
     let shadow_map_views = shadow_map_resource.shadow_map_render_views();
 
     let mut shadow_map_passes = Vec::default();
     for shadow_map_view in shadow_map_views {
         match shadow_map_view {
-            ShadowMapRenderView::Single(render_view) => {
+            MeshBasicShadowMapRenderView::Single(render_view) => {
                 let shadow_map_node = context
                     .graph
                     .add_node("create shadowmap", RenderGraphQueue::DefaultGraphics);
@@ -45,7 +47,7 @@ pub(super) fn shadow_map_passes(context: &mut RenderGraphContext) -> Vec<ShadowM
                 let shadow_map_pass = shadow_map_pass(context, render_view, depth_image, 0);
                 shadow_map_passes.push(ShadowMapImageResources::Single(shadow_map_pass.depth));
             }
-            ShadowMapRenderView::Cube(render_view) => {
+            MeshBasicShadowMapRenderView::Cube(render_view) => {
                 let cube_map_node = context
                     .graph
                     .add_node("create cube shadowmap", RenderGraphQueue::DefaultGraphics);

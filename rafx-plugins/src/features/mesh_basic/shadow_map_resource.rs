@@ -1,5 +1,5 @@
-use super::MeshRenderFeature;
-use super::MeshRenderOptions;
+use super::MeshBasicRenderFeature;
+use super::MeshBasicRenderOptions;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
@@ -19,23 +19,23 @@ use rafx::render_features::{
 use rafx::visibility::{ObjectId, ViewFrustumArc};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub enum LightId {
+pub enum MeshBasicLightId {
     PointLight(ObjectId), // u32 is a face index
     SpotLight(ObjectId),
     DirectionalLight(ObjectId),
 }
 
 #[derive(Clone)]
-pub enum ShadowMapRenderView {
+pub enum MeshBasicShadowMapRenderView {
     Single(RenderView), // width, height of texture
     Cube([RenderView; 6]),
 }
 
 #[derive(Default)]
-pub struct ShadowMapResource {
+pub struct MeshBasicShadowMapResource {
     // These are populated by recalculate_shadow_map_views()
-    pub(super) shadow_map_lookup: FnvHashMap<LightId, usize>,
-    pub(super) shadow_map_render_views: Vec<ShadowMapRenderView>,
+    pub(super) shadow_map_lookup: FnvHashMap<MeshBasicLightId, usize>,
+    pub(super) shadow_map_render_views: Vec<MeshBasicShadowMapRenderView>,
 
     // Populated by set_shadow_map_image_resources, during construction of the render graph
     pub(super) image_usage_ids: Vec<RenderGraphImageUsageId>,
@@ -45,8 +45,8 @@ pub struct ShadowMapResource {
     pub(super) shadow_map_image_views: Vec<ResourceArc<ImageViewResource>>,
 }
 
-impl ShadowMapResource {
-    pub fn shadow_map_render_views(&self) -> &[ShadowMapRenderView] {
+impl MeshBasicShadowMapResource {
+    pub fn shadow_map_render_views(&self) -> &[MeshBasicShadowMapRenderView] {
         &self.shadow_map_render_views
     }
 
@@ -56,10 +56,10 @@ impl ShadowMapResource {
     ) {
         for shadow_map_view in &self.shadow_map_render_views {
             match shadow_map_view {
-                ShadowMapRenderView::Single(view) => {
+                MeshBasicShadowMapRenderView::Single(view) => {
                     render_views.push(view.clone());
                 }
-                ShadowMapRenderView::Cube(views) => {
+                MeshBasicShadowMapRenderView::Cube(views) => {
                     for view in views {
                         render_views.push(view.clone());
                     }
@@ -143,7 +143,10 @@ pub fn perspective_rh(
 fn calculate_shadow_map_views(
     render_view_set: &RenderViewSet,
     extract_resources: &ExtractResources,
-) -> (FnvHashMap<LightId, usize>, Vec<ShadowMapRenderView>) {
+) -> (
+    FnvHashMap<MeshBasicLightId, usize>,
+    Vec<MeshBasicShadowMapRenderView>,
+) {
     let world_fetch = extract_resources.fetch::<World>();
     let world = &*world_fetch;
 
@@ -154,14 +157,14 @@ fn calculate_shadow_map_views(
         .add_render_phase::<ShadowMapRenderPhase>()
         .build();
 
-    let render_options = extract_resources.fetch::<MeshRenderOptions>();
+    let render_options = extract_resources.fetch::<MeshBasicRenderOptions>();
 
     let shadow_map_feature_mask = if render_options.show_surfaces
         && render_options.show_shadows
         && render_options.enable_lighting
     {
         RenderFeatureMaskBuilder::default()
-            .add_render_feature::<MeshRenderFeature>()
+            .add_render_feature::<MeshBasicRenderFeature>()
             .build()
     } else {
         RenderFeatureMask::empty()
@@ -210,8 +213,9 @@ fn calculate_shadow_map_views(
         );
 
         let index = shadow_map_render_views.len();
-        shadow_map_render_views.push(ShadowMapRenderView::Single(view));
-        let old = shadow_map_lookup.insert(LightId::SpotLight(ObjectId::from(*entity)), index);
+        shadow_map_render_views.push(MeshBasicShadowMapRenderView::Single(view));
+        let old =
+            shadow_map_lookup.insert(MeshBasicLightId::SpotLight(ObjectId::from(*entity)), index);
         assert!(old.is_none());
     }
 
@@ -258,9 +262,11 @@ fn calculate_shadow_map_views(
         );
 
         let index = shadow_map_render_views.len();
-        shadow_map_render_views.push(ShadowMapRenderView::Single(view));
-        let old =
-            shadow_map_lookup.insert(LightId::DirectionalLight(ObjectId::from(*entity)), index);
+        shadow_map_render_views.push(MeshBasicShadowMapRenderView::Single(view));
+        let old = shadow_map_lookup.insert(
+            MeshBasicLightId::DirectionalLight(ObjectId::from(*entity)),
+            index,
+        );
         assert!(old.is_none());
     }
 
@@ -336,8 +342,9 @@ fn calculate_shadow_map_views(
         ];
 
         let index = shadow_map_render_views.len();
-        shadow_map_render_views.push(ShadowMapRenderView::Cube(cube_map_views));
-        let old = shadow_map_lookup.insert(LightId::PointLight(ObjectId::from(*entity)), index);
+        shadow_map_render_views.push(MeshBasicShadowMapRenderView::Cube(cube_map_views));
+        let old =
+            shadow_map_lookup.insert(MeshBasicLightId::PointLight(ObjectId::from(*entity)), index);
         assert!(old.is_none());
     }
 

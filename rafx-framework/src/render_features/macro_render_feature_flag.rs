@@ -6,10 +6,10 @@
 /// basis depending on the state of the RenderView's feature flags.
 ///
 /// Use like this:
-///      rafx::declare_render_feature_flag!(MeshUnlitRenderFeatureFlag, MESH_UNLIT_FLAG_INDEX);
+///      rafx::declare_render_feature_flag!(MeshBasicUnlitRenderFeatureFlag, MESH_UNLIT_FLAG_INDEX);
 ///
 /// The first name is all that really matters, the second name just needs to be a constant that is
-/// exposed via the first name (i.e. MeshUnlitRenderFeatureFlag::feature_flag_index())
+/// exposed via the first name (i.e. MeshBasicUnlitRenderFeatureFlag::feature_flag_index())
 #[macro_export]
 macro_rules! declare_render_feature_flag {
     ($struct_name:ident, $atomic_constant_name:ident) => {

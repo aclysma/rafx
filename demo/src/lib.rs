@@ -34,7 +34,7 @@ use rafx::distill::loader::handle::Handle;
 use rafx_plugins::assets::font::FontAsset;
 #[cfg(feature = "egui")]
 use rafx_plugins::features::egui::{EguiContextResource, WinitEguiManager};
-use rafx_plugins::features::mesh_basic::MeshRenderOptions;
+use rafx_plugins::features::mesh_basic::MeshBasicRenderOptions;
 use rafx_plugins::features::skybox::SkyboxResource;
 use rafx_plugins::features::text::TextResource;
 use rafx_plugins::features::tile_layer::TileLayerResource;
@@ -276,7 +276,7 @@ impl DemoApp {
         resources.insert(TimeState::new());
         resources.insert(InputResource::new());
         resources.insert(RenderOptions::default_2d());
-        resources.insert(MeshRenderOptions::default());
+        resources.insert(MeshBasicRenderOptions::default());
         resources.insert(BasicPipelineRenderOptions::default());
         resources.insert(BasicPipelineTonemapDebugData::default());
         resources.insert(DebugUiState::default());
@@ -363,7 +363,7 @@ impl DemoApp {
                     renderer.clear_temporary_work();
                 }
 
-                *self.resources.get_mut::<MeshRenderOptions>().unwrap() = Default::default();
+                *self.resources.get_mut::<MeshBasicRenderOptions>().unwrap() = Default::default();
                 *self.resources.get_mut::<RenderOptions>().unwrap() = RenderOptions::default_3d();
 
                 self.scene_manager
@@ -590,7 +590,8 @@ impl DemoApp {
             basic_pipeline_render_options.enable_visibility_update =
                 render_options.enable_visibility_update;
 
-            let mut mesh_render_options = self.resources.get_mut::<MeshRenderOptions>().unwrap();
+            let mut mesh_render_options =
+                self.resources.get_mut::<MeshBasicRenderOptions>().unwrap();
             mesh_render_options.show_surfaces = render_options.show_surfaces;
             mesh_render_options.show_shadows = render_options.show_shadows;
             mesh_render_options.enable_lighting = render_options.enable_lighting;
@@ -646,7 +647,7 @@ impl DemoApp {
             add_to_extract_resources!(RenderOptions);
             add_to_extract_resources!(BasicPipelineRenderOptions);
             add_to_extract_resources!(BasicPipelineTonemapDebugData);
-            add_to_extract_resources!(MeshRenderOptions);
+            add_to_extract_resources!(MeshBasicRenderOptions);
             add_to_extract_resources!(RendererConfigResource);
             add_to_extract_resources!(TileLayerResource);
             add_to_extract_resources!(SkyboxResource);
@@ -655,7 +656,7 @@ impl DemoApp {
                 sprite_render_object_set
             );
             add_to_extract_resources!(
-                rafx_plugins::features::mesh_basic::MeshRenderObjectSet,
+                rafx_plugins::features::mesh_basic::MeshBasicRenderObjectSet,
                 mesh_render_object_set
             );
             add_to_extract_resources!(

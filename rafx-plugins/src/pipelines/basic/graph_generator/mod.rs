@@ -19,7 +19,7 @@ mod depth_prepass;
 mod bloom_extract_pass;
 use super::BasicPipelineRenderOptions;
 use super::BasicPipelineStaticResources;
-use crate::features::mesh_basic::ShadowMapResource;
+use crate::features::mesh_basic::MeshBasicShadowMapResource;
 use crate::pipelines::basic::BasicPipelineTonemapDebugData;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;
@@ -272,7 +272,7 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
         )?;
 
         render_resources
-            .fetch_mut::<ShadowMapResource>()
+            .fetch_mut::<MeshBasicShadowMapResource>()
             .set_shadow_map_image_views(&prepared_render_graph);
 
         Ok(prepared_render_graph)

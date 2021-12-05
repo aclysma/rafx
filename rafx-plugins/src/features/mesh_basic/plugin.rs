@@ -8,26 +8,26 @@ use crate::phases::{
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
-pub struct MeshStaticResources {
+pub struct MeshBasicStaticResources {
     pub depth_material: Handle<MaterialAsset>,
 }
 
-pub struct MeshRendererPlugin {
-    render_objects: MeshRenderObjectSet,
+pub struct MeshBasicRendererPlugin {
+    render_objects: MeshBasicRenderObjectSet,
     max_num_mesh_parts: Option<usize>,
 }
 
-impl MeshRendererPlugin {
+impl MeshBasicRendererPlugin {
     pub fn new(max_num_mesh_parts: Option<usize>) -> Self {
         Self {
             max_num_mesh_parts,
-            render_objects: MeshRenderObjectSet::default(),
+            render_objects: MeshBasicRenderObjectSet::default(),
         }
     }
 }
 
 #[cfg(feature = "legion")]
-impl MeshRendererPlugin {
+impl MeshBasicRendererPlugin {
     pub fn legion_init(
         &self,
         resources: &mut legion::Resources,
@@ -36,11 +36,11 @@ impl MeshRendererPlugin {
     }
 
     pub fn legion_destroy(resources: &mut legion::Resources) {
-        resources.remove::<MeshRenderObjectSet>();
+        resources.remove::<MeshBasicRenderObjectSet>();
     }
 }
 
-impl RenderFeaturePlugin for MeshRendererPlugin {
+impl RenderFeaturePlugin for MeshBasicRendererPlugin {
     fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
         super::render_feature_debug_constants()
     }
@@ -69,11 +69,11 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
         render_registry
-            .register_feature::<MeshRenderFeature>()
-            .register_feature_flag::<MeshWireframeRenderFeatureFlag>()
-            .register_feature_flag::<MeshUntexturedRenderFeatureFlag>()
-            .register_feature_flag::<MeshUnlitRenderFeatureFlag>()
-            .register_feature_flag::<MeshNoShadowsRenderFeatureFlag>()
+            .register_feature::<MeshBasicRenderFeature>()
+            .register_feature_flag::<MeshBasicWireframeRenderFeatureFlag>()
+            .register_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>()
+            .register_feature_flag::<MeshBasicUnlitRenderFeatureFlag>()
+            .register_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>()
     }
 
     fn initialize_static_resources(
@@ -89,9 +89,9 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
 
         asset_manager.wait_for_asset_to_load(&depth_material, asset_resource, "depth")?;
 
-        render_resources.insert(MeshStaticResources { depth_material });
+        render_resources.insert(MeshBasicStaticResources { depth_material });
 
-        render_resources.insert(ShadowMapResource::default());
+        render_resources.insert(MeshBasicShadowMapResource::default());
 
         Ok(())
     }
@@ -103,7 +103,7 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
         render_view_set: &RenderViewSet,
         render_views: &mut Vec<RenderView>,
     ) {
-        let mut shadow_map_resource = render_resources.fetch_mut::<ShadowMapResource>();
+        let mut shadow_map_resource = render_resources.fetch_mut::<MeshBasicShadowMapResource>();
         shadow_map_resource.recalculate_shadow_map_views(&render_view_set, extract_resources);
 
         shadow_map_resource.append_render_views(render_views);
@@ -113,7 +113,7 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
         &self,
         frame_packet_size: &FramePacketSize,
     ) -> Box<dyn RenderFeatureFramePacket> {
-        Box::new(MeshFramePacket::new(
+        Box::new(MeshBasicFramePacket::new(
             self.feature_index(),
             frame_packet_size,
         ))
@@ -126,11 +126,11 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
         let depth_material = extract_context
             .render_resources
-            .fetch::<MeshStaticResources>()
+            .fetch::<MeshBasicStaticResources>()
             .depth_material
             .clone();
 
-        MeshExtractJob::new(
+        MeshBasicExtractJob::new(
             extract_context,
             frame_packet.into_concrete(),
             depth_material,
@@ -142,7 +142,7 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
         &self,
         frame_packet: &Box<dyn RenderFeatureFramePacket>,
     ) -> Box<dyn RenderFeatureSubmitPacket> {
-        let frame_packet: &MeshFramePacket = frame_packet.as_ref().as_concrete();
+        let frame_packet: &MeshBasicFramePacket = frame_packet.as_ref().as_concrete();
 
         let mut view_submit_packets = Vec::with_capacity(frame_packet.view_packets().len());
         for view_packet in frame_packet.view_packets() {
@@ -160,7 +160,7 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
                 SubmitNodeBlock::with_capacity::<ShadowMapRenderPhase>(view, num_submit_nodes),
                 SubmitNodeBlock::with_capacity_and_feature_flag::<
                     WireframeRenderPhase,
-                    MeshWireframeRenderFeatureFlag,
+                    MeshBasicWireframeRenderFeatureFlag,
                 >(view, num_submit_nodes),
             ];
 
@@ -183,7 +183,7 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
         frame_packet: Box<dyn RenderFeatureFramePacket>,
         submit_packet: Box<dyn RenderFeatureSubmitPacket>,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
-        MeshPrepareJob::new(
+        MeshBasicPrepareJob::new(
             prepare_context,
             frame_packet.into_concrete(),
             submit_packet.into_concrete(),
@@ -197,7 +197,7 @@ impl RenderFeaturePlugin for MeshRendererPlugin {
         frame_packet: Box<dyn RenderFeatureFramePacket>,
         submit_packet: Box<dyn RenderFeatureSubmitPacket>,
     ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
-        MeshWriteJob::new(
+        MeshBasicWriteJob::new(
             write_context,
             frame_packet.into_concrete(),
             submit_packet.into_concrete(),

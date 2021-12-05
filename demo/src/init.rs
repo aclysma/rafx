@@ -13,7 +13,7 @@ use rafx_plugins::assets::font::FontAssetTypeRendererPlugin;
 use rafx_plugins::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use rafx_plugins::assets::mesh::GltfAssetTypeRendererPlugin;
 use rafx_plugins::features::debug3d::Debug3DRendererPlugin;
-use rafx_plugins::features::mesh_basic::MeshRendererPlugin;
+use rafx_plugins::features::mesh_basic::MeshBasicRendererPlugin;
 use rafx_plugins::features::skybox::SkyboxRendererPlugin;
 use rafx_plugins::features::sprite::SpriteRendererPlugin;
 use rafx_plugins::features::text::TextRendererPlugin;
@@ -33,7 +33,7 @@ pub fn rendering_init(
     resources.insert(VisibilityRegion::new());
     resources.insert(ViewportsResource::default());
 
-    let mesh_renderer_plugin = Arc::new(MeshRendererPlugin::new(Some(32)));
+    let mesh_renderer_plugin = Arc::new(MeshBasicRendererPlugin::new(Some(32)));
     let sprite_renderer_plugin = Arc::new(SpriteRendererPlugin::default());
     let skybox_renderer_plugin = Arc::new(SkyboxRendererPlugin::default());
     let tile_layer_renderer_plugin = Arc::new(TileLayerRendererPlugin::default());
@@ -141,7 +141,7 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
 
         resources.remove::<Renderer>();
 
-        MeshRendererPlugin::legion_destroy(resources);
+        MeshBasicRendererPlugin::legion_destroy(resources);
         SpriteRendererPlugin::legion_destroy(resources);
         SkyboxRendererPlugin::legion_destroy(resources);
         TileLayerRendererPlugin::legion_destroy(resources);

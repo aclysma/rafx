@@ -19,8 +19,8 @@ use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
 use rafx_plugins::assets::anim::{AnimAsset, AnimClip, Skeleton};
 use rafx_plugins::features::debug3d::{Debug3DRenderFeature, Debug3DResource};
 use rafx_plugins::features::mesh_basic::{
-    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshUnlitRenderFeatureFlag,
-    MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
+    MeshBasicNoShadowsRenderFeatureFlag, MeshBasicRenderFeature, MeshBasicUnlitRenderFeatureFlag,
+    MeshBasicUntexturedRenderFeatureFlag, MeshBasicWireframeRenderFeatureFlag,
 };
 use rafx_plugins::features::sprite::SpriteRenderFeature;
 use rafx_plugins::features::text::TextRenderFeature;
@@ -267,7 +267,7 @@ fn update_main_view_3d(
         .add_render_phase::<UiRenderPhase>();
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshRenderFeature>()
+        .add_render_feature::<MeshBasicRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
         .add_render_feature::<TileLayerRenderFeature>()
         .add_render_feature::<TextRenderFeature>()
@@ -281,23 +281,23 @@ fn update_main_view_3d(
 
     let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
     if render_options.show_wireframes {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshWireframeRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicWireframeRenderFeatureFlag>();
     }
 
     if !render_options.enable_lighting {
         feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUnlitRenderFeatureFlag>();
+            feature_flag_mask_builder.add_render_feature_flag::<MeshBasicUnlitRenderFeatureFlag>();
     }
 
     if !render_options.enable_textures {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUntexturedRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>();
     }
 
     if !render_options.show_shadows {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshNoShadowsRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>();
     }
 
     const CAMERA_XY_DISTANCE: f32 = 8.0;

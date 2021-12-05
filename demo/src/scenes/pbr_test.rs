@@ -20,8 +20,9 @@ use rafx_plugins::components::{
 use rafx_plugins::components::{SpotLightComponent, VisibilityComponent};
 use rafx_plugins::features::debug3d::Debug3DRenderFeature;
 use rafx_plugins::features::mesh_basic::{
-    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
-    MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
+    MeshBasicNoShadowsRenderFeatureFlag, MeshBasicRenderFeature, MeshBasicRenderObject,
+    MeshBasicRenderObjectSet, MeshBasicUnlitRenderFeatureFlag,
+    MeshBasicUntexturedRenderFeatureFlag, MeshBasicWireframeRenderFeatureFlag,
 };
 use rafx_plugins::features::skybox::SkyboxRenderFeature;
 use rafx_plugins::features::sprite::SpriteRenderFeature;
@@ -164,7 +165,7 @@ impl PbrTestScene {
         *render_options = RenderOptions::default_3d();
         render_options.show_skybox = false;
 
-        let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
+        let mut mesh_render_objects = resources.get_mut::<MeshBasicRenderObjectSet>().unwrap();
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
@@ -212,9 +213,10 @@ impl PbrTestScene {
                 let model_asset = model_asset_handle.unwrap();
                 let mesh_asset = &model_asset.inner.lods[0].mesh.clone();
 
-                let render_object = mesh_render_objects.register_render_object(MeshRenderObject {
-                    mesh: mesh_asset.clone(),
-                });
+                let render_object =
+                    mesh_render_objects.register_render_object(MeshBasicRenderObject {
+                        mesh: mesh_asset.clone(),
+                    });
 
                 let transform_component = TransformComponent {
                     translation: object.transform.position,
@@ -381,7 +383,7 @@ fn update_main_view_3d(
         .add_render_phase::<UiRenderPhase>();
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshRenderFeature>()
+        .add_render_feature::<MeshBasicRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
         .add_render_feature::<TileLayerRenderFeature>();
 
@@ -406,23 +408,23 @@ fn update_main_view_3d(
     let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
 
     if render_options.show_wireframes {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshWireframeRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicWireframeRenderFeatureFlag>();
     }
 
     if !render_options.enable_lighting {
         feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUnlitRenderFeatureFlag>();
+            feature_flag_mask_builder.add_render_feature_flag::<MeshBasicUnlitRenderFeatureFlag>();
     }
 
     if !render_options.enable_textures {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUntexturedRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>();
     }
 
     if !render_options.show_shadows {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshNoShadowsRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>();
     }
 
     let aspect_ratio = viewports_resource.main_window_size.width as f32

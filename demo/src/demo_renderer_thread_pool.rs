@@ -4,7 +4,7 @@ use crossbeam_channel::{bounded, unbounded};
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::render_feature_renderer_prelude::RenderFeaturePlugin;
 use rafx::renderer::{RenderFrameJob, Renderer, RendererThreadPool};
-use rafx_plugins::features::mesh_basic::MeshRenderFeature;
+use rafx_plugins::features::mesh_basic::MeshBasicRenderFeature;
 use rafx_plugins::features::sprite::SpriteRenderFeature;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ impl DemoRendererThreadPool {
         // when the `cost` exceeds some threshold.
         let mut feature_parallelism = HashMap::new();
         feature_parallelism.insert(
-            MeshRenderFeature::feature_index(),
+            MeshBasicRenderFeature::feature_index(),
             ParallelChunkSizes::default()
                 .extract_chunk_size(800)
                 .extract_per_view_chunk_size(800)
