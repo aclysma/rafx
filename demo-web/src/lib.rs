@@ -194,7 +194,7 @@ pub fn update_loop(
         let vert_shader_module = device_context.create_shader_module(RafxShaderModuleDef {
             gles2: Some(RafxShaderModuleDefGles2::GlSrc(include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/shaders/shader.vert.gles"
+                "/shaders/processed_shaders/shader.vert.gles2"
             )))),
             ..Default::default()
         })?;
@@ -202,7 +202,7 @@ pub fn update_loop(
         let frag_shader_module = device_context.create_shader_module(RafxShaderModuleDef {
             gles2: Some(RafxShaderModuleDefGles2::GlSrc(include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/shaders/shader.frag.gles"
+                "/shaders/processed_shaders/shader.frag.gles2"
             )))),
             ..Default::default()
         })?;
