@@ -34,7 +34,7 @@ use rafx::distill::loader::handle::Handle;
 use rafx_plugins::assets::font::FontAsset;
 #[cfg(feature = "egui")]
 use rafx_plugins::features::egui::{EguiContextResource, WinitEguiManager};
-use rafx_plugins::features::mesh::MeshRenderOptions;
+use rafx_plugins::features::mesh_basic::MeshRenderOptions;
 use rafx_plugins::features::skybox::SkyboxResource;
 use rafx_plugins::features::text::TextResource;
 use rafx_plugins::features::tile_layer::TileLayerResource;
@@ -655,7 +655,7 @@ impl DemoApp {
                 sprite_render_object_set
             );
             add_to_extract_resources!(
-                rafx_plugins::features::mesh::MeshRenderObjectSet,
+                rafx_plugins::features::mesh_basic::MeshRenderObjectSet,
                 mesh_render_object_set
             );
             add_to_extract_resources!(

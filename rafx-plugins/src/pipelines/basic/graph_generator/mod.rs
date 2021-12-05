@@ -19,7 +19,7 @@ mod depth_prepass;
 mod bloom_extract_pass;
 use super::BasicPipelineRenderOptions;
 use super::BasicPipelineStaticResources;
-use crate::features::mesh::ShadowMapResource;
+use crate::features::mesh_basic::ShadowMapResource;
 use crate::pipelines::basic::BasicPipelineTonemapDebugData;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;

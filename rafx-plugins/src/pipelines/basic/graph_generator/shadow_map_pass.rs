@@ -1,6 +1,6 @@
 use super::RenderGraphContext;
-use crate::features::mesh::ShadowMapRenderView;
-use crate::features::mesh::ShadowMapResource;
+use crate::features::mesh_basic::ShadowMapRenderView;
+use crate::features::mesh_basic::ShadowMapResource;
 use crate::phases::ShadowMapRenderPhase;
 use rafx::api::{RafxDepthStencilClearValue, RafxResourceType};
 use rafx::graph::*;

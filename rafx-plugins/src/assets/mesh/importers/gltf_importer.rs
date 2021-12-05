@@ -1,7 +1,7 @@
 use crate::assets::mesh::{
     MeshAssetData, MeshMaterialData, MeshMaterialDataShaderParam, MeshPartAssetData,
 };
-use crate::features::mesh::{MeshVertexFull, MeshVertexPosition};
+use crate::features::mesh_basic::{MeshVertexFull, MeshVertexPosition};
 use distill::core::AssetUuid;
 use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
 use distill::loader::handle::Handle;

@@ -1,5 +1,5 @@
 use crate::assets::mesh::{MeshAssetData, MeshPartAssetData};
-use crate::features::mesh::{MeshVertexFull, MeshVertexPosition};
+use crate::features::mesh_basic::{MeshVertexFull, MeshVertexPosition};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use glam::Vec3;

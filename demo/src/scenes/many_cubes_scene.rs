@@ -24,7 +24,7 @@ use rafx_plugins::components::{
 use rafx_plugins::features::debug3d::Debug3DRenderFeature;
 #[cfg(feature = "egui")]
 use rafx_plugins::features::egui::EguiRenderFeature;
-use rafx_plugins::features::mesh::{
+use rafx_plugins::features::mesh_basic::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
     MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
 };

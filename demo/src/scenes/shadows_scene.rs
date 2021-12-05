@@ -23,7 +23,7 @@ use rafx_plugins::components::{
 };
 use rafx_plugins::components::{MeshComponent, PointLightComponent, TransformComponent};
 use rafx_plugins::features::debug3d::Debug3DRenderFeature;
-use rafx_plugins::features::mesh::{
+use rafx_plugins::features::mesh_basic::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
     MeshRenderOptions, MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag,
     MeshWireframeRenderFeatureFlag,

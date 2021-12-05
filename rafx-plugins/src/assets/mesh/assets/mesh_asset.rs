@@ -1,4 +1,4 @@
-use crate::features::mesh::MeshUntexturedRenderFeatureFlag;
+use crate::features::mesh_basic::MeshUntexturedRenderFeatureFlag;
 use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, WireframeRenderPhase};
 use crate::shaders::mesh_basic::mesh_basic_textured_frag;
 use distill::loader::handle::Handle;

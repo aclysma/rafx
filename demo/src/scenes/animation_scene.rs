@@ -18,7 +18,7 @@ use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
 use rafx_plugins::assets::anim::{AnimAsset, AnimClip, Skeleton};
 use rafx_plugins::features::debug3d::{Debug3DRenderFeature, Debug3DResource};
-use rafx_plugins::features::mesh::{
+use rafx_plugins::features::mesh_basic::{
     MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshUnlitRenderFeatureFlag,
     MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
 };

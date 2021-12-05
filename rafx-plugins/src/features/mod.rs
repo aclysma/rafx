@@ -1,5 +1,5 @@
 pub mod debug3d;
-pub mod mesh;
+pub mod mesh_basic;
 pub mod skybox;
 pub mod sprite;
 pub mod text;

@@ -13,7 +13,7 @@ use rafx_plugins::assets::font::FontAssetTypeRendererPlugin;
 use rafx_plugins::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use rafx_plugins::assets::mesh::GltfAssetTypeRendererPlugin;
 use rafx_plugins::features::debug3d::Debug3DRendererPlugin;
-use rafx_plugins::features::mesh::MeshRendererPlugin;
+use rafx_plugins::features::mesh_basic::MeshRendererPlugin;
 use rafx_plugins::features::skybox::SkyboxRendererPlugin;
 use rafx_plugins::features::sprite::SpriteRendererPlugin;
 use rafx_plugins::features::text::TextRendererPlugin;
