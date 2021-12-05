@@ -306,7 +306,7 @@ fn process_directory(
             for module_name in module_names {
                 lib_file_string += &format!("pub mod {};\n", module_name);
             }
-            
+
             write_output_file(&lib_file_path, lib_file_string)?;
         }
     }

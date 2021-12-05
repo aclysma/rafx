@@ -6,7 +6,7 @@ use rafx::render_features::RenderPhase;
 use super::OpaquePass;
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
-use crate::shaders;
+use crate::shaders::postprocessing::bloom_extract_frag;
 use rafx::api::{RafxColorClearValue, RafxSampleCount};
 
 pub(super) struct BloomExtractPass {
@@ -85,8 +85,8 @@ pub(super) fn bloom_extract_pass(
 
         let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
         let bloom_extract_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
-            &descriptor_set_layouts[shaders::bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
-            shaders::bloom_extract_frag::DescriptorSet0Args {
+            &descriptor_set_layouts[bloom_extract_frag::TEX_DESCRIPTOR_SET_INDEX],
+            bloom_extract_frag::DescriptorSet0Args {
                 tex: sample_image.as_ref().unwrap(),
             },
         )?;

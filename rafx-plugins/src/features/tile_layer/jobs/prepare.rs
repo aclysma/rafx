@@ -2,7 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::TransparentRenderPhase;
-use crate::shaders;
+use crate::shaders::tile_layer::tile_layer_vert;
 use rafx::framework::ResourceContext;
 
 pub struct TileLayerPrepareJob {
@@ -60,7 +60,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for TileLayerPrepareJob {
         let tile_layer_material_pass = per_frame_data.tile_layer_material_pass.as_ref().unwrap();
         let per_view_descriptor_set_layout = &tile_layer_material_pass
             .get_raw()
-            .descriptor_set_layouts[shaders::tile_layer_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
+            .descriptor_set_layouts[tile_layer_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
 
         let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
         let view_submit_packet = context.view_submit_packet();
@@ -70,8 +70,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for TileLayerPrepareJob {
                 descriptor_set_arc: descriptor_set_allocator
                     .create_descriptor_set_with_writer(
                         per_view_descriptor_set_layout,
-                        shaders::tile_layer_vert::DescriptorSet0Args {
-                            uniform_buffer: &shaders::tile_layer_vert::ArgsUniform {
+                        tile_layer_vert::DescriptorSet0Args {
+                            uniform_buffer: &tile_layer_vert::ArgsUniform {
                                 mvp: context.view().view_proj().to_cols_array_2d(),
                             },
                         },

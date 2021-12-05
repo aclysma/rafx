@@ -4,7 +4,8 @@ use rafx::graph::*;
 use super::OpaquePass;
 use super::RenderGraphContext;
 use crate::pipelines::basic::BasicPipelineTonemapDebugData;
-use crate::shaders;
+use crate::shaders::postprocessing::luma_average_histogram_comp;
+use crate::shaders::postprocessing::luma_build_histogram_comp;
 use rafx::api::{RafxLoadOp, RafxSampleCount};
 
 const LOG_LUMA_MIN: f32 = -10.0;
@@ -30,8 +31,7 @@ pub(super) fn luma_build_histogram_pass(
         node,
         RenderGraphBufferConstraint {
             size: Some(
-                std::mem::size_of::<shaders::luma_average_histogram_comp::HistogramDataBuffer>()
-                    as u64,
+                std::mem::size_of::<luma_average_histogram_comp::HistogramDataBuffer>() as u64,
             ),
             ..Default::default()
         },
@@ -66,8 +66,6 @@ pub(super) fn luma_build_histogram_pass(
             .image_view(luma_sample_hdr_image)
             .unwrap();
         let histogram_data = args.graph_context.buffer(luma_histogram_data).unwrap();
-
-        use crate::shaders::luma_build_histogram_comp;
 
         let input_width = swapchain_extents.width;
         let input_height = swapchain_extents.height;
@@ -172,8 +170,8 @@ pub(super) fn luma_average_histogram_pass(
         // Copy the result of previous frame's histogram to debug data resource
         unsafe {
             let debug_output_ptr = debug_output.get_raw().buffer.map_buffer()?;
-            let debug_output_ptr = &*(debug_output_ptr
-                as *mut shaders::luma_average_histogram_comp::DebugOutputBuffer);
+            let debug_output_ptr =
+                &*(debug_output_ptr as *mut luma_average_histogram_comp::DebugOutputBuffer);
 
             if let Some(tonemap_debug_data) = &tonemap_debug_data {
                 let mut guard = tonemap_debug_data.inner.lock().unwrap();
@@ -198,8 +196,6 @@ pub(super) fn luma_average_histogram_pass(
             }
             histogram_result.get_raw().buffer.unmap_buffer()?;
         }
-
-        use crate::shaders::luma_average_histogram_comp;
 
         let input_width = swapchain_extents.width;
         let input_height = swapchain_extents.height;

@@ -7,15 +7,17 @@ use crate::phases::{
 use rafx::base::resource_map::ReadBorrow;
 use rafx::framework::{MaterialPassResource, ResourceArc, ResourceContext};
 
-use crate::shaders;
+use crate::shaders::depth::depth_vert::PerViewDataUniform as ShadowPerViewShaderParam;
+use crate::shaders::mesh_basic::mesh_basic_textured_frag;
 use glam::Mat4;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 use rafx::renderer::InvalidResources;
-use shaders::depth_vert::PerViewDataUniform as ShadowPerViewShaderParam;
-use shaders::mesh_textured_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
+
+use crate::shaders::depth::depth_vert;
+use mesh_basic_textured_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
-    shaders::mesh_textured_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
+    mesh_basic_textured_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
 
 pub struct MeshPrepareJob<'prepare> {
     resource_context: ResourceContext,
@@ -133,7 +135,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                         }
 
                         per_frame_submit_data.shadow_map_2d_data[num_shadow_map_2d] =
-                            shaders::mesh_textured_frag::ShadowMap2DDataStd140 {
+                            mesh_basic_textured_frag::ShadowMap2DDataStd140 {
                                 shadow_map_view_proj: shadow_view.view_proj().to_cols_array_2d(),
                                 shadow_map_light_dir: shadow_view.view_dir().into(),
                                 ..Default::default()
@@ -160,7 +162,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                             .unwrap();
 
                         per_frame_submit_data.shadow_map_cube_data[num_shadow_map_cube] =
-                            shaders::mesh_textured_frag::ShadowMapCubeDataStd140 {
+                            mesh_basic_textured_frag::ShadowMapCubeDataStd140 {
                                 cube_map_projection_near_z: near,
                                 cube_map_projection_far_z: far,
                                 ..Default::default()
@@ -545,7 +547,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
                     descriptor_set_allocator
                         .create_descriptor_set(
                             &per_view_descriptor_set_layout,
-                            shaders::mesh_textured_frag::DescriptorSet0Args {
+                            mesh_basic_textured_frag::DescriptorSet0Args {
                                 shadow_map_images,
                                 shadow_map_images_cube,
                                 per_view_data: &per_view_frag_data,
@@ -574,7 +576,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshPrepareJob<'prepare> {
             descriptor_set_allocator
                 .create_descriptor_set(
                     per_instance_descriptor_set_layout,
-                    shaders::depth_vert::DescriptorSet0Args {
+                    depth_vert::DescriptorSet0Args {
                         per_view_data: &per_view_data,
                     },
                 )

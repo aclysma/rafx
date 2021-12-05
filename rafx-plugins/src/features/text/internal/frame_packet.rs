@@ -1,6 +1,6 @@
 use super::*;
 use crate::assets::font::FontAsset;
-use crate::shaders;
+use crate::shaders::text::text_vert;
 use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
 use rafx::framework::render_features::render_features_prelude::*;
@@ -47,7 +47,7 @@ pub type TextSubmitPacket = SubmitPacket<TextRenderFeatureTypes>;
 // WRITE
 //-------
 
-pub type TextUniformBufferObject = shaders::text_vert::PerViewUboUniform;
+pub type TextUniformBufferObject = text_vert::PerViewUboUniform;
 
 #[derive(Default)]
 pub struct TextPerFrameSubmitData {

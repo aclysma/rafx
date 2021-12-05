@@ -2,7 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase};
-use crate::shaders;
+use crate::shaders::sprite::{sprite_frag, sprite_vert};
 use fnv::FnvHashMap;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 use rafx::base::DecimalF32;
@@ -84,7 +84,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for SpritePrepareJob {
 
         let sprite_material_pass = per_frame_data.sprite_material_pass.as_ref().unwrap();
         let per_view_descriptor_set_layout = &sprite_material_pass.get_raw().descriptor_set_layouts
-            [shaders::sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
+            [sprite_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
 
         let view = context.view();
         let view_packet = context.view_packet();
@@ -94,8 +94,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for SpritePrepareJob {
             descriptor_set_allocator
                 .create_descriptor_set_with_writer(
                     per_view_descriptor_set_layout,
-                    shaders::sprite_vert::DescriptorSet0Args {
-                        uniform_buffer: &shaders::sprite_vert::ArgsUniform {
+                    sprite_vert::DescriptorSet0Args {
+                        uniform_buffer: &sprite_vert::ArgsUniform {
                             mvp: view.view_proj().to_cols_array_2d(),
                         },
                     },
@@ -166,8 +166,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for SpritePrepareJob {
                             let descriptor_set = descriptor_set_allocator
                                 .create_descriptor_set_with_writer(
                                     &sprite_material_pass.get_raw().descriptor_set_layouts
-                                        [shaders::sprite_frag::TEX_DESCRIPTOR_SET_INDEX],
-                                    shaders::sprite_frag::DescriptorSet1Args {
+                                        [sprite_frag::TEX_DESCRIPTOR_SET_INDEX],
+                                    sprite_frag::DescriptorSet1Args {
                                         tex: &sprite.image_view,
                                     },
                                 )
