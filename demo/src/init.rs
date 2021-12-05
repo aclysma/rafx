@@ -18,8 +18,8 @@ use rafx_plugins::features::skybox::SkyboxRendererPlugin;
 use rafx_plugins::features::sprite::SpriteRendererPlugin;
 use rafx_plugins::features::text::TextRendererPlugin;
 use rafx_plugins::features::tile_layer::TileLayerRendererPlugin;
+use rafx_plugins::pipelines::basic::BasicPipelineRenderGraphGenerator;
 use rafx_plugins::pipelines::basic::BasicPipelineRendererPlugin;
-use rafx_plugins::pipelines::basic::BasicRenderGraphGenerator;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
@@ -89,7 +89,7 @@ pub fn rendering_init(
     let mut renderer_builder_result = {
         let extract_resources = ExtractResources::default();
 
-        let render_graph_generator = Box::new(BasicRenderGraphGenerator);
+        let render_graph_generator = Box::new(BasicPipelineRenderGraphGenerator);
 
         renderer_builder.build(
             extract_resources,

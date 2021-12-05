@@ -38,7 +38,7 @@ use rafx_plugins::features::mesh_basic::MeshBasicRenderOptions;
 use rafx_plugins::features::skybox::SkyboxResource;
 use rafx_plugins::features::text::TextResource;
 use rafx_plugins::features::tile_layer::TileLayerResource;
-use rafx_plugins::pipelines::basic::TonemapperType;
+use rafx_plugins::pipelines::basic::BasicPipelineTonemapperType;
 use rafx_plugins::pipelines::basic::{BasicPipelineRenderOptions, BasicPipelineTonemapDebugData};
 use winit::event_loop::ControlFlow;
 
@@ -94,7 +94,7 @@ pub struct RenderOptions {
     pub show_feature_toggles: bool,
     pub show_shadows: bool,
     pub blur_pass_count: usize,
-    pub tonemapper_type: TonemapperType,
+    pub tonemapper_type: BasicPipelineTonemapperType,
     pub enable_visibility_update: bool,
 }
 
@@ -114,7 +114,7 @@ impl RenderOptions {
             show_shadows: true,
             show_feature_toggles: false,
             blur_pass_count: 0,
-            tonemapper_type: TonemapperType::None,
+            tonemapper_type: BasicPipelineTonemapperType::None,
             enable_visibility_update: true,
         }
     }
@@ -134,7 +134,7 @@ impl RenderOptions {
             show_shadows: true,
             show_feature_toggles: true,
             blur_pass_count: 5,
-            tonemapper_type: TonemapperType::Bergstrom,
+            tonemapper_type: BasicPipelineTonemapperType::Bergstrom,
             enable_visibility_update: true,
         }
     }
@@ -151,8 +151,8 @@ impl RenderOptions {
 
         if self.enable_hdr {
             ui.indent("HDR options", |ui| {
-                let tonemapper_names: Vec<_> = (0..(TonemapperType::MAX as i32))
-                    .map(|t| TonemapperType::from(t).display_name())
+                let tonemapper_names: Vec<_> = (0..(BasicPipelineTonemapperType::MAX as i32))
+                    .map(|t| BasicPipelineTonemapperType::from(t).display_name())
                     .collect();
 
                 egui::ComboBox::from_label("tonemapper_type")
@@ -161,7 +161,7 @@ impl RenderOptions {
                         for (i, name) in tonemapper_names.iter().enumerate() {
                             ui.selectable_value(
                                 &mut self.tonemapper_type,
-                                TonemapperType::from(i as i32),
+                                BasicPipelineTonemapperType::from(i as i32),
                                 name,
                             );
                         }

@@ -1,7 +1,7 @@
 use super::BasicPipelineRenderOptions;
 use crate::phases::PostProcessRenderPhase;
 use crate::pipelines::basic::graph_generator::luma_pass::LumaAverageHistogramPass;
-use crate::pipelines::basic::OutputColorSpace;
+use crate::pipelines::basic::BasicPipelineOutputColorSpace;
 use rafx::api::RafxSwapchainColorSpace;
 use rafx::framework::{DescriptorSetBindings, MaterialPassResource, ResourceArc};
 use rafx::graph::*;
@@ -99,9 +99,9 @@ pub(super) fn bloom_combine_pass(
             .create_descriptor_set_allocator();
 
         let output_color_space = match swapchain_color_space {
-            RafxSwapchainColorSpace::Srgb => OutputColorSpace::Srgb,
-            RafxSwapchainColorSpace::SrgbExtended => OutputColorSpace::Srgb,
-            RafxSwapchainColorSpace::DisplayP3Extended => OutputColorSpace::P3,
+            RafxSwapchainColorSpace::Srgb => BasicPipelineOutputColorSpace::Srgb,
+            RafxSwapchainColorSpace::SrgbExtended => BasicPipelineOutputColorSpace::Srgb,
+            RafxSwapchainColorSpace::DisplayP3Extended => BasicPipelineOutputColorSpace::P3,
         };
 
         let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
