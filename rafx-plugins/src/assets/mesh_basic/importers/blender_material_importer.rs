@@ -1,5 +1,5 @@
-use super::MeshMaterialData;
-use crate::assets::mesh::MeshMaterialDataShaderParam;
+use super::MeshBasicMaterialData;
+use crate::assets::mesh_basic::MeshBasicMaterialDataShaderParam;
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::make_handle_from_str;
 use distill::{core::AssetUuid, importer::ImportOp};
@@ -31,12 +31,12 @@ struct MaterialJsonFileFormat {
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "2a1e71ac-c18d-45f4-8b21-e851c713c4a8"]
-pub struct BlenderMaterialImporterState(Option<AssetUuid>);
+pub struct MeshBasicBlenderMaterialImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "95d0640f-ce8c-4fe9-a989-63041c824d03"]
-pub struct BlenderMaterialImporter;
-impl Importer for BlenderMaterialImporter {
+pub struct MeshBasicBlenderMaterialImporter;
+impl Importer for MeshBasicBlenderMaterialImporter {
     fn version_static() -> u32
     where
         Self: Sized,
@@ -50,7 +50,7 @@ impl Importer for BlenderMaterialImporter {
 
     type Options = ();
 
-    type State = BlenderMaterialImporterState;
+    type State = MeshBasicBlenderMaterialImporterState;
 
     /// Reads the given bytes and produces assets.
     #[profiling::function]
@@ -64,7 +64,7 @@ impl Importer for BlenderMaterialImporter {
         let id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = BlenderMaterialImporterState(Some(id));
+        *state = MeshBasicBlenderMaterialImporterState(Some(id));
 
         let json_format: MaterialJsonFileFormat = serde_json::from_reader(source)
             .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
@@ -73,7 +73,7 @@ impl Importer for BlenderMaterialImporter {
 
         let null_image_handle = make_handle_from_str("fc937369-cad2-4a00-bf42-5968f1210784")?;
 
-        let material_data = MeshMaterialData {
+        let material_data = MeshBasicMaterialData {
             base_color_factor: json_format.base_color_factor,
             emissive_factor: json_format.emissive_factor,
             metallic_factor: json_format.metallic_factor,
@@ -90,7 +90,8 @@ impl Importer for BlenderMaterialImporter {
 
         let mut slot_assignments = vec![];
 
-        let material_data_shader_param: MeshMaterialDataShaderParam = material_data.clone().into();
+        let material_data_shader_param: MeshBasicMaterialDataShaderParam =
+            material_data.clone().into();
         slot_assignments.push(MaterialInstanceSlotAssignment {
             slot_name: "per_material_data".to_string(),
             array_index: 0,

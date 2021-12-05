@@ -19,7 +19,7 @@ mod depth_prepass;
 mod bloom_extract_pass;
 use super::BasicPipelineRenderOptions;
 use super::BasicPipelineStaticResources;
-use crate::features::mesh::ShadowMapResource;
+use crate::features::mesh_basic::MeshBasicShadowMapResource;
 use crate::pipelines::basic::BasicPipelineTonemapDebugData;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;
@@ -41,7 +41,7 @@ lazy_static::lazy_static! {
 }
 
 // All the data that can influence the rendergraph
-pub struct RenderGraphConfig {
+pub struct BasicPipelineRenderGraphConfig {
     pub color_format: RafxFormat,
     pub depth_format: RafxFormat,
     pub swapchain_format: RafxFormat,
@@ -57,15 +57,15 @@ struct RenderGraphContext<'a> {
     graph: &'a mut RenderGraphBuilder,
     #[allow(dead_code)]
     resource_context: &'a ResourceContext,
-    graph_config: &'a RenderGraphConfig,
+    graph_config: &'a BasicPipelineRenderGraphConfig,
     main_view: &'a RenderView,
     extract_resources: &'a ExtractResources<'a>,
     render_resources: &'a RenderResources,
 }
 
-pub struct BasicRenderGraphGenerator;
+pub struct BasicPipelineRenderGraphGenerator;
 
-impl RenderGraphGenerator for BasicRenderGraphGenerator {
+impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
     fn generate_render_graph(
         &self,
         asset_manager: &AssetManager,
@@ -103,7 +103,7 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
                 swapchain_info.default_color_format_sdr
             };
 
-            RenderGraphConfig {
+            BasicPipelineRenderGraphConfig {
                 color_format,
                 depth_format: swapchain_info.default_depth_format,
                 samples: sample_count,
@@ -272,7 +272,7 @@ impl RenderGraphGenerator for BasicRenderGraphGenerator {
         )?;
 
         render_resources
-            .fetch_mut::<ShadowMapResource>()
+            .fetch_mut::<MeshBasicShadowMapResource>()
             .set_shadow_map_image_views(&prepared_render_graph);
 
         Ok(prepared_render_graph)

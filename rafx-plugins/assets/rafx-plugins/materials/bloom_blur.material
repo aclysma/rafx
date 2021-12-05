@@ -6,12 +6,12 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/postprocessing/postprocess.vert.cookedshaderpackage",
+                    shader_module: "../shaders/post_basic/postprocess.vert.cookedshaderpackage",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/postprocessing/bloom_blur.frag.cookedshaderpackage",
+                    shader_module: "../shaders/post_basic/bloom_blur.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],

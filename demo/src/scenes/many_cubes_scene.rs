@@ -17,16 +17,17 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh::MeshAsset;
+use rafx_plugins::assets::mesh_basic::MeshBasicAsset;
 use rafx_plugins::components::{
     MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
 };
 use rafx_plugins::features::debug3d::Debug3DRenderFeature;
 #[cfg(feature = "egui")]
 use rafx_plugins::features::egui::EguiRenderFeature;
-use rafx_plugins::features::mesh::{
-    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
-    MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
+use rafx_plugins::features::mesh_basic::{
+    MeshBasicNoShadowsRenderFeatureFlag, MeshBasicRenderFeature, MeshBasicRenderObject,
+    MeshBasicRenderObjectSet, MeshBasicUnlitRenderFeatureFlag,
+    MeshBasicUntexturedRenderFeatureFlag, MeshBasicWireframeRenderFeatureFlag,
 };
 use rafx_plugins::features::skybox::SkyboxRenderFeature;
 use rafx_plugins::features::text::TextRenderFeature;
@@ -51,16 +52,17 @@ impl ManyCubesScene {
         render_options.enable_textures = false;
         render_options.show_shadows = false;
 
-        let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
+        let mut mesh_render_objects = resources.get_mut::<MeshBasicRenderObjectSet>().unwrap();
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
         let container_1_asset = asset_resource.load_asset_path("blender/storage_container1.glb");
-        let cube_render_object = mesh_render_objects.register_render_object(MeshRenderObject {
-            mesh: container_1_asset.clone(),
-        });
+        let cube_render_object =
+            mesh_render_objects.register_render_object(MeshBasicRenderObject {
+                mesh: container_1_asset.clone(),
+            });
 
-        let mut load_visible_bounds = |asset_handle: &Handle<MeshAsset>| {
+        let mut load_visible_bounds = |asset_handle: &Handle<MeshBasicAsset>| {
             asset_manager
                 .wait_for_asset_to_load(asset_handle, &mut asset_resource, "")
                 .unwrap();
@@ -199,7 +201,7 @@ fn update_main_view_3d(
         .add_render_phase::<UiRenderPhase>();
 
     let mut feature_mask_builder =
-        RenderFeatureMaskBuilder::default().add_render_feature::<MeshRenderFeature>();
+        RenderFeatureMaskBuilder::default().add_render_feature::<MeshBasicRenderFeature>();
 
     #[cfg(feature = "egui")]
     {
@@ -221,23 +223,23 @@ fn update_main_view_3d(
     let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
 
     if render_options.show_wireframes {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshWireframeRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicWireframeRenderFeatureFlag>();
     }
 
     if !render_options.enable_lighting {
         feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUnlitRenderFeatureFlag>();
+            feature_flag_mask_builder.add_render_feature_flag::<MeshBasicUnlitRenderFeatureFlag>();
     }
 
     if !render_options.enable_textures {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUntexturedRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>();
     }
 
     if !render_options.show_shadows {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshNoShadowsRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>();
     }
 
     const CAMERA_Z: f32 = 150.0;

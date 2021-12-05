@@ -17,14 +17,14 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh::MeshAsset;
+use rafx_plugins::assets::mesh_basic::MeshBasicAsset;
 use rafx_plugins::components::VisibilityComponent;
 use rafx_plugins::components::{MeshComponent, PointLightComponent, TransformComponent};
 use rafx_plugins::features::debug3d::Debug3DRenderFeature;
-use rafx_plugins::features::mesh::{
-    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
-    MeshRenderOptions, MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag,
-    MeshWireframeRenderFeatureFlag,
+use rafx_plugins::features::mesh_basic::{
+    MeshBasicNoShadowsRenderFeatureFlag, MeshBasicRenderFeature, MeshBasicRenderObject,
+    MeshBasicRenderObjectSet, MeshBasicRenderOptions, MeshBasicUnlitRenderFeatureFlag,
+    MeshBasicUntexturedRenderFeatureFlag, MeshBasicWireframeRenderFeatureFlag,
 };
 use rafx_plugins::features::skybox::{SkyboxRenderFeature, SkyboxResource};
 use rafx_plugins::features::sprite::SpriteRenderFeature;
@@ -47,19 +47,19 @@ impl AutoexposureScene {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
 
-        let mut mesh_render_options = resources.get_mut::<MeshRenderOptions>().unwrap();
+        let mut mesh_render_options = resources.get_mut::<MeshBasicRenderOptions>().unwrap();
         mesh_render_options.ambient_light = glam::Vec3::new(0.005, 0.005, 0.005);
 
-        let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
+        let mut mesh_render_objects = resources.get_mut::<MeshBasicRenderObjectSet>().unwrap();
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
         let floor_mesh_asset =
-            asset_resource.load_asset_path::<MeshAsset, _>("blender/cement_floor.glb");
+            asset_resource.load_asset_path::<MeshBasicAsset, _>("blender/cement_floor.glb");
         let container_1_asset = asset_resource.load_asset_path("blender/storage_container1.glb");
         let container_2_asset = asset_resource.load_asset_path("blender/storage_container2.glb");
-        let blue_icosphere_asset =
-            asset_resource.load_asset::<MeshAsset>("d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into());
+        let blue_icosphere_asset = asset_resource
+            .load_asset::<MeshBasicAsset>("d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into());
 
         let skybox_texture =
             asset_resource.load_asset_path::<ImageAsset, _>("textures/skybox.basis");
@@ -69,7 +69,7 @@ impl AutoexposureScene {
             .unwrap()
             .skybox_texture_mut() = Some(skybox_texture);
 
-        let mut load_visible_bounds = |asset_handle: &Handle<MeshAsset>| {
+        let mut load_visible_bounds = |asset_handle: &Handle<MeshBasicAsset>| {
             asset_manager
                 .wait_for_asset_to_load(asset_handle, &mut asset_resource, "")
                 .unwrap();
@@ -89,7 +89,7 @@ impl AutoexposureScene {
             let position = Vec3::new(0.0, 0.0, -1.0);
 
             let floor_mesh_render_object =
-                mesh_render_objects.register_render_object(MeshRenderObject {
+                mesh_render_objects.register_render_object(MeshBasicRenderObject {
                     mesh: floor_mesh_asset.clone(),
                 });
 
@@ -130,21 +130,21 @@ impl AutoexposureScene {
 
                 // container1
                 meshes.push(
-                    mesh_render_objects.register_render_object(MeshRenderObject {
+                    mesh_render_objects.register_render_object(MeshBasicRenderObject {
                         mesh: container_1_asset,
                     }),
                 );
 
                 // container2
                 meshes.push(
-                    mesh_render_objects.register_render_object(MeshRenderObject {
+                    mesh_render_objects.register_render_object(MeshBasicRenderObject {
                         mesh: container_2_asset,
                     }),
                 );
 
                 // blue icosphere - load by UUID since it's one of several meshes in the file
                 meshes.push(
-                    mesh_render_objects.register_render_object(MeshRenderObject {
+                    mesh_render_objects.register_render_object(MeshBasicRenderObject {
                         mesh: blue_icosphere_asset,
                     }),
                 );
@@ -289,7 +289,7 @@ fn update_main_view_3d(
         .add_render_phase::<UiRenderPhase>();
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshRenderFeature>()
+        .add_render_feature::<MeshBasicRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
         .add_render_feature::<TileLayerRenderFeature>();
 
@@ -314,23 +314,23 @@ fn update_main_view_3d(
     let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
 
     if render_options.show_wireframes {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshWireframeRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicWireframeRenderFeatureFlag>();
     }
 
     if !render_options.enable_lighting {
         feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUnlitRenderFeatureFlag>();
+            feature_flag_mask_builder.add_render_feature_flag::<MeshBasicUnlitRenderFeatureFlag>();
     }
 
     if !render_options.enable_textures {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUntexturedRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>();
     }
 
     if !render_options.show_shadows {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshNoShadowsRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>();
     }
 
     const CAMERA_XY_DISTANCE: f32 = 12.0;

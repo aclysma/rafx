@@ -1,5 +1,5 @@
-use crate::assets::mesh::{MeshAssetData, MeshPartAssetData};
-use crate::features::mesh::{MeshVertexFull, MeshVertexPosition};
+use crate::assets::mesh_basic::{MeshBasicAssetData, MeshBasicPartAssetData};
+use crate::features::mesh_basic::{MeshVertexFull, MeshVertexPosition};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use glam::Vec3;
@@ -57,7 +57,7 @@ fn try_cast_u8_slice<T: Copy + 'static>(data: &[u8]) -> Option<&[T]> {
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "1411cdbc-d63f-45aa-b9cf-adf610e43989"]
-pub struct BlenderMeshImporterState {
+pub struct MeshBasicBlenderImporterState {
     mesh_id: Option<AssetUuid>,
     vertex_full_buffer_id: Option<AssetUuid>,
     vertex_position_buffer_id: Option<AssetUuid>,
@@ -66,8 +66,8 @@ pub struct BlenderMeshImporterState {
 
 #[derive(TypeUuid)]
 #[uuid = "f3486ab5-a780-4251-ab55-1000c638bc08"]
-pub struct BlenderMeshImporter;
-impl Importer for BlenderMeshImporter {
+pub struct MeshBasicBlenderImporter;
+impl Importer for MeshBasicBlenderImporter {
     fn version_static() -> u32
     where
         Self: Sized,
@@ -81,7 +81,7 @@ impl Importer for BlenderMeshImporter {
 
     type Options = ();
 
-    type State = BlenderMeshImporterState;
+    type State = MeshBasicBlenderImporterState;
 
     /// Reads the given bytes and produces assets.
     #[profiling::function]
@@ -104,7 +104,7 @@ impl Importer for BlenderMeshImporter {
         let index_buffer_id = state
             .index_buffer_id
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = BlenderMeshImporterState {
+        *state = MeshBasicBlenderImporterState {
             mesh_id: Some(mesh_id),
             vertex_full_buffer_id: Some(vertex_full_buffer_id),
             vertex_position_buffer_id: Some(vertex_position_buffer_id),
@@ -125,7 +125,7 @@ impl Importer for BlenderMeshImporter {
         let mut all_vertices_position = PushBuffer::new(16384);
         let mut all_indices = PushBuffer::new(16384);
 
-        let mut mesh_parts: Vec<MeshPartAssetData> =
+        let mut mesh_parts: Vec<MeshBasicPartAssetData> =
             Vec::with_capacity(mesh_as_json.mesh_parts.len());
 
         for mesh_part in &mesh_as_json.mesh_parts {
@@ -219,7 +219,7 @@ impl Importer for BlenderMeshImporter {
                 MeshPartJsonIndexType::U32 => RafxIndexType::Uint32,
             };
 
-            mesh_parts.push(MeshPartAssetData {
+            mesh_parts.push(MeshBasicPartAssetData {
                 material_instance,
                 vertex_full_buffer_offset_in_bytes: vertex_full_offset as u32,
                 vertex_full_buffer_size_in_bytes: vertex_full_size as u32,
@@ -268,7 +268,7 @@ impl Importer for BlenderMeshImporter {
             index: PolygonSoupIndex::Indexed16(all_position_indices),
         };
 
-        let asset_data = MeshAssetData {
+        let asset_data = MeshBasicAssetData {
             mesh_parts,
             vertex_full_buffer: vertex_full_buffer_handle,
             vertex_position_buffer: vertex_position_buffer_handle,

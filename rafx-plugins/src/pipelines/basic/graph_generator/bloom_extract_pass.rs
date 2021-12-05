@@ -6,7 +6,7 @@ use rafx::render_features::RenderPhase;
 use super::OpaquePass;
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
-use crate::shaders::postprocessing::bloom_extract_frag;
+use crate::shaders::post_basic::bloom_extract_frag;
 use rafx::api::{RafxColorClearValue, RafxSampleCount};
 
 pub(super) struct BloomExtractPass {

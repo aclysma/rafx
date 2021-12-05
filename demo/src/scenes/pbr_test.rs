@@ -12,16 +12,17 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh::prefab_asset::PrefabAssetDataObjectLightKind;
-use rafx_plugins::assets::mesh::{MeshAsset, PrefabAsset};
+use rafx_plugins::assets::mesh_basic::prefab_asset::PrefabBasicAssetDataObjectLightKind;
+use rafx_plugins::assets::mesh_basic::{MeshBasicAsset, PrefabBasicAsset};
 use rafx_plugins::components::{
     DirectionalLightComponent, MeshComponent, PointLightComponent, TransformComponent,
 };
 use rafx_plugins::components::{SpotLightComponent, VisibilityComponent};
 use rafx_plugins::features::debug3d::Debug3DRenderFeature;
-use rafx_plugins::features::mesh::{
-    MeshNoShadowsRenderFeatureFlag, MeshRenderFeature, MeshRenderObject, MeshRenderObjectSet,
-    MeshUnlitRenderFeatureFlag, MeshUntexturedRenderFeatureFlag, MeshWireframeRenderFeatureFlag,
+use rafx_plugins::features::mesh_basic::{
+    MeshBasicNoShadowsRenderFeatureFlag, MeshBasicRenderFeature, MeshBasicRenderObject,
+    MeshBasicRenderObjectSet, MeshBasicUnlitRenderFeatureFlag,
+    MeshBasicUntexturedRenderFeatureFlag, MeshBasicWireframeRenderFeatureFlag,
 };
 use rafx_plugins::features::skybox::SkyboxRenderFeature;
 use rafx_plugins::features::sprite::SpriteRenderFeature;
@@ -164,7 +165,7 @@ impl PbrTestScene {
         *render_options = RenderOptions::default_3d();
         render_options.show_skybox = false;
 
-        let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
+        let mut mesh_render_objects = resources.get_mut::<MeshBasicRenderObjectSet>().unwrap();
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
@@ -173,7 +174,7 @@ impl PbrTestScene {
         fly_camera.yaw = std::f32::consts::FRAC_PI_2;
         fly_camera.lock_view = true;
 
-        let prefab_asset_handle: Handle<PrefabAsset> =
+        let prefab_asset_handle: Handle<PrefabBasicAsset> =
             asset_resource.load_asset_path("pbr-test/Scene.001.blender_prefab");
         asset_manager
             .wait_for_asset_to_load(&prefab_asset_handle, &mut asset_resource, "pbr test scene")
@@ -183,7 +184,7 @@ impl PbrTestScene {
         fn load_visible_bounds(
             asset_manager: &mut AssetManager,
             asset_resource: &mut AssetResource,
-            asset_handle: &Handle<MeshAsset>,
+            asset_handle: &Handle<MeshBasicAsset>,
             asset_name: &str,
         ) -> VisibleBounds {
             asset_manager
@@ -212,9 +213,10 @@ impl PbrTestScene {
                 let model_asset = model_asset_handle.unwrap();
                 let mesh_asset = &model_asset.inner.lods[0].mesh.clone();
 
-                let render_object = mesh_render_objects.register_render_object(MeshRenderObject {
-                    mesh: mesh_asset.clone(),
-                });
+                let render_object =
+                    mesh_render_objects.register_render_object(MeshBasicRenderObject {
+                        mesh: mesh_asset.clone(),
+                    });
 
                 let transform_component = TransformComponent {
                     translation: object.transform.position,
@@ -253,7 +255,7 @@ impl PbrTestScene {
 
             if let Some(light) = &object.light {
                 match light.kind {
-                    PrefabAssetDataObjectLightKind::Point => {
+                    PrefabBasicAssetDataObjectLightKind::Point => {
                         if point_light_count < 15 {
                             let view_frustums = [
                                 visibility_region.register_view_frustum(),
@@ -278,7 +280,7 @@ impl PbrTestScene {
                             point_light_count += 1;
                         }
                     }
-                    PrefabAssetDataObjectLightKind::Spot => {
+                    PrefabBasicAssetDataObjectLightKind::Spot => {
                         if spot_light_count < 15 {
                             let view_frustum = visibility_region.register_view_frustum();
                             super::add_spot_light(
@@ -298,7 +300,7 @@ impl PbrTestScene {
                             spot_light_count += 1;
                         }
                     }
-                    PrefabAssetDataObjectLightKind::Directional => {
+                    PrefabBasicAssetDataObjectLightKind::Directional => {
                         if directional_light_count < 15 {
                             let view_frustum = visibility_region.register_view_frustum();
                             super::add_directional_light(
@@ -381,7 +383,7 @@ fn update_main_view_3d(
         .add_render_phase::<UiRenderPhase>();
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshRenderFeature>()
+        .add_render_feature::<MeshBasicRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
         .add_render_feature::<TileLayerRenderFeature>();
 
@@ -406,23 +408,23 @@ fn update_main_view_3d(
     let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
 
     if render_options.show_wireframes {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshWireframeRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicWireframeRenderFeatureFlag>();
     }
 
     if !render_options.enable_lighting {
         feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUnlitRenderFeatureFlag>();
+            feature_flag_mask_builder.add_render_feature_flag::<MeshBasicUnlitRenderFeatureFlag>();
     }
 
     if !render_options.enable_textures {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUntexturedRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>();
     }
 
     if !render_options.show_shadows {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshNoShadowsRenderFeatureFlag>();
+        feature_flag_mask_builder = feature_flag_mask_builder
+            .add_render_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>();
     }
 
     let aspect_ratio = viewports_resource.main_window_size.width as f32

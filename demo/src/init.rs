@@ -11,15 +11,15 @@ use rafx::renderer::{
 use rafx_plugins::assets::anim::AnimAssetTypeRendererPlugin;
 use rafx_plugins::assets::font::FontAssetTypeRendererPlugin;
 use rafx_plugins::assets::ldtk::LdtkAssetTypeRendererPlugin;
-use rafx_plugins::assets::mesh::GltfAssetTypeRendererPlugin;
+use rafx_plugins::assets::mesh_basic::MeshBasicAssetTypeRendererPlugin;
 use rafx_plugins::features::debug3d::Debug3DRendererPlugin;
-use rafx_plugins::features::mesh::MeshRendererPlugin;
+use rafx_plugins::features::mesh_basic::MeshBasicRendererPlugin;
 use rafx_plugins::features::skybox::SkyboxRendererPlugin;
 use rafx_plugins::features::sprite::SpriteRendererPlugin;
 use rafx_plugins::features::text::TextRendererPlugin;
 use rafx_plugins::features::tile_layer::TileLayerRendererPlugin;
+use rafx_plugins::pipelines::basic::BasicPipelineRenderGraphGenerator;
 use rafx_plugins::pipelines::basic::BasicPipelineRendererPlugin;
-use rafx_plugins::pipelines::basic::BasicRenderGraphGenerator;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
@@ -33,7 +33,7 @@ pub fn rendering_init(
     resources.insert(VisibilityRegion::new());
     resources.insert(ViewportsResource::default());
 
-    let mesh_renderer_plugin = Arc::new(MeshRendererPlugin::new(Some(32)));
+    let mesh_renderer_plugin = Arc::new(MeshBasicRendererPlugin::new(Some(32)));
     let sprite_renderer_plugin = Arc::new(SpriteRendererPlugin::default());
     let skybox_renderer_plugin = Arc::new(SkyboxRendererPlugin::default());
     let tile_layer_renderer_plugin = Arc::new(TileLayerRendererPlugin::default());
@@ -69,7 +69,7 @@ pub fn rendering_init(
     let mut renderer_builder = RendererBuilder::default();
     renderer_builder = renderer_builder
         .add_asset(Arc::new(FontAssetTypeRendererPlugin))
-        .add_asset(Arc::new(GltfAssetTypeRendererPlugin))
+        .add_asset(Arc::new(MeshBasicAssetTypeRendererPlugin))
         .add_asset(Arc::new(LdtkAssetTypeRendererPlugin))
         .add_asset(Arc::new(AnimAssetTypeRendererPlugin))
         .add_asset(Arc::new(BasicPipelineRendererPlugin))
@@ -89,7 +89,7 @@ pub fn rendering_init(
     let mut renderer_builder_result = {
         let extract_resources = ExtractResources::default();
 
-        let render_graph_generator = Box::new(BasicRenderGraphGenerator);
+        let render_graph_generator = Box::new(BasicPipelineRenderGraphGenerator);
 
         renderer_builder.build(
             extract_resources,
@@ -141,7 +141,7 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
 
         resources.remove::<Renderer>();
 
-        MeshRendererPlugin::legion_destroy(resources);
+        MeshBasicRendererPlugin::legion_destroy(resources);
         SpriteRendererPlugin::legion_destroy(resources);
         SkyboxRendererPlugin::legion_destroy(resources);
         TileLayerRendererPlugin::legion_destroy(resources);
