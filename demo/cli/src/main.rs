@@ -4,8 +4,8 @@ use distill_cli::Command;
 use rafx_plugins::assets::anim::BlenderAnimImporter;
 use rafx_plugins::assets::font::FontImporter;
 use rafx_plugins::assets::mesh_basic::{
-    BlenderMaterialImporter, BlenderMeshImporter, BlenderModelImporter, BlenderPrefabImporter,
-    GltfImporter,
+    MeshBasicBlenderImporter, MeshBasicBlenderMaterialImporter, MeshBasicBlenderModelImporter,
+    MeshBasicBlenderPrefabImporter, MeshBasicGltfImporter,
 };
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -44,12 +44,12 @@ fn create_daemon(args: &CliArgs) -> AssetDaemon {
         .with_address(args.daemon_args.address)
         .with_asset_dirs(args.daemon_args.asset_dirs.clone())
         .with_importer(&["ttf"], FontImporter)
-        .with_importer(&["gltf"], GltfImporter)
-        .with_importer(&["glb"], GltfImporter)
-        .with_importer(&["blender_material"], BlenderMaterialImporter)
-        .with_importer(&["blender_model"], BlenderModelImporter)
-        .with_importer(&["blender_mesh"], BlenderMeshImporter)
-        .with_importer(&["blender_prefab"], BlenderPrefabImporter)
+        .with_importer(&["gltf"], MeshBasicGltfImporter)
+        .with_importer(&["glb"], MeshBasicGltfImporter)
+        .with_importer(&["blender_material"], MeshBasicBlenderMaterialImporter)
+        .with_importer(&["blender_model"], MeshBasicBlenderModelImporter)
+        .with_importer(&["blender_mesh"], MeshBasicBlenderImporter)
+        .with_importer(&["blender_prefab"], MeshBasicBlenderPrefabImporter)
         .with_importer(&["blender_anim"], BlenderAnimImporter)
 }
 

@@ -1,7 +1,8 @@
 use crate::assets::mesh_basic::{
-    ModelAsset, PrefabAssetData, PrefabAssetDataObject, PrefabAssetDataObjectLight,
-    PrefabAssetDataObjectLightKind, PrefabAssetDataObjectLightSpot, PrefabAssetDataObjectModel,
-    PrefabAssetDataObjectTransform,
+    ModelBasicAsset, PrefabBasicAssetData, PrefabBasicAssetDataObject,
+    PrefabBasicAssetDataObjectLight, PrefabBasicAssetDataObjectLightKind,
+    PrefabBasicAssetDataObjectLightSpot, PrefabBasicAssetDataObjectModel,
+    PrefabBasicAssetDataObjectTransform,
 };
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
@@ -11,70 +12,74 @@ use std::io::Read;
 use type_uuid::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PrefabJsonFormatObjectTransform {
+pub struct MeshBasicPrefabJsonFormatObjectTransform {
     position: glam::Vec3,
     rotation: glam::Quat,
     scale: glam::Vec3,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PrefabJsonFormatObjectModel {
-    model: Handle<ModelAsset>,
+pub struct MeshBasicPrefabJsonFormatObjectModel {
+    model: Handle<ModelBasicAsset>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
-pub enum PrefabJsonFormatObjectLightKind {
+pub enum MeshBasicPrefabJsonFormatObjectLightKind {
     Point,
     Spot,
     Directional,
 }
 
-impl Into<PrefabAssetDataObjectLightKind> for PrefabJsonFormatObjectLightKind {
-    fn into(self) -> PrefabAssetDataObjectLightKind {
+impl Into<PrefabBasicAssetDataObjectLightKind> for MeshBasicPrefabJsonFormatObjectLightKind {
+    fn into(self) -> PrefabBasicAssetDataObjectLightKind {
         match self {
-            PrefabJsonFormatObjectLightKind::Point => PrefabAssetDataObjectLightKind::Point,
-            PrefabJsonFormatObjectLightKind::Spot => PrefabAssetDataObjectLightKind::Spot,
-            PrefabJsonFormatObjectLightKind::Directional => {
-                PrefabAssetDataObjectLightKind::Directional
+            MeshBasicPrefabJsonFormatObjectLightKind::Point => {
+                PrefabBasicAssetDataObjectLightKind::Point
+            }
+            MeshBasicPrefabJsonFormatObjectLightKind::Spot => {
+                PrefabBasicAssetDataObjectLightKind::Spot
+            }
+            MeshBasicPrefabJsonFormatObjectLightKind::Directional => {
+                PrefabBasicAssetDataObjectLightKind::Directional
             }
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PrefabJsonFormatObjectLightSpot {
+pub struct MeshBasicPrefabJsonFormatObjectLightSpot {
     inner_angle: f32,
     outer_angle: f32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PrefabJsonFormatObjectLight {
+pub struct MeshBasicPrefabJsonFormatObjectLight {
     color: [f32; 3],
-    kind: PrefabJsonFormatObjectLightKind,
+    kind: MeshBasicPrefabJsonFormatObjectLightKind,
     intensity: f32,
-    spot: Option<PrefabJsonFormatObjectLightSpot>,
+    spot: Option<MeshBasicPrefabJsonFormatObjectLightSpot>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PrefabJsonFormatObject {
-    transform: PrefabJsonFormatObjectTransform,
-    model: Option<PrefabJsonFormatObjectModel>,
-    light: Option<PrefabJsonFormatObjectLight>,
+pub struct MeshBasicPrefabJsonFormatObject {
+    transform: MeshBasicPrefabJsonFormatObjectTransform,
+    model: Option<MeshBasicPrefabJsonFormatObjectModel>,
+    light: Option<MeshBasicPrefabJsonFormatObjectLight>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct PrefabJsonFormat {
-    pub objects: Vec<PrefabJsonFormatObject>,
+struct MeshBasicPrefabJsonFormat {
+    pub objects: Vec<MeshBasicPrefabJsonFormatObject>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "8fbf4a7e-5c86-4381-8e5d-61bc439fcf1a"]
-pub struct BlenderPrefabImporterState(Option<AssetUuid>);
+pub struct MeshBasicBlenderPrefabImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
 #[uuid = "4ce0a6dc-51ee-4c67-be01-707c573cbdf1"]
-pub struct BlenderPrefabImporter;
-impl Importer for BlenderPrefabImporter {
+pub struct MeshBasicBlenderPrefabImporter;
+impl Importer for MeshBasicBlenderPrefabImporter {
     fn version_static() -> u32
     where
         Self: Sized,
@@ -88,7 +93,7 @@ impl Importer for BlenderPrefabImporter {
 
     type Options = ();
 
-    type State = BlenderPrefabImporterState;
+    type State = MeshBasicBlenderPrefabImporterState;
 
     /// Reads the given bytes and produces assets.
     #[profiling::function]
@@ -102,9 +107,9 @@ impl Importer for BlenderPrefabImporter {
         let id = state
             .0
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = BlenderPrefabImporterState(Some(id));
+        *state = MeshBasicBlenderPrefabImporterState(Some(id));
 
-        let json_format: PrefabJsonFormat = serde_json::from_reader(source)
+        let json_format: MeshBasicPrefabJsonFormat = serde_json::from_reader(source)
             .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
 
         let mut objects = Vec::with_capacity(json_format.objects.len());
@@ -112,19 +117,22 @@ impl Importer for BlenderPrefabImporter {
             let model = if let Some(json_model) = &json_object.model {
                 let model = json_model.model.clone();
 
-                Some(PrefabAssetDataObjectModel { model })
+                Some(PrefabBasicAssetDataObjectModel { model })
             } else {
                 None
             };
 
             let light = if let Some(json_light) = &json_object.light {
                 let light = json_light.clone();
-                let spot = light.spot.as_ref().map(|x| PrefabAssetDataObjectLightSpot {
-                    inner_angle: x.inner_angle,
-                    outer_angle: x.outer_angle,
-                });
+                let spot = light
+                    .spot
+                    .as_ref()
+                    .map(|x| PrefabBasicAssetDataObjectLightSpot {
+                        inner_angle: x.inner_angle,
+                        outer_angle: x.outer_angle,
+                    });
 
-                Some(PrefabAssetDataObjectLight {
+                Some(PrefabBasicAssetDataObjectLight {
                     color: light.color.into(),
                     kind: light.kind.into(),
                     intensity: light.intensity,
@@ -134,20 +142,20 @@ impl Importer for BlenderPrefabImporter {
                 None
             };
 
-            let transform = PrefabAssetDataObjectTransform {
+            let transform = PrefabBasicAssetDataObjectTransform {
                 position: json_object.transform.position.into(),
                 rotation: json_object.transform.rotation.into(),
                 scale: json_object.transform.scale.into(),
             };
 
-            objects.push(PrefabAssetDataObject {
+            objects.push(PrefabBasicAssetDataObject {
                 transform,
                 model,
                 light,
             });
         }
 
-        let asset_data = PrefabAssetData { objects };
+        let asset_data = PrefabBasicAssetData { objects };
 
         Ok(ImporterValue {
             assets: vec![ImportedAsset {

@@ -1,5 +1,5 @@
 use super::*;
-use crate::assets::mesh_basic::MeshAsset;
+use crate::assets::mesh_basic::MeshBasicAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
@@ -28,7 +28,7 @@ pub struct MeshBasicPerFrameData {
 }
 
 pub struct MeshBasicRenderObjectInstanceData {
-    pub mesh_asset: MeshAsset,
+    pub mesh_asset: MeshBasicAsset,
     pub translation: Vec3,
     pub rotation: Quat,
     pub scale: Vec3,

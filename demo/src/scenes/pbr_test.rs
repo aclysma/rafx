@@ -12,8 +12,8 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh_basic::prefab_asset::PrefabAssetDataObjectLightKind;
-use rafx_plugins::assets::mesh_basic::{MeshAsset, PrefabAsset};
+use rafx_plugins::assets::mesh_basic::prefab_asset::PrefabBasicAssetDataObjectLightKind;
+use rafx_plugins::assets::mesh_basic::{MeshBasicAsset, PrefabBasicAsset};
 use rafx_plugins::components::{
     DirectionalLightComponent, MeshComponent, PointLightComponent, TransformComponent,
 };
@@ -174,7 +174,7 @@ impl PbrTestScene {
         fly_camera.yaw = std::f32::consts::FRAC_PI_2;
         fly_camera.lock_view = true;
 
-        let prefab_asset_handle: Handle<PrefabAsset> =
+        let prefab_asset_handle: Handle<PrefabBasicAsset> =
             asset_resource.load_asset_path("pbr-test/Scene.001.blender_prefab");
         asset_manager
             .wait_for_asset_to_load(&prefab_asset_handle, &mut asset_resource, "pbr test scene")
@@ -184,7 +184,7 @@ impl PbrTestScene {
         fn load_visible_bounds(
             asset_manager: &mut AssetManager,
             asset_resource: &mut AssetResource,
-            asset_handle: &Handle<MeshAsset>,
+            asset_handle: &Handle<MeshBasicAsset>,
             asset_name: &str,
         ) -> VisibleBounds {
             asset_manager
@@ -255,7 +255,7 @@ impl PbrTestScene {
 
             if let Some(light) = &object.light {
                 match light.kind {
-                    PrefabAssetDataObjectLightKind::Point => {
+                    PrefabBasicAssetDataObjectLightKind::Point => {
                         if point_light_count < 15 {
                             let view_frustums = [
                                 visibility_region.register_view_frustum(),
@@ -280,7 +280,7 @@ impl PbrTestScene {
                             point_light_count += 1;
                         }
                     }
-                    PrefabAssetDataObjectLightKind::Spot => {
+                    PrefabBasicAssetDataObjectLightKind::Spot => {
                         if spot_light_count < 15 {
                             let view_frustum = visibility_region.register_view_frustum();
                             super::add_spot_light(
@@ -300,7 +300,7 @@ impl PbrTestScene {
                             spot_light_count += 1;
                         }
                     }
-                    PrefabAssetDataObjectLightKind::Directional => {
+                    PrefabBasicAssetDataObjectLightKind::Directional => {
                         if directional_light_count < 15 {
                             let view_frustum = visibility_region.register_view_frustum();
                             super::add_directional_light(

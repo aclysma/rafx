@@ -18,7 +18,7 @@ use type_uuid::*;
 // MeshMaterialDataShaderParam to bind to a shader uniform
 #[derive(Serialize, Deserialize, Clone)]
 #[repr(C)]
-pub struct MeshMaterialData {
+pub struct MeshBasicMaterialData {
     // Using f32 arrays for serde support
     pub base_color_factor: [f32; 4],     // default: 1,1,1,1
     pub emissive_factor: [f32; 3],       // default: 0,0,0
@@ -35,9 +35,9 @@ pub struct MeshMaterialData {
     pub has_emissive_texture: bool,
 }
 
-impl Default for MeshMaterialData {
+impl Default for MeshBasicMaterialData {
     fn default() -> Self {
-        MeshMaterialData {
+        MeshBasicMaterialData {
             base_color_factor: [1.0, 1.0, 1.0, 1.0],
             emissive_factor: [0.0, 0.0, 0.0],
             metallic_factor: 1.0,
@@ -54,11 +54,11 @@ impl Default for MeshMaterialData {
     }
 }
 
-pub type MeshMaterialDataShaderParam = mesh_basic_textured_frag::MaterialDataStd140;
+pub type MeshBasicMaterialDataShaderParam = mesh_basic_textured_frag::MaterialDataStd140;
 
-impl Into<MeshMaterialDataShaderParam> for MeshMaterialData {
-    fn into(self) -> MeshMaterialDataShaderParam {
-        MeshMaterialDataShaderParam {
+impl Into<MeshBasicMaterialDataShaderParam> for MeshBasicMaterialData {
+    fn into(self) -> MeshBasicMaterialDataShaderParam {
+        MeshBasicMaterialDataShaderParam {
             base_color_factor: self.base_color_factor.into(),
             emissive_factor: self.emissive_factor.into(),
             metallic_factor: self.metallic_factor,
@@ -77,7 +77,7 @@ impl Into<MeshMaterialDataShaderParam> for MeshMaterialData {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct MeshPartAssetData {
+pub struct MeshBasicPartAssetData {
     pub vertex_full_buffer_offset_in_bytes: u32,
     pub vertex_full_buffer_size_in_bytes: u32,
     pub vertex_position_buffer_offset_in_bytes: u32,
@@ -90,15 +90,15 @@ pub struct MeshPartAssetData {
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "cf232526-3757-4d94-98d1-c2f7e27c979f"]
-pub struct MeshAssetData {
-    pub mesh_parts: Vec<MeshPartAssetData>,
+pub struct MeshBasicAssetData {
+    pub mesh_parts: Vec<MeshBasicPartAssetData>,
     pub vertex_full_buffer: Handle<BufferAsset>, // Vertex type is MeshVertexFull
     pub vertex_position_buffer: Handle<BufferAsset>, // Vertex type is MeshVertexPosition
     pub index_buffer: Handle<BufferAsset>,       // u16 indices
     pub visible_bounds: VisibleBounds,
 }
 
-pub struct MeshAssetPart {
+pub struct MeshBasicAssetPart {
     pub material_instance: MaterialInstanceAsset,
     pub textured_pass_index: usize,
     pub untextured_pass_index: usize,
@@ -114,7 +114,7 @@ pub struct MeshAssetPart {
 
 pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
 
-impl MeshAssetPart {
+impl MeshBasicAssetPart {
     pub fn get_material_pass_index(
         &self,
         view: &RenderView,
@@ -160,28 +160,28 @@ impl MeshAssetPart {
     }
 }
 
-pub struct MeshAssetInner {
-    pub mesh_parts: Vec<Option<MeshAssetPart>>,
+pub struct MeshBasicAssetInner {
+    pub mesh_parts: Vec<Option<MeshBasicAssetPart>>,
     pub vertex_full_buffer: ResourceArc<BufferResource>,
     pub vertex_position_buffer: ResourceArc<BufferResource>,
     pub index_buffer: ResourceArc<BufferResource>,
-    pub asset_data: MeshAssetData,
+    pub asset_data: MeshBasicAssetData,
 }
 
 #[derive(TypeUuid, Clone)]
 #[uuid = "689a0bf0-e320-41c0-b4e8-bdb2055a7a57"]
-pub struct MeshAsset {
-    pub inner: Arc<MeshAssetInner>,
+pub struct MeshBasicAsset {
+    pub inner: Arc<MeshBasicAssetInner>,
 }
 
-pub struct MeshLoadHandler;
+pub struct MeshBasicLoadHandler;
 
-impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
+impl DefaultAssetTypeLoadHandler<MeshBasicAssetData, MeshBasicAsset> for MeshBasicLoadHandler {
     #[profiling::function]
     fn load(
         asset_manager: &mut AssetManager,
-        mesh_asset: MeshAssetData,
-    ) -> RafxResult<MeshAsset> {
+        mesh_asset: MeshBasicAssetData,
+    ) -> RafxResult<MeshBasicAsset> {
         let vertex_full_buffer = asset_manager
             .latest_asset(&mesh_asset.vertex_full_buffer)
             .unwrap()
@@ -243,7 +243,7 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
                     .find_pass_by_name("mesh wireframe")
                     .expect("could not find `mesh wireframe` pass in mesh part material");
 
-                Some(MeshAssetPart {
+                Some(MeshBasicAssetPart {
                     material_instance: material_instance.clone(),
                     textured_pass_index,
                     untextured_pass_index,
@@ -262,7 +262,7 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
             })
             .collect();
 
-        let inner = MeshAssetInner {
+        let inner = MeshBasicAssetInner {
             vertex_full_buffer,
             vertex_position_buffer,
             index_buffer,
@@ -270,10 +270,11 @@ impl DefaultAssetTypeLoadHandler<MeshAssetData, MeshAsset> for MeshLoadHandler {
             mesh_parts,
         };
 
-        Ok(MeshAsset {
+        Ok(MeshBasicAsset {
             inner: Arc::new(inner),
         })
     }
 }
 
-pub type MeshAssetType = DefaultAssetTypeHandler<MeshAssetData, MeshAsset, MeshLoadHandler>;
+pub type MeshBasicAssetType =
+    DefaultAssetTypeHandler<MeshBasicAssetData, MeshBasicAsset, MeshBasicLoadHandler>;

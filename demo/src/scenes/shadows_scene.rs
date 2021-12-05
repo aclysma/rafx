@@ -17,7 +17,7 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh_basic::MeshAsset;
+use rafx_plugins::assets::mesh_basic::MeshBasicAsset;
 use rafx_plugins::components::{
     DirectionalLightComponent, SpotLightComponent, VisibilityComponent,
 };
@@ -57,11 +57,11 @@ impl ShadowsScene {
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
         let floor_mesh_asset =
-            asset_resource.load_asset_path::<MeshAsset, _>("blender/cement_floor.glb");
+            asset_resource.load_asset_path::<MeshBasicAsset, _>("blender/cement_floor.glb");
         let container_1_asset = asset_resource.load_asset_path("blender/storage_container1.glb");
         let container_2_asset = asset_resource.load_asset_path("blender/storage_container2.glb");
-        let blue_icosphere_asset =
-            asset_resource.load_asset::<MeshAsset>("d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into());
+        let blue_icosphere_asset = asset_resource
+            .load_asset::<MeshBasicAsset>("d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into());
 
         let skybox_texture =
             asset_resource.load_asset_path::<ImageAsset, _>("textures/skybox.basis");
@@ -71,7 +71,7 @@ impl ShadowsScene {
             .unwrap()
             .skybox_texture_mut() = Some(skybox_texture);
 
-        let mut load_visible_bounds = |asset_handle: &Handle<MeshAsset>| {
+        let mut load_visible_bounds = |asset_handle: &Handle<MeshBasicAsset>| {
             asset_manager
                 .wait_for_asset_to_load(asset_handle, &mut asset_resource, "")
                 .unwrap();

@@ -11,7 +11,7 @@ use rafx::renderer::{
 use rafx_plugins::assets::anim::AnimAssetTypeRendererPlugin;
 use rafx_plugins::assets::font::FontAssetTypeRendererPlugin;
 use rafx_plugins::assets::ldtk::LdtkAssetTypeRendererPlugin;
-use rafx_plugins::assets::mesh_basic::GltfAssetTypeRendererPlugin;
+use rafx_plugins::assets::mesh_basic::MeshBasicAssetTypeRendererPlugin;
 use rafx_plugins::features::debug3d::Debug3DRendererPlugin;
 use rafx_plugins::features::mesh_basic::MeshBasicRendererPlugin;
 use rafx_plugins::features::skybox::SkyboxRendererPlugin;
@@ -69,7 +69,7 @@ pub fn rendering_init(
     let mut renderer_builder = RendererBuilder::default();
     renderer_builder = renderer_builder
         .add_asset(Arc::new(FontAssetTypeRendererPlugin))
-        .add_asset(Arc::new(GltfAssetTypeRendererPlugin))
+        .add_asset(Arc::new(MeshBasicAssetTypeRendererPlugin))
         .add_asset(Arc::new(LdtkAssetTypeRendererPlugin))
         .add_asset(Arc::new(AnimAssetTypeRendererPlugin))
         .add_asset(Arc::new(BasicPipelineRendererPlugin))

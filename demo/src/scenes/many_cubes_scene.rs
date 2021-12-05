@@ -17,7 +17,7 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh_basic::MeshAsset;
+use rafx_plugins::assets::mesh_basic::MeshBasicAsset;
 use rafx_plugins::components::{
     MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
 };
@@ -62,7 +62,7 @@ impl ManyCubesScene {
                 mesh: container_1_asset.clone(),
             });
 
-        let mut load_visible_bounds = |asset_handle: &Handle<MeshAsset>| {
+        let mut load_visible_bounds = |asset_handle: &Handle<MeshBasicAsset>| {
             asset_manager
                 .wait_for_asset_to_load(asset_handle, &mut asset_resource, "")
                 .unwrap();

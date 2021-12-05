@@ -1,5 +1,6 @@
 use crate::assets::mesh_basic::{
-    MeshAssetData, MeshMaterialData, MeshMaterialDataShaderParam, MeshPartAssetData,
+    MeshBasicAssetData, MeshBasicMaterialData, MeshBasicMaterialDataShaderParam,
+    MeshBasicPartAssetData,
 };
 use crate::features::mesh_basic::{MeshVertexFull, MeshVertexPosition};
 use distill::core::AssetUuid;
@@ -73,9 +74,9 @@ struct ImageToImport {
 }
 
 #[derive(Default, Clone)]
-pub struct GltfMaterialImportData {
+pub struct MeshBasicGltfMaterialImportData {
     //pub name: Option<String>,
-    pub material_data: MeshMaterialData,
+    pub material_data: MeshBasicMaterialData,
 
     pub base_color_texture: Option<Handle<ImageAsset>>,
     // metalness in B, roughness in G
@@ -91,12 +92,12 @@ pub struct GltfMaterialImportData {
 
 struct MaterialToImport {
     id: GltfObjectId,
-    asset: GltfMaterialImportData,
+    asset: MeshBasicGltfMaterialImportData,
 }
 
 struct MeshToImport {
     id: GltfObjectId,
-    asset: MeshAssetData,
+    asset: MeshBasicAssetData,
 }
 
 struct BufferToImport {
@@ -114,7 +115,7 @@ struct BufferToImport {
 // The asset state is stored in this format using Vecs
 #[derive(TypeUuid, Serialize, Deserialize, Default, Clone)]
 #[uuid = "807c83b3-c24c-4123-9580-5f9c426260b4"]
-pub struct GltfImporterStateStable {
+pub struct MeshBasicGltfImporterStateStable {
     // Asset UUIDs for imported image by name. We use vecs here so we can sort by UUID for
     // deterministic output
     buffer_asset_uuids: Vec<(GltfObjectId, AssetUuid)>,
@@ -124,9 +125,9 @@ pub struct GltfImporterStateStable {
     mesh_asset_uuids: Vec<(GltfObjectId, AssetUuid)>,
 }
 
-impl From<GltfImporterStateUnstable> for GltfImporterStateStable {
-    fn from(other: GltfImporterStateUnstable) -> Self {
-        let mut stable = GltfImporterStateStable::default();
+impl From<MeshBasicGltfImporterStateUnstable> for MeshBasicGltfImporterStateStable {
+    fn from(other: MeshBasicGltfImporterStateUnstable) -> Self {
+        let mut stable = MeshBasicGltfImporterStateStable::default();
         stable.buffer_asset_uuids = other
             .buffer_asset_uuids
             .into_iter()
@@ -157,7 +158,7 @@ impl From<GltfImporterStateUnstable> for GltfImporterStateStable {
 }
 
 #[derive(Default)]
-pub struct GltfImporterStateUnstable {
+pub struct MeshBasicGltfImporterStateUnstable {
     //asset_uuid: Option<AssetUuid>,
 
     // Asset UUIDs for imported image by name
@@ -168,9 +169,9 @@ pub struct GltfImporterStateUnstable {
     mesh_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
 }
 
-impl From<GltfImporterStateStable> for GltfImporterStateUnstable {
-    fn from(other: GltfImporterStateStable) -> Self {
-        let mut unstable = GltfImporterStateUnstable::default();
+impl From<MeshBasicGltfImporterStateStable> for MeshBasicGltfImporterStateUnstable {
+    fn from(other: MeshBasicGltfImporterStateStable) -> Self {
+        let mut unstable = MeshBasicGltfImporterStateUnstable::default();
         unstable.buffer_asset_uuids = other.buffer_asset_uuids.into_iter().collect();
         unstable.image_asset_uuids = other.image_asset_uuids.into_iter().collect();
         unstable.material_asset_uuids = other.material_asset_uuids.into_iter().collect();
@@ -183,8 +184,8 @@ impl From<GltfImporterStateStable> for GltfImporterStateUnstable {
 
 #[derive(TypeUuid)]
 #[uuid = "fc9ae812-110d-4daf-9223-e87b40966c6b"]
-pub struct GltfImporter;
-impl Importer for GltfImporter {
+pub struct MeshBasicGltfImporter;
+impl Importer for MeshBasicGltfImporter {
     fn version_static() -> u32
     where
         Self: Sized,
@@ -198,7 +199,7 @@ impl Importer for GltfImporter {
 
     type Options = ();
 
-    type State = GltfImporterStateStable;
+    type State = MeshBasicGltfImporterStateStable;
 
     /// Reads the given bytes and produces assets.
     fn import(
@@ -208,7 +209,7 @@ impl Importer for GltfImporter {
         _options: &Self::Options,
         stable_state: &mut Self::State,
     ) -> distill::importer::Result<ImporterValue> {
-        let mut unstable_state: GltfImporterStateUnstable = stable_state.clone().into();
+        let mut unstable_state: MeshBasicGltfImporterStateUnstable = stable_state.clone().into();
 
         //
         // Load the GLTF file
@@ -297,7 +298,7 @@ impl Importer for GltfImporter {
             let mut slot_assignments = vec![];
 
             let material_data = &material_to_import.asset.material_data;
-            let material_data_shader_param: MeshMaterialDataShaderParam =
+            let material_data_shader_param: MeshBasicMaterialDataShaderParam =
                 material_data.clone().into();
             slot_assignments.push(MaterialInstanceSlotAssignment {
                 slot_name: "per_material_data".to_string(),
@@ -679,7 +680,7 @@ fn extract_materials_to_import(
                     emissive_texture: None,
                 };
         */
-        let mut material_asset = GltfMaterialImportData::default();
+        let mut material_asset = MeshBasicGltfMaterialImportData::default();
 
         let pbr_metallic_roughness = &material.pbr_metallic_roughness();
         material_asset.material_data.base_color_factor = pbr_metallic_roughness.base_color_factor();
@@ -762,7 +763,7 @@ fn try_convert_to_u16(indices_u32: &[u32]) -> Option<Vec<u16>> {
 
 fn extract_meshes_to_import(
     op: &mut ImportOp,
-    state: &mut GltfImporterStateUnstable,
+    state: &mut MeshBasicGltfImporterStateUnstable,
     doc: &gltf::Document,
     buffers: &[GltfBufferData],
     material_instance_index_to_handle: &[Handle<MaterialInstanceAsset>],
@@ -778,7 +779,8 @@ fn extract_meshes_to_import(
         let mut all_vertices_position = PushBuffer::new(16384);
         let mut all_indices = PushBuffer::new(16384);
 
-        let mut mesh_parts: Vec<MeshPartAssetData> = Vec::with_capacity(mesh.primitives().len());
+        let mut mesh_parts: Vec<MeshBasicPartAssetData> =
+            Vec::with_capacity(mesh.primitives().len());
 
         //
         // Iterate all mesh parts, building a single vertex and index buffer. Each MeshPart will
@@ -898,7 +900,7 @@ fn extract_meshes_to_import(
                             )));
                         };
 
-                    Some(MeshPartAssetData {
+                    Some(MeshBasicPartAssetData {
                         material_instance,
                         vertex_full_buffer_offset_in_bytes: vertex_full_offset as u32,
                         vertex_full_buffer_size_in_bytes: vertex_full_size as u32,
@@ -998,7 +1000,7 @@ fn extract_meshes_to_import(
             index: PolygonSoupIndex::Indexed32(all_position_indices),
         };
 
-        let asset = MeshAssetData {
+        let asset = MeshBasicAssetData {
             mesh_parts,
             vertex_full_buffer: vertex_full_buffer_handle,
             vertex_position_buffer: vertex_position_buffer_handle,
