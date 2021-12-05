@@ -9,7 +9,7 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/depth.vert.cookedshaderpackage",
+                    shader_module: "../shaders/depth/depth.vert.cookedshaderpackage",
                     entry_name: "main"
                 ),
                 // No fragment shader required

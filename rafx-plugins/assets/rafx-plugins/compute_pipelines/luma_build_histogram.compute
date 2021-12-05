@@ -1,4 +1,4 @@
 (
-    shader_module: "../shaders/luma_build_histogram.comp.cookedshaderpackage",
+    shader_module: "../shaders/postprocessing/luma_build_histogram.comp.cookedshaderpackage",
     entry_name: "main"
 )

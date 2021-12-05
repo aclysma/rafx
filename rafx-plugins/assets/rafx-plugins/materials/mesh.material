@@ -11,12 +11,12 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh_textured.vert.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_textured.vert.cookedshaderpackage",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/mesh_textured.frag.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_textured.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],
@@ -31,12 +31,12 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh_textured.vert.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_textured.vert.cookedshaderpackage",
                     entry_name: "main"
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/mesh_textured.frag.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_textured.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],
@@ -51,12 +51,12 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh_untextured.vert.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_untextured.vert.cookedshaderpackage",
                     entry_name: "main"
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/mesh_untextured.frag.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_untextured.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],
@@ -71,12 +71,12 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh_untextured.vert.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_untextured.vert.cookedshaderpackage",
                     entry_name: "main"
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/mesh_untextured.frag.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_untextured.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],
@@ -92,12 +92,12 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/mesh_wireframe.vert.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_wireframe.vert.cookedshaderpackage",
                     entry_name: "main"
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/mesh_wireframe.frag.cookedshaderpackage",
+                    shader_module: "../shaders/mesh_basic/mesh_basic_wireframe.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],
