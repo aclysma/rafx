@@ -1,5 +1,5 @@
 use super::*;
-use crate::assets::mesh::MeshAsset;
+use crate::assets::mesh_basic::MeshAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };

@@ -1,5 +1,5 @@
 use super::MeshMaterialData;
-use crate::assets::mesh::MeshMaterialDataShaderParam;
+use crate::assets::mesh_basic::MeshMaterialDataShaderParam;
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::make_handle_from_str;
 use distill::{core::AssetUuid, importer::ImportOp};

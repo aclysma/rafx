@@ -12,8 +12,8 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh::prefab_asset::PrefabAssetDataObjectLightKind;
-use rafx_plugins::assets::mesh::{MeshAsset, PrefabAsset};
+use rafx_plugins::assets::mesh_basic::prefab_asset::PrefabAssetDataObjectLightKind;
+use rafx_plugins::assets::mesh_basic::{MeshAsset, PrefabAsset};
 use rafx_plugins::components::{
     DirectionalLightComponent, MeshComponent, PointLightComponent, TransformComponent,
 };

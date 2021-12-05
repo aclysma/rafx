@@ -3,7 +3,7 @@ use distill::daemon::AssetDaemon;
 use distill_cli::Command;
 use rafx_plugins::assets::anim::BlenderAnimImporter;
 use rafx_plugins::assets::font::FontImporter;
-use rafx_plugins::assets::mesh::{
+use rafx_plugins::assets::mesh_basic::{
     BlenderMaterialImporter, BlenderMeshImporter, BlenderModelImporter, BlenderPrefabImporter,
     GltfImporter,
 };

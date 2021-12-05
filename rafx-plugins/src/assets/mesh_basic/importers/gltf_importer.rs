@@ -1,4 +1,4 @@
-use crate::assets::mesh::{
+use crate::assets::mesh_basic::{
     MeshAssetData, MeshMaterialData, MeshMaterialDataShaderParam, MeshPartAssetData,
 };
 use crate::features::mesh_basic::{MeshVertexFull, MeshVertexPosition};

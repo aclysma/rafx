@@ -1,4 +1,4 @@
-use crate::assets::mesh::{
+use crate::assets::mesh_basic::{
     ModelAsset, PrefabAssetData, PrefabAssetDataObject, PrefabAssetDataObjectLight,
     PrefabAssetDataObjectLightKind, PrefabAssetDataObjectLightSpot, PrefabAssetDataObjectModel,
     PrefabAssetDataObjectTransform,

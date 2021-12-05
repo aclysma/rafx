@@ -11,7 +11,7 @@ use rafx::renderer::{
 use rafx_plugins::assets::anim::AnimAssetTypeRendererPlugin;
 use rafx_plugins::assets::font::FontAssetTypeRendererPlugin;
 use rafx_plugins::assets::ldtk::LdtkAssetTypeRendererPlugin;
-use rafx_plugins::assets::mesh::GltfAssetTypeRendererPlugin;
+use rafx_plugins::assets::mesh_basic::GltfAssetTypeRendererPlugin;
 use rafx_plugins::features::debug3d::Debug3DRendererPlugin;
 use rafx_plugins::features::mesh_basic::MeshBasicRendererPlugin;
 use rafx_plugins::features::skybox::SkyboxRendererPlugin;

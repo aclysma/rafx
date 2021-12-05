@@ -1,4 +1,4 @@
-use crate::assets::mesh::{MeshAssetType, ModelAssetType, PrefabAssetType};
+use crate::assets::mesh_basic::{MeshAssetType, ModelAssetType, PrefabAssetType};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;

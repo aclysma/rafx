@@ -1,4 +1,4 @@
 pub mod anim;
 pub mod font;
 pub mod ldtk;
-pub mod mesh;
+pub mod mesh_basic;

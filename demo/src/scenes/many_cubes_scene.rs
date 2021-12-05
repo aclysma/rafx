@@ -17,7 +17,7 @@ use rafx::render_features::{
 };
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh::MeshAsset;
+use rafx_plugins::assets::mesh_basic::MeshAsset;
 use rafx_plugins::components::{
     MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
 };

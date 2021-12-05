@@ -1,4 +1,4 @@
-use crate::assets::mesh::{MeshAssetData, MeshPartAssetData};
+use crate::assets::mesh_basic::{MeshAssetData, MeshPartAssetData};
 use crate::features::mesh_basic::{MeshVertexFull, MeshVertexPosition};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
