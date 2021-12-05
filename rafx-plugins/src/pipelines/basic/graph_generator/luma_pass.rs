@@ -4,8 +4,8 @@ use rafx::graph::*;
 use super::OpaquePass;
 use super::RenderGraphContext;
 use crate::pipelines::basic::BasicPipelineTonemapDebugData;
-use crate::shaders::postprocessing::luma_average_histogram_comp;
-use crate::shaders::postprocessing::luma_build_histogram_comp;
+use crate::shaders::post_basic::luma_average_histogram_comp;
+use crate::shaders::post_basic::luma_build_histogram_comp;
 use rafx::api::{RafxLoadOp, RafxSampleCount};
 
 const LOG_LUMA_MIN: f32 = -10.0;

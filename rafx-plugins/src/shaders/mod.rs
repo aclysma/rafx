@@ -7,7 +7,7 @@ pub mod depth;
 pub mod egui;
 pub mod imgui;
 pub mod mesh_basic;
-pub mod postprocessing;
+pub mod post_basic;
 pub mod skybox;
 pub mod sprite;
 pub mod text;

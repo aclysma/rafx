@@ -11,7 +11,7 @@ use rafx::renderer::SwapchainRenderResource;
 use super::BloomExtractPass;
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
-use crate::shaders::postprocessing::bloom_combine_frag;
+use crate::shaders::post_basic::bloom_combine_frag;
 
 pub(super) struct BloomCombinePass {
     #[allow(dead_code)]

@@ -2,7 +2,7 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase, ShadowMapRenderPhase,
     TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
-use crate::shaders::postprocessing::luma_average_histogram_comp;
+use crate::shaders::post_basic::luma_average_histogram_comp;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::{
     RafxBufferDef, RafxFormat, RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult,
