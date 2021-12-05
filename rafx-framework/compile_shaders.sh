@@ -4,5 +4,4 @@ cargo run --package rafx-shader-processor -- \
 --cooked-shaders-path cooked_shaders \
 --package-vk \
 --package-metal \
---for-rafx-framework-crate \
-&& cargo fmt && cargo test --package rafx-framework
+--for-rafx-framework-crate && cargo fmt && cargo test --package rafx-framework
