@@ -1,5 +1,5 @@
 use crate::phases::OpaqueRenderPhase;
-use crate::shaders;
+use crate::shaders::tile_layer::tile_layer_frag;
 use fnv::FnvHashMap;
 use glam::Vec3;
 use rafx::api::RafxResult;
@@ -104,7 +104,7 @@ impl DefaultAssetTypeLoadHandler<LdtkAssetData, LdtkProjectAsset> for LdtkLoadHa
                     .material
                     .find_pass_by_phase::<OpaqueRenderPhase>()
                     .expect("tileset material must have pass for opaque phase");
-                let tileset_image_set_index = shaders::tile_layer_frag::TEX_DESCRIPTOR_SET_INDEX;
+                let tileset_image_set_index = tile_layer_frag::TEX_DESCRIPTOR_SET_INDEX;
                 let descriptor_set = material_instance.material_descriptor_sets
                     [opaque_phase_pass_index][tileset_image_set_index]
                     .clone()

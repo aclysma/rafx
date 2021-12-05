@@ -5,7 +5,7 @@ use rafx::render_features::RenderPhase;
 
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
-use crate::shaders;
+use crate::shaders::postprocessing::bloom_blur_frag;
 use rafx::api::RafxSampleCount;
 
 #[derive(PartialEq)]
@@ -103,10 +103,10 @@ fn bloom_blur_internal_pass(
         };
 
         let bloom_blur_material_dyn_set = descriptor_set_allocator.create_descriptor_set(
-            &descriptor_set_layouts[shaders::bloom_blur_frag::TEX_DESCRIPTOR_SET_INDEX],
-            shaders::bloom_blur_frag::DescriptorSet0Args {
+            &descriptor_set_layouts[bloom_blur_frag::TEX_DESCRIPTOR_SET_INDEX],
+            bloom_blur_frag::DescriptorSet0Args {
                 tex: sample_image.as_ref().unwrap(),
-                config: &shaders::bloom_blur_frag::ConfigUniform {
+                config: &bloom_blur_frag::ConfigUniform {
                     horizontal,
                     ..Default::default()
                 },

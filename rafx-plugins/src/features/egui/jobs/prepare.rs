@@ -2,7 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::UiRenderPhase;
-use crate::shaders;
+use crate::shaders::egui::{egui_frag, egui_vert};
 use rafx::api::{RafxBufferDef, RafxDeviceContext};
 use rafx::base::resource_map::WriteBorrow;
 use rafx::framework::ResourceContext;
@@ -58,8 +58,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for EguiPrepareJob<'prepare> {
 
         per_frame_submit_data.per_view_descriptor_set = descriptor_set_allocator
             .create_descriptor_set_with_writer(
-                &descriptor_set_layouts[shaders::egui_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX],
-                shaders::egui_vert::DescriptorSet0Args {
+                &descriptor_set_layouts[egui_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX],
+                egui_vert::DescriptorSet0Args {
                     uniform_buffer: &per_frame_data.view_ubo,
                 },
             )
@@ -98,8 +98,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for EguiPrepareJob<'prepare> {
         if let Some(font_atlas_resource) = font_atlas_cache.font_atlas_resource().as_ref() {
             per_frame_submit_data.per_font_descriptor_set = descriptor_set_allocator
                 .create_descriptor_set_with_writer(
-                    &descriptor_set_layouts[shaders::egui_frag::TEX_DESCRIPTOR_SET_INDEX],
-                    shaders::egui_frag::DescriptorSet1Args {
+                    &descriptor_set_layouts[egui_frag::TEX_DESCRIPTOR_SET_INDEX],
+                    egui_frag::DescriptorSet1Args {
                         tex: font_atlas_resource,
                     },
                 )

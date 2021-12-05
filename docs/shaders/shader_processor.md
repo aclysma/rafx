@@ -73,7 +73,7 @@ provided paths.
 
 ### Example
 
-`cargo run --package rafx-shader-processor -- --glsl-path glsl/*.vert glsl/*.frag glsl/*.comp --rs-lib-path src --cooked-shaders-path ../../assets/shaders`
+`cargo run --package rafx-shader-processor -- --glsl-path glsl --rs-lib-path src --cooked-shaders-path ../../assets/shaders`
 
  * Read *.vert, *.frag, *.comp files from glsl/
  * Write rust code to src/ and generate a .lib file decalring all generated modules (one per shader)

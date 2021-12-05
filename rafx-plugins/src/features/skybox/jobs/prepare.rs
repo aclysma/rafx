@@ -2,7 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::OpaqueRenderPhase;
-use crate::shaders;
+use crate::shaders::skybox::skybox_frag;
 use rafx::framework::ResourceContext;
 
 pub struct SkyboxPrepareJob {
@@ -50,10 +50,10 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for SkyboxPrepareJob {
                         descriptor_set_arc: descriptor_set_allocator
                             .create_descriptor_set_with_writer(
                                 &descriptor_set_layouts
-                                    [shaders::skybox_frag::SKYBOX_TEX_DESCRIPTOR_SET_INDEX],
-                                shaders::skybox_frag::DescriptorSet0Args {
+                                    [skybox_frag::SKYBOX_TEX_DESCRIPTOR_SET_INDEX],
+                                skybox_frag::DescriptorSet0Args {
                                     skybox_tex: &skybox_texture,
-                                    uniform_buffer: &shaders::skybox_frag::ArgsUniform {
+                                    uniform_buffer: &skybox_frag::ArgsUniform {
                                         inverse_view: (view.view_matrix() * skybox_rotation)
                                             .inverse()
                                             .to_cols_array_2d(),

@@ -10,7 +10,7 @@ mod parse_declarations;
 
 mod include;
 use crate::reflect::ShaderProcessorRefectionData;
-use fnv::FnvHashSet;
+use fnv::{FnvHashMap, FnvHashSet};
 use include::include_impl;
 use include::IncludeType;
 use shaderc::ShaderKind;
@@ -61,7 +61,7 @@ pub struct ShaderProcessorArgs {
     // For batch processing a folder
     //
     #[structopt(name = "glsl-path", long, parse(from_os_str))]
-    pub glsl_files: Option<Vec<PathBuf>>,
+    pub glsl_files: Option<PathBuf>,
     #[structopt(name = "spv-path", long, parse(from_os_str))]
     pub spv_path: Option<PathBuf>,
     #[structopt(name = "rs-lib-path", long, parse(from_os_str))]
@@ -151,100 +151,154 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
         .map_err(|x| format!("{}: {}", glsl_file.to_string_lossy(), x.to_string()))?;
 
         Ok(())
-    } else if let Some(glsl_file_patterns) = &args.glsl_files {
+    } else if let Some(glsl_files) = &args.glsl_files {
+        log::trace!("glsl files {:?}", args.glsl_files);
+        process_directory(glsl_files, &args, &rs_file_option)
+    } else {
+        Ok(())
+    }
+}
+
+//
+// Handle a batch of file patterns (such as *.frag) via --glsl_files. Infer output files
+// based on other args given in the form of output directories
+//
+fn process_directory(
+    glsl_files: &PathBuf,
+    args: &ShaderProcessorArgs,
+    rs_file_option: &Option<RsFileOption>,
+) -> Result<(), Box<dyn Error>> {
+    // This will accumulate rust module names so we can produce a lib.rs if needed
+    let mut module_names = FnvHashMap::<PathBuf, FnvHashSet<String>>::default();
+
+    log::trace!("GLSL Root Dir: {:?}", glsl_files);
+
+    let glob_walker = globwalk::GlobWalkerBuilder::from_patterns(
+        glsl_files.to_str().unwrap(),
+        &["*.{vert,frag,comp}"],
+    )
+    .file_type(globwalk::FileType::FILE)
+    .build()?;
+
+    for glob in glob_walker {
         //
-        // Handle a batch of file patterns (such as *.frag) via --glsl_files. Infer output files
-        // based on other args given in the form of output directories
+        // Determine the files we will write out
         //
+        let glsl_file = glob?;
+        log::info!("Processing file {:?}", glsl_file.path());
 
-        // This will accumulate rust module names so we can produce a lib.rs if needed
-        let mut module_names = Vec::default();
+        let file_name = glsl_file.file_name().to_string_lossy();
 
-        for glsl_file in glsl_file_patterns {
-            log::trace!("input file pattern: {:?}", glsl_file);
-            for glob in glob::glob(glsl_file.to_str().unwrap())? {
-                //
-                // Determine the files we will write out
-                //
-                let glsl_file = glob?;
-                log::info!("Processing file {:?}", glsl_file);
+        let empty_path = PathBuf::new();
+        let outfile_prefix = glsl_file
+            .path()
+            .strip_prefix(glsl_files)?
+            .parent()
+            .unwrap_or(&empty_path);
 
-                let file_name = glsl_file
+        let rs_module_name = file_name.to_string().to_lowercase().replace(".", "_");
+        let rs_name = format!("{}.rs", rs_module_name);
+        let rs_file_option = rs_file_option.as_ref().map(|x| RsFileOption {
+            path: x.path.join(outfile_prefix).join(rs_name),
+            file_type: x.file_type,
+        });
+
+        let spv_name = format!("{}.spv", file_name);
+        let spv_path = args
+            .spv_path
+            .as_ref()
+            .map(|x| x.join(outfile_prefix).join(spv_name));
+
+        let metal_src_name = format!("{}.metal", file_name);
+        let metal_generated_src_path = args
+            .metal_generated_src_path
+            .as_ref()
+            .map(|x| x.join(outfile_prefix).join(metal_src_name));
+
+        let gles2_src_name = format!("{}.gles2", file_name);
+        let gles2_generated_src_path = args
+            .gles2_generated_src_path
+            .as_ref()
+            .map(|x| x.join(outfile_prefix).join(gles2_src_name));
+
+        let gles3_src_name = format!("{}.gles3", file_name);
+        let gles3_generated_src_path = args
+            .gles3_generated_src_path
+            .as_ref()
+            .map(|x| x.join(outfile_prefix).join(gles3_src_name));
+
+        let cooked_shader_name = format!("{}.cookedshaderpackage", file_name);
+        let cooked_shader_path = args
+            .cooked_shaders_path
+            .as_ref()
+            .map(|x| x.join(outfile_prefix).join(cooked_shader_name));
+
+        //
+        // Try to determine what kind of shader this is from the file name
+        //
+        let shader_kind = shader_kind_from_args(args)
+            .or_else(|| deduce_default_shader_kind_from_path(glsl_file.path()))
+            .unwrap_or(shaderc::ShaderKind::InferFromSource);
+
+        //
+        // Process this shader and write to output files
+        //
+        process_glsl_shader(
+            glsl_file.path(),
+            spv_path.as_ref(),
+            &rs_file_option,
+            metal_generated_src_path.as_ref(),
+            gles2_generated_src_path.as_ref(),
+            gles3_generated_src_path.as_ref(),
+            cooked_shader_path.as_ref(),
+            shader_kind,
+            &args,
+        )
+        .map_err(|x| format!("{}: {}", glsl_file.path().to_string_lossy(), x.to_string()))?;
+
+        //
+        // Add the module name to this list so we can generate a lib.rs later
+        //
+        if rs_file_option.is_some() {
+            let module_names = module_names
+                .entry(outfile_prefix.to_path_buf())
+                .or_default();
+            module_names.insert(rs_module_name.clone());
+        }
+    }
+    //
+    // Generate lib.rs or mod.rs files that includes all the compiled shaders
+    //
+    if let Some(rs_path) = &rs_file_option {
+        // First ensure that for any nested submodules, they are declared in lib.rs/mod.rs files in
+        // the parent dirs
+        let outfile_prefixes: Vec<_> = module_names.keys().cloned().collect();
+        for mut outfile_prefix in outfile_prefixes {
+            while let Some(parent) = outfile_prefix.parent() {
+                let new_module_name = outfile_prefix
                     .file_name()
-                    .ok_or_else(|| "Failed to get the filename from glob match".to_string())?
-                    .to_string_lossy();
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string();
 
-                let spv_name = format!("{}.spv", file_name);
-                let spv_path = args.spv_path.as_ref().map(|x| x.join(spv_name));
+                log::trace!("add module {:?} to {:?}", new_module_name, parent);
 
-                let rs_module_name = file_name.to_string().to_lowercase().replace(".", "_");
-                let rs_name = format!("{}.rs", rs_module_name);
+                let module_names = module_names.entry(parent.to_path_buf()).or_default();
+                module_names.insert(new_module_name);
 
-                let rs_file_option = rs_file_option.as_ref().map(|x| RsFileOption {
-                    path: x.path.join(rs_name),
-                    file_type: x.file_type,
-                });
-
-                let metal_src_name = format!("{}.metal", file_name);
-                let metal_generated_src_path = args
-                    .metal_generated_src_path
-                    .as_ref()
-                    .map(|x| x.join(metal_src_name));
-
-                let gles2_src_name = format!("{}.gles2", file_name);
-                let gles2_generated_src_path = args
-                    .gles2_generated_src_path
-                    .as_ref()
-                    .map(|x| x.join(gles2_src_name));
-
-                let gles3_src_name = format!("{}.gles3", file_name);
-                let gles3_generated_src_path = args
-                    .gles3_generated_src_path
-                    .as_ref()
-                    .map(|x| x.join(gles3_src_name));
-
-                let cooked_shader_name = format!("{}.cookedshaderpackage", file_name);
-                let cooked_shader_path = args
-                    .cooked_shaders_path
-                    .as_ref()
-                    .map(|x| x.join(cooked_shader_name));
-
-                //
-                // Try to determine what kind of shader this is from the file name
-                //
-                let shader_kind = shader_kind_from_args(args)
-                    .or_else(|| deduce_default_shader_kind_from_path(&glsl_file))
-                    .unwrap_or(shaderc::ShaderKind::InferFromSource);
-
-                //
-                // Process this shader and write to output files
-                //
-                process_glsl_shader(
-                    &glsl_file,
-                    spv_path.as_ref(),
-                    &rs_file_option,
-                    metal_generated_src_path.as_ref(),
-                    gles2_generated_src_path.as_ref(),
-                    gles3_generated_src_path.as_ref(),
-                    cooked_shader_path.as_ref(),
-                    shader_kind,
-                    &args,
-                )
-                .map_err(|x| format!("{}: {}", glsl_file.to_string_lossy(), x.to_string()))?;
-
-                //
-                // Add the module name to this list so we can generate a lib.rs later
-                //
-                if rs_file_option.is_some() {
-                    module_names.push(rs_module_name.clone());
-                }
+                outfile_prefix = parent.to_path_buf();
             }
         }
 
-        //
-        // Generate a lib.rs or mod.rs that includes all the compiled shaders
-        //
-        if let Some(rs_path) = &rs_file_option {
+        // Generate all lib.rs/mod.rs files
+        for (outfile_prefix, module_names) in module_names {
+            let module_filename = match rs_path.file_type {
+                RsFileType::Lib => "lib.rs",
+                RsFileType::Mod => "mod.rs",
+            };
+            let lib_file_path = rs_path.path.join(outfile_prefix).join(module_filename);
+            log::trace!("Write lib/mod file {:?} {:?}", lib_file_path, module_names);
+
             let mut lib_file_string = String::default();
             lib_file_string += "// This code is auto-generated by the shader processor.\n\n";
             lib_file_string += "#![allow(dead_code)]\n\n";
@@ -253,19 +307,11 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
                 lib_file_string += &format!("pub mod {};\n", module_name);
             }
 
-            let module_filename = match rs_path.file_type {
-                RsFileType::Lib => "lib.rs",
-                RsFileType::Mod => "mod.rs",
-            };
-            let lib_file_path = rs_path.path.join(module_filename);
-            log::trace!("Write lib/mod file {:?}", lib_file_path);
-            std::fs::write(lib_file_path, lib_file_string)?;
+            write_output_file(&lib_file_path, lib_file_string)?;
         }
-
-        Ok(())
-    } else {
-        Ok(())
     }
+
+    Ok(())
 }
 
 fn try_load_override_src(
@@ -277,7 +323,7 @@ fn try_load_override_src(
     let override_path = PathBuf::from(override_path);
     if override_path.exists() {
         log::info!(
-            "Override shader {:?} with {:?}",
+            "  Override shader {:?} with {:?}",
             original_path,
             override_path.to_string_lossy()
         );

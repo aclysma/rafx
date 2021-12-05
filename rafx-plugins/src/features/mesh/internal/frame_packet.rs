@@ -3,7 +3,7 @@ use crate::assets::mesh::MeshAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
-use crate::shaders;
+use crate::shaders::mesh_basic::mesh_basic_textured_frag;
 use glam::{Quat, Vec3};
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{
@@ -83,12 +83,11 @@ pub struct MeshPartMaterialDescriptorSetPair {
 
 pub struct MeshPerFrameSubmitData {
     pub num_shadow_map_2d: usize,
-    pub shadow_map_2d_data:
-        [shaders::mesh_textured_frag::ShadowMap2DDataStd140; MAX_SHADOW_MAPS_2D],
+    pub shadow_map_2d_data: [mesh_basic_textured_frag::ShadowMap2DDataStd140; MAX_SHADOW_MAPS_2D],
     pub shadow_map_2d_image_views: [Option<ResourceArc<ImageViewResource>>; MAX_SHADOW_MAPS_2D],
     pub num_shadow_map_cube: usize,
     pub shadow_map_cube_data:
-        [shaders::mesh_textured_frag::ShadowMapCubeDataStd140; MAX_SHADOW_MAPS_CUBE],
+        [mesh_basic_textured_frag::ShadowMapCubeDataStd140; MAX_SHADOW_MAPS_CUBE],
     pub shadow_map_cube_image_views: [Option<ResourceArc<ImageViewResource>>; MAX_SHADOW_MAPS_CUBE],
     pub shadow_map_image_index_remap: [Option<usize>; MAX_SHADOW_MAPS_2D + MAX_SHADOW_MAPS_CUBE],
     pub model_matrix_buffer: TrustCell<Option<ResourceArc<BufferResource>>>,

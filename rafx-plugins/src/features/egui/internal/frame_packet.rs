@@ -1,5 +1,5 @@
 use super::*;
-use crate::shaders;
+use crate::shaders::egui::egui_vert;
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 
@@ -44,7 +44,7 @@ pub type EguiSubmitPacket = SubmitPacket<EguiRenderFeatureTypes>;
 // WRITE
 //-------
 
-pub type EguiUniformBufferObject = shaders::egui_vert::ArgsUniform;
+pub type EguiUniformBufferObject = egui_vert::ArgsUniform;
 
 #[derive(Default)]
 pub struct EguiPerFrameSubmitData {

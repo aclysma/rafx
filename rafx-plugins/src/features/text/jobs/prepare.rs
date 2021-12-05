@@ -2,7 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::UiRenderPhase;
-use crate::shaders;
+use crate::shaders::text::{text_frag, text_vert};
 use rafx::api::{RafxBufferDef, RafxDeviceContext};
 use rafx::base::resource_map::WriteBorrow;
 use rafx::framework::ResourceContext;
@@ -69,7 +69,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for TextPrepareJob<'prepare> {
                 .as_ref()
                 .unwrap()
                 .get_raw()
-                .descriptor_set_layouts[shaders::text_frag::TEX_DESCRIPTOR_SET_INDEX];
+                .descriptor_set_layouts[text_frag::TEX_DESCRIPTOR_SET_INDEX];
 
             //
             // Create per-font descriptor sets (i.e. a font atlas texture)
@@ -78,7 +78,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for TextPrepareJob<'prepare> {
                 let per_font_descriptor_set = descriptor_set_allocator
                     .create_descriptor_set_with_writer(
                         per_font_descriptor_set_layout,
-                        shaders::text_frag::DescriptorSet0Args { tex: &image },
+                        text_frag::DescriptorSet0Args { tex: &image },
                     )
                     .unwrap();
 
@@ -144,7 +144,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for TextPrepareJob<'prepare> {
 
         let text_material_pass = per_frame_data.text_material_pass.as_ref().unwrap();
         let per_view_descriptor_set_layout = &text_material_pass.get_raw().descriptor_set_layouts
-            [shaders::text_vert::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX];
+            [text_vert::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX];
 
         //
         // Setup the vertex shader descriptor set
@@ -172,7 +172,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for TextPrepareJob<'prepare> {
                 descriptor_set_arc: descriptor_set_allocator
                     .create_descriptor_set_with_writer(
                         per_view_descriptor_set_layout,
-                        shaders::text_vert::DescriptorSet1Args {
+                        text_vert::DescriptorSet1Args {
                             per_view_data: &text_view,
                         },
                     )

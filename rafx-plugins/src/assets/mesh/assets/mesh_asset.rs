@@ -1,6 +1,6 @@
 use crate::features::mesh::MeshUntexturedRenderFeatureFlag;
 use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, WireframeRenderPhase};
-use crate::shaders;
+use crate::shaders::mesh_basic::mesh_basic_textured_frag;
 use distill::loader::handle::Handle;
 use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::MaterialInstanceAsset;
@@ -54,7 +54,7 @@ impl Default for MeshMaterialData {
     }
 }
 
-pub type MeshMaterialDataShaderParam = shaders::mesh_textured_frag::MaterialDataStd140;
+pub type MeshMaterialDataShaderParam = mesh_basic_textured_frag::MaterialDataStd140;
 
 impl Into<MeshMaterialDataShaderParam> for MeshMaterialData {
     fn into(self) -> MeshMaterialDataShaderParam {

@@ -11,7 +11,7 @@ use rafx::renderer::SwapchainRenderResource;
 use super::BloomExtractPass;
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
-use crate::shaders;
+use crate::shaders::postprocessing::bloom_combine_frag;
 
 pub(super) struct BloomCombinePass {
     #[allow(dead_code)]
@@ -107,11 +107,11 @@ pub(super) fn bloom_combine_pass(
         let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;
         let mut bloom_combine_material_dyn_set = descriptor_set_allocator
             .create_dyn_descriptor_set(
-                &descriptor_set_layouts[shaders::bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX],
-                shaders::bloom_combine_frag::DescriptorSet0Args {
+                &descriptor_set_layouts[bloom_combine_frag::IN_COLOR_DESCRIPTOR_SET_INDEX],
+                bloom_combine_frag::DescriptorSet0Args {
                     in_color: &sdr_image,
                     in_blur: &hdr_image,
-                    config: &shaders::bloom_combine_frag::ConfigStd140 {
+                    config: &bloom_combine_frag::ConfigStd140 {
                         tonemapper_type: render_options.tonemapper_type as i32,
                         output_color_space: output_color_space as i32,
                         max_color_component_value,
@@ -121,7 +121,7 @@ pub(super) fn bloom_combine_pass(
             )?;
 
         bloom_combine_material_dyn_set.0.set_buffer(
-            shaders::bloom_combine_frag::HISTOGRAM_RESULT_DESCRIPTOR_BINDING_INDEX as u32,
+            bloom_combine_frag::HISTOGRAM_RESULT_DESCRIPTOR_BINDING_INDEX as u32,
             &histogram_result,
         );
 

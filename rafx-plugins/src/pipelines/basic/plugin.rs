@@ -2,6 +2,7 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase, ShadowMapRenderPhase,
     TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
+use crate::shaders::postprocessing::luma_average_histogram_comp;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::{
     RafxBufferDef, RafxFormat, RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult,
@@ -161,9 +162,8 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
             asset_manager
                 .device_context()
                 .create_buffer(&RafxBufferDef {
-                    size: std::mem::size_of::<
-                        crate::shaders::luma_average_histogram_comp::HistogramResultBuffer,
-                    >() as u64,
+                    size: std::mem::size_of::<luma_average_histogram_comp::HistogramResultBuffer>()
+                        as u64,
                     alignment: 256,
                     memory_usage: RafxMemoryUsage::GpuOnly,
                     queue_type: RafxQueueType::Graphics,
@@ -184,9 +184,8 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
                 asset_manager
                     .device_context()
                     .create_buffer(&RafxBufferDef {
-                        size: std::mem::size_of::<
-                            crate::shaders::luma_average_histogram_comp::DebugOutputBuffer,
-                        >() as u64,
+                        size: std::mem::size_of::<luma_average_histogram_comp::DebugOutputBuffer>()
+                            as u64,
                         alignment: 256,
                         memory_usage: RafxMemoryUsage::GpuToCpu,
                         queue_type: RafxQueueType::Graphics,
