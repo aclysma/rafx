@@ -519,21 +519,70 @@ vec4 directional_light(
     return shade_diffuse_specular(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color, light.intensity);
 }
 
+// "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering"
+// https://jcgt.org/published/0010/02/02/paper.pdf
+// This is an adaptation of listing 3 which assumes a half-vector in tangent space.
+// Our vectors are all in view space, but I think adding the derivatives of the half-vector
+// and normal vector will produce similar results to calculating the half-vector in tangent space
+// This implementation is appropriate for forward lighting
+//
+// It essentially increases roughness when the half-vector in tangent space changes quickly (probably
+// because the normal is changing quickly.) This help reduce specular aliasing.
+//
+// Input:
+//   n: Normal in any space
+//   h: Half-vector in any space
+//   roughness2: Roughness^2
+float ForwardLightingNDFRoughnessFilter(vec3 n, vec3 h, float roughness2) {
+    float SIGMA2 = 0.15915494;  // 1/2pi
+    float KAPPA = 0.18;         // Max increase in roughness
+
+    vec2 bounds = fwidth(h.xy) + fwidth(n.xy);
+    float maxWidth = max(bounds.x, bounds.y);
+    float kernelRoughness2 = 2.0 * SIGMA2 * (maxWidth * maxWidth);
+    float clampedKernelRoughness2 = min(kernelRoughness2, KAPPA);
+    return clamp(roughness2 + clampedKernelRoughness2, 0, 1);
+
+}
+
+// "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering"
+// https://jcgt.org/published/0010/02/02/paper.pdf
+// This is an adaptation of listing 5, almost verbatim. This is appropriate for deferred lighting
+//
+// It essentially increases roughness when the normal is changing quickly. This help reduce specular aliasing.
+//
+// Input:
+//   normal: Normal in any space
+//   roughness2: Roughness^2
+float DeferredLightingNDFRoughnessFilter(vec3 normal, float roughness2) {
+    float SIGMA2 = 0.15915494;  // 1/2pi
+    float KAPPA = 0.18;         // Max increase in roughness
+
+    vec3 dndu = dFdx(normal);
+    vec3 dndv = dFdy(normal);
+    float kernelRoughness2 = 2.0 * SIGMA2 * (dot(dndu, dndu) + dot(dndv, dndv));
+    float clampedKernelRoughness2 = min(kernelRoughness2, KAPPA);
+    return clamp(roughness2 + clampedKernelRoughness2, 0, 1);
+
+}
+
 //
 // Normal distribution function approximates the relative surface area where microfacets are aligned to the halfway
 // vector, producing specular-like results. (GGX/Trowbridge-Reitz)
 //
+// disney/epic remap alpha, squaring roughness as it produces better results
+// https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
+//
 float ndf_ggx(
     vec3 n,
     vec3 h,
-    float roughness
+    float roughness_squared
 ) {
-    //n = normalize(n);
-    //h = normalize(h);
-    roughness = clamp(roughness, 0.0, 1.0);
-    // disney/epic remap alpha, squaring roughness as it produces better results
-    // https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
-    float a = roughness * roughness;
+    // If we want to use the forward lighting roughness filter, we would do that here. We use the deferred because
+    // quality is very similar, it's once per pixel instead of pixel*lights, and it will work fine if we switch to
+    // deferred
+    //float a = ForwardLightingNDFRoughnessFilter(n, h, roughness_squared);
+    float a = roughness_squared;
     float a2 = a * a;
 
     float n_dot_h = max(dot(n, h), 0.0);
@@ -594,12 +643,13 @@ vec3 shade_pbr(
     vec3 F0,
     vec3 base_color,
     float roughness,
+    float roughness_ndf_filtered_squared,
     float metalness,
     vec3 radiance
 ) {
     vec3 halfway_dir_vs = normalize(surface_to_light_dir_vs + surface_to_eye_dir_vs);
 
-    float NDF = ndf_ggx(normal_vs, halfway_dir_vs, roughness);
+    float NDF = ndf_ggx(normal_vs, halfway_dir_vs, roughness_ndf_filtered_squared);
     float G = geometric_attenuation_smith(normal_vs, surface_to_eye_dir_vs, surface_to_light_dir_vs, roughness);
     vec3 F = fresnel_schlick(surface_to_eye_dir_vs, halfway_dir_vs, F0);
 
@@ -628,6 +678,7 @@ vec3 point_light_pbr(
     vec3 F0,
     vec3 base_color,
     float roughness,
+    float roughness_ndf_filtered_squared,
     float metalness
 ) {
     // Get the distance to the light and normalize the surface_to_light direction. (Not
@@ -648,6 +699,7 @@ vec3 point_light_pbr(
         F0,
         base_color,
         roughness,
+        roughness_ndf_filtered_squared,
         metalness,
         radiance
     );
@@ -662,6 +714,7 @@ vec3 spot_light_pbr(
     vec3 F0,
     vec3 base_color,
     float roughness,
+    float roughness_ndf_filtered_squared,
     float metalness
 ) {
     // Get the distance to the light and normalize the surface_to_light direction. (Not
@@ -689,6 +742,7 @@ vec3 spot_light_pbr(
         F0,
         base_color,
         roughness,
+        roughness_ndf_filtered_squared,
         metalness,
         radiance
     );
@@ -702,6 +756,7 @@ vec3 directional_light_pbr(
     vec3 F0,
     vec3 base_color,
     float roughness,
+    float roughness_ndf_filtered_squared,
     float metalness
 ) {
     vec3 surface_to_light_dir_vs = -light.direction_vs;
@@ -718,69 +773,10 @@ vec3 directional_light_pbr(
         F0,
         base_color,
         roughness,
+        roughness_ndf_filtered_squared,
         metalness,
         radiance
     );
-}
-
-vec4 non_pbr_path(
-    vec3 surface_to_eye_vs,
-    vec4 base_color,
-    vec4 emissive_color,
-    vec3 normal_vs
-) {
-    // Point Lights
-    vec3 total_light = vec3(0.0);
-    for (uint i = 0; i < per_view_data.point_light_count; ++i) {
-        // TODO: Early out by distance?
-
-        // Need to use cube maps to detect percent lit
-        //float percent_lit = 1.0;
-        total_light += /*percent_lit * */ point_light(
-            per_view_data.point_lights[i],
-            surface_to_eye_vs,
-            in_position_vs,
-            normal_vs
-        ).rgb;
-    }
-
-    // Spot Lights
-    for (uint i = 0; i < per_view_data.spot_light_count; ++i) {
-        // TODO: Early out by distance?
-
-        float percent_lit = calculate_percent_lit(
-            normal_vs,
-            per_view_data.spot_lights[i].shadow_map,
-            SPOT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER
-        );
-
-        total_light += percent_lit * spot_light(
-            per_view_data.spot_lights[i],
-            surface_to_eye_vs,
-            in_position_vs,
-            normal_vs
-        ).rgb;
-    }
-
-    // directional Lights
-    for (uint i = 0; i < per_view_data.directional_light_count; ++i) {
-        float percent_lit = calculate_percent_lit(
-            normal_vs,
-            per_view_data.directional_lights[i].shadow_map,
-            DIRECTIONAL_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER
-        );
-
-        total_light += percent_lit * directional_light(
-            per_view_data.directional_lights[i],
-            surface_to_eye_vs,
-            in_position_vs,
-            normal_vs
-        ).rgb;
-    }
-
-    vec3 rgb_color = base_color.rgb;
-    rgb_color *= (per_view_data.ambient_light.rgb + vec3(total_light));
-    return vec4(emissive_color.rgb + rgb_color, 1.0);
 }
 
 //TODO: Light range is not being considered. Will want a method of tapering it to zero
@@ -795,6 +791,7 @@ vec4 pbr_path(
     // used in fresnel, non-metals use 0.04 and metals use the base color
     vec3 fresnel_base = vec3(0.04);
     fresnel_base = mix(fresnel_base, base_color.rgb, vec3(metalness));
+    float roughness_ndf_filtered_squared = DeferredLightingNDFRoughnessFilter(normal_vs, roughness * roughness);
 
     // Point Lights
     vec3 total_light = vec3(0.0);
@@ -821,6 +818,7 @@ vec4 pbr_path(
             fresnel_base,
             base_color.rgb,
             roughness,
+            roughness_ndf_filtered_squared,
             metalness
         );
 #endif
@@ -846,6 +844,7 @@ vec4 pbr_path(
             fresnel_base,
             base_color.rgb,
             roughness,
+            roughness_ndf_filtered_squared,
             metalness
         );
 #endif
@@ -870,6 +869,7 @@ vec4 pbr_path(
             fresnel_base,
             base_color.rgb,
             roughness,
+            roughness_ndf_filtered_squared,
             metalness
         );
 #endif
@@ -921,10 +921,8 @@ vec4 pbr_main() {
     }
 #endif
 
-    // Extremely smooth surfaces can produce sharp reflections that, while accurate for point lights, can produce
-    // very sharp contrasts in color which look "weird" - and with bloom can produce flickering.
-    const float specularity_reduction = 0.00;
-    roughness = (roughness + specularity_reduction) / (1.0 + specularity_reduction);
+    metalness = clamp(metalness, 0, 1);
+    roughness = clamp(roughness, 0, 1);
 
     // Calculate the normal (use the normal map if it exists)
     vec3 normal_vs;
@@ -950,17 +948,6 @@ vec4 pbr_main() {
     vec3 eye_position_vs = vec3(0, 0, 0);
     vec3 surface_to_eye_vs = normalize(eye_position_vs - in_position_vs);
 
-    //float percent_lit = calculate_percent_lit(normal_vs);
-
-//    out_color = non_pbr_path(
-//        surface_to_eye_vs,
-//        base_color,
-//        emissive_color,
-//        normal_vs
-//    );
-
-    //out_color = per_material_data.data.base_color_factor;
-
     vec4 out_color = pbr_path(
         surface_to_eye_vs,
         base_color,
@@ -972,6 +959,7 @@ vec4 pbr_main() {
     //out_color = vec4(vec3(dot(normal_vs, -in_shadow_map_light_dir_vs)), 1.0);
     //out_color = vec4(metalness);
 
+    //out_color = vec4(calculate_percent_lit(normal_vs), 1.0);
     //out_color = vec4(normal_vs, 1.0);
     //out_color = vec4(in_normal_vs, 1.0);
     //out_color = vec4(in_tangent_vs, 1.0);
