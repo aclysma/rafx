@@ -166,6 +166,18 @@ float4 normal_map(thread const float3x3& tangent_binormal_normal, thread const f
 }
 
 static inline __attribute__((always_inline))
+float DeferredLightingNDFRoughnessFilter(thread const float3& normal, thread const float& roughness2)
+{
+    float SIGMA2 = 0.15915493667125701904296875;
+    float KAPPA = 0.180000007152557373046875;
+    float3 dndu = dfdx(normal);
+    float3 dndv = dfdy(normal);
+    float kernelRoughness2 = (2.0 * SIGMA2) * (dot(dndu, dndu) + dot(dndv, dndv));
+    float clampedKernelRoughness2 = fast::min(kernelRoughness2, KAPPA);
+    return fast::clamp(roughness2 + clampedKernelRoughness2, 0.0, 1.0);
+}
+
+static inline __attribute__((always_inline))
 float calculate_cubemap_equivalent_depth(thread const float3& light_to_surface_ws, thread const float& near, thread const float& far)
 {
     float3 light_to_surface_ws_abs = abs(light_to_surface_ws);
@@ -231,10 +243,9 @@ float calculate_percent_lit_cube(
 }
 
 static inline __attribute__((always_inline))
-float ndf_ggx(thread const float3& n, thread const float3& h, thread float& roughness)
+float ndf_ggx(thread const float3& n, thread const float3& h, thread const float& roughness_squared)
 {
-    roughness = fast::clamp(roughness, 0.0, 1.0);
-    float a = roughness * roughness;
+    float a = roughness_squared;
     float a2 = a * a;
     float n_dot_h = fast::max(dot(n, h), 0.0);
     float bottom_part = ((n_dot_h * n_dot_h) * (a2 - 1.0)) + 1.0;
@@ -271,12 +282,22 @@ float3 fresnel_schlick(thread const float3& v, thread const float3& h, thread co
 }
 
 static inline __attribute__((always_inline))
-float3 shade_pbr(thread const float3& surface_to_light_dir_vs, thread const float3& surface_to_eye_dir_vs, thread const float3& normal_vs, thread const float3& F0, thread const float3& base_color, thread const float& roughness, thread const float& metalness, thread const float3& radiance)
+float3 shade_pbr(
+    thread const float3& surface_to_light_dir_vs,
+    thread const float3& surface_to_eye_dir_vs,
+    thread const float3& normal_vs,
+    thread const float3& F0,
+    thread const float3& base_color,
+    thread const float& roughness,
+    thread const float& roughness_ndf_filtered_squared,
+    thread const float& metalness,
+    thread const float3& radiance
+)
 {
     float3 halfway_dir_vs = normalize(surface_to_light_dir_vs + surface_to_eye_dir_vs);
     float3 param = normal_vs;
     float3 param_1 = halfway_dir_vs;
-    float param_2 = roughness;
+    float param_2 = roughness_ndf_filtered_squared;
     float _565 = ndf_ggx(param, param_1, param_2);
     float NDF = _565;
     float3 param_3 = normal_vs;
@@ -300,7 +321,17 @@ float3 shade_pbr(thread const float3& surface_to_light_dir_vs, thread const floa
 }
 
 static inline __attribute__((always_inline))
-float3 point_light_pbr(thread const PointLight& light, thread const float3& surface_to_eye_dir_vs, thread const float3& surface_position_vs, thread const float3& normal_vs, thread const float3& F0, thread const float3& base_color, thread const float& roughness, thread const float& metalness)
+float3 point_light_pbr(
+    thread const PointLight& light,
+    thread const float3& surface_to_eye_dir_vs,
+    thread const float3& surface_position_vs,
+    thread const float3& normal_vs,
+    thread const float3& F0,
+    thread const float3& base_color,
+    thread const float& roughness,
+    thread const float& roughness_ndf_filtered_squared,
+    thread const float& metalness
+)
 {
     float3 surface_to_light_dir_vs = light.position_vs - surface_position_vs;
     float _distance = length(surface_to_light_dir_vs);
@@ -315,7 +346,7 @@ float3 point_light_pbr(thread const PointLight& light, thread const float3& surf
     float param_5 = roughness;
     float param_6 = metalness;
     float3 param_7 = radiance;
-    return shade_pbr(param, param_1, param_2, param_3, param_4, param_5, param_6, param_7);
+    return shade_pbr(param, param_1, param_2, param_3, param_4, param_5, roughness_ndf_filtered_squared, param_6, param_7);
 }
 
 static inline __attribute__((always_inline))
@@ -389,7 +420,17 @@ float spotlight_cone_falloff(thread const float3& surface_to_light_dir, thread c
 }
 
 static inline __attribute__((always_inline))
-float3 spot_light_pbr(thread const SpotLight& light, thread const float3& surface_to_eye_dir_vs, thread const float3& surface_position_vs, thread const float3& normal_vs, thread const float3& F0, thread const float3& base_color, thread const float& roughness, thread const float& metalness)
+float3 spot_light_pbr(
+    thread const SpotLight& light,
+    thread const float3& surface_to_eye_dir_vs,
+    thread const float3& surface_position_vs,
+    thread const float3& normal_vs,
+    thread const float3& F0,
+    thread const float3& base_color,
+    thread const float& roughness,
+    thread const float& roughness_ndf_filtered_squared,
+    thread const float& metalness
+)
 {
     float3 surface_to_light_dir_vs = light.position_vs - surface_position_vs;
     float _distance = length(surface_to_light_dir_vs);
@@ -408,11 +449,21 @@ float3 spot_light_pbr(thread const SpotLight& light, thread const float3& surfac
     float param_8 = roughness;
     float param_9 = metalness;
     float3 param_10 = radiance;
-    return shade_pbr(param_3, param_4, param_5, param_6, param_7, param_8, param_9, param_10);
+    return shade_pbr(param_3, param_4, param_5, param_6, param_7, param_8, roughness_ndf_filtered_squared, param_9, param_10);
 }
 
 static inline __attribute__((always_inline))
-float3 directional_light_pbr(thread const DirectionalLight& light, thread const float3& surface_to_eye_dir_vs, thread const float3& surface_position_vs, thread const float3& normal_vs, thread const float3& F0, thread const float3& base_color, thread const float& roughness, thread const float& metalness)
+float3 directional_light_pbr(
+    thread const DirectionalLight& light,
+    thread const float3& surface_to_eye_dir_vs,
+    thread const float3& surface_position_vs,
+    thread const float3& normal_vs,
+    thread const float3& F0,
+    thread const float3& base_color,
+    thread const float& roughness,
+    thread const float& roughness_ndf_filtered_squared,
+    thread const float& metalness
+)
 {
     float3 surface_to_light_dir_vs = -light.direction_vs;
     float attenuation = 1.0;
@@ -425,7 +476,7 @@ float3 directional_light_pbr(thread const DirectionalLight& light, thread const 
     float param_5 = roughness;
     float param_6 = metalness;
     float3 param_7 = radiance;
-    return shade_pbr(param, param_1, param_2, param_3, param_4, param_5, param_6, param_7);
+    return shade_pbr(param, param_1, param_2, param_3, param_4, param_5, roughness_ndf_filtered_squared, param_6, param_7);
 }
 
 static inline __attribute__((always_inline))
@@ -446,6 +497,7 @@ float4 pbr_path(
 {
     float3 fresnel_base = float3(0.039999999105930328369140625);
     fresnel_base = mix(fresnel_base, base_color.xyz, float3(metalness));
+    float roughness_ndf_filtered_squared = DeferredLightingNDFRoughnessFilter(normal_vs, roughness * roughness);
     float3 total_light = float3(0.0);
     PointLight param_5;
     for (uint i = 0u; i < spvDescriptorSet0.per_view_data->point_light_count; i++)
@@ -469,7 +521,7 @@ float4 pbr_path(
         float3 param_10 = base_color.xyz;
         float param_11 = roughness;
         float param_12 = metalness;
-        total_light += (point_light_pbr(param_5, param_6, param_7, param_8, param_9, param_10, param_11, param_12) * percent_lit);
+        total_light += (point_light_pbr(param_5, param_6, param_7, param_8, param_9, param_10, param_11, roughness_ndf_filtered_squared, param_12) * percent_lit);
     }
     SpotLight param_16;
     for (uint i_1 = 0u; i_1 < spvDescriptorSet0.per_view_data->spot_light_count; i_1++)
@@ -494,7 +546,7 @@ float4 pbr_path(
         float3 param_21 = base_color.xyz;
         float param_22 = roughness;
         float param_23 = metalness;
-        total_light += (spot_light_pbr(param_16, param_17, param_18, param_19, param_20, param_21, param_22, param_23) * percent_lit_1);
+        total_light += (spot_light_pbr(param_16, param_17, param_18, param_19, param_20, param_21, param_22, roughness_ndf_filtered_squared, param_23) * percent_lit_1);
     }
     DirectionalLight param_27;
     for (uint i_2 = 0u; i_2 < spvDescriptorSet0.per_view_data->directional_light_count; i_2++)
@@ -515,7 +567,7 @@ float4 pbr_path(
         float3 param_32 = base_color.xyz;
         float param_33 = roughness;
         float param_34 = metalness;
-        total_light += (directional_light_pbr(param_27, param_28, param_29, param_30, param_31, param_32, param_33, param_34) * percent_lit_2);
+        total_light += (directional_light_pbr(param_27, param_28, param_29, param_30, param_31, param_32, param_33, roughness_ndf_filtered_squared, param_34) * percent_lit_2);
     }
     float3 ambient = spvDescriptorSet0.per_view_data->ambient_light.xyz * base_color.xyz;
     float3 color = (ambient + total_light) + emissive_color.xyz;
