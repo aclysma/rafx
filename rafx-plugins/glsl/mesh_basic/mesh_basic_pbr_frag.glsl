@@ -542,7 +542,6 @@ float ForwardLightingNDFRoughnessFilter(vec3 n, vec3 h, float roughness2) {
     float kernelRoughness2 = 2.0 * SIGMA2 * (maxWidth * maxWidth);
     float clampedKernelRoughness2 = min(kernelRoughness2, KAPPA);
     return clamp(roughness2 + clampedKernelRoughness2, 0, 1);
-
 }
 
 // "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering"
@@ -563,7 +562,6 @@ float DeferredLightingNDFRoughnessFilter(vec3 normal, float roughness2) {
     float kernelRoughness2 = 2.0 * SIGMA2 * (dot(dndu, dndu) + dot(dndv, dndv));
     float clampedKernelRoughness2 = min(kernelRoughness2, KAPPA);
     return clamp(roughness2 + clampedKernelRoughness2, 0, 1);
-
 }
 
 //
