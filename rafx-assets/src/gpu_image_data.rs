@@ -1,3 +1,4 @@
+use crate::ImageAssetDataPayloadSubresources;
 use image::GenericImageView;
 use image::ImageFormat;
 use rafx_api::RafxFormat;
@@ -44,6 +45,21 @@ impl GpuImageData {
         layers: Vec<GpuImageDataLayer>,
         format: RafxFormat,
     ) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            for i in 1..layers.len() {
+                debug_assert_eq!(layers[0].mip_levels.len(), layers[i].mip_levels.len());
+                for j in 1..layers[0].mip_levels.len() {
+                    debug_assert_eq!(layers[0].mip_levels[j].width, layers[i].mip_levels[j].width);
+                    debug_assert_eq!(
+                        layers[0].mip_levels[j].height,
+                        layers[i].mip_levels[j].height
+                    );
+                    debug_assert_eq!(layers[0].mip_levels[j].width, layers[i].mip_levels[j].width);
+                }
+            }
+        }
+
         GpuImageData {
             width: layers[0].mip_levels[0].width,
             height: layers[0].mip_levels[0].height,
@@ -52,7 +68,7 @@ impl GpuImageData {
         }
     }
 
-    pub fn new_simple(
+    pub fn new_simple_image_from_bytes(
         width: u32,
         height: u32,
         format: RafxFormat,
@@ -63,6 +79,54 @@ impl GpuImageData {
             height,
             format,
             layers: vec![GpuImageDataLayer::new_single_level(width, height, data)],
+        }
+    }
+
+    pub fn new_from_image_asset_data_subresources(
+        width: u32,
+        height: u32,
+        format: RafxFormat,
+        subresources: ImageAssetDataPayloadSubresources,
+    ) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            debug_assert_eq!(width, subresources.layers[0].mip_levels[0].width);
+            debug_assert_eq!(height, subresources.layers[0].mip_levels[0].height);
+            for i in 1..subresources.layers.len() {
+                let layers = &subresources.layers;
+                let layer_0 = &layers[0];
+                debug_assert_eq!(layer_0.mip_levels.len(), layers[i].mip_levels.len());
+                for j in 1..layer_0.mip_levels.len() {
+                    debug_assert_eq!(layer_0.mip_levels[j].width, layers[i].mip_levels[j].width);
+                    debug_assert_eq!(layer_0.mip_levels[j].height, layers[i].mip_levels[j].height);
+                    debug_assert_eq!(layer_0.mip_levels[j].width, layers[i].mip_levels[j].width);
+                }
+            }
+        }
+
+        let layers = subresources
+            .layers
+            .into_iter()
+            .map(|layer| {
+                let mip_levels = layer
+                    .mip_levels
+                    .into_iter()
+                    .map(|mip_level| GpuImageDataMipLevel {
+                        width: mip_level.width,
+                        height: mip_level.height,
+                        data: mip_level.bytes,
+                    })
+                    .collect();
+
+                GpuImageDataLayer { mip_levels }
+            })
+            .collect();
+
+        GpuImageData {
+            width,
+            height,
+            format,
+            layers,
         }
     }
 
@@ -83,6 +147,7 @@ impl GpuImageData {
         bytes_required
     }
 
+    #[cfg(debug_assertions)]
     pub fn verify_state(&self) {
         let first_layer = &self.layers[0];
         let first_level = &first_layer.mip_levels[0];
@@ -151,7 +216,7 @@ impl GpuImageData {
         a: u8,
         color_space: GpuImageDataColorSpace,
     ) -> Self {
-        GpuImageData::new_simple(1, 1, color_space.rgba8(), vec![r, g, b, a])
+        GpuImageData::new_simple_image_from_bytes(1, 1, color_space.rgba8(), vec![r, g, b, a])
     }
 
     pub fn new_rgba8_from_image(
@@ -163,11 +228,16 @@ impl GpuImageData {
         let dimensions = image_data.dimensions();
         let image_data = image_data.to_rgba8().into_raw();
 
-        GpuImageData::new_simple(dimensions.0, dimensions.1, color_space.rgba8(), image_data)
+        GpuImageData::new_simple_image_from_bytes(
+            dimensions.0,
+            dimensions.1,
+            color_space.rgba8(),
+            image_data,
+        )
     }
 
     pub fn new_1x1_d32(d: f32) -> Self {
         let bytes = d.to_bits().to_ne_bytes().to_vec();
-        GpuImageData::new_simple(1, 1, RafxFormat::D32_SFLOAT, bytes)
+        GpuImageData::new_simple_image_from_bytes(1, 1, RafxFormat::D32_SFLOAT, bytes)
     }
 }

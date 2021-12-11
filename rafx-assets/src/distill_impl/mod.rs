@@ -21,7 +21,7 @@ pub fn default_daemon() -> distill::daemon::AssetDaemon {
     // Default config
     let mut image_importer_config = ImageImporterConfig::new(ImageImporterRuleOptions {
         mip_generation: ImageAssetMipGeneration::Runtime,
-        color_space: ImageAssetColorSpace::Srgb,
+        color_space: ImageAssetColorSpaceConfig::Srgb,
         data_format: ImageAssetDataFormatConfig::Uncompressed,
     });
 
@@ -31,7 +31,7 @@ pub fn default_daemon() -> distill::daemon::AssetDaemon {
             suffix,
             ImageImporterRuleOptions {
                 mip_generation: ImageAssetMipGeneration::Runtime,
-                color_space: ImageAssetColorSpace::Linear,
+                color_space: ImageAssetColorSpaceConfig::Linear,
                 data_format: ImageAssetDataFormatConfig::Uncompressed,
             },
         );
@@ -43,7 +43,7 @@ pub fn default_daemon() -> distill::daemon::AssetDaemon {
             suffix,
             ImageImporterRuleOptions {
                 mip_generation: ImageAssetMipGeneration::Runtime,
-                color_space: ImageAssetColorSpace::Linear,
+                color_space: ImageAssetColorSpaceConfig::Linear,
                 data_format: ImageAssetDataFormatConfig::Uncompressed,
             },
         );
@@ -82,6 +82,11 @@ pub fn default_daemon() -> distill::daemon::AssetDaemon {
     #[cfg(feature = "basis-universal")]
     {
         daemon = daemon.with_importer(&["basis"], BasisImageImporter);
+    }
+
+    #[cfg(feature = "ddsfile")]
+    {
+        daemon = daemon.with_importer(&["dds"], DdsImageImporter);
     }
 
     daemon

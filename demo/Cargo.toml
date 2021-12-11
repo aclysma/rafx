@@ -9,7 +9,7 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-rafx = { path = "../rafx", features = ["renderer", "basis-universal"] }
+rafx = { path = "../rafx", features = ["renderer", "basis-universal", "ddsfile"] }
 rafx-plugins = { path = "../rafx-plugins", features = ["legion", "egui"] }
 distill = { version = "=0.0.3", features = ["serde_importers"] }
 uuid = "0.8"

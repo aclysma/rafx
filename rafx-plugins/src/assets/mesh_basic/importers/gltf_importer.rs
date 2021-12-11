@@ -17,7 +17,7 @@ use rafx::assets::push_buffer::PushBuffer;
 use rafx::assets::BufferAssetData;
 use rafx::assets::ImageAsset;
 use rafx::assets::MaterialInstanceAsset;
-use rafx::assets::{ImageAssetColorSpace, ImageAssetData};
+use rafx::assets::{ImageAssetColorSpaceConfig, ImageAssetData};
 use rafx::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
 use serde::{Deserialize, Serialize};
@@ -489,7 +489,7 @@ fn extract_images_to_import(
     doc: &gltf::Document,
     _buffers: &[GltfBufferData],
     images: &[GltfImageData],
-    image_color_space_assignments: &FnvHashMap<usize, ImageAssetColorSpace>,
+    image_color_space_assignments: &FnvHashMap<usize, ImageAssetColorSpaceConfig>,
 ) -> Vec<ImageToImport> {
     let mut images_to_import = Vec::with_capacity(images.len());
     for image in doc.images() {
@@ -557,7 +557,7 @@ fn extract_images_to_import(
 
         let color_space = *image_color_space_assignments
             .get(&image.index())
-            .unwrap_or(&ImageAssetColorSpace::Linear);
+            .unwrap_or(&ImageAssetColorSpaceConfig::Linear);
         log::trace!(
             "Choosing color space {:?} for image index {}",
             color_space,
@@ -589,12 +589,11 @@ fn extract_images_to_import(
         // Verify that we iterate images in order so that our resulting assets are in order
         assert!(image.index() == images_to_import.len());
         log::debug!(
-            "Importing Texture name: {:?} index: {} width: {} height: {} bytes: {}",
+            "Importing Texture name: {:?} index: {} width: {} height: {}",
             image.name(),
             image.index(),
             image_to_import.asset.width,
             image_to_import.asset.height,
-            image_to_import.asset.data.len()
         );
 
         images_to_import.push(image_to_import);
@@ -605,7 +604,7 @@ fn extract_images_to_import(
 
 fn build_image_color_space_assignments_from_materials(
     doc: &gltf::Document
-) -> FnvHashMap<usize, ImageAssetColorSpace> {
+) -> FnvHashMap<usize, ImageAssetColorSpaceConfig> {
     let mut image_color_space_assignments = FnvHashMap::default();
 
     for material in doc.materials() {
@@ -614,35 +613,35 @@ fn build_image_color_space_assignments_from_materials(
         if let Some(texture) = pbr_metallic_roughness.base_color_texture() {
             image_color_space_assignments.insert(
                 texture.texture().source().index(),
-                ImageAssetColorSpace::Srgb,
+                ImageAssetColorSpaceConfig::Srgb,
             );
         }
 
         if let Some(texture) = pbr_metallic_roughness.metallic_roughness_texture() {
             image_color_space_assignments.insert(
                 texture.texture().source().index(),
-                ImageAssetColorSpace::Linear,
+                ImageAssetColorSpaceConfig::Linear,
             );
         }
 
         if let Some(texture) = material.normal_texture() {
             image_color_space_assignments.insert(
                 texture.texture().source().index(),
-                ImageAssetColorSpace::Linear,
+                ImageAssetColorSpaceConfig::Linear,
             );
         }
 
         if let Some(texture) = material.occlusion_texture() {
             image_color_space_assignments.insert(
                 texture.texture().source().index(),
-                ImageAssetColorSpace::Srgb,
+                ImageAssetColorSpaceConfig::Srgb,
             );
         }
 
         if let Some(texture) = material.emissive_texture() {
             image_color_space_assignments.insert(
                 texture.texture().source().index(),
-                ImageAssetColorSpace::Srgb,
+                ImageAssetColorSpaceConfig::Srgb,
             );
         }
     }

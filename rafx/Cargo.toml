@@ -59,6 +59,7 @@ framework = ["rafx-framework"]
 assets = ["rafx-assets", "framework"]
 renderer = ["rafx-renderer", "assets"]
 basis-universal = ["rafx-assets/basis-universal"]
+ddsfile = ["rafx-assets/ddsfile"]
 
 #
 # Examples
