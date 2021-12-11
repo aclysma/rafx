@@ -1,13 +1,18 @@
 mod image;
 #[cfg(feature = "basis-universal")]
 pub use self::image::BasisImageImporter;
+#[cfg(feature = "ddsfile")]
+pub use self::image::DdsImageImporter;
 pub use self::image::ImageAsset;
 pub use self::image::ImageAssetBasisCompressionSettings;
 pub use self::image::ImageAssetBasisCompressionType;
-pub use self::image::ImageAssetColorSpace;
+pub use self::image::ImageAssetColorSpaceConfig;
 pub use self::image::ImageAssetData;
 pub use self::image::ImageAssetDataFormat;
 pub use self::image::ImageAssetDataFormatConfig;
+pub use self::image::ImageAssetDataPayload;
+pub use self::image::ImageAssetDataPayloadSingleBuffer;
+pub use self::image::ImageAssetDataPayloadSubresources;
 pub use self::image::ImageAssetMipGeneration;
 pub use self::image::ImageFileFormat;
 pub use self::image::ImageImporter;

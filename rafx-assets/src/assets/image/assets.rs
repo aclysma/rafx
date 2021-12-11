@@ -12,7 +12,7 @@ use type_uuid::*;
 
 //NOTE: This is serialized in image asset options, so may require asset schema change if modifying it
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub enum ImageAssetColorSpace {
+pub enum ImageAssetColorSpaceConfig {
     Srgb,
     Linear,
 }
@@ -25,11 +25,11 @@ pub enum ImageAssetMipGeneration {
     Runtime,
 }
 
-impl Into<crate::GpuImageDataColorSpace> for ImageAssetColorSpace {
+impl Into<crate::GpuImageDataColorSpace> for ImageAssetColorSpaceConfig {
     fn into(self) -> crate::GpuImageDataColorSpace {
         match self {
-            ImageAssetColorSpace::Srgb => crate::GpuImageDataColorSpace::Srgb,
-            ImageAssetColorSpace::Linear => crate::GpuImageDataColorSpace::Linear,
+            ImageAssetColorSpaceConfig::Srgb => crate::GpuImageDataColorSpace::Srgb,
+            ImageAssetColorSpaceConfig::Linear => crate::GpuImageDataColorSpace::Linear,
         }
     }
 }
@@ -76,9 +76,26 @@ impl ImageAssetBasisCompressionSettings {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[allow(non_camel_case_types)]
 pub enum ImageAssetDataFormat {
-    RGBA32Uncompressed,
-    BasisCompressed,
+    RGBA32_Linear,
+    RGBA32_Srgb,
+    Basis_Linear,
+    Basis_Srgb,
+    BC1_UNorm_Linear,
+    BC1_UNorm_Srgb,
+    BC2_UNorm_Linear,
+    BC2_UNorm_Srgb,
+    BC3_UNorm_Linear,
+    BC3_UNorm_Srgb,
+    BC4_UNorm,
+    BC4_SNorm,
+    BC5_UNorm,
+    BC5_SNorm,
+    BC6H_UFloat,
+    BC6H_SFloat,
+    BC7_Unorm_Linear,
+    BC7_Unorm_Srgb,
 }
 
 //NOTE: This is serialized in image asset options, so may require asset schema change if modifying it
@@ -88,17 +105,46 @@ pub enum ImageAssetDataFormatConfig {
     BasisCompressed(ImageAssetBasisCompressionSettings),
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ImageAssetDataMipLevel {
+    pub width: u32,
+    pub height: u32,
+    #[serde(with = "serde_bytes")]
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ImageAssetDataLayer {
+    pub mip_levels: Vec<ImageAssetDataMipLevel>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ImageAssetDataPayloadSubresources {
+    pub layers: Vec<ImageAssetDataLayer>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ImageAssetDataPayloadSingleBuffer {
+    #[serde(with = "serde_bytes")]
+    pub buffer: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub enum ImageAssetDataPayload {
+    Subresources(ImageAssetDataPayloadSubresources),
+    // Special case intended for things like basis where we don't unpack subresources until runtime
+    SingleBuffer(ImageAssetDataPayloadSingleBuffer),
+}
+
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "e6166902-8716-401b-9d2e-8b01701c5626"]
 pub struct ImageAssetData {
     pub width: u32,
     pub height: u32,
-    pub color_space: ImageAssetColorSpace,
     pub format: ImageAssetDataFormat,
     pub resource_type: RafxResourceType,
     pub generate_mips_at_runtime: bool,
-    #[serde(with = "serde_bytes")]
-    pub data: Vec<u8>,
+    pub data: ImageAssetDataPayload,
 }
 
 impl std::fmt::Debug for ImageAssetData {
@@ -109,8 +155,6 @@ impl std::fmt::Debug for ImageAssetData {
         f.debug_struct("Point")
             .field("width", &self.width)
             .field("width", &self.height)
-            .field("byte_count", &self.data.len())
-            .field("color_space", &self.color_space)
             .field("format", &self.format)
             .finish()
     }
@@ -144,7 +188,7 @@ impl ImageAssetData {
     pub fn from_raw_rgba32(
         width: u32,
         height: u32,
-        color_space: ImageAssetColorSpace,
+        color_space: ImageAssetColorSpaceConfig,
         format_config: ImageAssetDataFormatConfig,
         mip_generation: ImageAssetMipGeneration,
         resource_type: RafxResourceType,
@@ -160,14 +204,30 @@ impl ImageAssetData {
                     ImageAssetMipGeneration::Runtime => true,
                 };
 
+                let mip = ImageAssetDataMipLevel {
+                    width,
+                    height,
+                    bytes: raw_rgba32.to_vec(),
+                };
+
+                let layer = ImageAssetDataLayer {
+                    mip_levels: vec![mip],
+                };
+
+                let format = match color_space {
+                    ImageAssetColorSpaceConfig::Linear => ImageAssetDataFormat::RGBA32_Linear,
+                    ImageAssetColorSpaceConfig::Srgb => ImageAssetDataFormat::RGBA32_Srgb,
+                };
+
                 Ok(ImageAssetData {
                     width,
                     height,
-                    color_space,
-                    format: ImageAssetDataFormat::RGBA32Uncompressed,
+                    format,
                     generate_mips_at_runtime,
                     resource_type,
-                    data: raw_rgba32.to_vec(),
+                    data: ImageAssetDataPayload::Subresources(ImageAssetDataPayloadSubresources {
+                        layers: vec![layer],
+                    }),
                 })
             }
             #[cfg(not(feature = "basis-universal"))]
@@ -183,8 +243,8 @@ impl ImageAssetData {
                 };
 
                 let basis_color_space = match color_space {
-                    ImageAssetColorSpace::Srgb => basis_universal::ColorSpace::Srgb,
-                    ImageAssetColorSpace::Linear => basis_universal::ColorSpace::Linear,
+                    ImageAssetColorSpaceConfig::Srgb => basis_universal::ColorSpace::Srgb,
+                    ImageAssetColorSpaceConfig::Linear => basis_universal::ColorSpace::Linear,
                 };
 
                 let mut compressor_params = basis_universal::CompressorParams::new();
@@ -214,14 +274,20 @@ impl ImageAssetData {
                 }
                 let compressed_basis_data = compressor.basis_file();
 
+                let format = match color_space {
+                    ImageAssetColorSpaceConfig::Linear => ImageAssetDataFormat::Basis_Linear,
+                    ImageAssetColorSpaceConfig::Srgb => ImageAssetDataFormat::Basis_Srgb,
+                };
+
                 Ok(ImageAssetData {
                     width,
                     height,
-                    color_space,
-                    format: ImageAssetDataFormat::BasisCompressed,
+                    format,
                     generate_mips_at_runtime,
                     resource_type,
-                    data: compressed_basis_data.to_vec(),
+                    data: ImageAssetDataPayload::SingleBuffer(ImageAssetDataPayloadSingleBuffer {
+                        buffer: compressed_basis_data.to_vec(),
+                    }),
                 })
             }
         }

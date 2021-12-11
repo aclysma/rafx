@@ -4,7 +4,9 @@ use super::ImageAssetData;
 use super::{BufferAsset, ImageAsset};
 use crate::assets::image::ImageAssetDataFormat;
 use crate::image_upload::{ImageUploadParams, IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT};
-use crate::{buffer_upload, image_upload, GpuImageData, GpuImageDataColorSpace};
+use crate::{
+    buffer_upload, image_upload, GpuImageData, GpuImageDataColorSpace, ImageAssetDataPayload,
+};
 #[cfg(feature = "basis-universal")]
 use crate::{GpuImageDataLayer, GpuImageDataMipLevel};
 #[cfg(feature = "basis-universal")]
@@ -12,8 +14,8 @@ use basis_universal::{TranscodeParameters, TranscoderTextureFormat};
 use crossbeam_channel::{Receiver, Sender};
 use distill::loader::{storage::AssetLoadOp, LoadHandle};
 use rafx_api::{
-    extra::upload::*, RafxBuffer, RafxDeviceContext, RafxError, RafxQueue, RafxResourceType,
-    RafxResult, RafxTexture,
+    extra::upload::*, RafxBuffer, RafxDeviceContext, RafxError, RafxFormat, RafxQueue,
+    RafxResourceType, RafxResult, RafxTexture,
 };
 
 //
@@ -651,114 +653,153 @@ impl UploadManager {
         self.upload_queue.update()
     }
 
+    fn get_rafx_format(format: ImageAssetDataFormat) -> RafxFormat {
+        match format {
+            ImageAssetDataFormat::RGBA32_Linear => GpuImageDataColorSpace::Linear.rgba8(),
+            ImageAssetDataFormat::RGBA32_Srgb => GpuImageDataColorSpace::Srgb.rgba8(),
+            ImageAssetDataFormat::BC1_UNorm_Linear => RafxFormat::BC1_RGBA_UNORM_BLOCK,
+            ImageAssetDataFormat::BC1_UNorm_Srgb => RafxFormat::BC1_RGBA_SRGB_BLOCK,
+            ImageAssetDataFormat::BC2_UNorm_Linear => RafxFormat::BC2_UNORM_BLOCK,
+            ImageAssetDataFormat::BC2_UNorm_Srgb => RafxFormat::BC2_SRGB_BLOCK,
+            ImageAssetDataFormat::BC3_UNorm_Linear => RafxFormat::BC3_UNORM_BLOCK,
+            ImageAssetDataFormat::BC3_UNorm_Srgb => RafxFormat::BC3_SRGB_BLOCK,
+            ImageAssetDataFormat::BC4_UNorm => RafxFormat::BC4_UNORM_BLOCK,
+            ImageAssetDataFormat::BC4_SNorm => RafxFormat::BC4_SNORM_BLOCK,
+            ImageAssetDataFormat::BC5_UNorm => RafxFormat::BC5_UNORM_BLOCK,
+            ImageAssetDataFormat::BC5_SNorm => RafxFormat::BC5_SNORM_BLOCK,
+            ImageAssetDataFormat::BC6H_UFloat => RafxFormat::BC6H_UFLOAT_BLOCK,
+            ImageAssetDataFormat::BC6H_SFloat => RafxFormat::BC6H_SFLOAT_BLOCK,
+            ImageAssetDataFormat::BC7_Unorm_Linear => RafxFormat::BC7_UNORM_BLOCK,
+            ImageAssetDataFormat::BC7_Unorm_Srgb => RafxFormat::BC7_SRGB_BLOCK,
+
+            // We choose format of basis at runtime depending on what our hardware supports
+            ImageAssetDataFormat::Basis_Linear => unimplemented!(),
+            ImageAssetDataFormat::Basis_Srgb => unimplemented!(),
+        }
+    }
+
     pub fn upload_image(
         &self,
         request: LoadRequest<ImageAssetData, ImageAsset>,
     ) -> RafxResult<()> {
-        assert_ne!(request.asset.width, 0);
-        assert_ne!(request.asset.height, 0);
-        let color_space: GpuImageDataColorSpace = request.asset.color_space.into();
-
         let generate_mips = request.asset.generate_mips_at_runtime;
 
         let t0 = rafx_base::Instant::now();
-        let image_data = match request.asset.format {
-            ImageAssetDataFormat::RGBA32Uncompressed => GpuImageData::new_simple(
-                request.asset.width,
-                request.asset.height,
-                color_space.rgba8(),
-                request.asset.data,
-            ),
-            #[cfg(not(feature = "basis-universal"))]
-            ImageAssetDataFormat::BasisCompressed => {
-                unimplemented!("Not built with basis-universal feature");
-            }
-            #[cfg(feature = "basis-universal")]
-            ImageAssetDataFormat::BasisCompressed => {
-                let data = request.asset.data;
-                let mut transcoder = basis_universal::Transcoder::new();
-                transcoder.prepare_transcoding(&data).unwrap();
+        let image_data = match request.asset.data {
+            ImageAssetDataPayload::Subresources(subresources) => {
+                profiling::scope!("prepare upload image");
 
-                let (rafx_format, transcode_format) = if generate_mips {
-                    // We can't do runtime mip generation with compresed formats, fall back to uncompressed data
-                    (color_space.rgba8(), TranscoderTextureFormat::RGBA32)
-                } else if self.astc4x4_supported {
-                    (
-                        color_space.astc4x4(),
-                        TranscoderTextureFormat::ASTC_4x4_RGBA,
-                    )
-                } else if self.bc7_supported {
-                    (color_space.bc7(), TranscoderTextureFormat::BC7_RGBA)
-                } else {
-                    (color_space.rgba8(), TranscoderTextureFormat::RGBA32)
-                };
-
-                let layer_count = transcoder.image_count(&data);
-                if layer_count == 0 {
-                    Err("BasisCompressed image asset has no images")?;
-                }
-
-                let level_count = transcoder.image_level_count(&data, 0);
-                if level_count == 0 {
-                    Err("BasisCompressed image asset has image with no mip levels")?;
-                }
-
-                if level_count > 1 && generate_mips {
-                    Err("BasisCompressed image asset configured to generate mips at runtime but has more than one mip layer stored")?;
-                }
-
-                log::trace!(
-                    "Decompressing basis format: {:?} transcode format: {:?} layers: {} levels {}",
+                let rafx_format = Self::get_rafx_format(request.asset.format);
+                GpuImageData::new_from_image_asset_data_subresources(
+                    request.asset.width,
+                    request.asset.height,
                     rafx_format,
-                    transcode_format,
-                    layer_count,
-                    level_count
-                );
-
-                let mut layers = Vec::with_capacity(layer_count as usize);
-                for layer_index in 0..layer_count {
-                    let image_level_count = transcoder.image_level_count(&data, layer_index);
-                    if image_level_count != level_count {
-                        Err(format!("Two images in a BasisCompressed image asset has different mip level counts ({} and {})", level_count, image_level_count))?;
+                    subresources,
+                )
+            }
+            ImageAssetDataPayload::SingleBuffer(_single_buffer) => {
+                profiling::scope!("prepare upload image");
+                match request.asset.format {
+                    #[cfg(not(feature = "basis-universal"))]
+                    ImageAssetDataFormat::Basis_Linear | ImageAssetDataFormat::Basis_Srgb => {
+                        unimplemented!("Not built with basis-universal feature");
                     }
+                    #[cfg(feature = "basis-universal")]
+                    ImageAssetDataFormat::Basis_Linear | ImageAssetDataFormat::Basis_Srgb => {
+                        let data = _single_buffer.buffer;
+                        let mut transcoder = basis_universal::Transcoder::new();
+                        transcoder.prepare_transcoding(&data).unwrap();
 
-                    let mut levels = Vec::with_capacity(level_count as usize);
-                    for level_index in 0..level_count {
-                        let level_description = transcoder
-                            .image_level_description(&data, layer_index, level_index)
-                            .unwrap();
+                        let color_space = match request.asset.format {
+                            ImageAssetDataFormat::Basis_Linear => GpuImageDataColorSpace::Linear,
+                            ImageAssetDataFormat::Basis_Srgb => GpuImageDataColorSpace::Srgb,
+                            _ => unreachable!(),
+                        };
+
+                        let (rafx_format, transcode_format) = if generate_mips {
+                            // We can't do runtime mip generation with compresed formats, fall back to uncompressed data
+                            (color_space.rgba8(), TranscoderTextureFormat::RGBA32)
+                        } else if self.astc4x4_supported {
+                            (
+                                color_space.astc4x4(),
+                                TranscoderTextureFormat::ASTC_4x4_RGBA,
+                            )
+                        } else if self.bc7_supported {
+                            (color_space.bc7(), TranscoderTextureFormat::BC7_RGBA)
+                        } else {
+                            (color_space.rgba8(), TranscoderTextureFormat::RGBA32)
+                        };
+
+                        let layer_count = transcoder.image_count(&data);
+                        if layer_count == 0 {
+                            Err("BasisCompressed image asset has no images")?;
+                        }
+
+                        let level_count = transcoder.image_level_count(&data, 0);
+                        if level_count == 0 {
+                            Err("BasisCompressed image asset has image with no mip levels")?;
+                        }
+
+                        if level_count > 1 && generate_mips {
+                            Err("BasisCompressed image asset configured to generate mips at runtime but has more than one mip layer stored")?;
+                        }
 
                         log::trace!(
-                            "transcoding layer {} level {} size: {}x{}",
-                            layer_index,
-                            level_index,
-                            level_description.original_width,
-                            level_description.original_height
+                            "Decompressing basis format: {:?} transcode format: {:?} layers: {} levels {}",
+                            rafx_format,
+                            transcode_format,
+                            layer_count,
+                            level_count
                         );
 
-                        let level_data = transcoder
-                            .transcode_image_level(
-                                &data,
-                                transcode_format,
-                                TranscodeParameters {
-                                    image_index: layer_index,
+                        let mut layers = Vec::with_capacity(layer_count as usize);
+                        for layer_index in 0..layer_count {
+                            let image_level_count =
+                                transcoder.image_level_count(&data, layer_index);
+                            if image_level_count != level_count {
+                                Err(format!("Two images in a BasisCompressed image asset has different mip level counts ({} and {})", level_count, image_level_count))?;
+                            }
+
+                            let mut levels = Vec::with_capacity(level_count as usize);
+                            for level_index in 0..level_count {
+                                let level_description = transcoder
+                                    .image_level_description(&data, layer_index, level_index)
+                                    .unwrap();
+
+                                log::trace!(
+                                    "transcoding layer {} level {} size: {}x{}",
+                                    layer_index,
                                     level_index,
-                                    ..Default::default()
-                                },
-                            )
-                            .unwrap();
+                                    level_description.original_width,
+                                    level_description.original_height
+                                );
 
-                        levels.push(GpuImageDataMipLevel {
-                            width: level_description.original_width,
-                            height: level_description.original_height,
-                            data: level_data,
-                        });
+                                let level_data = transcoder
+                                    .transcode_image_level(
+                                        &data,
+                                        transcode_format,
+                                        TranscodeParameters {
+                                            image_index: layer_index,
+                                            level_index,
+                                            ..Default::default()
+                                        },
+                                    )
+                                    .unwrap();
+
+                                levels.push(GpuImageDataMipLevel {
+                                    width: level_description.original_width,
+                                    height: level_description.original_height,
+                                    data: level_data,
+                                });
+                            }
+
+                            layers.push(GpuImageDataLayer::new(levels));
+                        }
+
+                        GpuImageData::new(layers, rafx_format)
                     }
-
-                    layers.push(GpuImageDataLayer::new(levels));
+                    _ => unimplemented!(),
                 }
-
-                GpuImageData::new(layers, rafx_format)
             }
         };
         let t1 = rafx_base::Instant::now();
@@ -767,9 +808,8 @@ impl UploadManager {
         image_data.verify_state();
 
         log::info!(
-            "GpuImageData {}x{} format {:?} total bytes {} prepared in {}ms",
-            image_data.width,
-            image_data.height,
+            "GpuImageData layer count: {} format {:?} total bytes {} prepared in {}ms",
+            image_data.layers.len(),
             image_data.format,
             image_data.total_size(IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT),
             (t1 - t0).as_secs_f64() * 1000.0
