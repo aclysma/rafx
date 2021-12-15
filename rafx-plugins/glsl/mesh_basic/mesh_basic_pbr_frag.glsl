@@ -85,9 +85,12 @@ vec4 normal_map(
     // Sample the normal and unflatten it from the texture (i.e. convert
     // range of [0, 1] to [-1, 1])
     vec3 normal = texture(sampler2D(normal_texture, smp), uv).xyz;
-    normal = normalize(normal * 2.0 - 1.0);
+    normal = normal * 2.0 - 1.0;
+    normal.z = 0.0;
+    normal.z = sqrt(1.0 - dot(normal, normal));
     normal.x = -normal.x;
     normal.y = -normal.y;
+
 
     // Transform the normal from the texture with the TNB matrix, which will put
     // it into the TNB's space (view space))

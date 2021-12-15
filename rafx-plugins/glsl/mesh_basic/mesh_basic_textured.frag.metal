@@ -158,7 +158,9 @@ static inline __attribute__((always_inline))
 float4 normal_map(thread const float3x3& tangent_binormal_normal, thread const float2& uv, thread texture2d<float> normal_texture, thread sampler smp)
 {
     float3 normal = normal_texture.sample(smp, uv).xyz;
-    normal = normalize((normal * 2.0) - float3(1.0));
+    normal = normal * 2.0 - float3(1.0);
+    normal.z = 0;
+    normal.z = sqrt(1.0 - dot(normal, normal));
     normal.x = -normal.x;
     normal.y = -normal.y;
     normal = tangent_binormal_normal * normal;
