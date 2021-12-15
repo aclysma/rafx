@@ -265,6 +265,7 @@ pub fn load_image_blocking(
         transfer_queue,
         dst_queue,
         upload_buffer_max_size,
+        None,
     )?;
 
     let texture = enqueue_load_image(device_context, &mut upload, image_data, params)?;

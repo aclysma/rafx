@@ -160,13 +160,13 @@ impl RendererBuilder {
             &device_context,
             &render_registry,
             UploadQueueConfig {
-                max_concurrent_uploads: 4,
-                max_new_uploads_in_single_frame: 4,
+                max_concurrent_uploads: 2,
+                max_new_uploads_in_single_frame: 1,
                 max_bytes_per_upload: 64 * 1024 * 1024,
             },
             &graphics_queue,
             &transfer_queue,
-        );
+        )?;
 
         asset_manager.register_default_asset_types(&mut asset_resource);
 

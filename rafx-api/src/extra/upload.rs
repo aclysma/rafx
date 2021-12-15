@@ -3,9 +3,115 @@ use crate::{
     RafxCommandPoolDef, RafxDeviceContext, RafxError, RafxFence, RafxFenceStatus, RafxMemoryUsage,
     RafxQueue, RafxQueueType, RafxResourceType, RafxResult,
 };
+use crossbeam_channel::{Receiver, Sender};
+use std::ops::{Deref, DerefMut};
 
 // Based on UploadHeap in cauldron
 // (https://github.com/GPUOpen-LibrariesAndSDKs/Cauldron/blob/5acc12602c55e469cc1f9181967dbcb122f8e6c7/src/VK/base/UploadHeap.h)
+
+pub struct RafxUploadBuffer {
+    buffer: Option<RafxBuffer>,
+    upload_buffer_released_tx: Sender<RafxBuffer>,
+}
+
+impl Drop for RafxUploadBuffer {
+    fn drop(&mut self) {
+        // self.buffer is only allowed to be None after dropping
+        let buffer = self.buffer.take().unwrap();
+        // we assume RafxUploadBufferPool lifetime is greater than RafxUploadBuffer
+        self.upload_buffer_released_tx.send(buffer).unwrap();
+    }
+}
+
+impl RafxUploadBuffer {
+    fn buffer(&self) -> &RafxBuffer {
+        self.buffer.as_ref().unwrap()
+    }
+
+    fn buffer_mut(&mut self) -> &mut RafxBuffer {
+        self.buffer.as_mut().unwrap()
+    }
+}
+
+pub struct RafxUploadBufferPool {
+    _device_context: RafxDeviceContext,
+    buffer_count: u32,
+    buffer_size: u64,
+    unused_buffers: Vec<RafxBuffer>,
+    upload_buffer_released_tx: Sender<RafxBuffer>,
+    upload_buffer_released_rx: Receiver<RafxBuffer>,
+}
+
+impl Drop for RafxUploadBufferPool {
+    fn drop(&mut self) {
+        self.handle_dropped_buffers();
+        // If this trips a buffer was in use when this pool was dropped
+        assert_eq!(self.unused_buffers.len(), self.buffer_count as usize);
+    }
+}
+
+impl RafxUploadBufferPool {
+    pub fn new(
+        device_context: &RafxDeviceContext,
+        buffer_count: u32,
+        buffer_size: u64,
+    ) -> RafxResult<Self> {
+        let (upload_buffer_released_tx, upload_buffer_released_rx) = crossbeam_channel::unbounded();
+        let mut unused_buffers = Vec::with_capacity(buffer_count as usize);
+
+        for _ in 0..buffer_count {
+            let buffer = device_context.create_buffer(&RafxBufferDef {
+                size: buffer_size,
+                memory_usage: RafxMemoryUsage::CpuToGpu,
+                queue_type: RafxQueueType::Transfer,
+                resource_type: RafxResourceType::BUFFER,
+                ..Default::default()
+            })?;
+            unused_buffers.push(buffer);
+        }
+
+        Ok(RafxUploadBufferPool {
+            _device_context: device_context.clone(),
+            buffer_count,
+            buffer_size,
+            unused_buffers,
+            upload_buffer_released_tx,
+            upload_buffer_released_rx,
+        })
+    }
+
+    fn take(
+        &mut self,
+        required_size_bytes: u64,
+    ) -> RafxResult<RafxUploadBuffer> {
+        if self.buffer_size < required_size_bytes {
+            return Err(format!(
+                "Buffer of size {} requested but the pool's buffers are only {} in size",
+                required_size_bytes, self.buffer_size
+            ))?;
+        }
+
+        // Move any release buffers back into the unused_buffers list
+        self.handle_dropped_buffers();
+
+        // Take a buffer, if one is available, return it. Otherwise return an error.
+        if let Some(buffer) = self.unused_buffers.pop() {
+            Ok(RafxUploadBuffer {
+                buffer: Some(buffer),
+                upload_buffer_released_tx: self.upload_buffer_released_tx.clone(),
+            })
+        } else {
+            Err("RafxUploadBufferPool has no more available buffers")?
+        }
+    }
+
+    // Move any release buffers back into the unused_buffers list
+    fn handle_dropped_buffers(&mut self) {
+        for buffer in self.upload_buffer_released_rx.try_iter() {
+            self.unused_buffers.push(buffer);
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum RafxUploadError {
@@ -73,6 +179,41 @@ pub enum RafxUploadState {
     Complete,
 }
 
+enum UploadBuffer {
+    Pooled(RafxUploadBuffer),
+    NonPooled(RafxBuffer),
+}
+
+impl Deref for UploadBuffer {
+    type Target = RafxBuffer;
+
+    fn deref(&self) -> &Self::Target {
+        self.buffer()
+    }
+}
+
+impl DerefMut for UploadBuffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.buffer_mut()
+    }
+}
+
+impl UploadBuffer {
+    fn buffer(&self) -> &RafxBuffer {
+        match self {
+            UploadBuffer::Pooled(buffer) => buffer.buffer(),
+            UploadBuffer::NonPooled(buffer) => buffer,
+        }
+    }
+
+    fn buffer_mut(&mut self) -> &mut RafxBuffer {
+        match self {
+            UploadBuffer::Pooled(buffer) => buffer.buffer_mut(),
+            UploadBuffer::NonPooled(buffer) => buffer,
+        }
+    }
+}
+
 /// Convenience struct that allows accumulating writes into a staging buffer and commands
 /// to execute on the staging buffer. This allows for batching uploading resources.
 pub struct RafxUpload {
@@ -80,7 +221,7 @@ pub struct RafxUpload {
     command_pool: RafxCommandPool,
     command_buffer: RafxCommandBuffer,
 
-    buffer: RafxBuffer,
+    buffer: UploadBuffer,
 
     writable: bool,
     fence: RafxFence,
@@ -98,6 +239,7 @@ impl RafxUpload {
         device_context: &RafxDeviceContext,
         queue: &RafxQueue,
         buffer_size: u64,
+        buffer_pool: Option<&mut RafxUploadBufferPool>,
     ) -> RafxResult<Self> {
         //
         // Command Buffers
@@ -109,18 +251,22 @@ impl RafxUpload {
         })?;
         command_buffer.begin()?;
 
-        let buffer = device_context.create_buffer(&RafxBufferDef {
-            size: buffer_size,
-            memory_usage: RafxMemoryUsage::CpuToGpu,
-            queue_type: RafxQueueType::Transfer,
-            resource_type: RafxResourceType::BUFFER,
-            ..Default::default()
-        })?;
+        let buffer = if let Some(buffer_pool) = buffer_pool {
+            UploadBuffer::Pooled(buffer_pool.take(buffer_size)?)
+        } else {
+            UploadBuffer::NonPooled(device_context.create_buffer(&RafxBufferDef {
+                size: buffer_size,
+                memory_usage: RafxMemoryUsage::CpuToGpu,
+                queue_type: RafxQueueType::Transfer,
+                resource_type: RafxResourceType::BUFFER,
+                ..Default::default()
+            })?)
+        };
 
         let (buffer_begin, buffer_end, buffer_write_pointer) = unsafe {
             let buffer_begin = buffer.map_buffer()?;
 
-            let buffer_end = buffer_begin.add(buffer.buffer_def().size as usize);
+            let buffer_end = buffer_begin.add(buffer_size as usize);
             let buffer_write_pointer = buffer_begin;
 
             (buffer_begin, buffer_end, buffer_write_pointer)
@@ -306,6 +452,7 @@ impl RafxTransferUpload {
         transfer_queue: &RafxQueue,
         dst_queue: &RafxQueue,
         size: u64,
+        buffer_pool: Option<&mut RafxUploadBufferPool>,
     ) -> RafxResult<Self> {
         //
         // Command Buffers
@@ -318,7 +465,7 @@ impl RafxTransferUpload {
 
         dst_command_buffer.begin()?;
 
-        let upload = RafxUpload::new(device_context, transfer_queue, size)?;
+        let upload = RafxUpload::new(device_context, transfer_queue, size, buffer_pool)?;
 
         let dst_fence = device_context.create_fence()?;
 

@@ -68,6 +68,7 @@ impl AssetResource {
     }
 
     /// Call this frequently to update the asset loading system.
+    #[profiling::function]
     pub fn update(&mut self) {
         distill::loader::handle::process_ref_ops(&self.loader, &self.rx);
         self.loader

@@ -71,10 +71,10 @@ impl AssetManager {
         upload_queue_config: UploadQueueConfig,
         graphics_queue: &RafxQueue,
         transfer_queue: &RafxQueue,
-    ) -> Self {
+    ) -> RafxResult<Self> {
         let resource_manager = ResourceManager::new(device_context, render_registry);
 
-        AssetManager {
+        Ok(AssetManager {
             device_context: device_context.clone(),
             resource_manager,
             upload_manager: UploadManager::new(
@@ -82,14 +82,14 @@ impl AssetManager {
                 upload_queue_config,
                 graphics_queue.clone(),
                 transfer_queue.clone(),
-            ),
+            )?,
             material_instance_descriptor_sets: DescriptorSetAllocator::new(device_context),
             graphics_queue: graphics_queue.clone(),
             transfer_queue: transfer_queue.clone(),
 
             asset_types: Default::default(),
             asset_registration_order: Default::default(),
-        }
+        })
     }
 
     pub fn register_asset_type<AssetTypeFactoryT: AssetTypeHandlerFactory>(
@@ -143,6 +143,7 @@ impl AssetManager {
             .get_latest(handle.load_handle())
     }
 
+    #[profiling::function]
     pub fn wait_for_asset_to_load<T>(
         &mut self,
         asset_handle: &distill::loader::handle::Handle<T>,
@@ -186,8 +187,6 @@ impl AssetManager {
                             asset_handle
                         );
                     });
-                    #[cfg(not(target_arch = "wasm32"))]
-                    std::thread::sleep(std::time::Duration::from_millis(1));
                 }
                 LoadStatus::Loading => {
                     on_interval(PRINT_INTERVAL, &mut last_print_time, || {
@@ -197,8 +196,6 @@ impl AssetManager {
                             asset_handle
                         );
                     });
-                    #[cfg(not(target_arch = "wasm32"))]
-                    std::thread::sleep(std::time::Duration::from_millis(1));
                 }
                 LoadStatus::Loaded => {
                     break Ok(());
