@@ -202,7 +202,7 @@ impl AutoexposureScene {
             visibility_region.register_view_frustum(),
             visibility_region.register_view_frustum(),
         ];
-        super::add_point_light(
+        super::util::add_point_light(
             resources,
             world,
             //glam::Vec3::new(-3.0, 3.0, 2.0),
@@ -227,7 +227,7 @@ impl super::TestScene for AutoexposureScene {
         world: &mut World,
         resources: &mut Resources,
     ) {
-        super::add_light_debug_draw(&resources, &world);
+        super::util::add_light_debug_draw(&resources, &world);
 
         {
             let time_state = resources.get::<TimeState>().unwrap();
