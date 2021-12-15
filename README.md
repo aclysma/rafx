@@ -43,18 +43,15 @@ Please keep in mind, this crate is still in pre-0.1.0 status!
 
 [![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
 
+[![Amazon Lumberyard Bistro Screenshot](docs/screenshots/bistro_screenshot_thumb.jpg)](docs/screenshots/bistro_screenshot.png)
+
+Amazon Lumberyard Bistro scene (Original assets: https://developer.nvidia.com/orca/amazon-lumberyard-bistro)
+
 [![Video of Renderer in Use](docs/screenshots/ios_screenshot.png)](https://www.youtube.com/watch?v=Ks_HQbejHE4 "Video of Renderer in Use")
 
 [^ Video of this renderer running on iOS hardware](https://www.youtube.com/watch?v=Ks_HQbejHE4)
 
-[![Video with real-world assets](docs/screenshots/render_adventure_flythrough.png)](https://www.youtube.com/watch?v=HlJsgbGyl0I "Video with real-world assets")
-
-[^ Camera flythrough demo using real-world assets](https://www.youtube.com/watch?v=HlJsgbGyl0I). Lots of room for
-improvements in our shadow performance and quality :)
-
 ![Screenshot of render with real-world assets](docs/screenshots/render_adventure1.png)
-
-![Screenshot demonstrating realtime shadows](docs/screenshots/shadows_multicolor_lights.png)
 
 ![Screenshot of LDTK tilemap integration](docs/screenshots/tilemap_demo.png)
 
