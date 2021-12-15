@@ -119,7 +119,7 @@ impl Importer for MeshBasicBlenderImporter {
             serde_json::from_slice(b3f_reader.get_block(0)).map_err(|e| e.to_string())?;
 
         let mut all_positions = Vec::<glam::Vec3>::with_capacity(1024);
-        let mut all_position_indices = Vec::<u16>::with_capacity(8192);
+        let mut all_position_indices = Vec::<u32>::with_capacity(8192);
 
         let mut all_vertices_full = PushBuffer::new(16384);
         let mut all_vertices_position = PushBuffer::new(16384);
@@ -142,8 +142,20 @@ impl Importer for MeshBasicBlenderImporter {
                 try_cast_u8_slice::<[f32; 3]>(normals).ok_or("Could not cast due to alignment")?;
             let tex_coords = try_cast_u8_slice::<[f32; 2]>(tex_coords)
                 .ok_or("Could not cast due to alignment")?;
-            let part_indices =
-                try_cast_u8_slice::<u16>(part_indices).ok_or("Could not cast due to alignment")?;
+
+            let (part_indices_u16, part_indices_u32, part_index_count) = match mesh_part.index_type
+            {
+                MeshPartJsonIndexType::U16 => {
+                    let part_indices_u16 = try_cast_u8_slice::<u16>(part_indices)
+                        .ok_or("Could not cast due to alignment")?;
+                    (Some(part_indices_u16), None, part_indices_u16.len())
+                }
+                MeshPartJsonIndexType::U32 => {
+                    let part_indices_u32 = try_cast_u8_slice::<u32>(part_indices)
+                        .ok_or("Could not cast due to alignment")?;
+                    (None, Some(part_indices_u32), part_indices_u32.len())
+                }
+            };
 
             let vertex_full_offset = all_vertices_full.len();
             let vertex_position_offset = all_vertices_position.len();
@@ -155,11 +167,22 @@ impl Importer for MeshBasicBlenderImporter {
             let mut binormals = Vec::<glam::Vec3>::new();
             binormals.resize(positions.len(), glam::Vec3::default());
 
-            assert_eq!(part_indices.len() % 3, 0);
-            for i in 0..(part_indices.len() / 3) {
-                let i0 = part_indices[i * 3] as usize;
-                let i1 = part_indices[i * 3 + 1] as usize;
-                let i2 = part_indices[i * 3 + 2] as usize;
+            assert_eq!(part_index_count % 3, 0);
+            for i in 0..(part_index_count / 3) {
+                let (i0, i1, i2) = if let Some(part_indices_u16) = part_indices_u16 {
+                    (
+                        part_indices_u16[i * 3] as usize,
+                        part_indices_u16[i * 3 + 1] as usize,
+                        part_indices_u16[i * 3 + 2] as usize,
+                    )
+                } else {
+                    let part_indices_u32 = part_indices_u32.unwrap();
+                    (
+                        part_indices_u32[i * 3] as usize,
+                        part_indices_u32[i * 3 + 1] as usize,
+                        part_indices_u32[i * 3 + 2] as usize,
+                    )
+                };
 
                 let p0 = glam::Vec3::from(positions[i0]);
                 let p1 = glam::Vec3::from(positions[i1]);
@@ -177,6 +200,10 @@ impl Importer for MeshBasicBlenderImporter {
                 binormals[i0] += b;
                 binormals[i1] += b;
                 binormals[i2] += b;
+
+                all_position_indices.push(i0 as u32);
+                all_position_indices.push(i1 as u32);
+                all_position_indices.push(i2 as u32);
             }
 
             for i in 0..positions.len() {
@@ -206,7 +233,6 @@ impl Importer for MeshBasicBlenderImporter {
             }
 
             all_indices.push(&part_indices, 1);
-            all_position_indices.extend_from_slice(&part_indices);
 
             let vertex_full_size = all_vertices_full.len() - vertex_full_offset;
             let vertex_position_size = all_vertices_position.len() - vertex_position_offset;
@@ -265,7 +291,7 @@ impl Importer for MeshBasicBlenderImporter {
 
         let mesh_data = PolygonSoup {
             vertex_positions: all_positions,
-            index: PolygonSoupIndex::Indexed16(all_position_indices),
+            index: PolygonSoupIndex::Indexed32(all_position_indices),
         };
 
         let asset_data = MeshBasicAssetData {
