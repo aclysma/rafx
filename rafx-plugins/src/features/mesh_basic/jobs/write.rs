@@ -4,8 +4,8 @@ use super::*;
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, WireframeRenderPhase,
 };
-use rafx::api::RafxPrimitiveTopology;
 use rafx::api::{RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding};
+use rafx::api::{RafxIndexType, RafxPrimitiveTopology};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
@@ -232,11 +232,12 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
             index_type: mesh_part.index_type,
         })?;
 
-        command_buffer.cmd_draw_indexed(
-            mesh_part.index_buffer_size_in_bytes / 2, //sizeof(u16)
-            0,
-            0,
-        )?;
+        let index_size = match mesh_part.index_type {
+            RafxIndexType::Uint16 => std::mem::size_of::<u16>(),
+            RafxIndexType::Uint32 => std::mem::size_of::<u32>(),
+        } as u32;
+
+        command_buffer.cmd_draw_indexed(mesh_part.index_buffer_size_in_bytes / index_size, 0, 0)?;
 
         Ok(())
     }
