@@ -142,7 +142,7 @@ fn run() -> RafxResult<()> {
             },
             &graphics_queue,
             &transfer_queue,
-        );
+        )?;
 
         // // The asset resource by default is not set up to handle any asset types. You can use
         // // `add_default_asset_storage` to populate it with all the loaders implemented in rafx.
