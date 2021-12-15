@@ -128,7 +128,7 @@ impl ManyCubesScene {
             visibility_region.register_view_frustum(),
         ];
 
-        super::add_point_light(
+        super::util::add_point_light(
             resources,
             world,
             glam::Vec3::new(-4., -4., 10.),

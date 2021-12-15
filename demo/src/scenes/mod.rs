@@ -1,14 +1,12 @@
 use glam::Vec3;
-use legion::IntoQuery;
-use legion::{Read, Resources, World};
-use rafx_plugins::components::{
-    DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
-};
-use rafx_plugins::features::debug3d::Debug3DResource;
+use legion::{Resources, World};
 use rand::Rng;
 
-//mod bistro_scene;
-//use bistro_scene::BistroScene;
+// miscellaneous shared code between scenes
+mod util;
+
+mod bistro_scene;
+use bistro_scene::BistroScene;
 
 mod shadows_scene;
 use shadows_scene::ShadowsScene;
@@ -36,7 +34,7 @@ use many_cubes_scene::ManyCubesScene;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Scene {
-    //Bistro,
+    Bistro,
     Shadows,
     Autoexposure,
     PbrTest,
@@ -48,7 +46,7 @@ pub enum Scene {
 }
 
 pub const ALL_SCENES: [Scene; 8] = [
-    //Scene::Bistro,
+    //Scene::Bistro, // Uncomment to enable the bistro scene
     Scene::Shadows,
     Scene::Autoexposure,
     Scene::PbrTest,
@@ -73,7 +71,7 @@ fn create_scene(
     resources: &Resources,
 ) -> Box<dyn TestScene> {
     match scene {
-        //Scene::Bistro => Box::new(BistroScene::new(world, resources)),
+        Scene::Bistro => Box::new(BistroScene::new(world, resources)),
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
         Scene::Autoexposure => Box::new(AutoexposureScene::new(world, resources)),
         Scene::PbrTest => Box::new(PbrTestScene::new(world, resources)),
@@ -190,76 +188,4 @@ impl SceneManager {
             .unwrap()
             .update(world, resources);
     }
-}
-
-fn add_light_debug_draw(
-    resources: &Resources,
-    world: &World,
-) {
-    let mut debug_draw = resources.get_mut::<Debug3DResource>().unwrap();
-
-    let mut query = <Read<DirectionalLightComponent>>::query();
-    for light in query.iter(world) {
-        let light_from = light.direction * -10.0;
-        let light_to = glam::Vec3::ZERO;
-
-        debug_draw.add_line(light_from, light_to, light.color);
-    }
-
-    let mut query = <(Read<TransformComponent>, Read<PointLightComponent>)>::query();
-    for (transform, light) in query.iter(world) {
-        debug_draw.add_sphere(transform.translation, 0.1, light.color, 12);
-        debug_draw.add_sphere(transform.translation, light.range, light.color, 12);
-    }
-
-    let mut query = <(Read<TransformComponent>, Read<SpotLightComponent>)>::query();
-    for (transform, light) in query.iter(world) {
-        let light_from = transform.translation;
-        let light_to = transform.translation + light.direction;
-        let light_direction = (light_to - light_from).normalize();
-
-        debug_draw.add_cone(
-            light_from,
-            light_from + (light.range * light_direction),
-            light.range * light.spotlight_half_angle.tan(),
-            light.color,
-            10,
-        );
-    }
-}
-
-fn add_directional_light(
-    _resources: &Resources,
-    world: &mut World,
-    light_component: DirectionalLightComponent,
-) {
-    world.extend(vec![(light_component,)]);
-}
-
-fn add_spot_light(
-    _resources: &Resources,
-    world: &mut World,
-    position: glam::Vec3,
-    light_component: SpotLightComponent,
-) {
-    let position_component = TransformComponent {
-        translation: position,
-        ..Default::default()
-    };
-
-    world.extend(vec![(position_component, light_component)]);
-}
-
-fn add_point_light(
-    _resources: &Resources,
-    world: &mut World,
-    position: glam::Vec3,
-    light_component: PointLightComponent,
-) {
-    let position_component = TransformComponent {
-        translation: position,
-        ..Default::default()
-    };
-
-    world.extend(vec![(position_component, light_component)]);
 }
