@@ -296,8 +296,13 @@ impl DemoApp {
         let print_time_event = crate::time::PeriodicEvent::default();
 
         let font = {
-            let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf")
+            let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
+            let font = asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf");
+            resources
+                .get_mut::<AssetManager>()
+                .unwrap()
+                .wait_for_asset_to_load(&font, &mut *asset_resource, "demo font")?;
+            font
         };
 
         Ok(DemoApp {
