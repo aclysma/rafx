@@ -7,6 +7,9 @@ use rafx_plugins::components::{
 use rafx_plugins::features::debug3d::Debug3DResource;
 use rand::Rng;
 
+//mod bistro_scene;
+//use bistro_scene::BistroScene;
+
 mod shadows_scene;
 use shadows_scene::ShadowsScene;
 
@@ -33,6 +36,7 @@ use many_cubes_scene::ManyCubesScene;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Scene {
+    //Bistro,
     Shadows,
     Autoexposure,
     PbrTest,
@@ -44,6 +48,7 @@ pub enum Scene {
 }
 
 pub const ALL_SCENES: [Scene; 8] = [
+    //Scene::Bistro,
     Scene::Shadows,
     Scene::Autoexposure,
     Scene::PbrTest,
@@ -68,6 +73,7 @@ fn create_scene(
     resources: &Resources,
 ) -> Box<dyn TestScene> {
     match scene {
+        //Scene::Bistro => Box::new(BistroScene::new(world, resources)),
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
         Scene::Autoexposure => Box::new(AutoexposureScene::new(world, resources)),
         Scene::PbrTest => Box::new(PbrTestScene::new(world, resources)),

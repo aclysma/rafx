@@ -7,3 +7,5 @@ Cargo.lock
 /demo/assets/private
 /demo/art/private
 /demo/assets_unprocessed/private
+/demo/art/bistro/**
+/demo/assets/bistro/*/*
