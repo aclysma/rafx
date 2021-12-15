@@ -275,6 +275,8 @@ pub struct UploadQueue {
     device_context: RafxDeviceContext,
     config: UploadQueueConfig,
 
+    upload_buffer_pool: RafxUploadBufferPool,
+
     // For enqueueing images to upload
     pending_image_tx: Sender<PendingImageUpload>,
     pending_image_rx: Receiver<PendingImageUpload>,
@@ -304,13 +306,19 @@ impl UploadQueue {
         config: UploadQueueConfig,
         graphics_queue: RafxQueue,
         transfer_queue: RafxQueue,
-    ) -> Self {
+    ) -> RafxResult<Self> {
         let (pending_image_tx, pending_image_rx) = crossbeam_channel::unbounded();
         let (pending_buffer_tx, pending_buffer_rx) = crossbeam_channel::unbounded();
+        let upload_buffer_pool = RafxUploadBufferPool::new(
+            device_context,
+            config.max_concurrent_uploads as u32,
+            config.max_bytes_per_upload as u64,
+        )?;
 
-        UploadQueue {
+        Ok(UploadQueue {
             device_context: device_context.clone(),
             config,
+            upload_buffer_pool,
             pending_image_tx,
             pending_image_rx,
             next_image_upload: None,
@@ -321,7 +329,7 @@ impl UploadQueue {
             next_upload_id: 1,
             graphics_queue,
             transfer_queue,
-        }
+        })
     }
 
     pub fn pending_image_tx(&self) -> &Sender<PendingImageUpload> {
@@ -517,6 +525,7 @@ impl UploadQueue {
             &self.transfer_queue,
             &self.graphics_queue,
             self.config.max_bytes_per_upload as u64,
+            Some(&mut self.upload_buffer_pool),
         )?;
 
         let in_flight_image_uploads = self.start_new_image_uploads(&mut upload)?;
@@ -629,24 +638,24 @@ impl UploadManager {
         upload_queue_config: UploadQueueConfig,
         graphics_queue: RafxQueue,
         transfer_queue: RafxQueue,
-    ) -> Self {
+    ) -> RafxResult<Self> {
         let (image_upload_result_tx, image_upload_result_rx) = crossbeam_channel::unbounded();
         let (buffer_upload_result_tx, buffer_upload_result_rx) = crossbeam_channel::unbounded();
 
-        UploadManager {
+        Ok(UploadManager {
             upload_queue: UploadQueue::new(
                 device_context,
                 upload_queue_config,
                 graphics_queue,
                 transfer_queue,
-            ),
+            )?,
             image_upload_result_rx,
             image_upload_result_tx,
             buffer_upload_result_rx,
             buffer_upload_result_tx,
             astc4x4_supported: false,
             bc7_supported: true,
-        }
+        })
     }
 
     pub fn update(&mut self) -> RafxResult<()> {

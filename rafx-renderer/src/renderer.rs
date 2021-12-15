@@ -71,6 +71,7 @@ impl Renderer {
             asset_manager.transfer_queue(),
             asset_manager.graphics_queue(),
             16 * 1024 * 1024,
+            None,
         )?;
 
         let invalid_image_color = Self::upload_image_data(
