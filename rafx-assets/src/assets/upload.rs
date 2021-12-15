@@ -275,8 +275,6 @@ pub struct UploadQueue {
     device_context: RafxDeviceContext,
     config: UploadQueueConfig,
 
-    upload_buffer_pool: RafxUploadBufferPool,
-
     // For enqueueing images to upload
     pending_image_tx: Sender<PendingImageUpload>,
     pending_image_rx: Receiver<PendingImageUpload>,
@@ -290,9 +288,10 @@ pub struct UploadQueue {
 
     // If we fail to upload due to size limitation, keep the failed upload here to retry later
     next_buffer_upload: Option<PendingBufferUpload>,
-
     // These are uploads that are currently in progress
     uploads_in_progress: Vec<InProgressUpload>,
+
+    upload_buffer_pool: RafxUploadBufferPool,
 
     graphics_queue: RafxQueue,
     transfer_queue: RafxQueue,
@@ -816,7 +815,7 @@ impl UploadManager {
         #[cfg(debug_assertions)]
         image_data.verify_state();
 
-        log::info!(
+        log::debug!(
             "GpuImageData layer count: {} format {:?} total bytes {} prepared in {}ms",
             image_data.layers.len(),
             image_data.format,
