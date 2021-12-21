@@ -1,6 +1,3 @@
-use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
-};
 use crate::time::TimeState;
 use crate::RenderOptions;
 use glam::f32::Vec3;
@@ -9,21 +6,14 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ImageAsset};
 use rafx::distill::loader::handle::Handle;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
-use rafx::render_features::{
-    RenderFeatureFlagMask, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange,
-};
+use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
 use rafx_plugins::assets::ldtk::LdtkProjectAsset;
 use rafx_plugins::components::SpriteComponent;
 use rafx_plugins::components::{TransformComponent, VisibilityComponent};
-use rafx_plugins::features::sprite::{
-    SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet,
-};
-use rafx_plugins::features::text::TextRenderFeature;
-use rafx_plugins::features::tile_layer::{
-    TileLayerRenderFeature, TileLayerRenderObjectSet, TileLayerResource,
-};
+use rafx_plugins::features::sprite::{SpriteRenderObject, SpriteRenderObjectSet};
+use rafx_plugins::features::tile_layer::{TileLayerRenderObjectSet, TileLayerResource};
 
 pub(super) struct SpriteScene {
     ldtk_handle: Handle<LdtkProjectAsset>,
@@ -117,9 +107,11 @@ impl super::TestScene for SpriteScene {
         {
             let time_state = resources.get::<TimeState>().unwrap();
             let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
+            let render_options = resources.get::<RenderOptions>().unwrap();
 
             update_main_view_2d(
                 &*time_state,
+                &*render_options,
                 &mut self.main_view_frustum,
                 &mut *viewports_resource,
             );
@@ -164,30 +156,12 @@ impl super::TestScene for SpriteScene {
 #[profiling::function]
 fn update_main_view_2d(
     time_state: &TimeState,
+    render_options: &RenderOptions,
     main_view_frustum: &mut ViewFrustumArc,
     viewports_resource: &mut ViewportsResource,
 ) {
-    let main_camera_phase_mask = RenderPhaseMaskBuilder::default()
-        .add_render_phase::<DepthPrepassRenderPhase>()
-        .add_render_phase::<OpaqueRenderPhase>()
-        .add_render_phase::<TransparentRenderPhase>()
-        .add_render_phase::<UiRenderPhase>()
-        .build();
-
-    let mut main_camera_feature_mask = RenderFeatureMaskBuilder::default();
-    main_camera_feature_mask = main_camera_feature_mask
-        .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<TextRenderFeature>()
-        .add_render_feature::<TileLayerRenderFeature>();
-
-    #[cfg(feature = "egui")]
-    {
-        main_camera_feature_mask = main_camera_feature_mask
-            .add_render_feature::<rafx_plugins::features::egui::EguiRenderFeature>(
-        );
-    }
-
-    let main_camera_feature_mask = main_camera_feature_mask.build();
+    let (phase_mask_builder, feature_mask_builder, feature_flag_mask_builder) =
+        super::util::default_main_view_masks(render_options);
 
     const CAMERA_XY_DISTANCE: f32 = 400.0;
     const CAMERA_Z: f32 = 1000.0;
@@ -251,9 +225,9 @@ fn update_main_view_2d(
         view,
         proj: projection.as_rh_mat4(),
         depth_range: RenderViewDepthRange::from_projection(&projection),
-        render_phase_mask: main_camera_phase_mask,
-        render_feature_mask: main_camera_feature_mask,
-        render_feature_flag_mask: RenderFeatureFlagMask::empty(),
+        render_phase_mask: phase_mask_builder.build(),
+        render_feature_mask: feature_mask_builder.build(),
+        render_feature_flag_mask: feature_flag_mask_builder.build(),
         debug_name: "main".to_string(),
     });
 }

@@ -49,14 +49,24 @@ winit = { version = "0.24" }
 
 [features]
 default = [
+    # CI is set up to check without default features + basic-pipeline and default features. This ensures that both
+    # pipelines are built by CI. If at some point we want to change the default, update the CI script.
+    #"basic-pipeline",
+    "modern-pipeline",
+
+    "use-egui",
+
+    # Profiling options
     "profile-with-puffin",
-    "use-egui"
-    #"stats_alloc", # Cannot be enabled with "profile-with-tracy-memory". Will run renderer / game loop single-threaded.
     #"profile-with-optick",
     #"profile-with-tracy",
     #"profile-with-tracy-memory", # Cannot be enabled with "stats_alloc".
     #"profile-with-superluminal"
+
+    #"stats_alloc", # Cannot be enabled with "profile-with-tracy-memory". Will run renderer / game loop single-threaded.
 ]
+basic-pipeline = ["rafx-plugins/basic-pipeline"]
+modern-pipeline = ["rafx-plugins/modern-pipeline"]
 use-egui = ["egui", "egui-winit", "rafx-plugins/egui-winit"]
 basis-universal = ["rafx/basis-universal"]
 rafx-empty = ["rafx/rafx-empty"]

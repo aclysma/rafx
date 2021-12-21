@@ -200,7 +200,15 @@ impl AssetManager {
                 LoadStatus::Loaded => {
                     break Ok(());
                 }
-                LoadStatus::Unloading => unreachable!(),
+                LoadStatus::Unloading => {
+                    on_interval(PRINT_INTERVAL, &mut last_print_time, || {
+                        log::info!(
+                            "blocked waiting for asset to unload {} {:?}",
+                            asset_name,
+                            asset_handle
+                        );
+                    });
+                }
                 LoadStatus::DoesNotExist => {
                     println!("Essential asset not found");
                 }

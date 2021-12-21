@@ -58,3 +58,5 @@ memoffset = "0.6"
 egui-winit = ["egui", "winit"]
 # if enabled, use egui with sdl2
 egui-sdl2 = ["egui"]
+basic-pipeline = []
+modern-pipeline = []

@@ -11,17 +11,31 @@ use rafx::renderer::{
 use rafx_plugins::assets::anim::AnimAssetTypeRendererPlugin;
 use rafx_plugins::assets::font::FontAssetTypeRendererPlugin;
 use rafx_plugins::assets::ldtk::LdtkAssetTypeRendererPlugin;
-use rafx_plugins::assets::mesh_basic::MeshBasicAssetTypeRendererPlugin;
 use rafx_plugins::features::debug3d::Debug3DRendererPlugin;
-use rafx_plugins::features::mesh_basic::MeshBasicRendererPlugin;
 use rafx_plugins::features::skybox::SkyboxRendererPlugin;
 use rafx_plugins::features::sprite::SpriteRendererPlugin;
 use rafx_plugins::features::text::TextRendererPlugin;
 use rafx_plugins::features::tile_layer::TileLayerRendererPlugin;
-use rafx_plugins::pipelines::basic::BasicPipelineRenderGraphGenerator;
-use rafx_plugins::pipelines::basic::BasicPipelineRendererPlugin;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
+
+#[cfg(feature = "basic-pipeline")]
+use rafx_plugins::assets::mesh_basic::MeshBasicAssetTypeRendererPlugin;
+#[cfg(feature = "basic-pipeline")]
+use rafx_plugins::features::mesh_basic::MeshBasicRendererPlugin;
+#[cfg(feature = "basic-pipeline")]
+use rafx_plugins::pipelines::basic::{
+    BasicPipelineRenderGraphGenerator, BasicPipelineRendererPlugin,
+};
+
+#[cfg(not(feature = "basic-pipeline"))]
+use rafx_plugins::assets::mesh_adv::MeshBasicAssetTypeRendererPlugin;
+#[cfg(not(feature = "basic-pipeline"))]
+use rafx_plugins::features::mesh_adv::MeshBasicRendererPlugin;
+#[cfg(not(feature = "basic-pipeline"))]
+use rafx_plugins::pipelines::modern::{
+    BasicPipelineRenderGraphGenerator, BasicPipelineRendererPlugin,
+};
 
 pub fn rendering_init(
     resources: &mut Resources,

@@ -1,37 +1,15 @@
-use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
-    WireframeRenderPhase,
-};
+use super::util::SpawnableMesh;
 use crate::time::TimeState;
 use crate::RenderOptions;
-use distill::loader::handle::Handle;
 use glam::Vec3;
 use legion::{IntoQuery, Read};
 use legion::{Resources, World, Write};
-use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, ImageAsset};
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
-use rafx::render_features::{
-    RenderFeatureFlagMaskBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
-    RenderViewDepthRange,
-};
+use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh_basic::MeshBasicAsset;
-use rafx_plugins::components::{
-    DirectionalLightComponent, SpotLightComponent, VisibilityComponent,
-};
-use rafx_plugins::components::{MeshComponent, PointLightComponent, TransformComponent};
-use rafx_plugins::features::debug3d::Debug3DRenderFeature;
-use rafx_plugins::features::mesh_basic::{
-    MeshBasicNoShadowsRenderFeatureFlag, MeshBasicRenderFeature, MeshBasicRenderObject,
-    MeshBasicRenderObjectSet, MeshBasicRenderOptions, MeshBasicUnlitRenderFeatureFlag,
-    MeshBasicUntexturedRenderFeatureFlag, MeshBasicWireframeRenderFeatureFlag,
-};
-use rafx_plugins::features::skybox::{SkyboxRenderFeature, SkyboxResource};
-use rafx_plugins::features::sprite::SpriteRenderFeature;
-use rafx_plugins::features::text::TextRenderFeature;
-use rafx_plugins::features::tile_layer::TileLayerRenderFeature;
+use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
+use rafx_plugins::components::{DirectionalLightComponent, SpotLightComponent};
+use rafx_plugins::components::{PointLightComponent, TransformComponent};
 use rand::{thread_rng, Rng};
 
 pub(super) struct ShadowsScene {
@@ -43,123 +21,49 @@ impl ShadowsScene {
         world: &mut World,
         resources: &Resources,
     ) -> Self {
-        let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
-        let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
-
-        let mut mesh_render_options = resources.get_mut::<MeshBasicRenderOptions>().unwrap();
-        mesh_render_options.ambient_light = glam::Vec3::new(0.005, 0.005, 0.005);
-
-        let mut mesh_render_objects = resources.get_mut::<MeshBasicRenderObjectSet>().unwrap();
+        super::util::setup_skybox(resources, "textures/skybox.basis");
+        super::util::set_ambient_light(resources, glam::Vec3::new(0.005, 0.005, 0.005));
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
-        let floor_mesh_asset =
-            asset_resource.load_asset_path::<MeshBasicAsset, _>("blender/cement_floor.glb");
-        let container_1_asset = asset_resource.load_asset_path("blender/storage_container1.glb");
-        let container_2_asset = asset_resource.load_asset_path("blender/storage_container2.glb");
-        let blue_icosphere_asset = asset_resource
-            .load_asset::<MeshBasicAsset>("d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into());
-
-        let skybox_texture =
-            asset_resource.load_asset_path::<ImageAsset, _>("textures/skybox.basis");
-
-        *resources
-            .get_mut::<SkyboxResource>()
-            .unwrap()
-            .skybox_texture_mut() = Some(skybox_texture);
-
-        let mut load_visible_bounds = |asset_handle: &Handle<MeshBasicAsset>| {
-            asset_manager
-                .wait_for_asset_to_load(asset_handle, &mut asset_resource, "")
-                .unwrap();
-
-            asset_manager
-                .committed_asset(asset_handle)
-                .unwrap()
-                .inner
-                .asset_data
-                .visible_bounds
-        };
+        let floor_mesh =
+            SpawnableMesh::blocking_load_from_path(resources, "blender/cement_floor.glb");
+        let container_1 =
+            SpawnableMesh::blocking_load_from_path(resources, "blender/storage_container1.glb");
+        let container_2 =
+            SpawnableMesh::blocking_load_from_path(resources, "blender/storage_container2.glb");
+        let blue_icosphere = SpawnableMesh::blocking_load_from_uuid(
+            resources,
+            "d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into(),
+        );
 
         //
         // Add a floor
         //
         {
             let position = Vec3::new(0.0, 0.0, -1.0);
-
-            let floor_mesh_render_object =
-                mesh_render_objects.register_render_object(MeshBasicRenderObject {
-                    mesh: floor_mesh_asset.clone(),
-                });
-
             let transform_component = TransformComponent {
                 translation: position,
                 ..Default::default()
             };
 
-            let mesh_component = MeshComponent {
-                render_object_handle: floor_mesh_render_object.clone(),
-            };
-
-            let entity = world.push((transform_component.clone(), mesh_component));
-            let mut entry = world.entry(entity).unwrap();
-            entry.add_component(VisibilityComponent {
-                visibility_object_handle: {
-                    let handle = visibility_region.register_static_object(
-                        ObjectId::from(entity),
-                        CullModel::VisibleBounds(load_visible_bounds(&floor_mesh_asset)),
-                    );
-                    handle.set_transform(
-                        transform_component.translation,
-                        transform_component.rotation,
-                        transform_component.scale,
-                    );
-                    handle.add_render_object(&floor_mesh_render_object);
-                    handle
-                },
-            });
+            floor_mesh.spawn(resources, world, transform_component);
         }
 
         //
         // Add some meshes
         //
         {
-            let example_meshes = {
-                let mut meshes = Vec::default();
+            let example_meshes = vec![container_1, container_2, blue_icosphere];
 
-                // container1
-                meshes.push(
-                    mesh_render_objects.register_render_object(MeshBasicRenderObject {
-                        mesh: container_1_asset,
-                    }),
-                );
-
-                // container2
-                meshes.push(
-                    mesh_render_objects.register_render_object(MeshBasicRenderObject {
-                        mesh: container_2_asset,
-                    }),
-                );
-
-                // blue icosphere - load by UUID since it's one of several meshes in the file
-                meshes.push(
-                    mesh_render_objects.register_render_object(MeshBasicRenderObject {
-                        mesh: blue_icosphere_asset,
-                    }),
-                );
-
-                meshes
-            };
-
-            let mesh_render_objects = mesh_render_objects.read();
+            //let mesh_render_objects = mesh_render_objects.read();
             let mut rng = thread_rng();
             for i in 0..250 {
                 let position = Vec3::new(((i / 9) * 3) as f32, ((i % 9) * 3) as f32, 0.0);
-                let mesh_render_object = example_meshes[i % example_meshes.len()].clone();
-                let asset_handle = &mesh_render_objects.get(&mesh_render_object).mesh;
+                let example_mesh = &example_meshes[i % example_meshes.len()];
+                //let asset_handle = &mesh_render_objects.get(&mesh_render_object).mesh;
 
                 let rand_scale = rng.gen_range(0.8..1.2);
                 let offset = rand_scale - 1.;
@@ -169,27 +73,7 @@ impl ShadowsScene {
                     ..Default::default()
                 };
 
-                let mesh_component = MeshComponent {
-                    render_object_handle: mesh_render_object.clone(),
-                };
-
-                let entity = world.push((transform_component.clone(), mesh_component));
-                let mut entry = world.entry(entity).unwrap();
-                entry.add_component(VisibilityComponent {
-                    visibility_object_handle: {
-                        let handle = visibility_region.register_dynamic_object(
-                            ObjectId::from(entity),
-                            CullModel::VisibleBounds(load_visible_bounds(asset_handle)),
-                        );
-                        handle.set_transform(
-                            transform_component.translation,
-                            transform_component.rotation,
-                            transform_component.scale,
-                        );
-                        handle.add_render_object(&mesh_render_object);
-                        handle
-                    },
-                });
+                example_mesh.spawn(resources, world, transform_component);
             }
         }
 
@@ -338,57 +222,8 @@ fn update_main_view_3d(
     main_view_frustum: &mut ViewFrustumArc,
     viewports_resource: &mut ViewportsResource,
 ) {
-    let phase_mask_builder = RenderPhaseMaskBuilder::default()
-        .add_render_phase::<DepthPrepassRenderPhase>()
-        .add_render_phase::<OpaqueRenderPhase>()
-        .add_render_phase::<TransparentRenderPhase>()
-        .add_render_phase::<WireframeRenderPhase>()
-        .add_render_phase::<UiRenderPhase>();
-
-    let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshBasicRenderFeature>()
-        .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<TileLayerRenderFeature>();
-
-    #[cfg(feature = "egui")]
-    {
-        feature_mask_builder = feature_mask_builder
-            .add_render_feature::<rafx_plugins::features::egui::EguiRenderFeature>();
-    }
-
-    if render_options.show_text {
-        feature_mask_builder = feature_mask_builder.add_render_feature::<TextRenderFeature>();
-    }
-
-    if render_options.show_debug3d {
-        feature_mask_builder = feature_mask_builder.add_render_feature::<Debug3DRenderFeature>();
-    }
-
-    if render_options.show_skybox {
-        feature_mask_builder = feature_mask_builder.add_render_feature::<SkyboxRenderFeature>();
-    }
-
-    let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
-
-    if render_options.show_wireframes {
-        feature_flag_mask_builder = feature_flag_mask_builder
-            .add_render_feature_flag::<MeshBasicWireframeRenderFeatureFlag>();
-    }
-
-    if !render_options.enable_lighting {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshBasicUnlitRenderFeatureFlag>();
-    }
-
-    if !render_options.enable_textures {
-        feature_flag_mask_builder = feature_flag_mask_builder
-            .add_render_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>();
-    }
-
-    if !render_options.show_shadows {
-        feature_flag_mask_builder = feature_flag_mask_builder
-            .add_render_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>();
-    }
+    let (phase_mask_builder, feature_mask_builder, feature_flag_mask_builder) =
+        super::util::default_main_view_masks(render_options);
 
     const CAMERA_XY_DISTANCE: f32 = 12.0;
     const CAMERA_Z: f32 = 6.0;

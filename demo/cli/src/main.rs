@@ -1,12 +1,9 @@
 use demo::daemon_args::AssetDaemonArgs;
 use distill::daemon::AssetDaemon;
 use distill_cli::Command;
-use rafx_plugins::assets::anim::BlenderAnimImporter;
-use rafx_plugins::assets::font::FontImporter;
-use rafx_plugins::assets::mesh_basic::{
-    MeshBasicBlenderImporter, MeshBasicBlenderMaterialImporter, MeshBasicBlenderModelImporter,
-    MeshBasicBlenderPrefabImporter, MeshBasicGltfImporter,
-};
+use rafx::renderer::RendererAssetPlugin;
+use rafx_plugins::assets::anim::AnimAssetTypeRendererPlugin;
+use rafx_plugins::assets::font::FontAssetTypeRendererPlugin;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -39,18 +36,27 @@ pub struct CliArgs {
 }
 
 fn create_daemon(args: &CliArgs) -> AssetDaemon {
-    rafx::assets::distill_impl::default_daemon()
+    let mut asset_daemon = rafx::assets::distill_impl::default_daemon()
         .with_db_path(&args.daemon_args.db_dir)
         .with_address(args.daemon_args.address)
-        .with_asset_dirs(args.daemon_args.asset_dirs.clone())
-        .with_importer(&["ttf"], FontImporter)
-        .with_importer(&["gltf"], MeshBasicGltfImporter)
-        .with_importer(&["glb"], MeshBasicGltfImporter)
-        .with_importer(&["blender_material"], MeshBasicBlenderMaterialImporter)
-        .with_importer(&["blender_model"], MeshBasicBlenderModelImporter)
-        .with_importer(&["blender_mesh"], MeshBasicBlenderImporter)
-        .with_importer(&["blender_prefab"], MeshBasicBlenderPrefabImporter)
-        .with_importer(&["blender_anim"], BlenderAnimImporter)
+        .with_asset_dirs(args.daemon_args.asset_dirs.clone());
+
+    #[cfg(feature = "basic-pipeline")]
+    {
+        asset_daemon = rafx_plugins::assets::mesh_basic::MeshBasicAssetTypeRendererPlugin
+            .configure_asset_daemon(asset_daemon);
+    }
+
+    #[cfg(not(feature = "basic-pipeline"))]
+    {
+        asset_daemon = rafx_plugins::assets::mesh_adv::MeshBasicAssetTypeRendererPlugin
+            .configure_asset_daemon(asset_daemon);
+    }
+
+    asset_daemon = FontAssetTypeRendererPlugin.configure_asset_daemon(asset_daemon);
+    asset_daemon = AnimAssetTypeRendererPlugin.configure_asset_daemon(asset_daemon);
+
+    asset_daemon
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

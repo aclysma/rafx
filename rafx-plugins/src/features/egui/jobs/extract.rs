@@ -21,9 +21,16 @@ impl<'extract> EguiExtractJob<'extract> {
         frame_packet: Box<EguiFramePacket>,
         egui_material: Handle<MaterialAsset>,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
+        #[cfg(feature = "egui-winit")]
         let egui_manager = extract_context
             .extract_resources
             .fetch_mut::<WinitEguiManager>()
+            .egui_manager();
+
+        #[cfg(feature = "egui-sdl2")]
+        let egui_manager = extract_context
+            .extract_resources
+            .fetch_mut::<Sdl2EguiManager>()
             .egui_manager();
 
         Arc::new(ExtractJob::new(

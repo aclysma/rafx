@@ -8,8 +8,11 @@ pub mod tile_layer;
 pub mod sprite;
 
 // This feature currently requires legion
-#[cfg(feature = "legion")]
+#[cfg(all(feature = "basic-pipeline", feature = "legion"))]
 pub mod mesh_basic;
+
+#[cfg(all(feature = "modern-pipeline", feature = "legion"))]
+pub mod mesh_adv;
 
 #[cfg(feature = "egui")]
 pub mod egui;

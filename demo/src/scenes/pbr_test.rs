@@ -1,33 +1,12 @@
 use crate::input::InputResource;
-use crate::scenes::util::FlyCamera;
+use crate::scenes::util::{FlyCamera, SpawnablePrefab};
 use crate::time::TimeState;
 use crate::RenderOptions;
-use distill::loader::handle::Handle;
 use legion::{Resources, World};
-use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::AssetManager;
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
-use rafx::render_features::{
-    RenderFeatureFlagMaskBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
-    RenderViewDepthRange,
-};
+use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::assets::mesh_basic::PrefabBasicAsset;
-use rafx_plugins::features::debug3d::Debug3DRenderFeature;
-use rafx_plugins::features::mesh_basic::{
-    MeshBasicNoShadowsRenderFeatureFlag, MeshBasicRenderFeature, MeshBasicRenderObjectSet,
-    MeshBasicUnlitRenderFeatureFlag, MeshBasicUntexturedRenderFeatureFlag,
-    MeshBasicWireframeRenderFeatureFlag,
-};
-use rafx_plugins::features::skybox::SkyboxRenderFeature;
-use rafx_plugins::features::sprite::SpriteRenderFeature;
-use rafx_plugins::features::text::TextRenderFeature;
-use rafx_plugins::features::tile_layer::TileLayerRenderFeature;
-use rafx_plugins::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
-    WireframeRenderPhase,
-};
 
 pub(super) struct PbrTestScene {
     main_view_frustum: ViewFrustumArc,
@@ -39,39 +18,22 @@ impl PbrTestScene {
         world: &mut World,
         resources: &Resources,
     ) -> Self {
-        let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
-        let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
         render_options.show_skybox = false;
-
-        let mut mesh_render_objects = resources.get_mut::<MeshBasicRenderObjectSet>().unwrap();
-
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
         let mut fly_camera = FlyCamera::default();
         fly_camera.position = glam::Vec3::new(15.0, -90.0, 15.0);
         fly_camera.yaw = std::f32::consts::FRAC_PI_2;
         fly_camera.lock_view = true;
 
-        let prefab_asset_handle: Handle<PrefabBasicAsset> =
-            asset_resource.load_asset_path("pbr-test/Scene.001.blender_prefab");
-        asset_manager
-            .wait_for_asset_to_load(&prefab_asset_handle, &mut asset_resource, "pbr test scene")
-            .unwrap();
-        let prefab_asset = asset_resource.asset(&prefab_asset_handle).unwrap().clone();
-
-        super::util::spawn_prefab(
-            world,
+        let prefab = SpawnablePrefab::blocking_load_from_path(
             resources,
-            &mut *asset_manager,
-            &mut *asset_resource,
-            &mut *mesh_render_objects,
-            &*visibility_region,
-            &prefab_asset,
+            "pbr-test/Scene.001.blender_prefab",
         );
+        prefab.spawn_prefab(world, resources);
 
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
         let main_view_frustum = visibility_region.register_view_frustum();
 
         PbrTestScene {
@@ -126,57 +88,8 @@ fn update_main_view_3d(
     viewports_resource: &mut ViewportsResource,
     fly_camera: &FlyCamera,
 ) {
-    let phase_mask_builder = RenderPhaseMaskBuilder::default()
-        .add_render_phase::<DepthPrepassRenderPhase>()
-        .add_render_phase::<OpaqueRenderPhase>()
-        .add_render_phase::<TransparentRenderPhase>()
-        .add_render_phase::<WireframeRenderPhase>()
-        .add_render_phase::<UiRenderPhase>();
-
-    let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshBasicRenderFeature>()
-        .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<TileLayerRenderFeature>();
-
-    #[cfg(feature = "egui")]
-    {
-        feature_mask_builder = feature_mask_builder
-            .add_render_feature::<rafx_plugins::features::egui::EguiRenderFeature>();
-    }
-
-    if render_options.show_text {
-        feature_mask_builder = feature_mask_builder.add_render_feature::<TextRenderFeature>();
-    }
-
-    if render_options.show_debug3d {
-        feature_mask_builder = feature_mask_builder.add_render_feature::<Debug3DRenderFeature>();
-    }
-
-    if render_options.show_skybox {
-        feature_mask_builder = feature_mask_builder.add_render_feature::<SkyboxRenderFeature>();
-    }
-
-    let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
-
-    if render_options.show_wireframes {
-        feature_flag_mask_builder = feature_flag_mask_builder
-            .add_render_feature_flag::<MeshBasicWireframeRenderFeatureFlag>();
-    }
-
-    if !render_options.enable_lighting {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshBasicUnlitRenderFeatureFlag>();
-    }
-
-    if !render_options.enable_textures {
-        feature_flag_mask_builder = feature_flag_mask_builder
-            .add_render_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>();
-    }
-
-    if !render_options.show_shadows {
-        feature_flag_mask_builder = feature_flag_mask_builder
-            .add_render_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>();
-    }
+    let (phase_mask_builder, feature_mask_builder, feature_flag_mask_builder) =
+        super::util::default_main_view_masks(render_options);
 
     let aspect_ratio = viewports_resource.main_window_size.width as f32
         / viewports_resource.main_window_size.height as f32;

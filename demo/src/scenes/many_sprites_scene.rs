@@ -1,8 +1,5 @@
 // NOTE(dvd): Inspired by Bevy `many_sprites` example (MIT licensed) https://github.com/bevyengine/bevy/blob/621cba4864fd5d2c0962151b126769eff45797fd/examples/2d/many_sprites.rs
 
-use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
-};
 use crate::time::TimeState;
 use crate::RenderOptions;
 use glam::{Quat, Vec2, Vec3};
@@ -12,19 +9,14 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
-use rafx::render_features::{
-    RenderFeatureFlagMask, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder, RenderViewDepthRange,
-};
+use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
 use rafx_plugins::assets::font::FontAsset;
 use rafx_plugins::components::SpriteComponent;
 use rafx_plugins::components::{TransformComponent, VisibilityComponent};
-use rafx_plugins::features::skybox::SkyboxRenderFeature;
-use rafx_plugins::features::sprite::{
-    SpriteRenderFeature, SpriteRenderObject, SpriteRenderObjectSet,
-};
-use rafx_plugins::features::text::{TextRenderFeature, TextResource};
+use rafx_plugins::features::sprite::{SpriteRenderObject, SpriteRenderObjectSet};
+use rafx_plugins::features::text::TextResource;
 use rand::Rng;
 
 const CAMERA_SPEED: f32 = 1000.0;
@@ -53,6 +45,7 @@ impl ManySpritesScene {
     ) -> Self {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_2d();
+        render_options.show_skybox = true;
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
@@ -78,20 +71,24 @@ impl ManySpritesScene {
         let mut main_view_frustum_copy = main_view_frustum.clone();
 
         let update_camera_system = SystemBuilder::new("update_camera")
+            .read_resource::<RenderOptions>()
             .read_resource::<TimeState>()
             .write_resource::<ViewportsResource>()
             .with_query(<Write<CameraComponent>>::query())
-            .build(move |_, world, (time_state, viewports_resource), queries| {
-                profiling::scope!("update_camera_system");
-                for camera in queries.iter_mut(world) {
-                    update_main_view_2d(
-                        camera,
-                        &mut main_view_frustum_copy,
-                        time_state,
-                        viewports_resource,
-                    );
-                }
-            });
+            .build(
+                move |_, world, (render_options, time_state, viewports_resource), queries| {
+                    profiling::scope!("update_camera_system");
+                    for camera in queries.iter_mut(world) {
+                        update_main_view_2d(
+                            &*render_options,
+                            camera,
+                            &mut main_view_frustum_copy,
+                            time_state,
+                            viewports_resource,
+                        );
+                    }
+                },
+            );
 
         let update_transforms_system = SystemBuilder::new("update_transforms")
             .read_resource::<TimeState>()
@@ -222,34 +219,14 @@ impl super::TestScene for ManySpritesScene {
 
 #[profiling::function]
 fn update_main_view_2d(
+    render_options: &RenderOptions,
     camera: &mut CameraComponent,
     main_view_frustum: &mut ViewFrustumArc,
     time: &TimeState,
     viewports_resource: &mut ViewportsResource,
 ) {
-    let main_camera_phase_mask = RenderPhaseMaskBuilder::default()
-        .add_render_phase::<DepthPrepassRenderPhase>()
-        .add_render_phase::<OpaqueRenderPhase>()
-        .add_render_phase::<TransparentRenderPhase>()
-        .add_render_phase::<UiRenderPhase>()
-        .build();
-
-    let mut main_camera_feature_mask = RenderFeatureMaskBuilder::default();
-    main_camera_feature_mask = main_camera_feature_mask
-        .add_render_feature::<SkyboxRenderFeature>()
-        .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<TextRenderFeature>();
-
-    #[cfg(feature = "egui")]
-    {
-        main_camera_feature_mask = main_camera_feature_mask
-            .add_render_feature::<rafx_plugins::features::egui::EguiRenderFeature>(
-        );
-    }
-
-    let main_camera_feature_mask = main_camera_feature_mask.build();
-
-    // Round to a whole number
+    let (phase_mask_builder, feature_mask_builder, feature_flag_mask_builder) =
+        super::util::default_main_view_masks(render_options);
 
     camera
         .position
@@ -318,9 +295,9 @@ fn update_main_view_2d(
         view,
         proj: projection.as_rh_mat4(),
         depth_range: RenderViewDepthRange::from_projection(&projection),
-        render_phase_mask: main_camera_phase_mask,
-        render_feature_mask: main_camera_feature_mask,
-        render_feature_flag_mask: RenderFeatureFlagMask::empty(),
+        render_phase_mask: phase_mask_builder.build(),
+        render_feature_mask: feature_mask_builder.build(),
+        render_feature_flag_mask: feature_flag_mask_builder.build(),
         debug_name: "main".to_string(),
     });
 }

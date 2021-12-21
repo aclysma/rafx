@@ -1,7 +1,3 @@
-use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
-    WireframeRenderPhase,
-};
 use crate::time::TimeState;
 use crate::RenderOptions;
 use glam::f32::Vec3;
@@ -10,21 +6,11 @@ use legion::{Resources, World};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
-use rafx::render_features::{
-    RenderFeatureFlagMaskBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
-    RenderViewDepthRange,
-};
+use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
 use rafx_plugins::assets::anim::{AnimAsset, AnimClip, Skeleton};
-use rafx_plugins::features::debug3d::{Debug3DRenderFeature, Debug3DResource};
-use rafx_plugins::features::mesh_basic::{
-    MeshBasicNoShadowsRenderFeatureFlag, MeshBasicRenderFeature, MeshBasicUnlitRenderFeatureFlag,
-    MeshBasicUntexturedRenderFeatureFlag, MeshBasicWireframeRenderFeatureFlag,
-};
-use rafx_plugins::features::sprite::SpriteRenderFeature;
-use rafx_plugins::features::text::TextRenderFeature;
-use rafx_plugins::features::tile_layer::TileLayerRenderFeature;
+use rafx_plugins::features::debug3d::Debug3DResource;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -127,6 +113,10 @@ impl AnimationScene {
             .unwrap();
 
         let anim_asset_data = asset_manager.committed_asset(&anim_asset).unwrap();
+
+        let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
+        *render_options = RenderOptions::default_3d();
+        render_options.show_skybox = false;
 
         AnimationScene {
             main_view_frustum,
@@ -259,46 +249,8 @@ fn update_main_view_3d(
     main_view_frustum: &mut ViewFrustumArc,
     viewports_resource: &mut ViewportsResource,
 ) {
-    let phase_mask_builder = RenderPhaseMaskBuilder::default()
-        .add_render_phase::<DepthPrepassRenderPhase>()
-        .add_render_phase::<OpaqueRenderPhase>()
-        .add_render_phase::<TransparentRenderPhase>()
-        .add_render_phase::<WireframeRenderPhase>()
-        .add_render_phase::<UiRenderPhase>();
-
-    let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshBasicRenderFeature>()
-        .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<TileLayerRenderFeature>()
-        .add_render_feature::<TextRenderFeature>()
-        .add_render_feature::<Debug3DRenderFeature>();
-
-    #[cfg(feature = "egui")]
-    {
-        feature_mask_builder = feature_mask_builder
-            .add_render_feature::<rafx_plugins::features::egui::EguiRenderFeature>();
-    }
-
-    let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
-    if render_options.show_wireframes {
-        feature_flag_mask_builder = feature_flag_mask_builder
-            .add_render_feature_flag::<MeshBasicWireframeRenderFeatureFlag>();
-    }
-
-    if !render_options.enable_lighting {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshBasicUnlitRenderFeatureFlag>();
-    }
-
-    if !render_options.enable_textures {
-        feature_flag_mask_builder = feature_flag_mask_builder
-            .add_render_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>();
-    }
-
-    if !render_options.show_shadows {
-        feature_flag_mask_builder = feature_flag_mask_builder
-            .add_render_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>();
-    }
+    let (phase_mask_builder, feature_mask_builder, feature_flag_mask_builder) =
+        super::util::default_main_view_masks(render_options);
 
     const CAMERA_XY_DISTANCE: f32 = 8.0;
     const CAMERA_Z: f32 = 3.0;

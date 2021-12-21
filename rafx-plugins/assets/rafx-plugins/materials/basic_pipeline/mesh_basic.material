@@ -1,0 +1,106 @@
+(
+    passes: [
+        (
+            name: Some("mesh textured"),
+            phase: Some("Opaque"),
+            fixed_function_state: (
+                depth_testing: ReadOnlyReverseZ,
+                cull_mode: Some(Back),
+                front_face: Some(CounterClockwise),
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_textured.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_textured.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+        (
+            name: Some("mesh textured z"),
+            fixed_function_state: (
+                depth_testing: EnabledReverseZ,
+                cull_mode: Some(Back),
+                front_face: Some(CounterClockwise),
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_textured.vert.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_textured.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+        (
+            name: Some("mesh untextured"),
+            fixed_function_state: (
+                depth_testing: ReadOnlyReverseZ,
+                cull_mode: Some(Back),
+                front_face: Some(CounterClockwise),
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_untextured.vert.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_untextured.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+        (
+            name: Some("mesh untextured z"),
+            fixed_function_state: (
+                depth_testing: EnabledReverseZ,
+                cull_mode: Some(Back),
+                front_face: Some(CounterClockwise),
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_untextured.vert.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_untextured.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+        (
+            name: Some("mesh wireframe"),
+            phase: Some("Wireframe"),
+            fixed_function_state: (
+                depth_testing: Disabled,
+                alpha_blending: Enabled,
+                fill_mode: Some(Wireframe)
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_wireframe.vert.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../../shaders/mesh_basic/mesh_basic_wireframe.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        )
+    ]
+)

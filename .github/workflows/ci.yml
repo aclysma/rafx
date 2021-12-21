@@ -45,6 +45,12 @@ jobs:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
+      - name: Build
+        run: cargo check --no-default-features --features "rafx-vulkan,basic-pipeline,use-egui" --manifest-path demo/Cargo.toml
+        env:
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
+
       - name: Run tests (vulkan)
         run: cargo test --workspace --features "rafx-vulkan" --manifest-path demo/Cargo.toml
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
@@ -60,14 +66,14 @@ jobs:
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Run tests (gles2)
-        run: cargo test --workspace --features "rafx-gles2" --manifest-path demo/Cargo.toml
+        run: cargo test --workspace --features "rafx-gles2,basic-pipeline,cli/basic-pipeline" --manifest-path demo/Cargo.toml
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
         env:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Run tests (gles3)
-        run: cargo test --workspace --features "rafx-gles3" --manifest-path demo/Cargo.toml
+        run: cargo test --workspace --features "rafx-gles3,basic-pipeline,cli/basic-pipeline" --manifest-path demo/Cargo.toml
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
         env:
           CARGO_INCREMENTAL: 0

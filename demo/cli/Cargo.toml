@@ -26,3 +26,10 @@ tokio = { version = "1.0", features = [
     "time",
     "rt-multi-thread"
 ] }
+
+[features]
+default = [
+    "modern-pipeline"
+]
+basic-pipeline = ["demo/basic-pipeline", "rafx-plugins/basic-pipeline"]
+modern-pipeline = ["demo/modern-pipeline", "rafx-plugins/modern-pipeline"]
