@@ -1,5 +1,5 @@
 use super::*;
-use crate::shaders::debug::debug_vert;
+use crate::shaders::debug3d::debug3d_vert;
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 
@@ -44,7 +44,7 @@ pub type Debug3DSubmitPacket = SubmitPacket<Debug3DRenderFeatureTypes>;
 // WRITE
 //-------
 
-pub type Debug3DUniformBufferObject = debug_vert::PerFrameUboUniform;
+pub type Debug3DUniformBufferObject = debug3d_vert::PerFrameUboUniform;
 
 #[derive(Default)]
 pub struct Debug3DPerFrameSubmitData {

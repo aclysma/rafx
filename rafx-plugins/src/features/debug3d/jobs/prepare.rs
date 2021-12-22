@@ -2,7 +2,7 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::WireframeRenderPhase;
-use crate::shaders::debug::debug_vert;
+use crate::shaders::debug3d::debug3d_vert;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 use rafx::framework::ResourceContext;
 
@@ -99,7 +99,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for Debug3DPrepareJob {
         let debug3d_material_pass = per_frame_data.debug3d_material_pass.as_ref().unwrap();
         let per_view_descriptor_set_layout = &debug3d_material_pass
             .get_raw()
-            .descriptor_set_layouts[debug_vert::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX];
+            .descriptor_set_layouts[debug3d_vert::PER_FRAME_DATA_DESCRIPTOR_SET_INDEX];
 
         let view = context.view();
         let debug3d_view = Debug3DUniformBufferObject {
@@ -114,7 +114,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for Debug3DPrepareJob {
                 descriptor_set_arc: descriptor_set_allocator
                     .create_descriptor_set_with_writer(
                         per_view_descriptor_set_layout,
-                        debug_vert::DescriptorSet0Args {
+                        debug3d_vert::DescriptorSet0Args {
                             per_frame_data: &debug3d_view,
                         },
                     )

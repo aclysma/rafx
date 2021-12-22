@@ -19,6 +19,7 @@ mod depth_prepass;
 mod bloom_extract_pass;
 use super::BasicPipelineRenderOptions;
 use super::BasicPipelineStaticResources;
+use crate::features::debug_pip::DebugPipRenderResource;
 use crate::features::mesh_basic::MeshBasicShadowMapResource;
 use crate::pipelines::basic::BasicPipelineTonemapDebugData;
 use bloom_extract_pass::BloomExtractPass;
@@ -31,6 +32,8 @@ mod bloom_blur_pass;
 mod bloom_combine_pass;
 
 mod luma_pass;
+
+mod debug_pip_pass;
 
 mod ui_pass;
 
@@ -85,6 +88,10 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
         let previous_update_dt = render_resources
             .fetch::<TimeRenderResource>()
             .previous_update_dt();
+
+        render_resources
+            .fetch_mut::<DebugPipRenderResource>()
+            .clear();
 
         let graph_config = {
             let render_options = extract_resources
@@ -180,7 +187,7 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
 
         let opaque_pass = opaque_pass::opaque_pass(&mut graph_context, depth_prepass, &shadow_maps);
 
-        let previous_pass_color = if graph_config.enable_hdr {
+        let mut previous_pass_color = if graph_config.enable_hdr {
             let bloom_extract_material_pass = asset_manager
                 .committed_asset(&static_resources.bloom_extract_material)
                 .unwrap()
@@ -260,9 +267,12 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
             opaque_pass.color
         };
 
-        let ui_pass = ui_pass::ui_pass(&mut graph_context, previous_pass_color);
+        previous_pass_color =
+            debug_pip_pass::debug_pip_pass(&mut graph_context, previous_pass_color).color;
 
-        graph.write_external_image(swapchain_image_id, ui_pass.color);
+        previous_pass_color = ui_pass::ui_pass(&mut graph_context, previous_pass_color).color;
+
+        graph.write_external_image(swapchain_image_id, previous_pass_color);
 
         let prepared_render_graph = PreparedRenderGraph::new(
             &device_context,

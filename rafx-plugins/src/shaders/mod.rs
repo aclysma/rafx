@@ -2,7 +2,8 @@
 
 #![allow(dead_code)]
 
-pub mod debug;
+pub mod debug3d;
+pub mod debug_pip;
 pub mod depth;
 pub mod egui;
 pub mod imgui;

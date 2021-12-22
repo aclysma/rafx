@@ -697,6 +697,10 @@ impl DemoApp {
                 rafx_plugins::features::debug3d::Debug3DResource,
                 debug_draw_3d_resource
             );
+            add_to_extract_resources!(
+                rafx_plugins::features::debug_pip::DebugPipResource,
+                debug_pip_resource
+            );
             add_to_extract_resources!(rafx_plugins::features::text::TextResource, text_resource);
 
             #[cfg(feature = "egui")]

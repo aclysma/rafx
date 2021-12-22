@@ -1,0 +1,24 @@
+(
+    passes: [
+        (
+            phase: Some("Wireframe"),
+            fixed_function_state: (
+                alpha_blending: Enabled,
+                depth_testing: EnabledReverseZ,
+                fill_mode: Some(Wireframe)
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../shaders/debug3d/debug3d.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../shaders/debug3d/debug3d.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)

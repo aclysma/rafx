@@ -62,26 +62,26 @@ impl RafxApi {
     #[allow(unreachable_code)]
     pub unsafe fn new(
         _window: &dyn HasRawWindowHandle,
-        api_def: &RafxApiDef,
+        _api_def: &RafxApiDef,
     ) -> RafxResult<Self> {
         #[cfg(feature = "rafx-metal")]
         {
-            return RafxApi::new_metal(_window, api_def);
+            return RafxApi::new_metal(_window, _api_def);
         }
 
         #[cfg(feature = "rafx-vulkan")]
         {
-            return RafxApi::new_vulkan(_window, api_def);
+            return RafxApi::new_vulkan(_window, _api_def);
         }
 
         #[cfg(feature = "rafx-gles3")]
         {
-            return RafxApi::new_gles3(_window, api_def);
+            return RafxApi::new_gles3(_window, _api_def);
         }
 
         #[cfg(feature = "rafx-gles2")]
         {
-            return RafxApi::new_gles2(_window, api_def);
+            return RafxApi::new_gles2(_window, _api_def);
         }
 
         return Err("Rafx was compiled with no backend feature flag. Use on of the following features: rafx-metal, rafx-vulkan, rafx-gles2")?;

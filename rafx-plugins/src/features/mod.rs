@@ -1,4 +1,5 @@
 pub mod debug3d;
+pub mod debug_pip;
 pub mod skybox;
 pub mod text;
 pub mod tile_layer;

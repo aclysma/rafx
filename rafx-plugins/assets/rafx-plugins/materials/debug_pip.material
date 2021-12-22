@@ -4,18 +4,17 @@
             phase: Some("Wireframe"),
             fixed_function_state: (
                 alpha_blending: Enabled,
-                depth_testing: EnabledReverseZ,
-                fill_mode: Some(Wireframe)
+                depth_testing: Disabled,
             ),
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/debug/debug.vert.cookedshaderpackage",
+                    shader_module: "../shaders/debug_pip/debug_pip.vert.cookedshaderpackage",
                     entry_name: "main" 
                 ),
                 (
                     stage: Fragment,
-                    shader_module: "../shaders/debug/debug.frag.cookedshaderpackage",
+                    shader_module: "../shaders/debug_pip/debug_pip.frag.cookedshaderpackage",
                     entry_name: "main"
                 ),
             ],

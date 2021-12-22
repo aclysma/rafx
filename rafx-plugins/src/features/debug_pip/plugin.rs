@@ -1,32 +1,32 @@
 use rafx::render_feature_renderer_prelude::*;
 
 use super::*;
-use crate::phases::WireframeRenderPhase;
+use crate::phases::DebugPipRenderPhase;
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
-pub struct Debug3DStaticResources {
-    pub debug3d_material: Handle<MaterialAsset>,
+pub struct DebugPipStaticResources {
+    pub debug_pip_material: Handle<MaterialAsset>,
 }
 
 #[derive(Default)]
-pub struct Debug3DRendererPlugin;
+pub struct DebugPipRendererPlugin;
 
 #[cfg(feature = "legion")]
-impl Debug3DRendererPlugin {
+impl DebugPipRendererPlugin {
     pub fn legion_init(
         &self,
         resources: &mut legion::Resources,
     ) {
-        resources.insert(Debug3DResource::new());
+        resources.insert(DebugPipResource::default());
     }
 
     pub fn legion_destroy(resources: &mut legion::Resources) {
-        resources.remove::<Debug3DResource>();
+        resources.remove::<DebugPipResource>();
     }
 }
 
-impl RenderFeaturePlugin for Debug3DRendererPlugin {
+impl RenderFeaturePlugin for DebugPipRendererPlugin {
     fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
         super::render_feature_debug_constants()
     }
@@ -39,7 +39,7 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         &self,
         view: &RenderView,
     ) -> bool {
-        view.phase_is_relevant::<WireframeRenderPhase>()
+        view.phase_is_relevant::<DebugPipRenderPhase>()
     }
 
     fn requires_visible_render_objects(&self) -> bool {
@@ -50,7 +50,7 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         &self,
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
-        render_registry.register_feature::<Debug3DRenderFeature>()
+        render_registry.register_feature::<DebugPipRenderFeature>()
     }
 
     fn initialize_static_resources(
@@ -61,14 +61,17 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         render_resources: &mut ResourceMap,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let debug3d_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/debug3d.material");
+        let debug_pip_material = asset_resource
+            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/debug_pip.material");
 
-        asset_manager
-            .wait_for_asset_to_load(&debug3d_material, asset_resource, "debug3d.material")
-            .unwrap();
+        asset_manager.wait_for_asset_to_load(
+            &debug_pip_material,
+            asset_resource,
+            "debug_pip material",
+        )?;
 
-        render_resources.insert(Debug3DStaticResources { debug3d_material });
+        render_resources.insert(DebugPipStaticResources { debug_pip_material });
+        render_resources.insert(DebugPipRenderResource::default());
 
         Ok(())
     }
@@ -77,7 +80,7 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         &self,
         frame_packet_size: &FramePacketSize,
     ) -> Box<dyn RenderFeatureFramePacket> {
-        Box::new(Debug3DFramePacket::new(
+        Box::new(DebugPipFramePacket::new(
             self.feature_index(),
             frame_packet_size,
         ))
@@ -88,16 +91,14 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         extract_context: &RenderJobExtractContext<'extract>,
         frame_packet: Box<dyn RenderFeatureFramePacket>,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
-        let debug3d_material = extract_context
+        let static_resources = extract_context
             .render_resources
-            .fetch::<Debug3DStaticResources>()
-            .debug3d_material
-            .clone();
+            .fetch::<DebugPipStaticResources>();
 
-        Debug3DExtractJob::new(
+        DebugPipExtractJob::new(
             extract_context,
             frame_packet.into_concrete(),
-            debug3d_material,
+            static_resources.debug_pip_material.clone(),
         )
     }
 
@@ -105,16 +106,16 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         &self,
         frame_packet: &Box<dyn RenderFeatureFramePacket>,
     ) -> Box<dyn RenderFeatureSubmitPacket> {
-        let frame_packet: &Debug3DFramePacket = frame_packet.as_ref().as_concrete();
+        let frame_packet: &DebugPipFramePacket = frame_packet.as_ref().as_concrete();
 
         let mut view_submit_packets = Vec::with_capacity(frame_packet.view_packets().len());
         for view_packet in frame_packet.view_packets() {
             let view_submit_packet =
-                ViewSubmitPacket::from_view_packet::<WireframeRenderPhase>(view_packet, Some(1));
+                ViewSubmitPacket::from_view_packet::<DebugPipRenderPhase>(view_packet, Some(1));
             view_submit_packets.push(view_submit_packet);
         }
 
-        Box::new(Debug3DSubmitPacket::new(
+        Box::new(DebugPipSubmitPacket::new(
             self.feature_index(),
             frame_packet.render_object_instances().len(),
             view_submit_packets,
@@ -127,7 +128,7 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         frame_packet: Box<dyn RenderFeatureFramePacket>,
         submit_packet: Box<dyn RenderFeatureSubmitPacket>,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
-        Debug3DPrepareJob::new(
+        DebugPipPrepareJob::new(
             prepare_context,
             frame_packet.into_concrete(),
             submit_packet.into_concrete(),
@@ -140,7 +141,7 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         frame_packet: Box<dyn RenderFeatureFramePacket>,
         submit_packet: Box<dyn RenderFeatureSubmitPacket>,
     ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
-        Debug3DWriteJob::new(
+        DebugPipWriteJob::new(
             write_context,
             frame_packet.into_concrete(),
             submit_packet.into_concrete(),

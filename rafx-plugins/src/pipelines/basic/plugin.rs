@@ -1,6 +1,6 @@
 use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase, ShadowMapRenderPhase,
-    TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
+    DebugPipRenderPhase, DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase,
+    ShadowMapRenderPhase, TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
 use crate::shaders::post_basic::luma_average_histogram_comp;
 use rafx::api::extra::upload::RafxTransferUpload;
@@ -88,6 +88,7 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
             .register_render_phase::<TransparentRenderPhase>("Transparent")
             .register_render_phase::<WireframeRenderPhase>("Wireframe")
             .register_render_phase::<PostProcessRenderPhase>("PostProcess")
+            .register_render_phase::<DebugPipRenderPhase>("DebugPipRenderPhase")
             .register_render_phase::<UiRenderPhase>("Ui")
     }
 

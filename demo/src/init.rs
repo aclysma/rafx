@@ -12,6 +12,7 @@ use rafx_plugins::assets::anim::AnimAssetTypeRendererPlugin;
 use rafx_plugins::assets::font::FontAssetTypeRendererPlugin;
 use rafx_plugins::assets::ldtk::LdtkAssetTypeRendererPlugin;
 use rafx_plugins::features::debug3d::Debug3DRendererPlugin;
+use rafx_plugins::features::debug_pip::DebugPipRendererPlugin;
 use rafx_plugins::features::skybox::SkyboxRendererPlugin;
 use rafx_plugins::features::sprite::SpriteRendererPlugin;
 use rafx_plugins::features::text::TextRendererPlugin;
@@ -52,6 +53,7 @@ pub fn rendering_init(
     let skybox_renderer_plugin = Arc::new(SkyboxRendererPlugin::default());
     let tile_layer_renderer_plugin = Arc::new(TileLayerRendererPlugin::default());
     let debug3d_renderer_plugin = Arc::new(Debug3DRendererPlugin::default());
+    let debug_pip_renderer_plugin = Arc::new(DebugPipRendererPlugin::default());
     let text_renderer_plugin = Arc::new(TextRendererPlugin::default());
 
     #[cfg(feature = "egui")]
@@ -62,6 +64,7 @@ pub fn rendering_init(
     skybox_renderer_plugin.legion_init(resources);
     tile_layer_renderer_plugin.legion_init(resources);
     debug3d_renderer_plugin.legion_init(resources);
+    debug_pip_renderer_plugin.legion_init(resources);
     text_renderer_plugin.legion_init(resources);
 
     #[cfg(feature = "egui")]
@@ -115,6 +118,7 @@ pub fn rendering_init(
         .add_render_feature(skybox_renderer_plugin)
         .add_render_feature(tile_layer_renderer_plugin)
         .add_render_feature(debug3d_renderer_plugin)
+        .add_render_feature(debug_pip_renderer_plugin)
         .add_render_feature(text_renderer_plugin)
         .allow_use_render_thread(allow_use_render_thread);
 
@@ -183,6 +187,7 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
         SkyboxRendererPlugin::legion_destroy(resources);
         TileLayerRendererPlugin::legion_destroy(resources);
         Debug3DRendererPlugin::legion_destroy(resources);
+        DebugPipRendererPlugin::legion_destroy(resources);
         TextRendererPlugin::legion_destroy(resources);
 
         #[cfg(feature = "egui")]

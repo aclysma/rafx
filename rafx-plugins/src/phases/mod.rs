@@ -1,6 +1,9 @@
 mod shadow_map_render_phase;
 pub use shadow_map_render_phase::ShadowMapRenderPhase;
 
+mod debug_pip_render_phase;
+pub use debug_pip_render_phase::DebugPipRenderPhase;
+
 mod depth_prepass_render_phase;
 pub use depth_prepass_render_phase::DepthPrepassRenderPhase;
 
