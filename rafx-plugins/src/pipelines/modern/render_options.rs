@@ -1,7 +1,7 @@
 // Should be kept in sync with the constants in bloom_combine.frag prefixed with OUTPUT_COLOR_SPACE_
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
-pub enum BasicPipelineOutputColorSpace {
+pub enum ModernPipelineOutputColorSpace {
     Srgb,
     P3,
 }
@@ -9,7 +9,7 @@ pub enum BasicPipelineOutputColorSpace {
 // Should be kept in sync with the constants in tonemapper.glsl prefixed with TM_
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
-pub enum BasicPipelineTonemapperType {
+pub enum ModernPipelineTonemapperType {
     None,
     StephenHillACES,
     SimplifiedLumaACES,
@@ -23,32 +23,32 @@ pub enum BasicPipelineTonemapperType {
     Bergstrom,
     MAX,
 }
-impl BasicPipelineTonemapperType {
+impl ModernPipelineTonemapperType {
     pub fn display_name(&self) -> &'static str {
         match self {
-            BasicPipelineTonemapperType::None => "None",
-            BasicPipelineTonemapperType::StephenHillACES => "Stephen Hill ACES",
-            BasicPipelineTonemapperType::SimplifiedLumaACES => "SimplifiedLumaACES",
-            BasicPipelineTonemapperType::Hejl2015 => "Hejl 2015",
-            BasicPipelineTonemapperType::Hable => "Hable",
-            BasicPipelineTonemapperType::FilmicALU => "Filmic ALU (Hable)",
-            BasicPipelineTonemapperType::LogDerivative => "LogDerivative",
-            BasicPipelineTonemapperType::VisualizeRGBMax => "Visualize RGB Max",
-            BasicPipelineTonemapperType::VisualizeLuma => "Visualize RGB Luma",
-            BasicPipelineTonemapperType::AutoExposureOld => "Autoexposure Old",
-            BasicPipelineTonemapperType::Bergstrom => "Bergstrom",
-            BasicPipelineTonemapperType::MAX => "MAX_TONEMAPPER_VALUE",
+            ModernPipelineTonemapperType::None => "None",
+            ModernPipelineTonemapperType::StephenHillACES => "Stephen Hill ACES",
+            ModernPipelineTonemapperType::SimplifiedLumaACES => "SimplifiedLumaACES",
+            ModernPipelineTonemapperType::Hejl2015 => "Hejl 2015",
+            ModernPipelineTonemapperType::Hable => "Hable",
+            ModernPipelineTonemapperType::FilmicALU => "Filmic ALU (Hable)",
+            ModernPipelineTonemapperType::LogDerivative => "LogDerivative",
+            ModernPipelineTonemapperType::VisualizeRGBMax => "Visualize RGB Max",
+            ModernPipelineTonemapperType::VisualizeLuma => "Visualize RGB Luma",
+            ModernPipelineTonemapperType::AutoExposureOld => "Autoexposure Old",
+            ModernPipelineTonemapperType::Bergstrom => "Bergstrom",
+            ModernPipelineTonemapperType::MAX => "MAX_TONEMAPPER_VALUE",
         }
     }
 }
-impl From<i32> for BasicPipelineTonemapperType {
+impl From<i32> for ModernPipelineTonemapperType {
     fn from(v: i32) -> Self {
         assert!(v <= Self::MAX as i32);
         unsafe { std::mem::transmute(v) }
     }
 }
 
-impl std::fmt::Display for BasicPipelineTonemapperType {
+impl std::fmt::Display for ModernPipelineTonemapperType {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
@@ -58,7 +58,7 @@ impl std::fmt::Display for BasicPipelineTonemapperType {
 }
 
 #[derive(Clone)]
-pub struct BasicPipelineRenderOptions {
+pub struct ModernPipelineRenderOptions {
     pub enable_msaa: bool,
     pub enable_hdr: bool,
     pub enable_bloom: bool,
@@ -70,13 +70,13 @@ pub struct BasicPipelineRenderOptions {
     pub show_skybox: bool,
     pub show_feature_toggles: bool,
     pub blur_pass_count: usize,
-    pub tonemapper_type: BasicPipelineTonemapperType,
+    pub tonemapper_type: ModernPipelineTonemapperType,
     pub enable_visibility_update: bool,
 }
 
-impl Default for BasicPipelineRenderOptions {
+impl Default for ModernPipelineRenderOptions {
     fn default() -> Self {
-        BasicPipelineRenderOptions {
+        ModernPipelineRenderOptions {
             enable_msaa: true,
             enable_hdr: true,
             enable_bloom: true,
@@ -88,7 +88,7 @@ impl Default for BasicPipelineRenderOptions {
             show_skybox: true,
             show_feature_toggles: true,
             blur_pass_count: 5,
-            tonemapper_type: BasicPipelineTonemapperType::LogDerivative,
+            tonemapper_type: ModernPipelineTonemapperType::LogDerivative,
             enable_visibility_update: true,
         }
     }

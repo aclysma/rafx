@@ -52,14 +52,14 @@ use rafx_plugins::pipelines::basic::{
 
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::features::mesh_adv::{
-    MeshBasicRenderObjectSet as MeshRenderObjectSet, MeshBasicRenderOptions as MeshRenderOptions,
+    MeshAdvRenderObjectSet as MeshRenderObjectSet, MeshAdvRenderOptions as MeshRenderOptions,
 };
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::pipelines::modern::BasicPipelineTonemapperType as PipelineTonemapperType;
+use rafx_plugins::pipelines::modern::ModernPipelineTonemapperType as PipelineTonemapperType;
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::pipelines::modern::{
-    BasicPipelineRenderOptions as PipelineRenderOptions,
-    BasicPipelineTonemapDebugData as PipelineTonemapDebugData,
+    ModernPipelineRenderOptions as PipelineRenderOptions,
+    ModernPipelineTonemapDebugData as PipelineTonemapDebugData,
 };
 
 #[cfg(all(feature = "profile-with-tracy-memory", not(feature = "stats_alloc")))]

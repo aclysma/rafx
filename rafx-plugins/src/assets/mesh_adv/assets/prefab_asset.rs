@@ -5,83 +5,81 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
 
-use super::ModelBasicAsset;
+use super::ModelAdvAsset;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PrefabBasicAssetDataObjectTransform {
+pub struct PrefabAdvAssetDataObjectTransform {
     pub position: glam::Vec3,
     pub rotation: glam::Quat,
     pub scale: glam::Vec3,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PrefabBasicAssetDataObjectModel {
-    pub model: Handle<ModelBasicAsset>,
+pub struct PrefabAdvAssetDataObjectModel {
+    pub model: Handle<ModelAdvAsset>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-pub enum PrefabBasicAssetDataObjectLightKind {
+pub enum PrefabAdvAssetDataObjectLightKind {
     Point,
     Spot,
     Directional,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PrefabBasicAssetDataObjectLightSpot {
+pub struct PrefabAdvAssetDataObjectLightSpot {
     pub inner_angle: f32,
     pub outer_angle: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PrefabBasicAssetDataObjectLight {
+pub struct PrefabAdvAssetDataObjectLight {
     pub color: glam::Vec3,
-    pub kind: PrefabBasicAssetDataObjectLightKind,
+    pub kind: PrefabAdvAssetDataObjectLightKind,
     pub intensity: f32,
-    pub spot: Option<PrefabBasicAssetDataObjectLightSpot>,
+    pub spot: Option<PrefabAdvAssetDataObjectLightSpot>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PrefabBasicAssetDataObject {
-    pub transform: PrefabBasicAssetDataObjectTransform,
-    pub model: Option<PrefabBasicAssetDataObjectModel>,
-    pub light: Option<PrefabBasicAssetDataObjectLight>,
+pub struct PrefabAdvAssetDataObject {
+    pub transform: PrefabAdvAssetDataObjectTransform,
+    pub model: Option<PrefabAdvAssetDataObjectModel>,
+    pub light: Option<PrefabAdvAssetDataObjectLight>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone, Debug)]
 #[uuid = "2aa26beb-2359-4f57-a035-8e33b3ce8bf1"]
-pub struct PrefabBasicAssetData {
-    pub objects: Vec<PrefabBasicAssetDataObject>,
+pub struct PrefabAdvAssetData {
+    pub objects: Vec<PrefabAdvAssetDataObject>,
 }
 
-pub struct PrefabBasicAssetInner {
-    pub objects: Vec<PrefabBasicAssetDataObject>,
+pub struct PrefabAdvAssetInner {
+    pub objects: Vec<PrefabAdvAssetDataObject>,
 }
 
 #[derive(TypeUuid, Clone)]
 #[uuid = "ad1525bc-802b-4574-bac3-2a387f328d14"]
-pub struct PrefabBasicAsset {
-    pub inner: Arc<PrefabBasicAssetInner>,
+pub struct PrefabAdvAsset {
+    pub inner: Arc<PrefabAdvAssetInner>,
 }
 
-pub struct PrefabBasicLoadHandler;
+pub struct PrefabAdvLoadHandler;
 
-impl DefaultAssetTypeLoadHandler<PrefabBasicAssetData, PrefabBasicAsset>
-    for PrefabBasicLoadHandler
-{
+impl DefaultAssetTypeLoadHandler<PrefabAdvAssetData, PrefabAdvAsset> for PrefabAdvLoadHandler {
     #[profiling::function]
     fn load(
         _asset_manager: &mut AssetManager,
-        model_asset: PrefabBasicAssetData,
-    ) -> RafxResult<PrefabBasicAsset> {
-        let inner = PrefabBasicAssetInner {
+        model_asset: PrefabAdvAssetData,
+    ) -> RafxResult<PrefabAdvAsset> {
+        let inner = PrefabAdvAssetInner {
             objects: model_asset.objects,
         };
 
-        Ok(PrefabBasicAsset {
+        Ok(PrefabAdvAsset {
             inner: Arc::new(inner),
         })
     }
 }
 
-pub type PrefabBasicAssetType =
-    DefaultAssetTypeHandler<PrefabBasicAssetData, PrefabBasicAsset, PrefabBasicLoadHandler>;
+pub type PrefabAdvAssetType =
+    DefaultAssetTypeHandler<PrefabAdvAssetData, PrefabAdvAsset, PrefabAdvLoadHandler>;

@@ -49,7 +49,7 @@ fn create_daemon(args: &CliArgs) -> AssetDaemon {
 
     #[cfg(not(feature = "basic-pipeline"))]
     {
-        asset_daemon = rafx_plugins::assets::mesh_adv::MeshBasicAssetTypeRendererPlugin
+        asset_daemon = rafx_plugins::assets::mesh_adv::MeshAdvAssetTypeRendererPlugin
             .configure_asset_daemon(asset_daemon);
     }
 

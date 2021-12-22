@@ -21,14 +21,12 @@ use rafx_plugins::features::mesh_basic::{
 };
 
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::assets::mesh_adv::prefab_asset::PrefabBasicAssetDataObjectLightKind as PrefabAssetDataObjectLightKind;
+use rafx_plugins::assets::mesh_adv::prefab_asset::PrefabAdvAssetDataObjectLightKind as PrefabAssetDataObjectLightKind;
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::assets::mesh_adv::{
-    MeshBasicAsset as MeshAsset, PrefabBasicAsset as PrefabAsset,
-};
+use rafx_plugins::assets::mesh_adv::{MeshAdvAsset as MeshAsset, PrefabAdvAsset as PrefabAsset};
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::features::mesh_adv::{
-    MeshBasicRenderObject as MeshRenderObject, MeshBasicRenderObjectSet as MeshRenderObjectSet,
+    MeshAdvRenderObject as MeshRenderObject, MeshAdvRenderObjectSet as MeshRenderObjectSet,
 };
 
 pub struct SpawnablePrefab {

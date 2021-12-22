@@ -1,14 +1,14 @@
 #[derive(Clone)]
-pub struct MeshBasicRenderOptions {
+pub struct MeshAdvRenderOptions {
     pub show_surfaces: bool,
     pub show_shadows: bool,
     pub enable_lighting: bool,
     pub ambient_light: glam::Vec3,
 }
 
-impl Default for MeshBasicRenderOptions {
+impl Default for MeshAdvRenderOptions {
     fn default() -> Self {
-        MeshBasicRenderOptions {
+        MeshAdvRenderOptions {
             show_surfaces: true,
             show_shadows: true,
             enable_lighting: true,

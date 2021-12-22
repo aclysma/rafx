@@ -16,11 +16,11 @@ use opaque_pass::OpaquePass;
 mod depth_prepass;
 
 mod bloom_extract_pass;
-use super::BasicPipelineRenderOptions;
-use super::BasicPipelineStaticResources;
+use super::ModernPipelineRenderOptions;
+use super::ModernPipelineStaticResources;
 use crate::features::debug_pip::DebugPipRenderResource;
 use crate::features::mesh_adv::ShadowMapAtlas;
-use crate::pipelines::modern::BasicPipelineTonemapDebugData;
+use crate::pipelines::modern::ModernPipelineTonemapDebugData;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;
 use rafx::renderer::SwapchainRenderResource;
@@ -43,7 +43,7 @@ lazy_static::lazy_static! {
 }
 
 // All the data that can influence the rendergraph
-pub struct BasicPipelineRenderGraphConfig {
+pub struct ModernPipelineRenderGraphConfig {
     pub color_format: RafxFormat,
     pub depth_format: RafxFormat,
     pub swapchain_format: RafxFormat,
@@ -60,15 +60,15 @@ struct RenderGraphContext<'a> {
     #[allow(dead_code)]
     resource_context: &'a ResourceContext,
     asset_manager: &'a AssetManager,
-    graph_config: &'a BasicPipelineRenderGraphConfig,
+    graph_config: &'a ModernPipelineRenderGraphConfig,
     main_view: &'a RenderView,
     extract_resources: &'a ExtractResources<'a>,
     render_resources: &'a RenderResources,
 }
 
-pub struct BasicPipelineRenderGraphGenerator;
+pub struct ModernPipelineRenderGraphGenerator;
 
-impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
+impl RenderGraphGenerator for ModernPipelineRenderGraphGenerator {
     fn generate_render_graph(
         &self,
         asset_manager: &AssetManager,
@@ -84,7 +84,7 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
         let resource_context = asset_manager.resource_manager().resource_context();
         let swapchain_render_resource = render_resources.fetch::<SwapchainRenderResource>();
         let swapchain_info = swapchain_render_resource.surface_info().unwrap();
-        let static_resources = render_resources.fetch::<BasicPipelineStaticResources>();
+        let static_resources = render_resources.fetch::<ModernPipelineStaticResources>();
         let mut shadow_atlas = render_resources.fetch_mut::<ShadowMapAtlas>();
         let previous_update_dt = render_resources
             .fetch::<TimeRenderResource>()
@@ -96,7 +96,7 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
 
         let graph_config = {
             let render_options = extract_resources
-                .fetch::<BasicPipelineRenderOptions>()
+                .fetch::<ModernPipelineRenderOptions>()
                 .clone();
             let swapchain_format = swapchain_info.swapchain_surface_info.format;
             let sample_count = if render_options.enable_msaa {
@@ -111,7 +111,7 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
                 swapchain_info.default_color_format_sdr
             };
 
-            BasicPipelineRenderGraphConfig {
+            ModernPipelineRenderGraphConfig {
                 color_format,
                 depth_format: swapchain_info.default_depth_format,
                 samples: sample_count,
@@ -124,7 +124,7 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
         };
 
         let tonemap_debug_data = extract_resources
-            .try_fetch::<BasicPipelineTonemapDebugData>()
+            .try_fetch::<ModernPipelineTonemapDebugData>()
             .map(|x| x.clone());
 
         let mut graph = RenderGraphBuilder::default();

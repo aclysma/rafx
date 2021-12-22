@@ -12,7 +12,7 @@ use std::sync::Arc;
 use rafx_plugins::features::mesh_basic::MeshBasicRenderFeature as MeshRenderFeature;
 
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::features::mesh_adv::MeshBasicRenderFeature as MeshRenderFeature;
+use rafx_plugins::features::mesh_adv::MeshAdvRenderFeature as MeshRenderFeature;
 
 #[derive(Clone)]
 pub struct DemoRendererThreadPool {

@@ -4,28 +4,28 @@ mod internal;
 use internal::*;
 
 use rafx::render_feature_mod_prelude::*;
-rafx::declare_render_feature!(MeshBasicRenderFeature, MESH_BASIC_FEATURE_INDEX);
+rafx::declare_render_feature!(MeshAdvRenderFeature, MESH_ADV_FEATURE_INDEX);
 
 // Generates submit nodes for drawing wireframes into the `WireframeRenderPhase` if the view is
-// registered for both the `WireframeRenderPhase` and the optional `MeshBasicWireframeRenderFeatureFlag`.
+// registered for both the `WireframeRenderPhase` and the optional `MeshAdvWireframeRenderFeatureFlag`.
 rafx::declare_render_feature_flag!(
-    MeshBasicWireframeRenderFeatureFlag,
-    MESH_BASIC_WIREFRAME_FLAG_INDEX
+    MeshAdvWireframeRenderFeatureFlag,
+    MESH_ADV_WIREFRAME_FLAG_INDEX
 );
 
-// Generates untextured submit nodes if the `MeshBasicUntexturedRenderFeatureFlag` is registered on the view.
+// Generates untextured submit nodes if the `MeshAdvUntexturedRenderFeatureFlag` is registered on the view.
 rafx::declare_render_feature_flag!(
-    MeshBasicUntexturedRenderFeatureFlag,
-    MESH_BASIC_UNTEXTURED_FLAG_INDEX
+    MeshAdvUntexturedRenderFeatureFlag,
+    MESH_ADV_UNTEXTURED_FLAG_INDEX
 );
 
-// Ignores lighting when the `MeshBasicUnlitRenderFeatureFlag` is registered on the view.
-rafx::declare_render_feature_flag!(MeshBasicUnlitRenderFeatureFlag, MESH_BASIC_UNLIT_FLAG_INDEX);
+// Ignores lighting when the `MeshAdvUnlitRenderFeatureFlag` is registered on the view.
+rafx::declare_render_feature_flag!(MeshAdvUnlitRenderFeatureFlag, MESH_ADV_UNLIT_FLAG_INDEX);
 
-// Ignores shadows when the `MeshBasicNoShadowsRenderFeatureFlag` is registered on the view.
+// Ignores shadows when the `MeshAdvNoShadowsRenderFeatureFlag` is registered on the view.
 rafx::declare_render_feature_flag!(
-    MeshBasicNoShadowsRenderFeatureFlag,
-    MESH_BASIC_NO_SHADOWS_FLAG_INDEX
+    MeshAdvNoShadowsRenderFeatureFlag,
+    MESH_ADV_NO_SHADOWS_FLAG_INDEX
 );
 
 // Public API

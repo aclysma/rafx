@@ -1,4 +1,4 @@
-use crate::assets::mesh_adv::{MeshBasicAssetData, MeshBasicPartAssetData};
+use crate::assets::mesh_adv::{MeshAdvAssetData, MeshAdvPartAssetData};
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
@@ -57,7 +57,7 @@ fn try_cast_u8_slice<T: Copy + 'static>(data: &[u8]) -> Option<&[T]> {
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "b824818f-7026-412f-ba88-32bc25c1c7f4"]
-pub struct MeshBasicBlenderImporterState {
+pub struct MeshAdvBlenderImporterState {
     mesh_id: Option<AssetUuid>,
     vertex_full_buffer_id: Option<AssetUuid>,
     vertex_position_buffer_id: Option<AssetUuid>,
@@ -66,8 +66,8 @@ pub struct MeshBasicBlenderImporterState {
 
 #[derive(TypeUuid)]
 #[uuid = "5f2be1a1-b025-4d72-960b-24cb03ff19de"]
-pub struct MeshBasicBlenderImporter;
-impl Importer for MeshBasicBlenderImporter {
+pub struct MeshAdvBlenderImporter;
+impl Importer for MeshAdvBlenderImporter {
     fn version_static() -> u32
     where
         Self: Sized,
@@ -81,7 +81,7 @@ impl Importer for MeshBasicBlenderImporter {
 
     type Options = ();
 
-    type State = MeshBasicBlenderImporterState;
+    type State = MeshAdvBlenderImporterState;
 
     /// Reads the given bytes and produces assets.
     #[profiling::function]
@@ -104,7 +104,7 @@ impl Importer for MeshBasicBlenderImporter {
         let index_buffer_id = state
             .index_buffer_id
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = MeshBasicBlenderImporterState {
+        *state = MeshAdvBlenderImporterState {
             mesh_id: Some(mesh_id),
             vertex_full_buffer_id: Some(vertex_full_buffer_id),
             vertex_position_buffer_id: Some(vertex_position_buffer_id),
@@ -125,7 +125,7 @@ impl Importer for MeshBasicBlenderImporter {
         let mut all_vertices_position = PushBuffer::new(16384);
         let mut all_indices = PushBuffer::new(16384);
 
-        let mut mesh_parts: Vec<MeshBasicPartAssetData> =
+        let mut mesh_parts: Vec<MeshAdvPartAssetData> =
             Vec::with_capacity(mesh_as_json.mesh_parts.len());
 
         for mesh_part in &mesh_as_json.mesh_parts {
@@ -245,7 +245,7 @@ impl Importer for MeshBasicBlenderImporter {
                 MeshPartJsonIndexType::U32 => RafxIndexType::Uint32,
             };
 
-            mesh_parts.push(MeshBasicPartAssetData {
+            mesh_parts.push(MeshAdvPartAssetData {
                 material_instance,
                 vertex_full_buffer_offset_in_bytes: vertex_full_offset as u32,
                 vertex_full_buffer_size_in_bytes: vertex_full_size as u32,
@@ -294,7 +294,7 @@ impl Importer for MeshBasicBlenderImporter {
             index: PolygonSoupIndex::Indexed32(all_position_indices),
         };
 
-        let asset_data = MeshBasicAssetData {
+        let asset_data = MeshAdvAssetData {
             mesh_parts,
             vertex_full_buffer: vertex_full_buffer_handle,
             vertex_position_buffer: vertex_position_buffer_handle,

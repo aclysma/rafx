@@ -45,8 +45,8 @@ pub enum Scene {
     ManyCubes,
 }
 
-pub const ALL_SCENES: [Scene; 9] = [
-    Scene::Bistro, // Uncomment to enable the bistro scene
+pub const ALL_SCENES: [Scene; 8] = [
+    //Scene::Bistro, // Uncomment to enable the bistro scene
     Scene::Shadows,
     Scene::Autoexposure,
     Scene::PbrTest,

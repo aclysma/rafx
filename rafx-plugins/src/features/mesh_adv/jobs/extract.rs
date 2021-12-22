@@ -10,30 +10,30 @@ use rafx::base::resource_map::ReadBorrow;
 use rafx::base::resource_ref_map::ResourceRefBorrow;
 use rafx::distill::loader::handle::Handle;
 
-pub struct MeshBasicExtractJob<'extract> {
+pub struct MeshAdvExtractJob<'extract> {
     world: ResourceRefBorrow<'extract, World>,
-    mesh_render_options: Option<ResourceRefBorrow<'extract, MeshBasicRenderOptions>>,
+    mesh_render_options: Option<ResourceRefBorrow<'extract, MeshAdvRenderOptions>>,
     shadow_map_atlas: ReadBorrow<'extract, ShadowMapAtlas>,
     asset_manager: AssetManagerExtractRef,
     depth_material: Handle<MaterialAsset>,
     shadow_map_atlas_depth_material: Handle<MaterialAsset>,
-    render_objects: MeshBasicRenderObjectSet,
+    render_objects: MeshAdvRenderObjectSet,
 }
 
-impl<'extract> MeshBasicExtractJob<'extract> {
+impl<'extract> MeshAdvExtractJob<'extract> {
     pub fn new(
         extract_context: &RenderJobExtractContext<'extract>,
-        frame_packet: Box<MeshBasicFramePacket>,
+        frame_packet: Box<MeshAdvFramePacket>,
         depth_material: Handle<MaterialAsset>,
         shadow_map_atlas_depth_material: Handle<MaterialAsset>,
-        render_objects: MeshBasicRenderObjectSet,
+        render_objects: MeshAdvRenderObjectSet,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
         Arc::new(ExtractJob::new(
             Self {
                 world: extract_context.extract_resources.fetch::<World>(),
                 mesh_render_options: extract_context
                     .extract_resources
-                    .try_fetch::<MeshBasicRenderOptions>(),
+                    .try_fetch::<MeshAdvRenderOptions>(),
                 asset_manager: extract_context
                     .render_resources
                     .fetch::<AssetManagerRenderResource>()
@@ -48,7 +48,7 @@ impl<'extract> MeshBasicExtractJob<'extract> {
     }
 }
 
-impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract> {
+impl<'extract> ExtractJobEntryPoints<'extract> for MeshAdvExtractJob<'extract> {
     fn begin_per_frame_extract(
         &self,
         context: &ExtractPerFrameContext<'extract, '_, Self>,
@@ -56,7 +56,7 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
         context
             .frame_packet()
             .per_frame_data()
-            .set(MeshBasicPerFrameData {
+            .set(MeshAdvPerFrameData {
                 depth_material_pass: self
                     .asset_manager
                     .committed_asset(&self.depth_material)
@@ -75,7 +75,7 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
 
     fn extract_render_object_instance(
         &self,
-        job_context: &mut RenderObjectsJobContext<'extract, MeshBasicRenderObject>,
+        job_context: &mut RenderObjectsJobContext<'extract, MeshAdvRenderObject>,
         context: &ExtractRenderObjectInstanceContext<'extract, '_, Self>,
     ) {
         let render_object_static_data = job_context
@@ -89,7 +89,7 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
         context.set_render_object_instance_data(mesh_asset.and_then(|mesh_asset| {
             let entry = self.world.entry_ref(context.object_id().into()).unwrap();
             let transform_component = entry.get_component::<TransformComponent>().unwrap();
-            Some(MeshBasicRenderObjectInstanceData {
+            Some(MeshAdvRenderObjectInstanceData {
                 mesh_asset: mesh_asset.clone(),
                 translation: transform_component.translation,
                 rotation: transform_component.rotation,
@@ -102,10 +102,10 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
         &self,
         context: &ExtractPerViewContext<'extract, '_, Self>,
     ) {
-        let mut per_view = MeshBasicPerViewData::default();
+        let mut per_view = MeshAdvPerViewData::default();
         let is_lit = !context
             .view()
-            .feature_flag_is_relevant::<MeshBasicUnlitRenderFeatureFlag>();
+            .feature_flag_is_relevant::<MeshAdvUnlitRenderFeatureFlag>();
 
         if !is_lit {
             context.view_packet().per_view_data().set(per_view);
@@ -165,12 +165,12 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
 
     fn new_render_object_instance_job_context(
         &'extract self
-    ) -> Option<RenderObjectsJobContext<'extract, MeshBasicRenderObject>> {
+    ) -> Option<RenderObjectsJobContext<'extract, MeshAdvRenderObject>> {
         Some(RenderObjectsJobContext::new(self.render_objects.read()))
     }
 
-    type RenderObjectInstanceJobContextT = RenderObjectsJobContext<'extract, MeshBasicRenderObject>;
+    type RenderObjectInstanceJobContextT = RenderObjectsJobContext<'extract, MeshAdvRenderObject>;
     type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
 
-    type FramePacketDataT = MeshBasicRenderFeatureTypes;
+    type FramePacketDataT = MeshAdvRenderFeatureTypes;
 }

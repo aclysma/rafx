@@ -1,11 +1,11 @@
-use super::MeshBasicRenderFeature;
-use crate::assets::mesh_adv::MeshBasicAsset;
+use super::MeshAdvRenderFeature;
+use crate::assets::mesh_adv::MeshAdvAsset;
 use distill::loader::handle::Handle;
 use rafx::render_features::RenderObjectSet;
 
 #[derive(Clone)]
-pub struct MeshBasicRenderObject {
-    pub mesh: Handle<MeshBasicAsset>,
+pub struct MeshAdvRenderObject {
+    pub mesh: Handle<MeshAdvAsset>,
 }
 
-pub type MeshBasicRenderObjectSet = RenderObjectSet<MeshBasicRenderFeature, MeshBasicRenderObject>;
+pub type MeshAdvRenderObjectSet = RenderObjectSet<MeshAdvRenderFeature, MeshAdvRenderObject>;

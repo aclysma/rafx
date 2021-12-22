@@ -89,19 +89,19 @@ lazy_static::lazy_static! {
     };
 }
 
-pub struct MeshBasicWriteJob<'write> {
+pub struct MeshAdvWriteJob<'write> {
     depth_prepass_index: RenderPhaseIndex,
     shadow_map_index: RenderPhaseIndex,
     wireframe_index: RenderPhaseIndex,
-    frame_packet: Box<MeshBasicFramePacket>,
+    frame_packet: Box<MeshAdvFramePacket>,
     submit_packet: Box<MeshSubmitPacket>,
     phantom: PhantomData<&'write ()>,
 }
 
-impl<'write> MeshBasicWriteJob<'write> {
+impl<'write> MeshAdvWriteJob<'write> {
     pub fn new(
         _write_context: &RenderJobWriteContext<'write>,
-        frame_packet: Box<MeshBasicFramePacket>,
+        frame_packet: Box<MeshAdvFramePacket>,
         submit_packet: Box<MeshSubmitPacket>,
     ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
         let depth_prepass_index = DepthPrepassRenderPhase::render_phase_index();
@@ -119,7 +119,7 @@ impl<'write> MeshBasicWriteJob<'write> {
     }
 }
 
-impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
+impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
     fn view_frame_index(
         &self,
         view: &RenderView,

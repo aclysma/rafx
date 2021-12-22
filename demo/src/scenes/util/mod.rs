@@ -32,11 +32,11 @@ use rafx_plugins::features::mesh_basic::{
 
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::features::mesh_adv::{
-    MeshBasicNoShadowsRenderFeatureFlag as MeshNoShadowsRenderFeatureFlag,
-    MeshBasicRenderFeature as MeshRenderFeature, MeshBasicRenderOptions as MeshRenderOptions,
-    MeshBasicUnlitRenderFeatureFlag as MeshUnlitRenderFeatureFlag,
-    MeshBasicUntexturedRenderFeatureFlag as MeshUntexturedRenderFeatureFlag,
-    MeshBasicWireframeRenderFeatureFlag as MeshWireframeRenderFeatureFlag,
+    MeshAdvNoShadowsRenderFeatureFlag as MeshNoShadowsRenderFeatureFlag,
+    MeshAdvRenderFeature as MeshRenderFeature, MeshAdvRenderOptions as MeshRenderOptions,
+    MeshAdvUnlitRenderFeatureFlag as MeshUnlitRenderFeatureFlag,
+    MeshAdvUntexturedRenderFeatureFlag as MeshUntexturedRenderFeatureFlag,
+    MeshAdvWireframeRenderFeatureFlag as MeshWireframeRenderFeatureFlag,
 };
 
 mod fly_camera;

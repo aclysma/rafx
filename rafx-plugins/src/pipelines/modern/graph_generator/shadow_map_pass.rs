@@ -1,7 +1,7 @@
 use super::RenderGraphContext;
 use crate::features::debug_pip::DebugPipRenderResource;
 use crate::features::mesh_adv::{
-    MeshBasicShadowMapResource, MeshBasicStaticResources, ShadowMapAtlasClearTileVertex,
+    MeshAdvShadowMapResource, MeshAdvStaticResources, ShadowMapAtlasClearTileVertex,
     SHADOW_MAP_ATLAS_CLEAR_TILE_LAYOUT,
 };
 use crate::phases::ShadowMapRenderPhase;
@@ -22,9 +22,7 @@ pub(super) fn shadow_map_passes(
     shadow_atlas_image: RenderGraphExternalImageId,
     shadow_atlas_needs_full_clear: bool,
 ) -> ShadowMapPassOutput {
-    let shadow_map_resource = context
-        .render_resources
-        .fetch::<MeshBasicShadowMapResource>();
+    let shadow_map_resource = context.render_resources.fetch::<MeshAdvShadowMapResource>();
 
     //
     // Early out if we don't need to update the shadow map
@@ -42,7 +40,7 @@ pub(super) fn shadow_map_passes(
         };
     }
 
-    let mesh_static_resources = context.render_resources.fetch::<MeshBasicStaticResources>();
+    let mesh_static_resources = context.render_resources.fetch::<MeshAdvStaticResources>();
     let clear_tiles_material = context
         .asset_manager
         .committed_asset(&mesh_static_resources.shadow_map_atlas_clear_tiles_material)
@@ -90,7 +88,7 @@ pub(super) fn shadow_map_passes(
             let shadow_map_resource = args
                 .graph_context
                 .render_resources()
-                .fetch::<MeshBasicShadowMapResource>();
+                .fetch::<MeshAdvShadowMapResource>();
             let vertex_count = render_views_to_draw.len() as u64 * 6;
 
             //

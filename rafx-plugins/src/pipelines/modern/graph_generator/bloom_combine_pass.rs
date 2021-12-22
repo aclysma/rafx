@@ -1,7 +1,7 @@
-use super::BasicPipelineRenderOptions;
+use super::ModernPipelineRenderOptions;
 use crate::phases::PostProcessRenderPhase;
 use crate::pipelines::modern::graph_generator::luma_pass::LumaAverageHistogramPass;
-use crate::pipelines::modern::BasicPipelineOutputColorSpace;
+use crate::pipelines::modern::ModernPipelineOutputColorSpace;
 use rafx::api::RafxSwapchainColorSpace;
 use rafx::framework::{DescriptorSetBindings, MaterialPassResource, ResourceArc};
 use rafx::graph::*;
@@ -29,7 +29,7 @@ pub(super) fn bloom_combine_pass(
 ) -> BloomCombinePass {
     let render_options = context
         .extract_resources
-        .fetch::<BasicPipelineRenderOptions>()
+        .fetch::<ModernPipelineRenderOptions>()
         .clone();
     let node = context
         .graph
@@ -99,9 +99,9 @@ pub(super) fn bloom_combine_pass(
             .create_descriptor_set_allocator();
 
         let output_color_space = match swapchain_color_space {
-            RafxSwapchainColorSpace::Srgb => BasicPipelineOutputColorSpace::Srgb,
-            RafxSwapchainColorSpace::SrgbExtended => BasicPipelineOutputColorSpace::Srgb,
-            RafxSwapchainColorSpace::DisplayP3Extended => BasicPipelineOutputColorSpace::P3,
+            RafxSwapchainColorSpace::Srgb => ModernPipelineOutputColorSpace::Srgb,
+            RafxSwapchainColorSpace::SrgbExtended => ModernPipelineOutputColorSpace::Srgb,
+            RafxSwapchainColorSpace::DisplayP3Extended => ModernPipelineOutputColorSpace::P3,
         };
 
         let descriptor_set_layouts = &pipeline.get_raw().descriptor_set_layouts;

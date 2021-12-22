@@ -1,5 +1,5 @@
-use super::MeshBasicRenderFeature;
-use super::MeshBasicRenderOptions;
+use super::MeshAdvRenderFeature;
+use super::MeshAdvRenderOptions;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
@@ -20,34 +20,34 @@ use rafx::visibility::{ObjectId, ViewFrustumArc};
 use std::cmp::Ordering;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum MeshBasicLightId {
+pub enum MeshAdvLightId {
     PointLight(ObjectId),
     SpotLight(ObjectId),
     DirectionalLight(ObjectId),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum MeshBasicShadowViewId {
+pub enum MeshAdvShadowViewId {
     SpotLight(ObjectId),
     DirectionalLight(ObjectId),
     PointLight(ObjectId, u8),
 }
 
-impl MeshBasicShadowViewId {
+impl MeshAdvShadowViewId {
     // this function just exists to provide a Ord impl for sorting lights by score (we use the light
     // id as a tiebreaker)
     fn light_type_to_int_and_object_id(&self) -> (u8, ObjectId) {
         match self {
-            MeshBasicShadowViewId::SpotLight(object_id) => (1, *object_id),
-            MeshBasicShadowViewId::DirectionalLight(object_id) => (0, *object_id),
-            MeshBasicShadowViewId::PointLight(object_id, cube_map_index) => {
+            MeshAdvShadowViewId::SpotLight(object_id) => (1, *object_id),
+            MeshAdvShadowViewId::DirectionalLight(object_id) => (0, *object_id),
+            MeshAdvShadowViewId::PointLight(object_id, cube_map_index) => {
                 (2 + cube_map_index, *object_id)
             }
         }
     }
 }
 
-impl PartialOrd for MeshBasicShadowViewId {
+impl PartialOrd for MeshAdvShadowViewId {
     fn partial_cmp(
         &self,
         other: &Self,
@@ -56,7 +56,7 @@ impl PartialOrd for MeshBasicShadowViewId {
     }
 }
 
-impl Ord for MeshBasicShadowViewId {
+impl Ord for MeshAdvShadowViewId {
     fn cmp(
         &self,
         other: &Self,
@@ -71,36 +71,36 @@ impl Ord for MeshBasicShadowViewId {
 }
 
 #[derive(Clone)]
-pub enum MeshBasicShadowMapRenderViewIndices {
+pub enum MeshAdvShadowMapRenderViewIndices {
     Single(ShadowViewIndex),
     Cube([Option<ShadowViewIndex>; 6]),
 }
 
 // These functions are primarily used to easily grab the render view index when you already know
 // what variant of the enum is in use
-impl MeshBasicShadowMapRenderViewIndices {
+impl MeshAdvShadowMapRenderViewIndices {
     pub fn unwrap_single(&self) -> ShadowViewIndex {
         match self {
-            MeshBasicShadowMapRenderViewIndices::Single(value) => *value,
-            MeshBasicShadowMapRenderViewIndices::Cube(_) => {
-                panic!("Called unwrap_single() on MeshBasicShadowMapRenderViewIndices::Cube")
+            MeshAdvShadowMapRenderViewIndices::Single(value) => *value,
+            MeshAdvShadowMapRenderViewIndices::Cube(_) => {
+                panic!("Called unwrap_single() on MeshAdvShadowMapRenderViewIndices::Cube")
             }
         }
     }
 
     pub fn unwrap_cube_any(&self) -> ShadowViewIndex {
         match self {
-            MeshBasicShadowMapRenderViewIndices::Single(_) => {
-                panic!("Called unwrap_cube_any() on MeshBasicShadowMapRenderViewIndices::Single")
+            MeshAdvShadowMapRenderViewIndices::Single(_) => {
+                panic!("Called unwrap_cube_any() on MeshAdvShadowMapRenderViewIndices::Single")
             }
-            MeshBasicShadowMapRenderViewIndices::Cube(views) => {
+            MeshAdvShadowMapRenderViewIndices::Cube(views) => {
                 for view in views {
                     if view.is_some() {
                         return view.unwrap();
                     }
                 }
 
-                panic!("Called unwrap_cube_any() on MeshBasicShadowMapRenderViewIndices::Cube but all views are unassigned")
+                panic!("Called unwrap_cube_any() on MeshAdvShadowMapRenderViewIndices::Cube but all views are unassigned")
             }
         }
     }
@@ -109,7 +109,7 @@ impl MeshBasicShadowMapRenderViewIndices {
 #[derive(PartialEq)]
 struct PotentialShadowView {
     score: f32,
-    shadow_view_id: MeshBasicShadowViewId,
+    shadow_view_id: MeshAdvShadowViewId,
     // other info?
 }
 
@@ -139,19 +139,19 @@ impl Ord for PotentialShadowView {
 }
 
 #[derive(Clone)]
-pub struct MeshBasicShadowMapRenderViewMeta {
+pub struct MeshAdvShadowMapRenderViewMeta {
     pub view_dir: glam::Vec3,
     pub view_proj: glam::Mat4,
     pub depth_range: RenderViewDepthRange,
 }
 
-impl MeshBasicShadowMapRenderViewMeta {
+impl MeshAdvShadowMapRenderViewMeta {
     fn new(
         view: &glam::Mat4,
         proj: &glam::Mat4,
         depth_range: RenderViewDepthRange,
-    ) -> MeshBasicShadowMapRenderViewMeta {
-        MeshBasicShadowMapRenderViewMeta {
+    ) -> MeshAdvShadowMapRenderViewMeta {
+        MeshAdvShadowMapRenderViewMeta {
             view_dir: RenderView::view_mat4_to_view_dir(&view),
             view_proj: (*proj) * (*view),
             depth_range,
@@ -165,7 +165,7 @@ pub struct ShadowViewIndex(usize);
 // The data structures in this struct are primarily indexed by "shadow view index" which is looked up
 // via the maps.
 #[derive(Default)]
-pub struct MeshBasicShadowMapResource {
+pub struct MeshAdvShadowMapResource {
     //
     // These are reassigned in reassign_shadow_atlas_elements(). In this phase, we decide which
     // lights will have shadow maps.
@@ -174,7 +174,7 @@ pub struct MeshBasicShadowMapResource {
     // map allows looking up the shadow view index, which can be used to get more info about the
     // shadow view.
     pub(super) shadow_map_lookup_by_shadow_view_id:
-        FnvHashMap<MeshBasicShadowViewId, ShadowViewIndex>,
+        FnvHashMap<MeshAdvShadowViewId, ShadowViewIndex>,
     // The assignments for views to specific regions of the shadow atlas. These refs are RAII-style,
     // so dropping them will free the atlas space for future allocation.
     pub(super) shadow_map_atlas_element_assignments: Vec<Option<ShadowMapAtlasElement>>,
@@ -190,17 +190,17 @@ pub struct MeshBasicShadowMapResource {
     // exists if we are actually rendering it this frame) and the shadow_map_render_views_meta
     // always exists and includes things like the projection matrix/depth range (must be known to
     // correctly sample from the image)
-    pub(super) shadow_map_render_views_meta: Vec<MeshBasicShadowMapRenderViewMeta>,
+    pub(super) shadow_map_render_views_meta: Vec<MeshAdvShadowMapRenderViewMeta>,
     pub(super) shadow_map_render_views: Vec<Option<RenderView>>,
     // Looks up the shadow view index based on the RenderViewIndex (which is easily obtained if you
     // have a RenderView.)
     pub(super) shadow_map_lookup_by_render_view_index: FnvHashMap<RenderViewIndex, ShadowViewIndex>,
     // Looks up the shadow view index for a light (for point lights, there will be 6 indices, and some of them may be None.)
     pub(super) shadow_map_lookup_by_light_id:
-        FnvHashMap<MeshBasicLightId, MeshBasicShadowMapRenderViewIndices>,
+        FnvHashMap<MeshAdvLightId, MeshAdvShadowMapRenderViewIndices>,
 }
 
-impl MeshBasicShadowMapResource {
+impl MeshAdvShadowMapResource {
     pub fn shadow_map_render_views(&self) -> &[Option<RenderView>] {
         &self.shadow_map_render_views
     }
@@ -231,7 +231,7 @@ impl MeshBasicShadowMapResource {
     pub(super) fn shadow_map_render_views_meta(
         &self,
         shadow_view_index: ShadowViewIndex,
-    ) -> &MeshBasicShadowMapRenderViewMeta {
+    ) -> &MeshAdvShadowMapRenderViewMeta {
         &self.shadow_map_render_views_meta[shadow_view_index.0]
     }
 
@@ -323,7 +323,7 @@ impl MeshBasicShadowMapResource {
 
         let mut query = <(Entity, Read<SpotLightComponent>, Read<TransformComponent>)>::query();
         for (entity, _light, transform) in query.iter(world) {
-            let shadow_view_id = MeshBasicShadowViewId::SpotLight(ObjectId::from(*entity));
+            let shadow_view_id = MeshAdvShadowViewId::SpotLight(ObjectId::from(*entity));
             let score = calculate_score(main_view_eye_position, transform.translation);
 
             heap.push(PotentialShadowView {
@@ -336,7 +336,7 @@ impl MeshBasicShadowMapResource {
         for (entity, _light) in query.iter(world) {
             // Hardcode a score of 0 for these because directional lights have no position, there
             // tend to be few of them per scene, and they tend to be important.
-            let shadow_view_id = MeshBasicShadowViewId::DirectionalLight(ObjectId::from(*entity));
+            let shadow_view_id = MeshAdvShadowViewId::DirectionalLight(ObjectId::from(*entity));
             let score = 0.0;
 
             heap.push(PotentialShadowView {
@@ -348,7 +348,7 @@ impl MeshBasicShadowMapResource {
         let mut query = <(Entity, Read<PointLightComponent>, Read<TransformComponent>)>::query();
         for (entity, _light, transform) in query.iter(world) {
             for i in 0..6 {
-                let shadow_view_id = MeshBasicShadowViewId::PointLight(ObjectId::from(*entity), i);
+                let shadow_view_id = MeshAdvShadowViewId::PointLight(ObjectId::from(*entity), i);
                 let score = calculate_score(main_view_eye_position, transform.translation);
 
                 heap.push(PotentialShadowView {
@@ -365,10 +365,7 @@ impl MeshBasicShadowMapResource {
     // to them, first using free space if possible, then stealing space from lower-priority shadows.
     // This function will also release atlas space for lights that no longer exist.
     fn reassign_shadow_atlas_elements(
-        shadow_map_lookup_by_shadow_view_id: &mut FnvHashMap<
-            MeshBasicShadowViewId,
-            ShadowViewIndex,
-        >,
+        shadow_map_lookup_by_shadow_view_id: &mut FnvHashMap<MeshAdvShadowViewId, ShadowViewIndex>,
         shadow_map_atlas_element_assignments: &mut Vec<Option<ShadowMapAtlasElement>>,
         shadow_maps_needing_redraw: &mut FnvHashSet<ShadowViewIndex>,
         extract_resources: &ExtractResources,
@@ -484,15 +481,15 @@ impl MeshBasicShadowMapResource {
     fn calculate_shadow_map_views(
         render_view_set: &RenderViewSet,
         extract_resources: &ExtractResources,
-        shadow_map_lookup_by_shadow_view_id: &FnvHashMap<MeshBasicShadowViewId, ShadowViewIndex>,
+        shadow_map_lookup_by_shadow_view_id: &FnvHashMap<MeshAdvShadowViewId, ShadowViewIndex>,
         shadow_map_atlas_element_assignments: &Vec<Option<ShadowMapAtlasElement>>,
         shadow_maps_needing_redraw: &FnvHashSet<ShadowViewIndex>,
-        out_shadow_map_render_views_meta: &mut Vec<MeshBasicShadowMapRenderViewMeta>,
+        out_shadow_map_render_views_meta: &mut Vec<MeshAdvShadowMapRenderViewMeta>,
         out_shadow_map_render_views: &mut Vec<Option<RenderView>>,
         out_shadow_map_lookup_by_view_index: &mut FnvHashMap<RenderViewIndex, ShadowViewIndex>,
         out_shadow_map_lookup_by_light_id: &mut FnvHashMap<
-            MeshBasicLightId,
-            MeshBasicShadowMapRenderViewIndices,
+            MeshAdvLightId,
+            MeshAdvShadowMapRenderViewIndices,
         >,
     ) {
         let world_fetch = extract_resources.fetch::<World>();
@@ -512,14 +509,14 @@ impl MeshBasicShadowMapResource {
             .add_render_phase::<ShadowMapRenderPhase>()
             .build();
 
-        let render_options = extract_resources.fetch::<MeshBasicRenderOptions>();
+        let render_options = extract_resources.fetch::<MeshAdvRenderOptions>();
 
         let shadow_map_feature_mask = if render_options.show_surfaces
             && render_options.show_shadows
             && render_options.enable_lighting
         {
             RenderFeatureMaskBuilder::default()
-                .add_render_feature::<MeshBasicRenderFeature>()
+                .add_render_feature::<MeshAdvRenderFeature>()
                 .build()
         } else {
             RenderFeatureMask::empty()
@@ -532,7 +529,7 @@ impl MeshBasicShadowMapResource {
         //
         let mut query = <(Entity, Read<SpotLightComponent>, Read<TransformComponent>)>::query();
         for (entity, light, transform) in query.iter(world) {
-            let shadow_view_id = MeshBasicShadowViewId::SpotLight(ObjectId::from(*entity));
+            let shadow_view_id = MeshAdvShadowViewId::SpotLight(ObjectId::from(*entity));
             let shadow_view_index = shadow_map_lookup_by_shadow_view_id.get(&shadow_view_id);
 
             if let Some(&shadow_view_index) = shadow_view_index {
@@ -555,7 +552,7 @@ impl MeshBasicShadowMapResource {
 
                 let depth_range = RenderViewDepthRange::from_projection(&projection);
                 shadow_map_render_views_meta[shadow_view_index.0] = Some(
-                    MeshBasicShadowMapRenderViewMeta::new(&view, &proj, depth_range.clone()),
+                    MeshAdvShadowMapRenderViewMeta::new(&view, &proj, depth_range.clone()),
                 );
 
                 if shadow_maps_needing_redraw.contains(&shadow_view_index) {
@@ -590,10 +587,10 @@ impl MeshBasicShadowMapResource {
                     shadow_map_render_views[shadow_view_index.0] = Some(view);
                 }
 
-                let light_id = MeshBasicLightId::SpotLight(ObjectId::from(*entity));
+                let light_id = MeshAdvLightId::SpotLight(ObjectId::from(*entity));
                 out_shadow_map_lookup_by_light_id.insert(
                     light_id,
-                    MeshBasicShadowMapRenderViewIndices::Single(shadow_view_index),
+                    MeshAdvShadowMapRenderViewIndices::Single(shadow_view_index),
                 );
             }
         }
@@ -603,7 +600,7 @@ impl MeshBasicShadowMapResource {
         //
         let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
         for (entity, light) in query.iter(world) {
-            let shadow_view_id = MeshBasicShadowViewId::DirectionalLight(ObjectId::from(*entity));
+            let shadow_view_id = MeshAdvShadowViewId::DirectionalLight(ObjectId::from(*entity));
             let shadow_view_index = shadow_map_lookup_by_shadow_view_id.get(&shadow_view_id);
 
             if let Some(&shadow_view_index) = shadow_view_index {
@@ -633,7 +630,7 @@ impl MeshBasicShadowMapResource {
 
                 let depth_range = RenderViewDepthRange::from_projection(&projection);
                 shadow_map_render_views_meta[shadow_view_index.0] = Some(
-                    MeshBasicShadowMapRenderViewMeta::new(&view, &proj, depth_range.clone()),
+                    MeshAdvShadowMapRenderViewMeta::new(&view, &proj, depth_range.clone()),
                 );
 
                 if shadow_maps_needing_redraw.contains(&shadow_view_index) {
@@ -667,10 +664,10 @@ impl MeshBasicShadowMapResource {
                     shadow_map_render_views[shadow_view_index.0] = Some(view);
                 }
 
-                let light_id = MeshBasicLightId::DirectionalLight(ObjectId::from(*entity));
+                let light_id = MeshAdvLightId::DirectionalLight(ObjectId::from(*entity));
                 out_shadow_map_lookup_by_light_id.insert(
                     light_id,
-                    MeshBasicShadowMapRenderViewIndices::Single(shadow_view_index),
+                    MeshAdvShadowMapRenderViewIndices::Single(shadow_view_index),
                 );
             }
         }
@@ -696,7 +693,7 @@ impl MeshBasicShadowMapResource {
 
             for face_index in 0..6 {
                 let shadow_view_id =
-                    MeshBasicShadowViewId::PointLight(ObjectId::from(*entity), face_index as u8);
+                    MeshAdvShadowViewId::PointLight(ObjectId::from(*entity), face_index as u8);
                 let shadow_view_index = shadow_map_lookup_by_shadow_view_id.get(&shadow_view_id);
 
                 if let Some(&shadow_view_index) = shadow_view_index {
@@ -725,7 +722,7 @@ impl MeshBasicShadowMapResource {
 
                     let depth_range = RenderViewDepthRange::from_projection(&projection);
                     shadow_map_render_views_meta[shadow_view_index.0] = Some(
-                        MeshBasicShadowMapRenderViewMeta::new(&view, &proj, depth_range.clone()),
+                        MeshAdvShadowMapRenderViewMeta::new(&view, &proj, depth_range.clone()),
                     );
                     shadow_view_indices[face_index] = Some(shadow_view_index);
                     any_face_has_shadow_map = true;
@@ -764,12 +761,12 @@ impl MeshBasicShadowMapResource {
             }
 
             if any_face_has_shadow_map {
-                MeshBasicShadowMapRenderViewIndices::Cube(shadow_view_indices).unwrap_cube_any();
+                MeshAdvShadowMapRenderViewIndices::Cube(shadow_view_indices).unwrap_cube_any();
 
-                let light_id = MeshBasicLightId::PointLight(ObjectId::from(*entity));
+                let light_id = MeshAdvLightId::PointLight(ObjectId::from(*entity));
                 out_shadow_map_lookup_by_light_id.insert(
                     light_id,
-                    MeshBasicShadowMapRenderViewIndices::Cube(shadow_view_indices),
+                    MeshAdvShadowMapRenderViewIndices::Cube(shadow_view_indices),
                 );
             }
         }

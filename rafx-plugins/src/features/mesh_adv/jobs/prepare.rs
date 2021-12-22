@@ -18,7 +18,7 @@ use mesh_adv_textured_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
     mesh_adv_textured_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
 
-pub struct MeshBasicPrepareJob<'prepare> {
+pub struct MeshAdvPrepareJob<'prepare> {
     resource_context: ResourceContext,
     device_context: RafxDeviceContext,
     #[allow(dead_code)]
@@ -27,18 +27,18 @@ pub struct MeshBasicPrepareJob<'prepare> {
     requires_untextured_descriptor_sets: bool,
     depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     shadow_map_atlas_depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
-    shadow_map_data: ReadBorrow<'prepare, MeshBasicShadowMapResource>,
+    shadow_map_data: ReadBorrow<'prepare, MeshAdvShadowMapResource>,
     render_object_instance_transforms: Arc<AtomicOnceCellStack<[[f32; 4]; 4]>>,
     #[allow(dead_code)]
-    render_objects: MeshBasicRenderObjectSet,
+    render_objects: MeshAdvRenderObjectSet,
 }
 
-impl<'prepare> MeshBasicPrepareJob<'prepare> {
+impl<'prepare> MeshAdvPrepareJob<'prepare> {
     pub fn new(
         prepare_context: &RenderJobPrepareContext<'prepare>,
-        frame_packet: Box<MeshBasicFramePacket>,
+        frame_packet: Box<MeshAdvFramePacket>,
         submit_packet: Box<MeshSubmitPacket>,
-        render_objects: MeshBasicRenderObjectSet,
+        render_objects: MeshAdvRenderObjectSet,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
         let mut requires_textured_descriptor_sets = false;
         let mut requires_untextured_descriptor_sets = false;
@@ -46,7 +46,7 @@ impl<'prepare> MeshBasicPrepareJob<'prepare> {
         for view in frame_packet.view_packets() {
             if view
                 .view()
-                .feature_flag_is_relevant::<MeshBasicUntexturedRenderFeatureFlag>()
+                .feature_flag_is_relevant::<MeshAdvUntexturedRenderFeatureFlag>()
             {
                 requires_untextured_descriptor_sets = true;
             } else {
@@ -72,7 +72,7 @@ impl<'prepare> MeshBasicPrepareJob<'prepare> {
                 shadow_map_data: {
                     prepare_context
                         .render_resources
-                        .fetch::<MeshBasicShadowMapResource>()
+                        .fetch::<MeshAdvShadowMapResource>()
                 },
                 requires_textured_descriptor_sets,
                 requires_untextured_descriptor_sets,
@@ -84,12 +84,12 @@ impl<'prepare> MeshBasicPrepareJob<'prepare> {
     }
 }
 
-impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare> {
+impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
     fn begin_per_frame_prepare(
         &self,
         context: &PreparePerFrameContext<'prepare, '_, Self>,
     ) {
-        let mut per_frame_submit_data = Box::new(MeshBasicPerFrameSubmitData {
+        let mut per_frame_submit_data = Box::new(MeshAdvPerFrameSubmitData {
             num_shadow_map_2d: 0,
             shadow_map_2d_data: Default::default(),
             num_shadow_map_cube: 0,
@@ -120,7 +120,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                 shadow_map_data.shadow_map_lookup_by_light_id.iter()
             {
                 match shadow_view_indices {
-                    MeshBasicShadowMapRenderViewIndices::Single(shadow_view_index) => {
+                    MeshAdvShadowMapRenderViewIndices::Single(shadow_view_index) => {
                         let shadow_assignment =
                             shadow_map_data.shadow_map_atlas_element_assignment(*shadow_view_index);
                         let shadow_view =
@@ -149,7 +149,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
 
                         per_frame_submit_data.num_shadow_map_2d += 1;
                     }
-                    MeshBasicShadowMapRenderViewIndices::Cube(shadow_views) => {
+                    MeshAdvShadowMapRenderViewIndices::Cube(shadow_views) => {
                         let num_shadow_map_cube = per_frame_submit_data.num_shadow_map_cube;
                         if num_shadow_map_cube >= MAX_SHADOW_MAPS_CUBE {
                             log::warn!("More cube shadow maps than the mesh shader can support");
@@ -229,7 +229,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
         let model = world_transform.to_cols_array_2d();
         let model_matrix_offset = self.render_object_instance_transforms.push(model);
 
-        context.set_render_object_instance_submit_data(MeshBasicRenderObjectInstanceSubmitData {
+        context.set_render_object_instance_submit_data(MeshAdvRenderObjectInstanceSubmitData {
             model_matrix_offset,
         });
     }
@@ -264,7 +264,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
 
                 if view.phase_is_relevant::<DepthPrepassRenderPhase>() {
                     context.push_submit_node::<DepthPrepassRenderPhase>(
-                        MeshBasicDrawCall {
+                        MeshAdvDrawCall {
                             render_object_instance_id,
                             material_pass_resource: self
                                 .depth_material_pass
@@ -282,7 +282,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
 
                 if view.phase_is_relevant::<ShadowMapRenderPhase>() {
                     context.push_submit_node::<ShadowMapRenderPhase>(
-                        MeshBasicDrawCall {
+                        MeshAdvDrawCall {
                             render_object_instance_id,
                             material_pass_resource: self
                                 .shadow_map_atlas_depth_material_pass
@@ -313,7 +313,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                     );
 
                     context.push_submit_node::<OpaqueRenderPhase>(
-                        MeshBasicDrawCall {
+                        MeshAdvDrawCall {
                             render_object_instance_id,
                             material_pass_resource,
                             per_material_descriptor_set,
@@ -326,7 +326,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                 }
 
                 if view.phase_is_relevant::<WireframeRenderPhase>()
-                    && view.feature_flag_is_relevant::<MeshBasicWireframeRenderFeatureFlag>()
+                    && view.feature_flag_is_relevant::<MeshAdvWireframeRenderFeatureFlag>()
                 {
                     let material_pass_resource = mesh_part
                         .get_material_pass_resource(
@@ -345,7 +345,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                     );
 
                     context.push_submit_node::<WireframeRenderPhase>(
-                        MeshBasicDrawCall {
+                        MeshAdvDrawCall {
                             render_object_instance_id,
                             material_pass_resource,
                             per_material_descriptor_set,
@@ -371,8 +371,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
         let per_frame_submit_data = context.per_frame_submit_data();
 
         let view = context.view();
-        let is_lit = !view.feature_flag_is_relevant::<MeshBasicUnlitRenderFeatureFlag>();
-        let has_shadows = !view.feature_flag_is_relevant::<MeshBasicNoShadowsRenderFeatureFlag>();
+        let is_lit = !view.feature_flag_is_relevant::<MeshAdvUnlitRenderFeatureFlag>();
+        let has_shadows = !view.feature_flag_is_relevant::<MeshAdvNoShadowsRenderFeatureFlag>();
 
         let opaque_descriptor_set = if view.phase_is_relevant::<OpaqueRenderPhase>() {
             let per_view_frag_data = {
@@ -400,7 +400,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                     let light = directional_light;
                     let shadow_map_index = shadow_map_data
                         .shadow_map_lookup_by_light_id
-                        .get(&MeshBasicLightId::DirectionalLight(
+                        .get(&MeshAdvLightId::DirectionalLight(
                             directional_light.object_id,
                         ))
                         .map(|x| {
@@ -443,7 +443,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                     let light = point_light;
                     let shadow_map_index = shadow_map_data
                         .shadow_map_lookup_by_light_id
-                        .get(&MeshBasicLightId::PointLight(point_light.object_id))
+                        .get(&MeshAdvLightId::PointLight(point_light.object_id))
                         .map(|x| {
                             per_frame_submit_data.shadow_map_image_index_remap[&x.unwrap_cube_any()]
                         });
@@ -480,7 +480,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                     let light = spot_light;
                     let shadow_map_index = shadow_map_data
                         .shadow_map_lookup_by_light_id
-                        .get(&MeshBasicLightId::SpotLight(spot_light.object_id))
+                        .get(&MeshAdvLightId::SpotLight(spot_light.object_id))
                         .map(|x| {
                             per_frame_submit_data.shadow_map_image_index_remap[&x.unwrap_single()]
                         });
@@ -654,7 +654,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
         context
             .view_submit_packet()
             .per_view_submit_data()
-            .set(MeshBasicPerViewSubmitData {
+            .set(MeshAdvPerViewSubmitData {
                 opaque_descriptor_set,
                 depth_descriptor_set,
                 shadow_map_atlas_depth_descriptor_set,
@@ -724,6 +724,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
     type RenderObjectInstanceJobContextT = DefaultJobContext;
     type RenderObjectInstancePerViewJobContextT = DefaultJobContext;
 
-    type FramePacketDataT = MeshBasicRenderFeatureTypes;
-    type SubmitPacketDataT = MeshBasicRenderFeatureTypes;
+    type FramePacketDataT = MeshAdvRenderFeatureTypes;
+    type SubmitPacketDataT = MeshAdvRenderFeatureTypes;
 }

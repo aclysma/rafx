@@ -1,5 +1,5 @@
 use super::*;
-use crate::assets::mesh_adv::MeshBasicAsset;
+use crate::assets::mesh_adv::MeshAdvAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
@@ -11,7 +11,7 @@ use rafx::framework::{
     BufferResource, DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc,
 };
 
-pub struct MeshBasicRenderFeatureTypes;
+pub struct MeshAdvRenderFeatureTypes;
 
 //TODO: Pull this const from the shader
 pub const MAX_SHADOW_MAPS_2D: usize = 32;
@@ -24,21 +24,21 @@ pub const MAX_SPOT_LIGHTS: usize = 16;
 // EXTRACT
 //---------
 
-pub struct MeshBasicPerFrameData {
+pub struct MeshAdvPerFrameData {
     pub depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     pub shadow_map_atlas_depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     pub shadow_map_atlas: ResourceArc<ImageViewResource>,
 }
 
-pub struct MeshBasicRenderObjectInstanceData {
-    pub mesh_asset: MeshBasicAsset,
+pub struct MeshAdvRenderObjectInstanceData {
+    pub mesh_asset: MeshAdvAsset,
     pub translation: Vec3,
     pub rotation: Quat,
     pub scale: Vec3,
 }
 
 #[derive(Default)]
-pub struct MeshBasicPerViewData {
+pub struct MeshAdvPerViewData {
     pub directional_lights: [Option<ExtractedDirectionalLight>; MAX_DIRECTIONAL_LIGHTS],
     pub point_lights: [Option<ExtractedPointLight>; MAX_POINT_LIGHTS],
     pub spot_lights: [Option<ExtractedSpotLight>; MAX_SPOT_LIGHTS],
@@ -65,63 +65,63 @@ pub struct ExtractedSpotLight {
     pub object_id: ObjectId,
 }
 
-impl FramePacketData for MeshBasicRenderFeatureTypes {
-    type PerFrameData = MeshBasicPerFrameData;
-    type RenderObjectInstanceData = Option<MeshBasicRenderObjectInstanceData>;
-    type PerViewData = MeshBasicPerViewData;
+impl FramePacketData for MeshAdvRenderFeatureTypes {
+    type PerFrameData = MeshAdvPerFrameData;
+    type RenderObjectInstanceData = Option<MeshAdvRenderObjectInstanceData>;
+    type PerViewData = MeshAdvPerViewData;
     type RenderObjectInstancePerViewData = ();
 }
 
-pub type MeshBasicFramePacket = FramePacket<MeshBasicRenderFeatureTypes>;
+pub type MeshAdvFramePacket = FramePacket<MeshAdvRenderFeatureTypes>;
 
 //---------
 // PREPARE
 //---------
 
 #[derive(Clone)]
-pub struct MeshBasicPartMaterialDescriptorSetPair {
+pub struct MeshAdvPartMaterialDescriptorSetPair {
     pub textured_descriptor_set: Option<DescriptorSetArc>,
     pub untextured_descriptor_set: Option<DescriptorSetArc>,
 }
 
-pub struct MeshBasicPerFrameSubmitData {
+pub struct MeshAdvPerFrameSubmitData {
     pub num_shadow_map_2d: usize,
     pub shadow_map_2d_data: [mesh_adv_textured_frag::ShadowMap2DDataStd140; MAX_SHADOW_MAPS_2D],
     pub num_shadow_map_cube: usize,
     pub shadow_map_cube_data:
         [mesh_adv_textured_frag::ShadowMapCubeDataStd140; MAX_SHADOW_MAPS_CUBE],
-    // Remaps from shadow view index (used to index into the data of MeshBasicShadowMapResource) to the array index in the shader uniform
+    // Remaps from shadow view index (used to index into the data of MeshAdvShadowMapResource) to the array index in the shader uniform
     pub shadow_map_image_index_remap: FnvHashMap<ShadowViewIndex, usize>,
     pub model_matrix_buffer: TrustCell<Option<ResourceArc<BufferResource>>>,
 }
 
-pub struct MeshBasicRenderObjectInstanceSubmitData {
+pub struct MeshAdvRenderObjectInstanceSubmitData {
     pub model_matrix_offset: usize,
 }
 
-impl SubmitPacketData for MeshBasicRenderFeatureTypes {
-    type PerFrameSubmitData = Box<MeshBasicPerFrameSubmitData>;
-    type RenderObjectInstanceSubmitData = MeshBasicRenderObjectInstanceSubmitData;
-    type PerViewSubmitData = MeshBasicPerViewSubmitData;
+impl SubmitPacketData for MeshAdvRenderFeatureTypes {
+    type PerFrameSubmitData = Box<MeshAdvPerFrameSubmitData>;
+    type RenderObjectInstanceSubmitData = MeshAdvRenderObjectInstanceSubmitData;
+    type PerViewSubmitData = MeshAdvPerViewSubmitData;
     type RenderObjectInstancePerViewSubmitData = ();
-    type SubmitNodeData = MeshBasicDrawCall;
+    type SubmitNodeData = MeshAdvDrawCall;
 
-    type RenderFeature = MeshBasicRenderFeature;
+    type RenderFeature = MeshAdvRenderFeature;
 }
 
-pub type MeshSubmitPacket = SubmitPacket<MeshBasicRenderFeatureTypes>;
+pub type MeshSubmitPacket = SubmitPacket<MeshAdvRenderFeatureTypes>;
 
 //-------
 // WRITE
 //-------
 
-pub struct MeshBasicPerViewSubmitData {
+pub struct MeshAdvPerViewSubmitData {
     pub opaque_descriptor_set: Option<DescriptorSetArc>,
     pub depth_descriptor_set: Option<DescriptorSetArc>,
     pub shadow_map_atlas_depth_descriptor_set: Option<DescriptorSetArc>,
 }
 
-pub struct MeshBasicDrawCall {
+pub struct MeshAdvDrawCall {
     pub render_object_instance_id: RenderObjectInstanceId,
     pub material_pass_resource: ResourceArc<MaterialPassResource>,
     pub per_material_descriptor_set: Option<DescriptorSetArc>,

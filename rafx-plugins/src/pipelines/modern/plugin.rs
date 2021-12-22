@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 // A plugin that add demo-specific configuration
 
 #[derive(Debug)]
-pub struct BasicPipelineTonemapDebugDataInner {
+pub struct ModernPipelineTonemapDebugDataInner {
     // The values will only be updated if this is set to true
     pub enable_debug_data_collection: bool,
 
@@ -34,9 +34,9 @@ pub struct BasicPipelineTonemapDebugDataInner {
     pub histogram_max_value: u32,
 }
 
-impl Default for BasicPipelineTonemapDebugDataInner {
+impl Default for ModernPipelineTonemapDebugDataInner {
     fn default() -> Self {
-        BasicPipelineTonemapDebugDataInner {
+        ModernPipelineTonemapDebugDataInner {
             enable_debug_data_collection: false,
             result_average: 0.0,
             result_average_bin: 0.0,
@@ -52,19 +52,19 @@ impl Default for BasicPipelineTonemapDebugDataInner {
 }
 
 #[derive(Clone)]
-pub struct BasicPipelineTonemapDebugData {
-    pub inner: Arc<Mutex<BasicPipelineTonemapDebugDataInner>>,
+pub struct ModernPipelineTonemapDebugData {
+    pub inner: Arc<Mutex<ModernPipelineTonemapDebugDataInner>>,
 }
 
-impl Default for BasicPipelineTonemapDebugData {
+impl Default for ModernPipelineTonemapDebugData {
     fn default() -> Self {
-        BasicPipelineTonemapDebugData {
-            inner: Arc::new(Mutex::new(BasicPipelineTonemapDebugDataInner::default())),
+        ModernPipelineTonemapDebugData {
+            inner: Arc::new(Mutex::new(ModernPipelineTonemapDebugDataInner::default())),
         }
     }
 }
 
-pub struct BasicPipelineStaticResources {
+pub struct ModernPipelineStaticResources {
     pub bloom_extract_material: Handle<MaterialAsset>,
     pub bloom_blur_material: Handle<MaterialAsset>,
     pub bloom_combine_material: Handle<MaterialAsset>,
@@ -74,9 +74,9 @@ pub struct BasicPipelineStaticResources {
     pub tonemap_debug_output: Vec<ResourceArc<BufferResource>>,
 }
 
-pub struct BasicPipelineRendererPlugin;
+pub struct ModernPipelineRendererPlugin;
 
-impl RendererAssetPlugin for BasicPipelineRendererPlugin {
+impl RendererAssetPlugin for ModernPipelineRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry_builder: RenderRegistryBuilder,
@@ -202,7 +202,7 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
             );
         }
 
-        render_resources.insert(BasicPipelineStaticResources {
+        render_resources.insert(ModernPipelineStaticResources {
             bloom_extract_material,
             bloom_blur_material,
             bloom_combine_material,

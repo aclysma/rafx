@@ -30,12 +30,12 @@ use rafx_plugins::pipelines::basic::{
 };
 
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::assets::mesh_adv::MeshBasicAssetTypeRendererPlugin;
+use rafx_plugins::assets::mesh_adv::MeshAdvAssetTypeRendererPlugin;
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::features::mesh_adv::MeshBasicRendererPlugin;
+use rafx_plugins::features::mesh_adv::MeshAdvRendererPlugin;
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::pipelines::modern::{
-    BasicPipelineRenderGraphGenerator, BasicPipelineRendererPlugin,
+    ModernPipelineRenderGraphGenerator, ModernPipelineRendererPlugin,
 };
 
 pub fn rendering_init(
@@ -48,7 +48,10 @@ pub fn rendering_init(
     resources.insert(VisibilityRegion::new());
     resources.insert(ViewportsResource::default());
 
+    #[cfg(feature = "basic-pipeline")]
     let mesh_renderer_plugin = Arc::new(MeshBasicRendererPlugin::new(Some(32)));
+    #[cfg(not(feature = "basic-pipeline"))]
+    let mesh_renderer_plugin = Arc::new(MeshAdvRendererPlugin::new(Some(32)));
     let sprite_renderer_plugin = Arc::new(SpriteRendererPlugin::default());
     let skybox_renderer_plugin = Arc::new(SkyboxRendererPlugin::default());
     let tile_layer_renderer_plugin = Arc::new(TileLayerRendererPlugin::default());
@@ -109,10 +112,8 @@ pub fn rendering_init(
     let mut renderer_builder = RendererBuilder::default();
     renderer_builder = renderer_builder
         .add_asset(Arc::new(FontAssetTypeRendererPlugin))
-        .add_asset(Arc::new(MeshBasicAssetTypeRendererPlugin))
         .add_asset(Arc::new(LdtkAssetTypeRendererPlugin))
         .add_asset(Arc::new(AnimAssetTypeRendererPlugin))
-        .add_asset(Arc::new(BasicPipelineRendererPlugin))
         .add_render_feature(mesh_renderer_plugin)
         .add_render_feature(sprite_renderer_plugin)
         .add_render_feature(skybox_renderer_plugin)
@@ -122,6 +123,18 @@ pub fn rendering_init(
         .add_render_feature(text_renderer_plugin)
         .allow_use_render_thread(allow_use_render_thread);
 
+    #[cfg(feature = "basic-pipeline")]
+    {
+        renderer_builder = renderer_builder.add_asset(Arc::new(MeshBasicAssetTypeRendererPlugin));
+        renderer_builder = renderer_builder.add_asset(Arc::new(BasicPipelineRendererPlugin));
+    }
+
+    #[cfg(not(feature = "basic-pipeline"))]
+    {
+        renderer_builder = renderer_builder.add_asset(Arc::new(MeshAdvAssetTypeRendererPlugin));
+        renderer_builder = renderer_builder.add_asset(Arc::new(ModernPipelineRendererPlugin));
+    }
+
     #[cfg(feature = "egui")]
     {
         renderer_builder = renderer_builder.add_render_feature(egui_renderer_plugin)
@@ -130,7 +143,10 @@ pub fn rendering_init(
     let mut renderer_builder_result = {
         let extract_resources = ExtractResources::default();
 
+        #[cfg(feature = "basic-pipeline")]
         let render_graph_generator = Box::new(BasicPipelineRenderGraphGenerator);
+        #[cfg(not(feature = "basic-pipeline"))]
+        let render_graph_generator = Box::new(ModernPipelineRenderGraphGenerator);
 
         renderer_builder.build(
             extract_resources,
@@ -182,7 +198,10 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
 
         resources.remove::<Renderer>();
 
+        #[cfg(feature = "basic-pipeline")]
         MeshBasicRendererPlugin::legion_destroy(resources);
+        #[cfg(not(feature = "basic-pipeline"))]
+        MeshAdvRendererPlugin::legion_destroy(resources);
         SpriteRendererPlugin::legion_destroy(resources);
         SkyboxRendererPlugin::legion_destroy(resources);
         TileLayerRendererPlugin::legion_destroy(resources);

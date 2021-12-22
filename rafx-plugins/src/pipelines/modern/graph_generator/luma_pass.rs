@@ -3,7 +3,7 @@ use rafx::graph::*;
 
 use super::OpaquePass;
 use super::RenderGraphContext;
-use crate::pipelines::modern::BasicPipelineTonemapDebugData;
+use crate::pipelines::modern::ModernPipelineTonemapDebugData;
 use crate::shaders::post_basic::luma_average_histogram_comp;
 use crate::shaders::post_basic::luma_build_histogram_comp;
 use rafx::api::{RafxLoadOp, RafxSampleCount};
@@ -117,7 +117,7 @@ pub(super) fn luma_average_histogram_pass(
     luma_build_histogram_pass: &LumaBuildHistogramPass,
     luma_average_histogram: &ResourceArc<ComputePipelineResource>,
     histogram_result: RenderGraphExternalBufferId,
-    tonemap_debug_data: Option<BasicPipelineTonemapDebugData>,
+    tonemap_debug_data: Option<ModernPipelineTonemapDebugData>,
     tonemap_debug_output: RenderGraphExternalBufferId,
     swapchain_surface_info: &SwapchainSurfaceInfo,
     previous_update_dt: f32,

@@ -5,46 +5,46 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
 
-use super::MeshBasicAsset;
+use super::MeshAdvAsset;
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ModelBasicAssetDataLod {
-    pub mesh: Handle<MeshBasicAsset>,
+pub struct ModelAdvAssetDataLod {
+    pub mesh: Handle<MeshAdvAsset>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "5fe1ac74-0f10-4855-aa4a-b95a3473020d"]
-pub struct ModelBasicAssetData {
-    pub lods: Vec<ModelBasicAssetDataLod>,
+pub struct ModelAdvAssetData {
+    pub lods: Vec<ModelAdvAssetDataLod>,
 }
 
-pub struct ModelBasicAssetInner {
-    pub lods: Vec<ModelBasicAssetDataLod>,
+pub struct ModelAdvAssetInner {
+    pub lods: Vec<ModelAdvAssetDataLod>,
 }
 
 #[derive(TypeUuid, Clone)]
 #[uuid = "82468fcb-7124-409d-bc74-140569aaebb4"]
-pub struct ModelBasicAsset {
-    pub inner: Arc<ModelBasicAssetInner>,
+pub struct ModelAdvAsset {
+    pub inner: Arc<ModelAdvAssetInner>,
 }
 
-pub struct ModelBasicLoadHandler;
+pub struct ModelAdvLoadHandler;
 
-impl DefaultAssetTypeLoadHandler<ModelBasicAssetData, ModelBasicAsset> for ModelBasicLoadHandler {
+impl DefaultAssetTypeLoadHandler<ModelAdvAssetData, ModelAdvAsset> for ModelAdvLoadHandler {
     #[profiling::function]
     fn load(
         _asset_manager: &mut AssetManager,
-        model_asset: ModelBasicAssetData,
-    ) -> RafxResult<ModelBasicAsset> {
-        let inner = ModelBasicAssetInner {
+        model_asset: ModelAdvAssetData,
+    ) -> RafxResult<ModelAdvAsset> {
+        let inner = ModelAdvAssetInner {
             lods: model_asset.lods,
         };
 
-        Ok(ModelBasicAsset {
+        Ok(ModelAdvAsset {
             inner: Arc::new(inner),
         })
     }
 }
 
-pub type ModelBasicAssetType =
-    DefaultAssetTypeHandler<ModelBasicAssetData, ModelBasicAsset, ModelBasicLoadHandler>;
+pub type ModelAdvAssetType =
+    DefaultAssetTypeHandler<ModelAdvAssetData, ModelAdvAsset, ModelAdvLoadHandler>;

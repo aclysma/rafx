@@ -16,10 +16,10 @@ use rafx_plugins::features::mesh_basic::{
 };
 
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::assets::mesh_adv::MeshBasicAsset as MeshAsset;
+use rafx_plugins::assets::mesh_adv::MeshAdvAsset as MeshAsset;
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::features::mesh_adv::{
-    MeshBasicRenderObject as MeshRenderObject, MeshBasicRenderObjectSet as MeshRenderObjectSet,
+    MeshAdvRenderObject as MeshRenderObject, MeshAdvRenderObjectSet as MeshRenderObjectSet,
 };
 
 pub struct SpawnableMesh {

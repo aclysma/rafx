@@ -8,28 +8,28 @@ use crate::phases::{
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
-pub struct MeshBasicStaticResources {
+pub struct MeshAdvStaticResources {
     pub depth_material: Handle<MaterialAsset>,
     pub shadow_map_atlas_depth_material: Handle<MaterialAsset>,
     pub shadow_map_atlas_clear_tiles_material: Handle<MaterialAsset>,
 }
 
-pub struct MeshBasicRendererPlugin {
-    render_objects: MeshBasicRenderObjectSet,
+pub struct MeshAdvRendererPlugin {
+    render_objects: MeshAdvRenderObjectSet,
     max_num_mesh_parts: Option<usize>,
 }
 
-impl MeshBasicRendererPlugin {
+impl MeshAdvRendererPlugin {
     pub fn new(max_num_mesh_parts: Option<usize>) -> Self {
         Self {
             max_num_mesh_parts,
-            render_objects: MeshBasicRenderObjectSet::default(),
+            render_objects: MeshAdvRenderObjectSet::default(),
         }
     }
 }
 
 #[cfg(feature = "legion")]
-impl MeshBasicRendererPlugin {
+impl MeshAdvRendererPlugin {
     pub fn legion_init(
         &self,
         resources: &mut legion::Resources,
@@ -38,11 +38,11 @@ impl MeshBasicRendererPlugin {
     }
 
     pub fn legion_destroy(resources: &mut legion::Resources) {
-        resources.remove::<MeshBasicRenderObjectSet>();
+        resources.remove::<MeshAdvRenderObjectSet>();
     }
 }
 
-impl RenderFeaturePlugin for MeshBasicRendererPlugin {
+impl RenderFeaturePlugin for MeshAdvRendererPlugin {
     fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {
         super::render_feature_debug_constants()
     }
@@ -71,11 +71,11 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         render_registry: RenderRegistryBuilder,
     ) -> RenderRegistryBuilder {
         render_registry
-            .register_feature::<MeshBasicRenderFeature>()
-            .register_feature_flag::<MeshBasicWireframeRenderFeatureFlag>()
-            .register_feature_flag::<MeshBasicUntexturedRenderFeatureFlag>()
-            .register_feature_flag::<MeshBasicUnlitRenderFeatureFlag>()
-            .register_feature_flag::<MeshBasicNoShadowsRenderFeatureFlag>()
+            .register_feature::<MeshAdvRenderFeature>()
+            .register_feature_flag::<MeshAdvWireframeRenderFeatureFlag>()
+            .register_feature_flag::<MeshAdvUntexturedRenderFeatureFlag>()
+            .register_feature_flag::<MeshAdvUnlitRenderFeatureFlag>()
+            .register_feature_flag::<MeshAdvNoShadowsRenderFeatureFlag>()
     }
 
     fn initialize_static_resources(
@@ -110,13 +110,13 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
             "shadow atlas clear",
         )?;
 
-        render_resources.insert(MeshBasicStaticResources {
+        render_resources.insert(MeshAdvStaticResources {
             depth_material,
             shadow_map_atlas_depth_material,
             shadow_map_atlas_clear_tiles_material,
         });
 
-        render_resources.insert(MeshBasicShadowMapResource::default());
+        render_resources.insert(MeshAdvShadowMapResource::default());
 
         render_resources.insert(ShadowMapAtlas::new(asset_manager.resources())?);
 
@@ -128,7 +128,7 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         render_resources: &ResourceMap,
     ) -> RafxResult<()> {
         // Clear shadow map assignments so that all shadow map atlas elements are free
-        let mut shadow_map_resource = render_resources.fetch_mut::<MeshBasicShadowMapResource>();
+        let mut shadow_map_resource = render_resources.fetch_mut::<MeshAdvShadowMapResource>();
         shadow_map_resource.clear();
 
         Ok(())
@@ -143,7 +143,7 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
     ) {
         //TODO: HACK
         let main_view_eye_position = render_views[0].eye_position();
-        let mut shadow_map_resource = render_resources.fetch_mut::<MeshBasicShadowMapResource>();
+        let mut shadow_map_resource = render_resources.fetch_mut::<MeshAdvShadowMapResource>();
         let mut shadow_map_atlas = render_resources.fetch_mut::<ShadowMapAtlas>();
         shadow_map_resource.recalculate_shadow_map_views(
             &render_view_set,
@@ -159,7 +159,7 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         &self,
         frame_packet_size: &FramePacketSize,
     ) -> Box<dyn RenderFeatureFramePacket> {
-        Box::new(MeshBasicFramePacket::new(
+        Box::new(MeshAdvFramePacket::new(
             self.feature_index(),
             frame_packet_size,
         ))
@@ -172,14 +172,14 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
         let static_resources = extract_context
             .render_resources
-            .fetch::<MeshBasicStaticResources>();
+            .fetch::<MeshAdvStaticResources>();
 
         let depth_material = static_resources.depth_material.clone();
 
         let shadow_map_atlas_depth_material =
             static_resources.shadow_map_atlas_depth_material.clone();
 
-        MeshBasicExtractJob::new(
+        MeshAdvExtractJob::new(
             extract_context,
             frame_packet.into_concrete(),
             depth_material,
@@ -192,7 +192,7 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         &self,
         frame_packet: &Box<dyn RenderFeatureFramePacket>,
     ) -> Box<dyn RenderFeatureSubmitPacket> {
-        let frame_packet: &MeshBasicFramePacket = frame_packet.as_ref().as_concrete();
+        let frame_packet: &MeshAdvFramePacket = frame_packet.as_ref().as_concrete();
 
         let mut view_submit_packets = Vec::with_capacity(frame_packet.view_packets().len());
         for view_packet in frame_packet.view_packets() {
@@ -210,7 +210,7 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
                 SubmitNodeBlock::with_capacity::<ShadowMapRenderPhase>(view, num_submit_nodes),
                 SubmitNodeBlock::with_capacity_and_feature_flag::<
                     WireframeRenderPhase,
-                    MeshBasicWireframeRenderFeatureFlag,
+                    MeshAdvWireframeRenderFeatureFlag,
                 >(view, num_submit_nodes),
             ];
 
@@ -233,7 +233,7 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         frame_packet: Box<dyn RenderFeatureFramePacket>,
         submit_packet: Box<dyn RenderFeatureSubmitPacket>,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
-        MeshBasicPrepareJob::new(
+        MeshAdvPrepareJob::new(
             prepare_context,
             frame_packet.into_concrete(),
             submit_packet.into_concrete(),
@@ -247,7 +247,7 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         frame_packet: Box<dyn RenderFeatureFramePacket>,
         submit_packet: Box<dyn RenderFeatureSubmitPacket>,
     ) -> Arc<dyn RenderFeatureWriteJob<'write> + 'write> {
-        MeshBasicWriteJob::new(
+        MeshAdvWriteJob::new(
             write_context,
             frame_packet.into_concrete(),
             submit_packet.into_concrete(),
