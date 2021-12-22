@@ -34,6 +34,7 @@ pub use graph_resource_cache::RenderGraphCache;
 mod prepared_graph;
 pub use prepared_graph::OnBeginExecuteGraphArgs;
 pub use prepared_graph::PreparedRenderGraph;
+pub use prepared_graph::RenderGraphContext;
 pub use prepared_graph::SwapchainSurfaceInfo;
 pub use prepared_graph::VisitComputeNodeArgs;
 pub use prepared_graph::VisitRenderpassNodeArgs;

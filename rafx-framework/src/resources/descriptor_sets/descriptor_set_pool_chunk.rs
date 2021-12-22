@@ -80,7 +80,6 @@ fn try_queue_descriptor_set_image_update(
 
 fn try_queue_descriptor_set_buffer_update(
     buffers: &mut DescriptorLayoutBufferSet,
-    descriptor_set_layout: &DescriptorSetLayoutResource,
     descriptor_set_array: &mut RafxDescriptorSetArray,
     descriptor_set_index: u32,
     element_key: &DescriptorSetElementKey,
@@ -113,13 +112,7 @@ fn try_queue_descriptor_set_buffer_update(
                 })?;
             }
             DescriptorSetWriteElementBufferData::Data(data) => {
-                copy_data_to_buffer(
-                    buffers,
-                    descriptor_set_layout,
-                    descriptor_set_index,
-                    element_key,
-                    data,
-                )?;
+                copy_data_to_buffer(buffers, descriptor_set_index, element_key, data)?;
             }
         }
     }
@@ -129,7 +122,6 @@ fn try_queue_descriptor_set_buffer_update(
 
 fn copy_data_to_buffer<T: Copy>(
     buffers: &mut DescriptorLayoutBufferSet,
-    descriptor_set_layout: &DescriptorSetLayoutResource,
     descriptor_set_index: u32,
     element_key: &DescriptorSetElementKey,
     data: &[T],
@@ -148,19 +140,17 @@ fn copy_data_to_buffer<T: Copy>(
 
     if data.len() as u32 > buffer.buffer_info.per_descriptor_size {
         panic!(
-            "Wrote {} bytes to a descriptor set buffer that holds {} bytes layout: {:?}",
+            "Wrote {} bytes to a descriptor set buffer that holds {} bytes",
             data.len(),
-            buffer.buffer_info.per_descriptor_size,
-            descriptor_set_layout
+            buffer.buffer_info.per_descriptor_size
         );
     }
 
     if data.len() as u32 != buffer.buffer_info.per_descriptor_size {
         log::warn!(
-            "Wrote {} bytes to a descriptor set buffer that holds {} bytes layout: {:?}",
+            "Wrote {} bytes to a descriptor set buffer that holds {} bytes",
             data.len(),
-            buffer.buffer_info.per_descriptor_size,
-            descriptor_set_layout
+            buffer.buffer_info.per_descriptor_size
         );
     }
 
@@ -243,7 +233,6 @@ impl DescriptorSetWriterContext<'_> {
 
         try_queue_descriptor_set_buffer_update(
             self.buffers,
-            &self.descriptor_set_layout.get_raw(),
             self.descriptor_set_array,
             descriptor_set_index as u32,
             element_key,
@@ -260,7 +249,6 @@ impl DescriptorSetWriterContext<'_> {
     ) -> RafxResult<()> {
         copy_data_to_buffer(
             self.buffers,
-            &self.descriptor_set_layout.get_raw(),
             self.descriptor_set_index as u32,
             element_key,
             data,
@@ -639,7 +627,6 @@ impl ManagedDescriptorSetPoolChunk {
 
             try_queue_descriptor_set_buffer_update(
                 &mut self.buffers,
-                &self.descriptor_set_layout.get_raw(),
                 descriptor_set_array,
                 descriptor_set_index,
                 &element_key,

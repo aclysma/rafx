@@ -201,13 +201,6 @@ impl RafxPipelineVulkan {
             .base_pipeline_index(-1)
             .build();
 
-        //let depth = if pipeline_def.depth_stencil_format != RafxFormat::UNDEFINED {
-        //    pipeline_def.depth_state.into_vk_builder();
-        // } else {
-        //     let depth_state = RafxDepthState::default();
-        //     depth_state.into_vk_builder()
-        // };
-
         let pipeline = unsafe {
             match device_context.device().create_graphics_pipelines(
                 vk::PipelineCache::null(),

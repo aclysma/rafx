@@ -19,19 +19,16 @@ pub type SubmitNodeBlocks = FnvHashMap<ViewPhase, ViewPhaseSubmitNodeBlock>;
 pub struct PreparedRenderData<'write> {
     submit_node_blocks: &'write SubmitNodeBlocks,
     write_jobs: Vec<Option<Arc<dyn RenderFeatureWriteJob<'write> + 'write>>>,
-    _write_context: RenderJobWriteContext<'write>,
 }
 
 impl<'write> PreparedRenderData<'write> {
     pub fn new(
         submit_node_blocks: &'write SubmitNodeBlocks,
         write_jobs: Vec<Option<Arc<dyn RenderFeatureWriteJob<'write> + 'write>>>,
-        _write_context: RenderJobWriteContext<'write>,
     ) -> Self {
         Self {
             submit_node_blocks,
             write_jobs,
-            _write_context,
         }
     }
 

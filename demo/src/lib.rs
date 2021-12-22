@@ -130,7 +130,7 @@ impl RenderOptions {
             show_wireframes: false,
             show_debug3d: true,
             show_text: true,
-            show_skybox: true,
+            show_skybox: false,
             show_shadows: true,
             show_feature_toggles: false,
             blur_pass_count: 0,
@@ -235,6 +235,7 @@ pub struct DebugUiState {
     show_render_options: bool,
     show_asset_list: bool,
     show_tonemap_debug: bool,
+    show_shadow_map_debug: bool,
 
     #[cfg(feature = "profile-with-puffin")]
     show_profiler: bool,
@@ -452,7 +453,7 @@ impl DemoApp {
             let mut debug_ui_state = self.resources.get_mut::<DebugUiState>().unwrap();
             let mut render_options = self.resources.get_mut::<RenderOptions>().unwrap();
             let tonemap_debug_data = self.resources.get::<PipelineTonemapDebugData>().unwrap();
-            let asset_manager = self.resources.get::<AssetResource>().unwrap();
+            let asset_resource = self.resources.get::<AssetResource>().unwrap();
 
             egui::TopBottomPanel::top("top_panel").show(&ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
@@ -461,6 +462,10 @@ impl DemoApp {
 
                         ui.checkbox(&mut debug_ui_state.show_asset_list, "Asset List");
                         ui.checkbox(&mut debug_ui_state.show_tonemap_debug, "Tonemap Debug");
+                        ui.checkbox(
+                            &mut debug_ui_state.show_shadow_map_debug,
+                            "Shadow Map Debug",
+                        );
 
                         #[cfg(feature = "profile-with-puffin")]
                         if ui
@@ -543,12 +548,21 @@ impl DemoApp {
                     });
             }
 
+            if debug_ui_state.show_shadow_map_debug {
+                egui::Window::new("Shadow map Debug")
+                    .open(&mut debug_ui_state.show_shadow_map_debug)
+                    .show(&ctx, |ui| {
+                        //TODO: Build a UI for this
+                        ui.add(egui::Label::new("test"));
+                    });
+            }
+
             if debug_ui_state.show_asset_list {
                 egui::Window::new("Asset List")
                     .open(&mut debug_ui_state.show_asset_list)
                     .show(&ctx, |ui| {
                         egui::ScrollArea::vertical().show(ui, |ui| {
-                            let loader = asset_manager.loader();
+                            let loader = asset_resource.loader();
                             let mut asset_info = loader
                                 .get_active_loads()
                                 .into_iter()

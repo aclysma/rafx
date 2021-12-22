@@ -54,6 +54,7 @@ pub enum DepthBufferPreset {
     ReadOnly,
     EnabledReverseZ,
     ReadOnlyReverseZ,
+    WriteOnly,
     Custom,
 }
 
@@ -62,42 +63,6 @@ impl Default for DepthBufferPreset {
         DepthBufferPreset::Disabled
     }
 }
-
-// #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
-// pub enum CullModePreset {
-//     UseRasterizerState,
-//     Enabled
-// }
-//
-// impl Default for CullModePreset {
-//     fn default() -> Self {
-//         CullModePreset::UseRasterizerState
-//     }
-// }
-//
-// #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
-// pub enum FrontFacePreset {
-//     UseRasterizerState,
-//     Enabled
-// }
-//
-// impl Default for FrontFacePreset {
-//     fn default() -> Self {
-//         FrontFacePreset::UseRasterizerState
-//     }
-// }
-//
-// #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
-// pub enum FillModePreset {
-//     UseRasterizerState,
-//     Enabled
-// }
-//
-// impl Default for FillModePreset {
-//     fn default() -> Self {
-//         FillModePreset::UseRasterizerState
-//     }
-// }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 pub struct FixedFunctionStateData {
@@ -167,6 +132,11 @@ impl FixedFunctionStateData {
                 depth_state.depth_test_enable = true;
                 depth_state.depth_write_enable = false;
                 depth_state.depth_compare_op = RafxCompareOp::GreaterOrEqual;
+            }
+            DepthBufferPreset::WriteOnly => {
+                depth_state.depth_test_enable = true;
+                depth_state.depth_write_enable = true;
+                depth_state.depth_compare_op = RafxCompareOp::Always;
             }
             DepthBufferPreset::Custom => {
                 //do nothing

@@ -28,10 +28,10 @@ fn visit_node(
     // This node is already being visited higher up in the stack. This indicates a cycle in the
     // graph
     if visiting[node_id.0] {
-        log::trace!("Found cycle in graph");
-        log::trace!("{:?}", graph.node(node_id));
+        log::warn!("Found cycle in graph");
+        log::warn!("{:?}", graph.node(node_id));
         for v in visiting_stack.iter().rev() {
-            log::trace!("{:?}", graph.node(*v));
+            log::warn!("{:?}", graph.node(*v));
         }
         panic!("Graph has a cycle");
     }
@@ -2301,7 +2301,7 @@ fn build_pass_barriers(
             }
         }
     }
-    //TODO: Support import resource states to define initial state
+
     //TODO: Starting from UNDEFINED initial state is generally bad, we are reusing resources, we
     // could know what state it was in
 
@@ -2319,7 +2319,20 @@ fn build_pass_barriers(
         Default::default()
     });
 
-    //Insert init states (iterate input/output images and insert (physical_id, state) pairs)
+    // Populate init state for external images/buffers
+    for external_image in &graph.external_images {
+        if let Some(input_usage) = external_image.input_usage {
+            let physical_id = physical_resources.image_usage_to_physical[&input_usage];
+            image_states[physical_id.0].resource_state = external_image.initial_state;
+        }
+    }
+
+    for external_buffer in &graph.external_buffers {
+        if let Some(input_usage) = external_buffer.input_usage {
+            let physical_id = physical_resources.buffer_usage_to_physical[&input_usage];
+            buffer_states[physical_id.0].resource_state = external_buffer.initial_state;
+        }
+    }
 
     for (pass_index, pass) in passes.iter_mut().enumerate() {
         log::trace!("pass {}", pass_index);

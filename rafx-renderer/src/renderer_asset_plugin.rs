@@ -50,4 +50,11 @@ pub trait RendererAssetPlugin: Send + Sync {
     ) -> RafxResult<()> {
         Ok(())
     }
+
+    fn prepare_renderer_destroy(
+        &self,
+        _render_resources: &ResourceMap,
+    ) -> RafxResult<()> {
+        Ok(())
+    }
 }

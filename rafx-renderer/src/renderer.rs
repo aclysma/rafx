@@ -41,10 +41,27 @@ pub struct Renderer {
     pub(super) inner: Arc<Mutex<RendererInner>>,
     pub(super) render_thread: Option<RenderThread>,
     pub(super) render_graph_generator: Box<dyn RenderGraphGenerator>,
+    pub(super) asset_plugins: Vec<Arc<dyn RendererAssetPlugin>>,
     pub(super) feature_plugins: Arc<Vec<Arc<dyn RenderFeaturePlugin>>>,
     pub(super) render_resources: Arc<RenderResources>,
     pub(super) graphics_queue: RafxQueue,
     pub(super) transfer_queue: RafxQueue,
+}
+
+impl Drop for Renderer {
+    fn drop(&mut self) {
+        for plugin in &*self.feature_plugins {
+            plugin
+                .prepare_renderer_destroy(&self.render_resources)
+                .unwrap();
+        }
+
+        for plugin in &self.asset_plugins {
+            plugin
+                .prepare_renderer_destroy(&self.render_resources)
+                .unwrap();
+        }
+    }
 }
 
 impl Renderer {
@@ -130,7 +147,7 @@ impl Renderer {
         render_resources.insert(AssetManagerRenderResource::default());
         render_resources.insert(TimeRenderResource::default());
 
-        for plugin in &*feature_plugins {
+        for plugin in &*asset_plugins {
             plugin.initialize_static_resources(
                 asset_manager,
                 asset_resource,
@@ -140,7 +157,7 @@ impl Renderer {
             )?;
         }
 
-        for plugin in &*asset_plugins {
+        for plugin in &*feature_plugins {
             plugin.initialize_static_resources(
                 asset_manager,
                 asset_resource,
@@ -172,6 +189,7 @@ impl Renderer {
             inner: Arc::new(Mutex::new(renderer)),
             render_thread,
             render_graph_generator,
+            asset_plugins,
             feature_plugins,
             render_resources: Arc::new(render_resources),
             graphics_queue: graphics_queue.clone(),
@@ -370,6 +388,8 @@ impl Renderer {
             view_meta.render_feature_flag_mask,
             view_meta.debug_name,
         );
+
+        //TODO: Add main view to a resource of some kind?
 
         //
         // Compute Views

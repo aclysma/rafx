@@ -42,6 +42,9 @@ pub struct RafxApiDefVulkan {
     /// Used to enable/disable validation at runtime. Not all APIs allow this. Validation is helpful
     /// during development but very expensive. Applications should not ship with validation enabled.
     pub validation_mode: RafxValidationMode,
+
+    /// Override the default enabled features with a custom set of features
+    pub physical_device_features: Option<vk::PhysicalDeviceFeatures>,
     // The OS-specific layers/extensions are already included. Debug layers/extension are included
     // if enable_validation is true
     //TODO: Additional instance layer names
@@ -55,6 +58,7 @@ impl Default for RafxApiDefVulkan {
             app_name: CString::new("Rafx Application").unwrap(),
             link_method: Default::default(),
             validation_mode: Default::default(),
+            physical_device_features: None,
         }
     }
 }
@@ -119,7 +123,10 @@ impl RafxApiVulkan {
             validation_layer_debug_report_flags,
         )?;
 
-        let inner = Arc::new(RafxDeviceContextVulkanInner::new(&instance)?);
+        let inner = Arc::new(RafxDeviceContextVulkanInner::new(
+            &instance,
+            &vk_api_def.physical_device_features,
+        )?);
         let device_context = RafxDeviceContextVulkan::new(inner)?;
 
         Ok(RafxApiVulkan {

@@ -161,6 +161,11 @@ pub struct RenderView {
 }
 
 impl RenderView {
+    // Exposed publically as it's used downstream and want to make sure the logic stays in sync
+    pub fn view_mat4_to_view_dir(view: &glam::Mat4) -> glam::Vec3 {
+        glam::Vec3::new(view.x_axis.z, view.y_axis.z, view.z_axis.z) * -1.0
+    }
+
     pub fn new(
         view_frustum: ViewFrustumArc,
         view_index: RenderViewIndex,
@@ -174,7 +179,7 @@ impl RenderView {
         render_feature_flag_mask: RenderFeatureFlagMask,
         debug_name: String,
     ) -> RenderView {
-        let view_dir = glam::Vec3::new(view.x_axis.z, view.y_axis.z, view.z_axis.z) * -1.0;
+        let view_dir = Self::view_mat4_to_view_dir(&view);
 
         log::trace!("Allocate view {} {}", debug_name, view_index);
         let inner = RenderViewInner {

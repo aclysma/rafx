@@ -9,13 +9,13 @@
 ))]
 use crate::empty::RafxApiEmpty;
 #[cfg(feature = "rafx-gles2")]
-use crate::gles2::{RafxApiDefGles2, RafxApiGles2};
+use crate::gles2::RafxApiGles2;
 #[cfg(feature = "rafx-gles3")]
-use crate::gles3::{RafxApiDefGles3, RafxApiGles3};
+use crate::gles3::RafxApiGles3;
 #[cfg(feature = "rafx-metal")]
-use crate::metal::{RafxApiDefMetal, RafxApiMetal};
+use crate::metal::RafxApiMetal;
 #[cfg(feature = "rafx-vulkan")]
-use crate::vulkan::{RafxApiDefVulkan, RafxApiVulkan};
+use crate::vulkan::RafxApiVulkan;
 use crate::*;
 use raw_window_handle::HasRawWindowHandle;
 
@@ -62,26 +62,26 @@ impl RafxApi {
     #[allow(unreachable_code)]
     pub unsafe fn new(
         _window: &dyn HasRawWindowHandle,
-        _api_def: &RafxApiDef,
+        api_def: &RafxApiDef,
     ) -> RafxResult<Self> {
         #[cfg(feature = "rafx-metal")]
         {
-            return RafxApi::new_metal(_window, _api_def, &Default::default());
+            return RafxApi::new_metal(_window, api_def);
         }
 
         #[cfg(feature = "rafx-vulkan")]
         {
-            return RafxApi::new_vulkan(_window, _api_def, &Default::default());
+            return RafxApi::new_vulkan(_window, api_def);
         }
 
         #[cfg(feature = "rafx-gles3")]
         {
-            return RafxApi::new_gles3(_window, _api_def, &Default::default());
+            return RafxApi::new_gles3(_window, api_def);
         }
 
         #[cfg(feature = "rafx-gles2")]
         {
-            return RafxApi::new_gles2(_window, _api_def, &Default::default());
+            return RafxApi::new_gles2(_window, api_def);
         }
 
         return Err("Rafx was compiled with no backend feature flag. Use on of the following features: rafx-metal, rafx-vulkan, rafx-gles2")?;
@@ -98,10 +98,11 @@ impl RafxApi {
     pub unsafe fn new_vulkan(
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
-        vk_api_def: &RafxApiDefVulkan,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Vk(RafxApiVulkan::new(
-            window, api_def, vk_api_def,
+            window,
+            api_def,
+            &api_def.vk_options.as_ref().unwrap_or(&Default::default()),
         )?))
     }
 
@@ -116,34 +117,58 @@ impl RafxApi {
     pub unsafe fn new_metal(
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
-        vk_api_def: &RafxApiDefMetal,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Metal(RafxApiMetal::new(
-            window, api_def, vk_api_def,
+            window,
+            api_def,
+            &api_def
+                .metal_options
+                .as_ref()
+                .unwrap_or(&Default::default()),
         )?))
     }
 
     /// Initialize a device using OpenGL ES 2.0
+    ///
+    /// # Safety
+    ///
+    /// GPU programming is fundamentally unsafe, so all rafx APIs that interact with the GPU should
+    /// be considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
+    /// behavior on the CPU for reasons other than interacting with the GPU.
     #[cfg(feature = "rafx-gles2")]
-    pub fn new_gles2(
+    pub unsafe fn new_gles2(
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
-        gl_api_def: &RafxApiDefGles2,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Gles2(RafxApiGles2::new(
-            window, api_def, gl_api_def,
+            window,
+            api_def,
+            &api_def
+                .gles2_options
+                .as_ref()
+                .unwrap_or(&Default::default()),
         )?))
     }
 
     /// Initialize a device using OpenGL ES 3.0
+    ///
+    /// # Safety
+    ///
+    /// GPU programming is fundamentally unsafe, so all rafx APIs that interact with the GPU should
+    /// be considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
+    /// behavior on the CPU for reasons other than interacting with the GPU.
     #[cfg(feature = "rafx-gles3")]
-    pub fn new_gles3(
+    pub unsafe fn new_gles3(
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
-        gl_api_def: &RafxApiDefGles3,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Gles3(RafxApiGles3::new(
-            window, api_def, gl_api_def,
+            window,
+            api_def,
+            &api_def
+                .gles3_options
+                .as_ref()
+                .unwrap_or(&Default::default()),
         )?))
     }
 

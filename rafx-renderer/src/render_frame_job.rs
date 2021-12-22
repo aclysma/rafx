@@ -147,18 +147,21 @@ impl RenderFrameJob {
             let write_jobs = {
                 profiling::scope!("Create Write Jobs");
                 RenderFrameJob::create_write_jobs(
-                    &feature_plugins,
                     &write_context,
+                    &feature_plugins,
                     frame_and_submit_packets,
                 )
             };
 
-            let prepared_render_data =
-                PreparedRenderData::new(&submit_node_blocks, write_jobs, write_context);
+            let prepared_render_data = PreparedRenderData::new(&submit_node_blocks, write_jobs);
 
             {
                 profiling::scope!("Execute Render Graph");
-                prepared_render_graph.execute_graph(prepared_render_data, &graphics_queue)?
+                prepared_render_graph.execute_graph(
+                    &write_context,
+                    prepared_render_data,
+                    &graphics_queue,
+                )?
             }
         };
 
@@ -385,8 +388,8 @@ impl RenderFrameJob {
     }
 
     fn create_write_jobs<'write>(
-        features: &Vec<Arc<dyn RenderFeaturePlugin>>,
         write_context: &RenderJobWriteContext<'write>,
+        features: &Vec<Arc<dyn RenderFeaturePlugin>>,
         frame_and_submit_packets: Vec<(
             Box<dyn RenderFeatureFramePacket>,
             Box<dyn RenderFeatureSubmitPacket>,

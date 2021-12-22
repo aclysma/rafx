@@ -3,7 +3,7 @@ use std::hash::Hash;
 /// An opaque 64-bit handle used as a unique identifier for objects in the game world
 /// that are visible or otherwise relevant to the renderer's pipeline. Each `VisibilityObject`
 /// is associated with a specific `ObjectId`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct ObjectId(u64);
 
 impl Into<u64> for ObjectId {

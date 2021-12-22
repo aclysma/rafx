@@ -8,9 +8,12 @@ use crate::graph::{
     RenderGraphBufferUsageId, RenderGraphBuilder, RenderGraphImageUsageId,
     RenderGraphNodeVisitNodeCallback,
 };
-use crate::render_features::{PreparedRenderData, RenderJobBeginExecuteGraphContext};
+use crate::render_features::{
+    PreparedRenderData, RenderJobBeginExecuteGraphContext, RenderJobCommandBufferContext,
+    RenderJobWriteContext, RenderPhase, RenderView,
+};
 use crate::resources::DynCommandBuffer;
-use crate::{BufferResource, GraphicsPipelineRenderTargetMeta, ImageResource};
+use crate::{BufferResource, GraphicsPipelineRenderTargetMeta, ImageResource, RenderResources};
 use crate::{ImageViewResource, ResourceArc, ResourceContext};
 use fnv::FnvHashMap;
 use rafx_api::{
@@ -32,6 +35,7 @@ pub struct SwapchainSurfaceInfo {
 pub struct RenderGraphContext<'graph, 'write> {
     prepared_render_graph: &'graph PreparedRenderGraph,
     prepared_render_data: &'graph PreparedRenderData<'write>,
+    render_resources: &'graph RenderResources,
 }
 
 impl<'graph, 'write> RenderGraphContext<'graph, 'write> {
@@ -60,6 +64,10 @@ impl<'graph, 'write> RenderGraphContext<'graph, 'write> {
     pub fn prepared_render_data(&self) -> &PreparedRenderData<'write> {
         &self.prepared_render_data
     }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        &self.render_resources
+    }
 }
 
 pub struct OnBeginExecuteGraphArgs<'graph, 'write> {
@@ -76,6 +84,22 @@ pub struct VisitRenderpassNodeArgs<'graph, 'write> {
     pub command_buffer: DynCommandBuffer,
     pub render_target_meta: GraphicsPipelineRenderTargetMeta,
     pub graph_context: RenderGraphContext<'graph, 'write>,
+}
+
+// Convenience function for creating a write context and triggering writing a phase for a view.
+// (Alternatively you can make your own write context, which allows calling write_view_phase
+// multiple times with the same context)
+impl<'graph, 'write> VisitRenderpassNodeArgs<'graph, 'write> {
+    pub fn write_view_phase<PhaseT: RenderPhase>(
+        &self,
+        render_view: &RenderView,
+    ) -> RafxResult<()> {
+        let mut write_context =
+            RenderJobCommandBufferContext::from_graph_visit_render_pass_args(self);
+        self.graph_context
+            .prepared_render_data()
+            .write_view_phase::<PhaseT>(render_view, &mut write_context)
+    }
 }
 
 /// Encapsulates a render graph plan and all resources required to execute it
@@ -269,6 +293,7 @@ impl PreparedRenderGraph {
 
     pub fn execute_graph<'write>(
         &'write self,
+        write_context: &RenderJobWriteContext,
         prepared_render_data: PreparedRenderData<'write>,
         queue: &RafxQueue,
     ) -> RafxResult<Vec<DynCommandBuffer>> {
@@ -290,18 +315,19 @@ impl PreparedRenderGraph {
         let render_graph_context = RenderGraphContext {
             prepared_render_graph: &self,
             prepared_render_data: &prepared_render_data,
+            render_resources: write_context.render_resources,
         };
 
-        let args = OnBeginExecuteGraphArgs {
-            graph_context: render_graph_context,
-            command_buffer: command_buffer.clone(),
-        };
-
-        let mut write_context =
-            RenderJobBeginExecuteGraphContext::from_on_begin_execute_graph_args(&args);
-        args.graph_context
+        render_graph_context
             .prepared_render_data()
-            .on_begin_execute_graph(&mut write_context)?;
+            .on_begin_execute_graph(
+                &mut RenderJobBeginExecuteGraphContext::from_on_begin_execute_graph_args(
+                    &OnBeginExecuteGraphArgs {
+                        graph_context: render_graph_context.clone(),
+                        command_buffer: command_buffer.clone(),
+                    },
+                ),
+            )?;
 
         //
         // Iterate through all passes

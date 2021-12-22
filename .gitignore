@@ -9,3 +9,4 @@ Cargo.lock
 /demo/assets_unprocessed/private
 /demo/art/bistro/**
 /demo/assets/bistro/*/*
+/rafx-plugins/processed_shaders/**

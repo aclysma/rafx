@@ -405,13 +405,13 @@ fn run() -> RafxResult<()> {
             let write_context =
                 RenderJobWriteContext::new(resource_context.clone(), &render_resources);
 
-            let prepared_render_data =
-                PreparedRenderData::new(&submit_node_blocks, Vec::default(), write_context);
+            let prepared_render_data = PreparedRenderData::new(&submit_node_blocks, Vec::default());
 
             //
             // Execute the graph. This will write out command buffer(s)
             //
-            let command_buffers = executor.execute_graph(prepared_render_data, &graphics_queue)?;
+            let command_buffers =
+                executor.execute_graph(&write_context, prepared_render_data, &graphics_queue)?;
 
             //
             // Submit the command buffers to the GPU

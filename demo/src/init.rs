@@ -1,5 +1,5 @@
 use legion::Resources;
-use rafx::api::{RafxApi, RafxDeviceContext, RafxResult, RafxSwapchainHelper};
+use rafx::api::{RafxApi, RafxApiDef, RafxDeviceContext, RafxResult, RafxSwapchainHelper};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::framework::visibility::VisibilityRegion;
@@ -72,7 +72,30 @@ pub fn rendering_init(
     // considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
     // behavior on the CPU for reasons other than interacting with the GPU.
     //
-    let rafx_api = unsafe { rafx::api::RafxApi::new(window, &Default::default())? };
+
+    #[allow(unused_mut)]
+    let mut api_def = RafxApiDef::default();
+
+    // For vulkan on the modern pipeline, we need to enable shader_clip_distance. The default-enabled
+    // options in rafx-api are fine for the basic pipeline
+    #[cfg(all(not(feature = "basic-pipeline"), feature = "rafx-vulkan"))]
+    {
+        let physical_device_features = rafx::api::ash::vk::PhysicalDeviceFeatures::builder()
+            .sampler_anisotropy(true)
+            .sample_rate_shading(true)
+            // Used for debug drawing lines/points
+            .fill_mode_non_solid(true)
+            // Used for user clipping in shadow atlas generation
+            .shader_clip_distance(true)
+            .build();
+
+        api_def.vk_options = Some(rafx::api::RafxApiDefVulkan {
+            physical_device_features: Some(physical_device_features),
+            ..Default::default()
+        });
+    }
+
+    let rafx_api = unsafe { rafx::api::RafxApi::new(window, &api_def)? };
 
     let allow_use_render_thread = if cfg!(feature = "stats_alloc") {
         false

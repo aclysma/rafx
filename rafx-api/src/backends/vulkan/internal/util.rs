@@ -324,6 +324,11 @@ pub(crate) fn depth_state_to_create_info(
         .write_mask(depth_state.stencil_write_mask as u32)
         .reference(0);
 
+    // Easy mistake.. per vulkan spec, "Depth writes are always disabled when depthTestEnable is
+    // VK_FALSE." So write = true and test = false is almost certainly a mistake. Instead, enable
+    // write and test and use compare op Always
+    assert!(!(depth_state.depth_write_enable && !depth_state.depth_test_enable));
+
     vk::PipelineDepthStencilStateCreateInfo::builder()
         .depth_test_enable(depth_state.depth_test_enable)
         .depth_write_enable(depth_state.depth_write_enable)

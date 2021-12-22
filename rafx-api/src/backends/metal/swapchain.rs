@@ -200,6 +200,9 @@ impl RafxSwapchainMetal {
 
     pub fn acquire_next_image(&mut self) -> RafxResult<RafxSwapchainImage> {
         objc::rc::autoreleasepool(|| {
+            //TODO: next_drawable is always vsync-locked and is likely a higher-latency way to do things
+            // It would be possible to submit render commands to an off-screen render target and then present
+            // later.
             let drawable = self
                 .layer
                 .next_drawable()

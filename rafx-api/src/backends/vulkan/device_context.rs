@@ -117,7 +117,10 @@ impl Drop for RafxDeviceContextVulkanInner {
 }
 
 impl RafxDeviceContextVulkanInner {
-    pub fn new(instance: &VkInstance) -> RafxResult<Self> {
+    pub fn new(
+        instance: &VkInstance,
+        physical_device_features: &Option<vk::PhysicalDeviceFeatures>,
+    ) -> RafxResult<Self> {
         let physical_device_type_priority = vec![
             PhysicalDeviceType::DiscreteGpu,
             PhysicalDeviceType::IntegratedGpu,
@@ -142,6 +145,7 @@ impl RafxDeviceContextVulkanInner {
             physical_device,
             &physical_device_info,
             &queue_requirements,
+            physical_device_features,
         )?;
 
         let queue_allocator = VkQueueAllocatorSet::new(
@@ -798,6 +802,7 @@ fn create_logical_device(
     physical_device: ash::vk::PhysicalDevice,
     physical_device_info: &PhysicalDeviceInfo,
     queue_requirements: &VkQueueRequirements,
+    physical_device_features: &Option<vk::PhysicalDeviceFeatures>,
 ) -> RafxResult<ash::Device> {
     //TODO: Ideally we would set up validation layers for the logical device too.
 
@@ -818,13 +823,15 @@ fn create_logical_device(
         }
     }
 
-    // Features enabled here by default are supported very widely (only unsupported devices on
-    // vulkan.gpuinfo.org are SwiftShader, a software renderer.
-    let features = vk::PhysicalDeviceFeatures::builder()
-        .sampler_anisotropy(true)
-        .sample_rate_shading(true)
-        // Used for debug drawing lines/points
-        .fill_mode_non_solid(true);
+    // If no features were specified, enable a few that are very widely supported features.
+    let physical_device_features = physical_device_features.clone().unwrap_or_else(|| {
+        vk::PhysicalDeviceFeatures::builder()
+            .sampler_anisotropy(true)
+            .sample_rate_shading(true)
+            // Used for debug drawing lines/points
+            .fill_mode_non_solid(true)
+            .build()
+    });
 
     let mut queue_families_to_create = FnvHashMap::default();
     for (&queue_family_index, &count) in &queue_requirements.queue_counts {
@@ -844,7 +851,7 @@ fn create_logical_device(
     let device_create_info = vk::DeviceCreateInfo::builder()
         .queue_create_infos(&queue_infos)
         .enabled_extension_names(&device_extension_names)
-        .enabled_features(&features);
+        .enabled_features(&physical_device_features);
 
     let device: ash::Device =
         unsafe { instance.create_device(physical_device, &device_create_info, None)? };

@@ -101,6 +101,13 @@ pub trait RenderFeaturePlugin: Send + Sync {
         Ok(())
     }
 
+    fn prepare_renderer_destroy(
+        &self,
+        _render_resources: &ResourceMap,
+    ) -> RafxResult<()> {
+        Ok(())
+    }
+
     fn add_render_views(
         &self,
         _extract_resources: &ExtractResources,

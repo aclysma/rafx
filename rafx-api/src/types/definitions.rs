@@ -11,6 +11,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Default)]
 pub struct RafxApiDef {
     // Don't have anything that's universal across APIs to add here yet
+    #[cfg(feature = "rafx-metal")]
+    pub metal_options: Option<crate::RafxApiDefMetal>,
+    #[cfg(feature = "rafx-vulkan")]
+    pub vk_options: Option<crate::RafxApiDefVulkan>,
+    #[cfg(feature = "rafx-gles2")]
+    pub gles2_options: Option<crate::RafxApiDefGles2>,
+    #[cfg(feature = "rafx-gles3")]
+    pub gles3_options: Option<crate::RafxApiDefGles3>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -470,7 +478,7 @@ impl Default for RafxDepthState {
         RafxDepthState {
             depth_test_enable: false,
             depth_write_enable: false,
-            depth_compare_op: RafxCompareOp::LessOrEqual,
+            depth_compare_op: RafxCompareOp::Always,
             stencil_test_enable: false,
             stencil_read_mask: 0xFF,
             stencil_write_mask: 0xFF,
