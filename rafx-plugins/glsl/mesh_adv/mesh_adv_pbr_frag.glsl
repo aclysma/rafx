@@ -65,9 +65,9 @@ const float SHADOW_MAP_BIAS_MAX = 0.01;
 const float SHADOW_MAP_BIAS_MIN = 0.0005;
 
 //#define PCF_DISABLED
-// #define PCF_SAMPLE_1
+//#define PCF_SAMPLE_1
 #define PCF_SAMPLE_9
-// #define PCF_SAMPLE_25
+//#define PCF_SAMPLE_25
 
 #define PCF_CUBE_SAMPLE_1
 //#define PCF_CUBE_SAMPLE_8
@@ -195,33 +195,22 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
     // We allow some faces of cube maps to not be included in the shadow atlas. In this case, uv coordinates will be
     // -1 and we should early-out.
     // We set uv coordinates to -1 if this
-    if (uv_min_uv_max.x < -0.5) {
+    if (uv_min_uv_max.x < 0.0) {
         return 1.0;
     }
 
+    // Convert the [0, 1] value to location in texture atlas
     vec2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
-
     float shadow = texture(
         sampler2DShadow(shadow_map_atlas, smp_depth),
         vec3(
-            uv_to_sample.xy,
+            uv_to_sample,
             depth_of_surface + bias
         )
     ).r;
-
-    //float shadow = texture(
-    //    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
-    //    vec4(
-    //        light_to_surface_ws,
-    //        depth_of_surface + bias
-    //    )
-    //).r;
-    //float shadow = 1.0;
 #endif
 
 #ifdef PCF_CUBE_SAMPLE_20
-    //float bias = 0.00020;
-
     vec3 sampleOffsetDirections[20] = vec3[]
     (
         vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1),
@@ -245,21 +234,29 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
             far_plane
         );
 
-        //shadow += texture(
-        //    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
-        //    vec4(
-        //        light_to_surface_ws + offset,
-        //        depth_of_surface + bias
-        //    )
-        //).r;
-        shadow += 1.0;
+        vec3 uv_and_face = cube_sample_to_uv_and_face_index(light_to_surface_ws);
+        vec4 uv_min_uv_max = per_view_data.shadow_map_cube_data[index].uv_min_uv_max[int(uv_and_face.z)];
+
+        // We allow some faces of cube maps to not be included in the shadow atlas. In this case, uv coordinates will be -1
+        if (uv_min_uv_max.x >= 0.0) {
+            // Convert the [0, 1] value to location in texture atlas
+            vec2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
+            shadow += texture(
+                sampler2DShadow(shadow_map_atlas, smp_depth),
+                vec3(
+                    uv_to_sample,
+                    depth_of_surface + bias
+                )
+            ).r;
+        } else {
+            shadow += 1.0;
+        }
     }
     shadow /= float(samples);
 #endif
 
 #ifdef PCF_CUBE_SAMPLE_8
     float shadow  = 0.0;
-    //float bias    = 0.0002;
     float samples = 2.0;
     float offset  = 0.05;
     for(float x = -offset; x < offset; x += offset / (samples * 0.5))
@@ -274,14 +271,23 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
                     far_plane
                 );
 
-                //shadow += texture(
-                //    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
-                //    vec4(
-                //        light_to_surface_ws + vec3(x, y, z),
-                //        depth_of_surface + bias
-                //    )
-                //).r;
-                shadow += 1.0;
+                vec3 uv_and_face = cube_sample_to_uv_and_face_index(light_to_surface_ws);
+                vec4 uv_min_uv_max = per_view_data.shadow_map_cube_data[index].uv_min_uv_max[int(uv_and_face.z)];
+
+                // We allow some faces of cube maps to not be included in the shadow atlas. In this case, uv coordinates will be -1
+                if (uv_min_uv_max.x >= 0.0) {
+                    // Convert the [0, 1] value to location in texture atlas
+                    vec2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
+                    shadow += texture(
+                        sampler2DShadow(shadow_map_atlas, smp_depth),
+                        vec3(
+                            uv_to_sample,
+                            depth_of_surface + bias
+                        )
+                    ).r;
+                } else {
+                    shadow += 1.0;
+                }
             }
         }
     }
@@ -305,14 +311,23 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
                     far_plane
                 );
 
-                //shadow += texture(
-                //    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
-                //    vec4(
-                //        light_to_surface_ws + vec3(x, y, z),
-                //        depth_of_surface + bias
-                //    )
-                //).r;
-                shadow += 1.0;
+                vec3 uv_and_face = cube_sample_to_uv_and_face_index(light_to_surface_ws);
+                vec4 uv_min_uv_max = per_view_data.shadow_map_cube_data[index].uv_min_uv_max[int(uv_and_face.z)];
+
+                // We allow some faces of cube maps to not be included in the shadow atlas. In this case, uv coordinates will be -1
+                if (uv_min_uv_max.x >= 0.0) {
+                    // Convert the [0, 1] value to location in texture atlas
+                    vec2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
+                    shadow += texture(
+                        sampler2DShadow(shadow_map_atlas, smp_depth),
+                        vec3(
+                            uv_to_sample,
+                            depth_of_surface + bias
+                        )
+                    ).r;
+                } else {
+                    shadow += 1.0;
+                }
             }
         }
     }
@@ -345,8 +360,9 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     vec3 projected = shadow_map_pos.xyz / shadow_map_pos.w;
     vec2 sample_location_uv = projected.xy * 0.5 + 0.5;
     sample_location_uv.y = 1.0 - sample_location_uv.y;
-    sample_location_uv.x = mix(per_view_data.shadow_map_2d_data[index].uv_min.x, per_view_data.shadow_map_2d_data[index].uv_max.x, sample_location_uv.x);
-    sample_location_uv.y = mix(per_view_data.shadow_map_2d_data[index].uv_min.y, per_view_data.shadow_map_2d_data[index].uv_max.y, sample_location_uv.y);
+    vec2 uv_min = per_view_data.shadow_map_2d_data[index].uv_min;
+    vec2 uv_max = per_view_data.shadow_map_2d_data[index].uv_max;
+    sample_location_uv = mix(uv_min, uv_max, sample_location_uv);
     float depth_of_surface = projected.z;
 
     // Determine the direction of the light so we can apply more bias when light is near orthogonal to the normal
@@ -359,68 +375,91 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     float bias_angle_factor = 1.0 - dot(normal_vs, surface_to_light_dir_vs);
     float bias = max(SHADOW_MAP_BIAS_MAX * bias_angle_factor * bias_angle_factor * bias_angle_factor, SHADOW_MAP_BIAS_MIN) * bias_multiplier;
 
+    // This is used later in a compare to check if uv is inside uv_min and uv_max
+    vec4 uv_min_max_compare = vec4(uv_min, -uv_max);
+
     // Non-PCF form (broken last time I tried it)
 #ifdef PCF_DISABLED
-    float distance_from_closest_object_to_light = texture(
-        sampler2D(shadow_map_images[index], smp_depth),
-        sample_location_uv
-    ).r;
-    float shadow = depth_of_surface + bias < distance_from_closest_object_to_light ? 1.0 : 0.0;
+    float percent_lit = 1.0;
+    if (all(greaterThanEqual(vec4(sample_location_uv, -sample_location_uv), uv_min_max_compare))) {
+        float distance_from_closest_object_to_light = texture(
+            sampler2D(shadow_map_atlas, smp_depth),
+            sample_location_uv
+        ).r;
+        float percent_lit = depth_of_surface + bias < distance_from_closest_object_to_light ? 1.0 : 0.0;
+    }
 #endif
 
     // PCF form single sample
 #ifdef PCF_SAMPLE_1
-    float shadow = texture(
-        sampler2DShadow(shadow_map_atlas, smp_depth),
-        vec3(
-            sample_location_uv,
-            depth_of_surface + bias
-        )
-    ).r;
+    float percent_lit = 1.0;
+    if (all(greaterThanEqual(vec4(sample_location_uv, -sample_location_uv), uv_min_max_compare))) {
+        percent_lit = texture(
+            sampler2DShadow(shadow_map_atlas, smp_depth),
+            vec3(
+                sample_location_uv,
+                depth_of_surface + bias
+            )
+        ).r;
+    }
 #endif
 
     // PCF reasonable sample count
 #ifdef PCF_SAMPLE_9
-    float shadow = 0.0;
+    float percent_lit = 0.0;
     vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth), 0);
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
         {
-            shadow += texture(
-                sampler2DShadow(shadow_map_atlas, smp_depth),
-                vec3(
-                    sample_location_uv + vec2(x, y) * texelSize,
-                    depth_of_surface + bias
-                )
-            ).r;
+            vec4 uv = vec4(sample_location_uv + vec2(x, y) * texelSize, 0.0, 0.0);
+            uv.zw = -uv.xy;
+
+            if (all(greaterThanEqual(uv, uv_min_max_compare))) {
+                percent_lit += texture(
+                    sampler2DShadow(shadow_map_atlas, smp_depth),
+                    vec3(
+                        uv.xy,
+                        depth_of_surface + bias
+                    )
+                ).r;
+            } else {
+                percent_lit += 1.0;
+            }
         }
     }
-    shadow /= 9.0;
+    percent_lit /= 9.0;
 #endif
 
 
     // PCF probably too many samples
 #ifdef PCF_SAMPLE_25
-    float shadow = 0.0;
+    float percent_lit = 0.0;
     vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth), 0);
     for(int x = -2; x <= 2; ++x)
     {
         for(int y = -2; y <= 2; ++y)
         {
-            shadow += texture(
-                sampler2DShadow(shadow_map_atlas, smp_depth),
-                vec3(
-                    sample_location_uv + vec2(x, y) * texelSize,
-                    depth_of_surface + bias
-                )
-            ).r;
+            vec4 uv = vec4(sample_location_uv + vec2(x, y) * texelSize, 0.0, 0.0);
+            uv.zw = -uv.xy;
+
+            if (all(greaterThanEqual(uv, uv_min_max_compare))) {
+                percent_lit += texture(
+                    sampler2DShadow(shadow_map_atlas, smp_depth),
+                    vec3(
+                        uv.xy,
+                        depth_of_surface + bias
+                    )
+                ).r;
+            } else {
+                percent_lit += 1.0;
+            }
         }
     }
-    shadow /= 25.0;
+    percent_lit /= 25.0;
 #endif
 
-    return shadow;
+    return percent_lit;
 }
 
 
