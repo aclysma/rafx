@@ -6,14 +6,17 @@ use crate::components::{
 };
 use legion::{Entity, EntityStore, IntoQuery, Read, World};
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
+use rafx::base::resource_map::ReadBorrow;
 use rafx::base::resource_ref_map::ResourceRefBorrow;
 use rafx::distill::loader::handle::Handle;
 
 pub struct MeshBasicExtractJob<'extract> {
     world: ResourceRefBorrow<'extract, World>,
     mesh_render_options: Option<ResourceRefBorrow<'extract, MeshBasicRenderOptions>>,
+    shadow_map_atlas: ReadBorrow<'extract, ShadowMapAtlas>,
     asset_manager: AssetManagerExtractRef,
     depth_material: Handle<MaterialAsset>,
+    shadow_map_atlas_depth_material: Handle<MaterialAsset>,
     render_objects: MeshBasicRenderObjectSet,
 }
 
@@ -22,6 +25,7 @@ impl<'extract> MeshBasicExtractJob<'extract> {
         extract_context: &RenderJobExtractContext<'extract>,
         frame_packet: Box<MeshBasicFramePacket>,
         depth_material: Handle<MaterialAsset>,
+        shadow_map_atlas_depth_material: Handle<MaterialAsset>,
         render_objects: MeshBasicRenderObjectSet,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
         Arc::new(ExtractJob::new(
@@ -34,7 +38,9 @@ impl<'extract> MeshBasicExtractJob<'extract> {
                     .render_resources
                     .fetch::<AssetManagerRenderResource>()
                     .extract_ref(),
+                shadow_map_atlas: extract_context.render_resources.fetch::<ShadowMapAtlas>(),
                 depth_material,
+                shadow_map_atlas_depth_material,
                 render_objects,
             },
             frame_packet,
@@ -57,6 +63,13 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
                     .unwrap()
                     .get_single_material_pass()
                     .ok(),
+                shadow_map_atlas_depth_material_pass: self
+                    .asset_manager
+                    .committed_asset(&self.shadow_map_atlas_depth_material)
+                    .unwrap()
+                    .get_single_material_pass()
+                    .ok(),
+                shadow_map_atlas: self.shadow_map_atlas.shadow_atlas_image_view().clone(),
             });
     }
 

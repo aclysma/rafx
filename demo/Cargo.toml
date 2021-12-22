@@ -51,6 +51,9 @@ winit = { version = "0.24" }
 default = [
     # CI is set up to check without default features + basic-pipeline and default features. This ensures that both
     # pipelines are built by CI. If at some point we want to change the default, update the CI script.
+    #
+    # While we generally are checking cfg(feature = "basic-pipeline") or cfg(not(features = "basic-pipeline"), we still
+    # need a modern-pipeline feature to turn on modern-pipeline in the rafx-plugins crate
     #"basic-pipeline",
     "modern-pipeline",
 

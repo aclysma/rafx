@@ -1,134 +1,218 @@
 use super::RenderGraphContext;
-use crate::features::mesh_adv::MeshBasicShadowMapRenderView;
-use crate::features::mesh_adv::MeshBasicShadowMapResource;
+use crate::features::debug_pip::DebugPipRenderResource;
+use crate::features::mesh_adv::{
+    MeshBasicShadowMapResource, MeshBasicStaticResources, ShadowMapAtlasClearTileVertex,
+    SHADOW_MAP_ATLAS_CLEAR_TILE_LAYOUT,
+};
 use crate::phases::ShadowMapRenderPhase;
-use rafx::api::{RafxDepthStencilClearValue, RafxResourceType};
+use rafx::api::{
+    RafxBufferDef, RafxDepthStencilClearValue, RafxMemoryUsage, RafxResourceType,
+    RafxVertexBufferBinding,
+};
+use rafx::framework::render_features::RenderPhase;
 use rafx::graph::*;
 use rafx::render_features::{RenderJobCommandBufferContext, RenderView};
 
-pub(super) struct ShadowMapPass {
-    #[allow(dead_code)]
-    pub(super) node: RenderGraphNodeId,
-    pub(super) depth: RenderGraphImageUsageId,
+pub(super) struct ShadowMapPassOutput {
+    pub(super) shadow_atlas_image: RenderGraphImageUsageId,
 }
 
-pub(super) enum ShadowMapImageResources {
-    Single(RenderGraphImageUsageId),
-    Cube(RenderGraphImageUsageId),
-}
-
-pub(super) fn shadow_map_passes(context: &mut RenderGraphContext) -> Vec<ShadowMapImageResources> {
-    let mut shadow_map_resource = context
-        .render_resources
-        .fetch_mut::<MeshBasicShadowMapResource>();
-    let shadow_map_views = shadow_map_resource.shadow_map_render_views();
-
-    let mut shadow_map_passes = Vec::default();
-    for shadow_map_view in shadow_map_views {
-        match shadow_map_view {
-            MeshBasicShadowMapRenderView::Single(render_view) => {
-                let shadow_map_node = context
-                    .graph
-                    .add_node("create shadowmap", RenderGraphQueue::DefaultGraphics);
-                let depth_image = context.graph.create_unattached_image(
-                    shadow_map_node,
-                    RenderGraphImageConstraint {
-                        format: Some(context.graph_config.depth_format),
-                        extents: Some(RenderGraphImageExtents::Custom(
-                            render_view.extents_width(),
-                            render_view.extents_height(),
-                            1,
-                        )),
-                        ..Default::default()
-                    },
-                    Default::default(),
-                );
-
-                let shadow_map_pass = shadow_map_pass(context, render_view, depth_image, 0);
-                shadow_map_passes.push(ShadowMapImageResources::Single(shadow_map_pass.depth));
-            }
-            MeshBasicShadowMapRenderView::Cube(render_view) => {
-                let cube_map_node = context
-                    .graph
-                    .add_node("create cube shadowmap", RenderGraphQueue::DefaultGraphics);
-
-                let cube_map_xy_size = 1024;
-
-                let mut cube_map_image = context.graph.create_unattached_image(
-                    cube_map_node,
-                    RenderGraphImageConstraint {
-                        format: Some(context.graph_config.depth_format),
-                        layer_count: Some(6),
-                        extents: Some(RenderGraphImageExtents::Custom(
-                            cube_map_xy_size,
-                            cube_map_xy_size,
-                            1,
-                        )),
-                        resource_type: RafxResourceType::TEXTURE_CUBE
-                            | RafxResourceType::RENDER_TARGET_ARRAY_SLICES,
-                        ..Default::default()
-                    },
-                    Default::default(),
-                );
-
-                for i in 0..6 {
-                    cube_map_image =
-                        shadow_map_pass(context, &render_view[i], cube_map_image, i).depth;
-                }
-
-                shadow_map_passes.push(ShadowMapImageResources::Cube(cube_map_image));
-            }
-        }
-    }
-
-    let mut usage_ids = Vec::default();
-    for pass in &shadow_map_passes {
-        match pass {
-            ShadowMapImageResources::Single(usage_id) => usage_ids.push(*usage_id),
-            ShadowMapImageResources::Cube(usage_id) => usage_ids.push(*usage_id),
-        }
-    }
-    shadow_map_resource.set_shadow_map_image_usage_ids(usage_ids);
-
-    shadow_map_passes
-}
-
-fn shadow_map_pass(
+pub(super) fn shadow_map_passes(
     context: &mut RenderGraphContext,
-    render_view: &RenderView,
-    depth_image: RenderGraphImageUsageId,
-    layer: usize,
-) -> ShadowMapPass {
+    shadow_atlas_image: RenderGraphExternalImageId,
+    shadow_atlas_needs_full_clear: bool,
+) -> ShadowMapPassOutput {
+    let shadow_map_resource = context
+        .render_resources
+        .fetch::<MeshBasicShadowMapResource>();
+
+    //
+    // Early out if we don't need to update the shadow map
+    //
+    let mut shadow_atlas_usage = context.graph.read_external_image(shadow_atlas_image);
+    if shadow_map_resource.shadow_maps_needing_redraw().is_empty() {
+        let mut debug_pip_resource = context
+            .render_resources
+            .fetch_mut::<DebugPipRenderResource>();
+
+        debug_pip_resource.add_render_graph_image(shadow_atlas_usage);
+
+        return ShadowMapPassOutput {
+            shadow_atlas_image: shadow_atlas_usage,
+        };
+    }
+
+    let mesh_static_resources = context.render_resources.fetch::<MeshBasicStaticResources>();
+    let clear_tiles_material = context
+        .asset_manager
+        .committed_asset(&mesh_static_resources.shadow_map_atlas_clear_tiles_material)
+        .unwrap()
+        .get_single_material_pass()
+        .unwrap();
+
+    let render_views_to_draw: Vec<RenderView> = shadow_map_resource
+        .shadow_map_render_views()
+        .iter()
+        .filter_map(|x| x.clone())
+        .collect();
+
     let node = context
         .graph
         .add_node("Shadow", RenderGraphQueue::DefaultGraphics);
 
-    let depth = context.graph.modify_depth_attachment(
-        node,
-        depth_image,
+    let clear_value = if shadow_atlas_needs_full_clear {
         Some(RafxDepthStencilClearValue {
             depth: 0.0,
             stencil: 0,
-        }),
+        })
+    } else {
+        None
+    };
+
+    shadow_atlas_usage = context.graph.modify_depth_attachment(
+        node,
+        shadow_atlas_usage,
+        clear_value,
         RenderGraphImageConstraint::default(),
-        RenderGraphImageViewOptions::array_slice(layer as u16),
+        RenderGraphImageViewOptions::default(),
     );
-    context.graph.set_image_name(depth, "depth");
+    context.graph.set_image_name(shadow_atlas_usage, "depth");
 
     context
         .graph
         .add_render_phase_dependency::<ShadowMapRenderPhase>(node);
 
-    let render_view = render_view.clone();
     context.graph.set_renderpass_callback(node, move |args| {
         profiling::scope!("Shadow Map Pass");
 
+        // We can skip clearing individual maps if we cleared ALL the maps
+        if !shadow_atlas_needs_full_clear {
+            let shadow_map_resource = args
+                .graph_context
+                .render_resources()
+                .fetch::<MeshBasicShadowMapResource>();
+            let vertex_count = render_views_to_draw.len() as u64 * 6;
+
+            //
+            // Create a vertex buffer with tiles to clear
+            //
+            let vertex_buffer = {
+                let device_context = args.graph_context.device_context();
+                let dyn_resource_allocator_set = args
+                    .graph_context
+                    .resource_context()
+                    .create_dyn_resource_allocator_set();
+
+                let vertex_buffer_size =
+                    vertex_count * std::mem::size_of::<ShadowMapAtlasClearTileVertex>() as u64;
+
+                let vertex_buffer = device_context
+                    .create_buffer(&RafxBufferDef {
+                        size: vertex_buffer_size,
+                        memory_usage: RafxMemoryUsage::CpuToGpu,
+                        resource_type: RafxResourceType::VERTEX_BUFFER,
+                        ..Default::default()
+                    })
+                    .unwrap();
+
+                let mut data = Vec::with_capacity(vertex_count as usize);
+                for &shadow_view_index in shadow_map_resource.shadow_maps_needing_redraw() {
+                    let info = shadow_map_resource
+                        .shadow_map_atlas_element_info_for_shadow_view_index(shadow_view_index);
+
+                    // These are UV coordinates so Y is positive going down
+                    // Top Left
+                    let tl = ShadowMapAtlasClearTileVertex {
+                        position: [info.uv_min.x, info.uv_min.y],
+                    };
+
+                    // Top Right
+                    let tr = ShadowMapAtlasClearTileVertex {
+                        position: [info.uv_max.x, info.uv_min.y],
+                    };
+
+                    // Bottom Left
+                    let bl = ShadowMapAtlasClearTileVertex {
+                        position: [info.uv_min.x, info.uv_max.y],
+                    };
+
+                    // Bottom Right
+                    let br = ShadowMapAtlasClearTileVertex {
+                        position: [info.uv_max.x, info.uv_max.y],
+                    };
+
+                    data.push(tr);
+                    data.push(tl);
+                    data.push(br);
+                    data.push(br);
+                    data.push(tl);
+                    data.push(bl);
+                }
+
+                vertex_buffer
+                    .copy_to_host_visible_buffer(data.as_slice())
+                    .unwrap();
+
+                dyn_resource_allocator_set.insert_buffer(vertex_buffer)
+            };
+
+            //
+            // Get the pipeline for clearing the tiles
+            //
+            let pipeline = args
+                .graph_context
+                .resource_context()
+                .graphics_pipeline_cache()
+                .get_or_create_graphics_pipeline(
+                    ShadowMapRenderPhase::render_phase_index(),
+                    &clear_tiles_material,
+                    &args.render_target_meta,
+                    &SHADOW_MAP_ATLAS_CLEAR_TILE_LAYOUT,
+                )?;
+
+            //
+            // Draw quads over tiles that need to be cleared
+            //
+            let command_buffer = &args.command_buffer;
+            command_buffer
+                .cmd_bind_pipeline(&*pipeline.get_raw().pipeline)
+                .unwrap();
+            command_buffer.cmd_bind_vertex_buffers(
+                0,
+                &[RafxVertexBufferBinding {
+                    buffer: &*vertex_buffer.get_raw().buffer,
+                    byte_offset: 0,
+                }],
+            )?;
+            println!("write {} cleraing verts", vertex_count);
+            command_buffer.cmd_draw(vertex_count as u32, 0).unwrap();
+        }
+
+        //
+        // Draw the shadow maps
+        //
         let mut write_context =
             RenderJobCommandBufferContext::from_graph_visit_render_pass_args(&args);
-        args.graph_context
-            .prepared_render_data()
-            .write_view_phase::<ShadowMapRenderPhase>(&render_view, &mut write_context)
+
+        for render_view in &render_views_to_draw {
+            args.graph_context
+                .prepared_render_data()
+                .write_view_phase::<ShadowMapRenderPhase>(render_view, &mut write_context)?;
+        }
+
+        Ok(())
     });
 
-    ShadowMapPass { node, depth }
+    context
+        .render_resources
+        .fetch_mut::<DebugPipRenderResource>()
+        .add_render_graph_image(shadow_atlas_usage);
+
+    context
+        .graph
+        .write_external_image(shadow_atlas_image, shadow_atlas_usage);
+
+    ShadowMapPassOutput {
+        shadow_atlas_image: shadow_atlas_usage,
+    }
 }

@@ -30,11 +30,11 @@ struct MaterialJsonFileFormat {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "2a1e71ac-c18d-45f4-8b21-e851c713c4a8"]
+#[uuid = "8ecd5157-2703-4cdc-b8ec-7ba6fac29593"]
 pub struct MeshBasicBlenderMaterialImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
-#[uuid = "95d0640f-ce8c-4fe9-a989-63041c824d03"]
+#[uuid = "f358cd88-b79c-4439-83bb-501807d89cd3"]
 pub struct MeshBasicBlenderMaterialImporter;
 impl Importer for MeshBasicBlenderMaterialImporter {
     fn version_static() -> u32
@@ -69,7 +69,7 @@ impl Importer for MeshBasicBlenderMaterialImporter {
         let json_format: MaterialJsonFileFormat = serde_json::from_reader(source)
             .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
 
-        let material_handle = make_handle_from_str("92a98639-de0d-40cf-a222-354f616346c3")?;
+        let material_handle = make_handle_from_str("680c6edd-8bed-407b-aea0-d0f6056093d6")?;
 
         let null_image_handle = make_handle_from_str("fc937369-cad2-4a00-bf42-5968f1210784")?;
 

@@ -38,12 +38,16 @@ struct SpotLight {
 };
 
 struct ShadowMap2DData {
+    vec2 uv_min;
+    vec2 uv_max;
     mat4 shadow_map_view_proj;
     vec3 shadow_map_light_dir;
 };
 
 struct ShadowMapCubeData {
     // We just need the cubemap's near/far z values, not the whole projection matrix
+    // xy=min, zw=max
+    vec4 uv_min_uv_max[6];
     float cube_map_projection_near_z;
     float cube_map_projection_far_z;
 };
@@ -93,10 +97,7 @@ layout (set = 0, binding = 1) uniform sampler smp;
 layout (set = 0, binding = 2) uniform sampler smp_depth;
 
 // @[export]
-layout (set = 0, binding = 3) uniform texture2D shadow_map_images[32];
-
-// @[export]
-layout (set = 0, binding = 4) uniform textureCube shadow_map_images_cube[16];
+layout (set = 0, binding = 3) uniform texture2D shadow_map_atlas;
 
 //
 // Per-Material Bindings

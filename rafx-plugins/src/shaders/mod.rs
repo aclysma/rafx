@@ -7,6 +7,7 @@ pub mod debug_pip;
 pub mod depth;
 pub mod egui;
 pub mod imgui;
+pub mod mesh_adv;
 pub mod mesh_basic;
 pub mod post_basic;
 pub mod skybox;

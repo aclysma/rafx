@@ -56,7 +56,7 @@ fn try_cast_u8_slice<T: Copy + 'static>(data: &[u8]) -> Option<&[T]> {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "1411cdbc-d63f-45aa-b9cf-adf610e43989"]
+#[uuid = "b824818f-7026-412f-ba88-32bc25c1c7f4"]
 pub struct MeshBasicBlenderImporterState {
     mesh_id: Option<AssetUuid>,
     vertex_full_buffer_id: Option<AssetUuid>,
@@ -65,7 +65,7 @@ pub struct MeshBasicBlenderImporterState {
 }
 
 #[derive(TypeUuid)]
-#[uuid = "f3486ab5-a780-4251-ab55-1000c638bc08"]
+#[uuid = "5f2be1a1-b025-4d72-960b-24cb03ff19de"]
 pub struct MeshBasicBlenderImporter;
 impl Importer for MeshBasicBlenderImporter {
     fn version_static() -> u32

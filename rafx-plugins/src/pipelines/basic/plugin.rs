@@ -107,7 +107,6 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
         //     .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
         let bloom_extract_material = asset_resource
             .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/bloom_extract.material");
-        //.load_asset::<MaterialAsset>(asset_uuid!("4c5509e3-4a9f-45c2-a6dc-862a925d2341"));
 
         //
         // Bloom blur resources

@@ -18,11 +18,11 @@ struct ModelJsonFormat {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "6fc6dae5-4995-46f8-b808-aa0149f6067b"]
+#[uuid = "1c6506cb-3bcf-49f3-9883-c36868da37c3"]
 pub struct MeshBasicBlenderModelImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
-#[uuid = "9c3fbad2-0ab9-46ba-8e8c-e179cded2321"]
+#[uuid = "ace983d5-5340-4872-a9e9-77f39f527f27"]
 pub struct MeshBasicBlenderModelImporter;
 impl Importer for MeshBasicBlenderModelImporter {
     fn version_static() -> u32

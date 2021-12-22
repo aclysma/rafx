@@ -1,6 +1,6 @@
 use crate::features::mesh_adv::MeshBasicUntexturedRenderFeatureFlag;
 use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, WireframeRenderPhase};
-use crate::shaders::mesh_basic::mesh_basic_textured_frag;
+use crate::shaders::mesh_adv::mesh_adv_textured_frag;
 use distill::loader::handle::Handle;
 use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::MaterialInstanceAsset;
@@ -54,7 +54,7 @@ impl Default for MeshBasicMaterialData {
     }
 }
 
-pub type MeshBasicMaterialDataShaderParam = mesh_basic_textured_frag::MaterialDataStd140;
+pub type MeshBasicMaterialDataShaderParam = mesh_adv_textured_frag::MaterialDataStd140;
 
 impl Into<MeshBasicMaterialDataShaderParam> for MeshBasicMaterialData {
     fn into(self) -> MeshBasicMaterialDataShaderParam {
@@ -89,7 +89,7 @@ pub struct MeshBasicPartAssetData {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
-#[uuid = "cf232526-3757-4d94-98d1-c2f7e27c979f"]
+#[uuid = "4c888448-2650-4f56-82dc-71ba81f4295b"]
 pub struct MeshBasicAssetData {
     pub mesh_parts: Vec<MeshBasicPartAssetData>,
     pub vertex_full_buffer: Handle<BufferAsset>, // Vertex type is MeshVertexFull
@@ -169,7 +169,7 @@ pub struct MeshBasicAssetInner {
 }
 
 #[derive(TypeUuid, Clone)]
-#[uuid = "689a0bf0-e320-41c0-b4e8-bdb2055a7a57"]
+#[uuid = "8a7afe47-8abc-4383-a7c8-0f09026b3019"]
 pub struct MeshBasicAsset {
     pub inner: Arc<MeshBasicAssetInner>,
 }

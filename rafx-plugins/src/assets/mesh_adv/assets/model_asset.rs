@@ -13,7 +13,7 @@ pub struct ModelBasicAssetDataLod {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
-#[uuid = "75bbc873-e527-42c6-8409-15aa5e68a4a4"]
+#[uuid = "5fe1ac74-0f10-4855-aa4a-b95a3473020d"]
 pub struct ModelBasicAssetData {
     pub lods: Vec<ModelBasicAssetDataLod>,
 }
@@ -23,7 +23,7 @@ pub struct ModelBasicAssetInner {
 }
 
 #[derive(TypeUuid, Clone)]
-#[uuid = "76b953ef-9d1e-464b-b2a8-74f5b8842bd8"]
+#[uuid = "82468fcb-7124-409d-bc74-140569aaebb4"]
 pub struct ModelBasicAsset {
     pub inner: Arc<ModelBasicAssetInner>,
 }

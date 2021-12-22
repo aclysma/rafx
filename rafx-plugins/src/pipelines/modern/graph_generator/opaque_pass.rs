@@ -3,7 +3,7 @@ use rafx::graph::*;
 
 use super::depth_prepass::DepthPrepass;
 use super::RenderGraphContext;
-use super::ShadowMapImageResources;
+use crate::pipelines::modern::graph_generator::shadow_map_pass::ShadowMapPassOutput;
 use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
 use rafx::render_features::RenderJobCommandBufferContext;
 
@@ -12,13 +12,13 @@ pub(super) struct OpaquePass {
     pub(super) node: RenderGraphNodeId,
     pub(super) color: RenderGraphImageUsageId,
     #[allow(dead_code)]
-    pub(super) shadow_maps: Vec<RenderGraphImageUsageId>,
+    pub(super) shadow_map_atlas: RenderGraphImageUsageId,
 }
 
 pub(super) fn opaque_pass(
     context: &mut RenderGraphContext,
     depth_prepass: Option<DepthPrepass>,
-    shadow_map_passes: &[ShadowMapImageResources],
+    shadow_map_pass_output: &ShadowMapPassOutput,
 ) -> OpaquePass {
     let node = context
         .graph
@@ -37,7 +37,7 @@ pub(super) fn opaque_pass(
     );
     context.graph.set_image_name(color, "color");
 
-    let mut shadow_maps = Vec::with_capacity(shadow_map_passes.len());
+    //let mut shadow_maps = Vec::with_capacity(shadow_map_passes.len());
 
     if context.graph_config.show_surfaces && depth_prepass.is_some() {
         context.graph.read_depth_attachment(
@@ -67,22 +67,12 @@ pub(super) fn opaque_pass(
         context.graph.set_image_name(depth, "depth");
     }
 
-    for shadow_map_pass in shadow_map_passes {
-        let sampled_image = match shadow_map_pass {
-            ShadowMapImageResources::Single(image) => {
-                context
-                    .graph
-                    .sample_image(node, *image, Default::default(), Default::default())
-            }
-            ShadowMapImageResources::Cube(cube_map_image) => context.graph.sample_image(
-                node,
-                *cube_map_image,
-                Default::default(),
-                Default::default(),
-            ),
-        };
-        shadow_maps.push(sampled_image);
-    }
+    let shadow_map_atlas = context.graph.sample_image(
+        node,
+        shadow_map_pass_output.shadow_atlas_image,
+        Default::default(),
+        Default::default(),
+    );
 
     context
         .graph
@@ -124,6 +114,6 @@ pub(super) fn opaque_pass(
     OpaquePass {
         node,
         color,
-        shadow_maps,
+        shadow_map_atlas,
     }
 }

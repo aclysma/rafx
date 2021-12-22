@@ -73,11 +73,11 @@ struct MeshBasicPrefabJsonFormat {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "8fbf4a7e-5c86-4381-8e5d-61bc439fcf1a"]
+#[uuid = "5f9022bc-fd83-4f99-9fb7-a395fd997361"]
 pub struct MeshBasicBlenderPrefabImporterState(Option<AssetUuid>);
 
 #[derive(TypeUuid)]
-#[uuid = "4ce0a6dc-51ee-4c67-be01-707c573cbdf1"]
+#[uuid = "1441f5a2-5c3b-404b-b03f-2234146e2c2f"]
 pub struct MeshBasicBlenderPrefabImporter;
 impl Importer for MeshBasicBlenderPrefabImporter {
     fn version_static() -> u32

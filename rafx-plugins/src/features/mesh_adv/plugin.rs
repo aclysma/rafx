@@ -10,6 +10,8 @@ use rafx::assets::MaterialAsset;
 
 pub struct MeshBasicStaticResources {
     pub depth_material: Handle<MaterialAsset>,
+    pub shadow_map_atlas_depth_material: Handle<MaterialAsset>,
+    pub shadow_map_atlas_clear_tiles_material: Handle<MaterialAsset>,
 }
 
 pub struct MeshBasicRendererPlugin {
@@ -87,11 +89,47 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         let depth_material = asset_resource
             .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/depth.material");
 
-        asset_manager.wait_for_asset_to_load(&depth_material, asset_resource, "depth")?;
+        let shadow_map_atlas_depth_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "rafx-plugins/materials/modern_pipeline/shadow_atlas_depth.material",
+        );
 
-        render_resources.insert(MeshBasicStaticResources { depth_material });
+        let shadow_map_atlas_clear_tiles_material = asset_resource
+            .load_asset_path::<MaterialAsset, _>(
+                "rafx-plugins/materials/modern_pipeline/shadow_atlas_clear_tiles.material",
+            );
+
+        asset_manager.wait_for_asset_to_load(&depth_material, asset_resource, "depth")?;
+        asset_manager.wait_for_asset_to_load(
+            &shadow_map_atlas_depth_material,
+            asset_resource,
+            "shadow atlas depth",
+        )?;
+        asset_manager.wait_for_asset_to_load(
+            &shadow_map_atlas_clear_tiles_material,
+            asset_resource,
+            "shadow atlas clear",
+        )?;
+
+        render_resources.insert(MeshBasicStaticResources {
+            depth_material,
+            shadow_map_atlas_depth_material,
+            shadow_map_atlas_clear_tiles_material,
+        });
 
         render_resources.insert(MeshBasicShadowMapResource::default());
+
+        render_resources.insert(ShadowMapAtlas::new(asset_manager.resources())?);
+
+        Ok(())
+    }
+
+    fn prepare_renderer_destroy(
+        &self,
+        render_resources: &ResourceMap,
+    ) -> RafxResult<()> {
+        // Clear shadow map assignments so that all shadow map atlas elements are free
+        let mut shadow_map_resource = render_resources.fetch_mut::<MeshBasicShadowMapResource>();
+        shadow_map_resource.clear();
 
         Ok(())
     }
@@ -103,8 +141,16 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         render_view_set: &RenderViewSet,
         render_views: &mut Vec<RenderView>,
     ) {
+        //TODO: HACK
+        let main_view_eye_position = render_views[0].eye_position();
         let mut shadow_map_resource = render_resources.fetch_mut::<MeshBasicShadowMapResource>();
-        shadow_map_resource.recalculate_shadow_map_views(&render_view_set, extract_resources);
+        let mut shadow_map_atlas = render_resources.fetch_mut::<ShadowMapAtlas>();
+        shadow_map_resource.recalculate_shadow_map_views(
+            &render_view_set,
+            extract_resources,
+            &mut *shadow_map_atlas,
+            main_view_eye_position,
+        );
 
         shadow_map_resource.append_render_views(render_views);
     }
@@ -124,16 +170,20 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         extract_context: &RenderJobExtractContext<'extract>,
         frame_packet: Box<dyn RenderFeatureFramePacket>,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
-        let depth_material = extract_context
+        let static_resources = extract_context
             .render_resources
-            .fetch::<MeshBasicStaticResources>()
-            .depth_material
-            .clone();
+            .fetch::<MeshBasicStaticResources>();
+
+        let depth_material = static_resources.depth_material.clone();
+
+        let shadow_map_atlas_depth_material =
+            static_resources.shadow_map_atlas_depth_material.clone();
 
         MeshBasicExtractJob::new(
             extract_context,
             frame_packet.into_concrete(),
             depth_material,
+            shadow_map_atlas_depth_material,
             self.render_objects.clone(),
         )
     }

@@ -3,7 +3,8 @@ use crate::assets::mesh_adv::MeshBasicAsset;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
-use crate::shaders::mesh_basic::mesh_basic_textured_frag;
+use crate::shaders::mesh_adv::mesh_adv_textured_frag;
+use fnv::FnvHashMap;
 use glam::{Quat, Vec3};
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{
@@ -25,6 +26,8 @@ pub const MAX_SPOT_LIGHTS: usize = 16;
 
 pub struct MeshBasicPerFrameData {
     pub depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
+    pub shadow_map_atlas_depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
+    pub shadow_map_atlas: ResourceArc<ImageViewResource>,
 }
 
 pub struct MeshBasicRenderObjectInstanceData {
@@ -83,13 +86,12 @@ pub struct MeshBasicPartMaterialDescriptorSetPair {
 
 pub struct MeshBasicPerFrameSubmitData {
     pub num_shadow_map_2d: usize,
-    pub shadow_map_2d_data: [mesh_basic_textured_frag::ShadowMap2DDataStd140; MAX_SHADOW_MAPS_2D],
-    pub shadow_map_2d_image_views: [Option<ResourceArc<ImageViewResource>>; MAX_SHADOW_MAPS_2D],
+    pub shadow_map_2d_data: [mesh_adv_textured_frag::ShadowMap2DDataStd140; MAX_SHADOW_MAPS_2D],
     pub num_shadow_map_cube: usize,
     pub shadow_map_cube_data:
-        [mesh_basic_textured_frag::ShadowMapCubeDataStd140; MAX_SHADOW_MAPS_CUBE],
-    pub shadow_map_cube_image_views: [Option<ResourceArc<ImageViewResource>>; MAX_SHADOW_MAPS_CUBE],
-    pub shadow_map_image_index_remap: [Option<usize>; MAX_SHADOW_MAPS_2D + MAX_SHADOW_MAPS_CUBE],
+        [mesh_adv_textured_frag::ShadowMapCubeDataStd140; MAX_SHADOW_MAPS_CUBE],
+    // Remaps from shadow view index (used to index into the data of MeshBasicShadowMapResource) to the array index in the shader uniform
+    pub shadow_map_image_index_remap: FnvHashMap<ShadowViewIndex, usize>,
     pub model_matrix_buffer: TrustCell<Option<ResourceArc<BufferResource>>>,
 }
 
@@ -116,6 +118,7 @@ pub type MeshSubmitPacket = SubmitPacket<MeshBasicRenderFeatureTypes>;
 pub struct MeshBasicPerViewSubmitData {
     pub opaque_descriptor_set: Option<DescriptorSetArc>,
     pub depth_descriptor_set: Option<DescriptorSetArc>,
+    pub shadow_map_atlas_depth_descriptor_set: Option<DescriptorSetArc>,
 }
 
 pub struct MeshBasicDrawCall {

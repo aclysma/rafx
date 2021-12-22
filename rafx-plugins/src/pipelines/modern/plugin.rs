@@ -1,6 +1,6 @@
 use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase, ShadowMapRenderPhase,
-    TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
+    DebugPipRenderPhase, DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase,
+    ShadowMapRenderPhase, TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
 use crate::shaders::post_basic::luma_average_histogram_comp;
 use rafx::api::extra::upload::RafxTransferUpload;
@@ -88,6 +88,7 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
             .register_render_phase::<TransparentRenderPhase>("Transparent")
             .register_render_phase::<WireframeRenderPhase>("Wireframe")
             .register_render_phase::<PostProcessRenderPhase>("PostProcess")
+            .register_render_phase::<DebugPipRenderPhase>("DebugPipRenderPhase")
             .register_render_phase::<UiRenderPhase>("Ui")
     }
 
@@ -106,7 +107,6 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
         //     .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
         let bloom_extract_material = asset_resource
             .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/bloom_extract.material");
-        //.load_asset::<MaterialAsset>(asset_uuid!("4c5509e3-4a9f-45c2-a6dc-862a925d2341"));
 
         //
         // Bloom blur resources

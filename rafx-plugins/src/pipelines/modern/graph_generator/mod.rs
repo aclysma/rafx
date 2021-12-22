@@ -9,7 +9,6 @@ use rafx::graph::*;
 use rafx::render_features::{ExtractResources, RenderView};
 
 mod shadow_map_pass;
-use shadow_map_pass::ShadowMapImageResources;
 
 mod opaque_pass;
 use opaque_pass::OpaquePass;
@@ -19,7 +18,8 @@ mod depth_prepass;
 mod bloom_extract_pass;
 use super::BasicPipelineRenderOptions;
 use super::BasicPipelineStaticResources;
-use crate::features::mesh_adv::MeshBasicShadowMapResource;
+use crate::features::debug_pip::DebugPipRenderResource;
+use crate::features::mesh_adv::ShadowMapAtlas;
 use crate::pipelines::modern::BasicPipelineTonemapDebugData;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;
@@ -31,6 +31,8 @@ mod bloom_blur_pass;
 mod bloom_combine_pass;
 
 mod luma_pass;
+
+mod debug_pip_pass;
 
 mod ui_pass;
 
@@ -57,6 +59,7 @@ struct RenderGraphContext<'a> {
     graph: &'a mut RenderGraphBuilder,
     #[allow(dead_code)]
     resource_context: &'a ResourceContext,
+    asset_manager: &'a AssetManager,
     graph_config: &'a BasicPipelineRenderGraphConfig,
     main_view: &'a RenderView,
     extract_resources: &'a ExtractResources<'a>,
@@ -82,9 +85,14 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
         let swapchain_render_resource = render_resources.fetch::<SwapchainRenderResource>();
         let swapchain_info = swapchain_render_resource.surface_info().unwrap();
         let static_resources = render_resources.fetch::<BasicPipelineStaticResources>();
+        let mut shadow_atlas = render_resources.fetch_mut::<ShadowMapAtlas>();
         let previous_update_dt = render_resources
             .fetch::<TimeRenderResource>()
             .previous_update_dt();
+
+        render_resources
+            .fetch_mut::<DebugPipRenderResource>()
+            .clear();
 
         let graph_config = {
             let render_options = extract_resources
@@ -124,6 +132,7 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
         let mut graph_context = RenderGraphContext {
             graph: &mut graph,
             resource_context: &resource_context,
+            asset_manager,
             graph_config: &graph_config,
             main_view: &main_view,
             render_resources,
@@ -144,6 +153,10 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
             RafxResourceState::PRESENT,
             RafxResourceState::PRESENT,
         );
+
+        let shadow_atlas_image = shadow_atlas.add_to_render_graph(graph_context.graph);
+        let shadow_atlas_needs_full_clear = shadow_atlas.take_requires_full_clear();
+        drop(shadow_atlas);
 
         let tonemap_histogram_result = graph_context.graph.add_external_buffer(
             static_resources.tonemap_histogram_result.clone(),
@@ -176,11 +189,16 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
 
         let depth_prepass = depth_prepass::depth_prepass(&mut graph_context);
 
-        let shadow_maps = shadow_map_pass::shadow_map_passes(&mut graph_context);
+        let shadow_map_pass_output = shadow_map_pass::shadow_map_passes(
+            &mut graph_context,
+            shadow_atlas_image,
+            shadow_atlas_needs_full_clear,
+        );
 
-        let opaque_pass = opaque_pass::opaque_pass(&mut graph_context, depth_prepass, &shadow_maps);
+        let opaque_pass =
+            opaque_pass::opaque_pass(&mut graph_context, depth_prepass, &shadow_map_pass_output);
 
-        let previous_pass_color = if graph_config.enable_hdr {
+        let mut previous_pass_color = if graph_config.enable_hdr {
             let bloom_extract_material_pass = asset_manager
                 .committed_asset(&static_resources.bloom_extract_material)
                 .unwrap()
@@ -260,9 +278,12 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
             opaque_pass.color
         };
 
-        let ui_pass = ui_pass::ui_pass(&mut graph_context, previous_pass_color);
+        previous_pass_color =
+            debug_pip_pass::debug_pip_pass(&mut graph_context, previous_pass_color).color;
 
-        graph.write_external_image(swapchain_image_id, ui_pass.color);
+        previous_pass_color = ui_pass::ui_pass(&mut graph_context, previous_pass_color).color;
+
+        graph.write_external_image(swapchain_image_id, previous_pass_color);
 
         let prepared_render_graph = PreparedRenderGraph::new(
             &device_context,
@@ -270,10 +291,6 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
             graph,
             &swapchain_info.swapchain_surface_info,
         )?;
-
-        render_resources
-            .fetch_mut::<MeshBasicShadowMapResource>()
-            .set_shadow_map_image_views(&prepared_render_graph);
 
         Ok(prepared_render_graph)
     }

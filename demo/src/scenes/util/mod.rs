@@ -10,13 +10,14 @@ use rafx_plugins::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
 use rafx_plugins::features::debug3d::{Debug3DRenderFeature, Debug3DResource};
+use rafx_plugins::features::debug_pip::DebugPipRenderFeature;
 use rafx_plugins::features::skybox::{SkyboxRenderFeature, SkyboxResource};
 use rafx_plugins::features::sprite::SpriteRenderFeature;
 use rafx_plugins::features::text::TextRenderFeature;
 use rafx_plugins::features::tile_layer::TileLayerRenderFeature;
 use rafx_plugins::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase, UiRenderPhase,
-    WireframeRenderPhase,
+    DebugPipRenderPhase, DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase,
+    UiRenderPhase, WireframeRenderPhase,
 };
 use serde::{Deserialize, Serialize};
 
@@ -145,12 +146,14 @@ pub fn default_main_view_masks(
         .add_render_phase::<OpaqueRenderPhase>()
         .add_render_phase::<TransparentRenderPhase>()
         .add_render_phase::<WireframeRenderPhase>()
+        .add_render_phase::<DebugPipRenderPhase>()
         .add_render_phase::<UiRenderPhase>();
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
         .add_render_feature::<MeshRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<TileLayerRenderFeature>();
+        .add_render_feature::<TileLayerRenderFeature>()
+        .add_render_feature::<DebugPipRenderFeature>();
 
     #[cfg(feature = "egui")]
     {

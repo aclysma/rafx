@@ -29,6 +29,12 @@ pub struct MeshVertexPosition {
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Default)]
 #[repr(C)]
+pub struct ShadowMapAtlasClearTileVertex {
+    pub position: [f32; 2],
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Default)]
+#[repr(C)]
 pub struct MeshModelMatrix {
     pub model_matrix: [[f32; 4]; 4],
 }
@@ -70,6 +76,16 @@ lazy_static::lazy_static! {
         });
 
         VertexDataSetLayout::new(vec![per_vertex, per_instance], RafxPrimitiveTopology::TriangleList)
+    };
+
+    pub static ref SHADOW_MAP_ATLAS_CLEAR_TILE_LAYOUT : VertexDataSetLayout = {
+        use rafx::api::RafxFormat;
+
+        let per_vertex = VertexDataLayout::build_vertex_layout(&ShadowMapAtlasClearTileVertex::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
+            builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32_SFLOAT);
+        });
+
+        VertexDataSetLayout::new(vec![per_vertex], RafxPrimitiveTopology::TriangleList)
     };
 }
 
@@ -122,9 +138,9 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
 
         // Bailing here about 118 fps
 
-        let is_wireframe = render_phase_index == self.wireframe_index;
-        let is_depth_render_phase = render_phase_index == self.depth_prepass_index
-            || render_phase_index == self.shadow_map_index;
+        let is_wireframe_render_phase = render_phase_index == self.wireframe_index;
+        let is_depth_prepass_render_phase = render_phase_index == self.depth_prepass_index;
+        let is_shadow_map_render_phase = render_phase_index == self.shadow_map_index;
 
         let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
 
@@ -186,9 +202,15 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
 
         let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
 
-        if is_depth_render_phase || is_wireframe {
+        if is_depth_prepass_render_phase || is_wireframe_render_phase {
             per_view_submit_data
                 .depth_descriptor_set
+                .as_ref()
+                .unwrap()
+                .bind(command_buffer)?;
+        } else if is_shadow_map_render_phase {
+            per_view_submit_data
+                .shadow_map_atlas_depth_descriptor_set
                 .as_ref()
                 .unwrap()
                 .bind(command_buffer)?;

@@ -114,7 +114,7 @@ struct BufferToImport {
 
 // The asset state is stored in this format using Vecs
 #[derive(TypeUuid, Serialize, Deserialize, Default, Clone)]
-#[uuid = "807c83b3-c24c-4123-9580-5f9c426260b4"]
+#[uuid = "980d063c-1923-42f8-b4fa-b819fbfd8a5e"]
 pub struct MeshBasicGltfImporterStateStable {
     // Asset UUIDs for imported image by name. We use vecs here so we can sort by UUID for
     // deterministic output
@@ -183,7 +183,7 @@ impl From<MeshBasicGltfImporterStateStable> for MeshBasicGltfImporterStateUnstab
 }
 
 #[derive(TypeUuid)]
-#[uuid = "fc9ae812-110d-4daf-9223-e87b40966c6b"]
+#[uuid = "75a6991e-5c0a-4038-960a-6a391eeba766"]
 pub struct MeshBasicGltfImporter;
 impl Importer for MeshBasicGltfImporter {
     fn version_static() -> u32
@@ -271,7 +271,7 @@ impl Importer for MeshBasicGltfImporter {
         let materials_to_import =
             extract_materials_to_import(&doc, &buffers, &images, &image_index_to_handle);
 
-        let material_handle = make_handle_from_str("92a98639-de0d-40cf-a222-354f616346c3")?;
+        let material_handle = make_handle_from_str("680c6edd-8bed-407b-aea0-d0f6056093d6")?;
 
         let null_image_handle = make_handle_from_str("fc937369-cad2-4a00-bf42-5968f1210784")?;
 

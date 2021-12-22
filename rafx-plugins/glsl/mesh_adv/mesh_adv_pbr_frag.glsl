@@ -40,7 +40,7 @@ const float PI = 3.14159265359;
 //
 // These were tuned with near/far distances of 0.1 to 100.0 reversed Z
 //
-const float SPOT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER = 0.4;
+const float SPOT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER = 1.0;
 const float DIRECTIONAL_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER = 1.0;
 //const float POINT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER = 0.01;
 // Cube maps have their own codepath so no constant here yet
@@ -121,6 +121,41 @@ float calculate_cubemap_equivalent_depth(vec3 light_to_surface_ws, float near, f
     return (depth_value + 1.0) * 0.5;
 }
 
+// Return value: xy=UV, z=face index
+// Based on https://www.gamedev.net/forums/topic/687535-implementing-a-cube-map-lookup-function/5337472/
+vec3 cube_sample_to_uv_and_face_index(vec3 dir)
+{
+	vec3 dirAbs = abs(dir);
+	float faceIndex;
+	float ma;
+	vec2 uv;
+
+	if(dirAbs.z >= dirAbs.x && dirAbs.z >= dirAbs.y)
+	{
+		// Either -Z or +Z
+		faceIndex = dir.z < 0.0 ? 5.0 : 4.0;
+		ma = 0.5 / dirAbs.z;
+		uv = vec2(dir.z < 0.0 ? -dir.x : dir.x, -dir.y);
+	}
+	else if(dirAbs.y >= dirAbs.x)
+	{
+	    // Either -Y or +Y
+		faceIndex = dir.y < 0.0 ? 3.0 : 2.0;
+		ma = 0.5 / dirAbs.y;
+		uv = vec2(dir.x, dir.y < 0.0 ? -dir.z : dir.z);
+	}
+	else
+	{
+	    // Either -X or +X
+		faceIndex = dir.x < 0.0 ? 1.0 : 0.0;
+		ma = 0.5 / dirAbs.x;
+		uv = vec2(dir.x < 0.0 ? dir.z : -dir.z, -dir.y);
+	}
+
+	return vec3(uv * ma + 0.5, faceIndex);
+}
+
+
 float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_vs, vec3 normal_vs, int index, float bias_multiplier) {
     // Determine the equivalent depth value that would come out of the shadow cubemap if this surface
     // was the sampled depth. We have 6 different view/projections but those are defined by the spec.
@@ -144,7 +179,8 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
     //) * POINT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER;
 
     //return bias_angle_factor;
-    float bias = 0.0002 + (0.0010 * bias_angle_factor);
+    float bias = 0.0006 + (0.0060 * bias_angle_factor);
+
 
 #ifdef PCF_CUBE_SAMPLE_1
     float depth_of_surface = calculate_cubemap_equivalent_depth(
@@ -153,13 +189,34 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
         far_plane
     );
 
+    vec3 uv_and_face = cube_sample_to_uv_and_face_index(light_to_surface_ws);
+    vec4 uv_min_uv_max = per_view_data.shadow_map_cube_data[index].uv_min_uv_max[int(uv_and_face.z)];
+
+    // We allow some faces of cube maps to not be included in the shadow atlas. In this case, uv coordinates will be
+    // -1 and we should early-out.
+    // We set uv coordinates to -1 if this
+    if (uv_min_uv_max.x < -0.5) {
+        return 1.0;
+    }
+
+    vec2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
+
     float shadow = texture(
-        samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
-        vec4(
-            light_to_surface_ws,
+        sampler2DShadow(shadow_map_atlas, smp_depth),
+        vec3(
+            uv_to_sample.xy,
             depth_of_surface + bias
         )
     ).r;
+
+    //float shadow = texture(
+    //    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
+    //    vec4(
+    //        light_to_surface_ws,
+    //        depth_of_surface + bias
+    //    )
+    //).r;
+    //float shadow = 1.0;
 #endif
 
 #ifdef PCF_CUBE_SAMPLE_20
@@ -188,13 +245,14 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
             far_plane
         );
 
-        shadow += texture(
-            samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
-            vec4(
-                light_to_surface_ws + offset,
-                depth_of_surface + bias
-            )
-        ).r;
+        //shadow += texture(
+        //    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
+        //    vec4(
+        //        light_to_surface_ws + offset,
+        //        depth_of_surface + bias
+        //    )
+        //).r;
+        shadow += 1.0;
     }
     shadow /= float(samples);
 #endif
@@ -216,13 +274,14 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
                     far_plane
                 );
 
-                shadow += texture(
-                    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
-                    vec4(
-                        light_to_surface_ws + vec3(x, y, z),
-                        depth_of_surface + bias
-                    )
-                ).r;
+                //shadow += texture(
+                //    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
+                //    vec4(
+                //        light_to_surface_ws + vec3(x, y, z),
+                //        depth_of_surface + bias
+                //    )
+                //).r;
+                shadow += 1.0;
             }
         }
     }
@@ -246,13 +305,14 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
                     far_plane
                 );
 
-                shadow += texture(
-                    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
-                    vec4(
-                        light_to_surface_ws + vec3(x, y, z),
-                        depth_of_surface + bias
-                    )
-                ).r;
+                //shadow += texture(
+                //    samplerCubeShadow(shadow_map_images_cube[index], smp_depth),
+                //    vec4(
+                //        light_to_surface_ws + vec3(x, y, z),
+                //        depth_of_surface + bias
+                //    )
+                //).r;
+                shadow += 1.0;
             }
         }
     }
@@ -285,6 +345,8 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     vec3 projected = shadow_map_pos.xyz / shadow_map_pos.w;
     vec2 sample_location_uv = projected.xy * 0.5 + 0.5;
     sample_location_uv.y = 1.0 - sample_location_uv.y;
+    sample_location_uv.x = mix(per_view_data.shadow_map_2d_data[index].uv_min.x, per_view_data.shadow_map_2d_data[index].uv_max.x, sample_location_uv.x);
+    sample_location_uv.y = mix(per_view_data.shadow_map_2d_data[index].uv_min.y, per_view_data.shadow_map_2d_data[index].uv_max.y, sample_location_uv.y);
     float depth_of_surface = projected.z;
 
     // Determine the direction of the light so we can apply more bias when light is near orthogonal to the normal
@@ -309,7 +371,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     // PCF form single sample
 #ifdef PCF_SAMPLE_1
     float shadow = texture(
-        sampler2DShadow(shadow_map_images[index], smp_depth),
+        sampler2DShadow(shadow_map_atlas, smp_depth),
         vec3(
             sample_location_uv,
             depth_of_surface + bias
@@ -320,13 +382,13 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     // PCF reasonable sample count
 #ifdef PCF_SAMPLE_9
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(sampler2DShadow(shadow_map_images[index], smp_depth), 0);
+    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth), 0);
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
         {
             shadow += texture(
-                sampler2DShadow(shadow_map_images[index], smp_depth),
+                sampler2DShadow(shadow_map_atlas, smp_depth),
                 vec3(
                     sample_location_uv + vec2(x, y) * texelSize,
                     depth_of_surface + bias
@@ -341,13 +403,13 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     // PCF probably too many samples
 #ifdef PCF_SAMPLE_25
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(sampler2DShadow(shadow_map_images[index], smp_depth), 0);
+    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth), 0);
     for(int x = -2; x <= 2; ++x)
     {
         for(int y = -2; y <= 2; ++y)
         {
             shadow += texture(
-                sampler2DShadow(shadow_map_images[index], smp_depth),
+                sampler2DShadow(shadow_map_atlas, smp_depth),
                 vec3(
                     sample_location_uv + vec2(x, y) * texelSize,
                     depth_of_surface + bias

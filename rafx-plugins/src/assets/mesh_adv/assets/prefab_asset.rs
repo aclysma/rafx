@@ -48,7 +48,7 @@ pub struct PrefabBasicAssetDataObject {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone, Debug)]
-#[uuid = "1af63a91-de3e-48fc-8908-ab309730b8b5"]
+#[uuid = "2aa26beb-2359-4f57-a035-8e33b3ce8bf1"]
 pub struct PrefabBasicAssetData {
     pub objects: Vec<PrefabBasicAssetDataObject>,
 }
@@ -58,7 +58,7 @@ pub struct PrefabBasicAssetInner {
 }
 
 #[derive(TypeUuid, Clone)]
-#[uuid = "7bf45a97-62f4-4a9a-99b8-e0ac8d755993"]
+#[uuid = "ad1525bc-802b-4574-bac3-2a387f328d14"]
 pub struct PrefabBasicAsset {
     pub inner: Arc<PrefabBasicAssetInner>,
 }
