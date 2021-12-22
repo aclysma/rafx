@@ -299,22 +299,69 @@ vec3 visualize_value(float val) {
 }
 
 
-// Should be kept in sync with the constants in TonemapperType
-const int TM_None = 0;
-const int TM_StephenHillACES = 1;
-const int TM_SimplifiedLumaACES = 2;
-const int TM_Hejl2015 = 3;
-const int TM_Hable = 4;
-const int TM_FilmicALU = 5;
-const int TM_LogDerivative = 6;
-const int TM_VisualizeRGBMax = 7;
-const int TM_VisualizeLuma = 8;
-const int TM_AutoExposureOld = 9;
-const int TM_Bergstrom = 10;
 
+// Should be kept in sync with the constants in TonemapperBasicType
+const int TM_BASIC_None = 0;
+const int TM_BASIC_StephenHillACES = 1;
+const int TM_BASIC_SimplifiedLumaACES = 2;
+const int TM_BASIC_Hejl2015 = 3;
+const int TM_BASIC_Hable = 4;
+const int TM_BASIC_FilmicALU = 5;
+const int TM_BASIC_LogDerivative = 6;
+const int TM_BASIC_VisualizeRGBMax = 7;
+const int TM_BASIC_VisualizeLuma = 8;
 
+// Should be kept in sync with the constants in TonemapperAdvType
+const int TM_ADV_None = 0;
+const int TM_ADV_StephenHillACES = 1;
+const int TM_ADV_SimplifiedLumaACES = 2;
+const int TM_ADV_Hejl2015 = 3;
+const int TM_ADV_Hable = 4;
+const int TM_ADV_FilmicALU = 5;
+const int TM_ADV_LogDerivative = 6;
+const int TM_ADV_VisualizeRGBMax = 7;
+const int TM_ADV_VisualizeLuma = 8;
+const int TM_ADV_AutoExposureOld = 9;
+const int TM_ADV_Bergstrom = 10;
 
-vec3 tonemap(
+vec3 tonemap_basic(
+    vec3 color,
+    int tonemapper_type
+) {
+    switch (tonemapper_type) {
+        case TM_BASIC_StephenHillACES:  {
+            return linear_to_srgb(tonemap_aces_fitted(color));
+        } break;
+        case TM_BASIC_SimplifiedLumaACES: {
+            return linear_to_srgb(tonemap_aces_film_simple(color * 0.6));
+        } break;
+        case TM_BASIC_Hejl2015: {
+            return tonemap_Hejl2015(color);
+        } break;
+        case TM_BASIC_Hable: {
+            return tonemap_hable(color);
+        } break;
+        case TM_BASIC_FilmicALU: {
+            return tonemap_filmic_alu(color);
+        } break;
+        case TM_BASIC_LogDerivative: {
+            return color.rgb / (color.rgb + vec3(1.0));
+        } break;
+        case TM_BASIC_VisualizeRGBMax: {
+            float max_val = max(color.r, max(color.g, color.b));
+            return visualize_value(max_val);
+        } break;
+        case TM_BASIC_VisualizeLuma: {
+            float l = luma(color);
+            return visualize_value(l);
+        } break;
+        default: {
+            return color;
+        } break;
+    }
+}
+
+vec3 tonemap_adv(
     vec3 color,
     int tonemapper_type,
     float max_component_value,
@@ -324,39 +371,39 @@ vec3 tonemap(
     float histogram_result_max_luminosity_interpolated
 ) {
     switch (tonemapper_type) {
-        case TM_StephenHillACES:  {
+        case TM_ADV_StephenHillACES:  {
             return linear_to_srgb(tonemap_aces_fitted(color));
         } break;
-        case TM_SimplifiedLumaACES: {
+        case TM_ADV_SimplifiedLumaACES: {
             return linear_to_srgb(tonemap_aces_film_simple(color * 0.6));
         } break;
-        case TM_Hejl2015: {
+        case TM_ADV_Hejl2015: {
             return tonemap_Hejl2015(color);
         } break;
-        case TM_Hable: {
+        case TM_ADV_Hable: {
             return tonemap_hable(color);
         } break;
-        case TM_FilmicALU: {
+        case TM_ADV_FilmicALU: {
             return tonemap_filmic_alu(color);
         } break;
-        case TM_LogDerivative: {
+        case TM_ADV_LogDerivative: {
             return color.rgb / (color.rgb + vec3(1.0));
         } break;
-        case TM_VisualizeRGBMax: {
+        case TM_ADV_VisualizeRGBMax: {
             float max_val = max(color.r, max(color.g, color.b));
             return visualize_value(max_val);
         } break;
-        case TM_VisualizeLuma: {
+        case TM_ADV_VisualizeLuma: {
             float l = luma(color);
             return visualize_value(l);
         } break;
-        case TM_AutoExposureOld: {
+        case TM_ADV_AutoExposureOld: {
             return old_autoexposure_tonemapping(
                 color,
                 histogram_result_average_luminosity_interpolated
             );
         } break;
-        case TM_Bergstrom: {
+        case TM_ADV_Bergstrom: {
             return tonemap_bergstrom(
                 color,
                 max_component_value,

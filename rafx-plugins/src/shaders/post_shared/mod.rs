@@ -2,5 +2,6 @@
 
 #![allow(dead_code)]
 
-pub mod debug_frag;
-pub mod debug_vert;
+pub mod bloom_blur_frag;
+pub mod bloom_extract_frag;
+pub mod postprocess_vert;

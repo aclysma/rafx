@@ -5,7 +5,7 @@ use rafx::render_features::RenderPhase;
 
 use super::RenderGraphContext;
 use super::EMPTY_VERTEX_LAYOUT;
-use crate::shaders::post_basic::bloom_blur_frag;
+use crate::shaders::post_shared::bloom_blur_frag;
 use rafx::api::RafxSampleCount;
 
 #[derive(PartialEq)]

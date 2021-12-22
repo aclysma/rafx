@@ -2,9 +2,4 @@
 
 #![allow(dead_code)]
 
-pub mod bloom_blur_frag;
-pub mod bloom_combine_frag;
-pub mod bloom_extract_frag;
-pub mod luma_average_histogram_comp;
-pub mod luma_build_histogram_comp;
-pub mod postprocess_vert;
+pub mod bloom_combine_basic_frag;

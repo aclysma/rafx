@@ -1,4 +1,4 @@
 (
-    shader_module: "../shaders/post_basic/luma_average_histogram.comp.cookedshaderpackage",
+    shader_module: "../shaders/post_adv/luma_average_histogram.comp.cookedshaderpackage",
     entry_name: "main"
 )

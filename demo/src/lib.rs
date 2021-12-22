@@ -43,19 +43,16 @@ use rafx_plugins::features::mesh_basic::{
     MeshBasicRenderObjectSet as MeshRenderObjectSet, MeshBasicRenderOptions as MeshRenderOptions,
 };
 #[cfg(feature = "basic-pipeline")]
-use rafx_plugins::pipelines::basic::BasicPipelineTonemapperType as PipelineTonemapperType;
+use rafx_plugins::pipelines::basic::BasicPipelineRenderOptions as PipelineRenderOptions;
 #[cfg(feature = "basic-pipeline")]
-use rafx_plugins::pipelines::basic::{
-    BasicPipelineRenderOptions as PipelineRenderOptions,
-    BasicPipelineTonemapDebugData as PipelineTonemapDebugData,
-};
+use rafx_plugins::pipelines::basic::TonemapperTypeBasic as TonemapperType;
 
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::features::mesh_adv::{
     MeshAdvRenderObjectSet as MeshRenderObjectSet, MeshAdvRenderOptions as MeshRenderOptions,
 };
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::pipelines::modern::ModernPipelineTonemapperType as PipelineTonemapperType;
+use rafx_plugins::pipelines::modern::TonemapperTypeAdv as TonemapperType;
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::pipelines::modern::{
     ModernPipelineRenderOptions as PipelineRenderOptions,
@@ -114,7 +111,7 @@ pub struct RenderOptions {
     pub show_feature_toggles: bool,
     pub show_shadows: bool,
     pub blur_pass_count: usize,
-    pub tonemapper_type: PipelineTonemapperType,
+    pub tonemapper_type: TonemapperType,
     pub enable_visibility_update: bool,
 }
 
@@ -134,7 +131,7 @@ impl RenderOptions {
             show_shadows: true,
             show_feature_toggles: false,
             blur_pass_count: 0,
-            tonemapper_type: PipelineTonemapperType::None,
+            tonemapper_type: TonemapperType::None,
             enable_visibility_update: true,
         }
     }
@@ -154,7 +151,7 @@ impl RenderOptions {
             show_shadows: true,
             show_feature_toggles: true,
             blur_pass_count: 5,
-            tonemapper_type: PipelineTonemapperType::Bergstrom,
+            tonemapper_type: TonemapperType::default(),
             enable_visibility_update: true,
         }
     }
@@ -171,8 +168,8 @@ impl RenderOptions {
 
         if self.enable_hdr {
             ui.indent("HDR options", |ui| {
-                let tonemapper_names: Vec<_> = (0..(PipelineTonemapperType::MAX as i32))
-                    .map(|t| PipelineTonemapperType::from(t).display_name())
+                let tonemapper_names: Vec<_> = (0..(TonemapperType::MAX as i32))
+                    .map(|t| TonemapperType::from(t).display_name())
                     .collect();
 
                 egui::ComboBox::from_label("tonemapper_type")
@@ -181,7 +178,7 @@ impl RenderOptions {
                         for (i, name) in tonemapper_names.iter().enumerate() {
                             ui.selectable_value(
                                 &mut self.tonemapper_type,
-                                PipelineTonemapperType::from(i as i32),
+                                TonemapperType::from(i as i32),
                                 name,
                             );
                         }
@@ -234,6 +231,7 @@ impl RenderOptions {
 pub struct DebugUiState {
     show_render_options: bool,
     show_asset_list: bool,
+    #[cfg(not(feature = "basic-pipeline"))]
     show_tonemap_debug: bool,
     show_shadow_map_debug: bool,
 
@@ -299,6 +297,7 @@ impl DemoApp {
         resources.insert(RenderOptions::default_2d());
         resources.insert(MeshRenderOptions::default());
         resources.insert(PipelineRenderOptions::default());
+        #[cfg(not(feature = "basic-pipeline"))]
         resources.insert(PipelineTonemapDebugData::default());
         resources.insert(DebugUiState::default());
 
@@ -452,6 +451,7 @@ impl DemoApp {
             let time_state = self.resources.get::<TimeState>().unwrap();
             let mut debug_ui_state = self.resources.get_mut::<DebugUiState>().unwrap();
             let mut render_options = self.resources.get_mut::<RenderOptions>().unwrap();
+            #[cfg(not(feature = "basic-pipeline"))]
             let tonemap_debug_data = self.resources.get::<PipelineTonemapDebugData>().unwrap();
             let asset_resource = self.resources.get::<AssetResource>().unwrap();
 
@@ -461,6 +461,7 @@ impl DemoApp {
                         ui.checkbox(&mut debug_ui_state.show_render_options, "Render Options");
 
                         ui.checkbox(&mut debug_ui_state.show_asset_list, "Asset List");
+                        #[cfg(not(feature = "basic-pipeline"))]
                         ui.checkbox(&mut debug_ui_state.show_tonemap_debug, "Tonemap Debug");
                         ui.checkbox(
                             &mut debug_ui_state.show_shadow_map_debug,
@@ -491,6 +492,7 @@ impl DemoApp {
                 })
             });
 
+            #[cfg(not(feature = "basic-pipeline"))]
             if debug_ui_state.show_tonemap_debug {
                 egui::Window::new("Tonemap Debug")
                     .open(&mut debug_ui_state.show_tonemap_debug)
@@ -534,11 +536,14 @@ impl DemoApp {
                     });
             }
 
-            tonemap_debug_data
-                .inner
-                .lock()
-                .unwrap()
-                .enable_debug_data_collection = debug_ui_state.show_tonemap_debug;
+            #[cfg(not(feature = "basic-pipeline"))]
+            {
+                tonemap_debug_data
+                    .inner
+                    .lock()
+                    .unwrap()
+                    .enable_debug_data_collection = debug_ui_state.show_tonemap_debug;
+            }
 
             if debug_ui_state.show_render_options {
                 egui::Window::new("Render Options")
@@ -679,7 +684,6 @@ impl DemoApp {
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
             add_to_extract_resources!(PipelineRenderOptions);
-            add_to_extract_resources!(PipelineTonemapDebugData);
             add_to_extract_resources!(MeshRenderOptions);
             add_to_extract_resources!(RendererConfigResource);
             add_to_extract_resources!(TileLayerResource);

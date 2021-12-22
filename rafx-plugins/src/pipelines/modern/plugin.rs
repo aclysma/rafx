@@ -2,7 +2,7 @@ use crate::phases::{
     DebugPipRenderPhase, DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase,
     ShadowMapRenderPhase, TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
-use crate::shaders::post_basic::luma_average_histogram_comp;
+use crate::shaders::post_adv::luma_average_histogram_comp;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::{
     RafxBufferDef, RafxFormat, RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult,
@@ -117,8 +117,9 @@ impl RendererAssetPlugin for ModernPipelineRendererPlugin {
         //
         // Bloom combine resources
         //
-        let bloom_combine_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/bloom_combine.material");
+        let bloom_combine_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "rafx-plugins/materials/modern_pipeline/bloom_combine_adv.material",
+        );
 
         let luma_build_histogram = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
             "rafx-plugins/compute_pipelines/luma_build_histogram.compute",
