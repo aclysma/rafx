@@ -9,7 +9,7 @@ pub enum ModernPipelineOutputColorSpace {
 // Should be kept in sync with the constants in tonemapper.glsl prefixed with TM_
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
-pub enum ModernPipelineTonemapperType {
+pub enum TonemapperTypeAdv {
     None,
     StephenHillACES,
     SimplifiedLumaACES,
@@ -23,32 +23,39 @@ pub enum ModernPipelineTonemapperType {
     Bergstrom,
     MAX,
 }
-impl ModernPipelineTonemapperType {
+
+impl Default for TonemapperTypeAdv {
+    fn default() -> Self {
+        TonemapperTypeAdv::Bergstrom
+    }
+}
+
+impl TonemapperTypeAdv {
     pub fn display_name(&self) -> &'static str {
         match self {
-            ModernPipelineTonemapperType::None => "None",
-            ModernPipelineTonemapperType::StephenHillACES => "Stephen Hill ACES",
-            ModernPipelineTonemapperType::SimplifiedLumaACES => "SimplifiedLumaACES",
-            ModernPipelineTonemapperType::Hejl2015 => "Hejl 2015",
-            ModernPipelineTonemapperType::Hable => "Hable",
-            ModernPipelineTonemapperType::FilmicALU => "Filmic ALU (Hable)",
-            ModernPipelineTonemapperType::LogDerivative => "LogDerivative",
-            ModernPipelineTonemapperType::VisualizeRGBMax => "Visualize RGB Max",
-            ModernPipelineTonemapperType::VisualizeLuma => "Visualize RGB Luma",
-            ModernPipelineTonemapperType::AutoExposureOld => "Autoexposure Old",
-            ModernPipelineTonemapperType::Bergstrom => "Bergstrom",
-            ModernPipelineTonemapperType::MAX => "MAX_TONEMAPPER_VALUE",
+            TonemapperTypeAdv::None => "None",
+            TonemapperTypeAdv::StephenHillACES => "Stephen Hill ACES",
+            TonemapperTypeAdv::SimplifiedLumaACES => "SimplifiedLumaACES",
+            TonemapperTypeAdv::Hejl2015 => "Hejl 2015",
+            TonemapperTypeAdv::Hable => "Hable",
+            TonemapperTypeAdv::FilmicALU => "Filmic ALU (Hable)",
+            TonemapperTypeAdv::LogDerivative => "LogDerivative",
+            TonemapperTypeAdv::VisualizeRGBMax => "Visualize RGB Max",
+            TonemapperTypeAdv::VisualizeLuma => "Visualize RGB Luma",
+            TonemapperTypeAdv::AutoExposureOld => "Autoexposure Old",
+            TonemapperTypeAdv::Bergstrom => "Bergstrom",
+            TonemapperTypeAdv::MAX => "MAX_TONEMAPPER_VALUE",
         }
     }
 }
-impl From<i32> for ModernPipelineTonemapperType {
+impl From<i32> for TonemapperTypeAdv {
     fn from(v: i32) -> Self {
         assert!(v <= Self::MAX as i32);
         unsafe { std::mem::transmute(v) }
     }
 }
 
-impl std::fmt::Display for ModernPipelineTonemapperType {
+impl std::fmt::Display for TonemapperTypeAdv {
     fn fmt(
         &self,
         f: &mut std::fmt::Formatter<'_>,
@@ -70,7 +77,7 @@ pub struct ModernPipelineRenderOptions {
     pub show_skybox: bool,
     pub show_feature_toggles: bool,
     pub blur_pass_count: usize,
-    pub tonemapper_type: ModernPipelineTonemapperType,
+    pub tonemapper_type: TonemapperTypeAdv,
     pub enable_visibility_update: bool,
 }
 
@@ -88,7 +95,7 @@ impl Default for ModernPipelineRenderOptions {
             show_skybox: true,
             show_feature_toggles: true,
             blur_pass_count: 5,
-            tonemapper_type: ModernPipelineTonemapperType::LogDerivative,
+            tonemapper_type: TonemapperTypeAdv::LogDerivative,
             enable_visibility_update: true,
         }
     }

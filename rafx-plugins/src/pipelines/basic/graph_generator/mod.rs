@@ -21,17 +21,14 @@ use super::BasicPipelineRenderOptions;
 use super::BasicPipelineStaticResources;
 use crate::features::debug_pip::DebugPipRenderResource;
 use crate::features::mesh_basic::MeshBasicShadowMapResource;
-use crate::pipelines::basic::BasicPipelineTonemapDebugData;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;
+use rafx::renderer::RenderGraphGenerator;
 use rafx::renderer::SwapchainRenderResource;
-use rafx::renderer::{RenderGraphGenerator, TimeRenderResource};
 
 mod bloom_blur_pass;
 
 mod bloom_combine_pass;
-
-mod luma_pass;
 
 mod debug_pip_pass;
 
@@ -73,7 +70,7 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
         &self,
         asset_manager: &AssetManager,
         swapchain_image: ResourceArc<ImageViewResource>,
-        rotating_frame_index: usize,
+        _rotating_frame_index: usize,
         main_view: RenderView,
         extract_resources: &ExtractResources,
         render_resources: &RenderResources,
@@ -85,9 +82,6 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
         let swapchain_render_resource = render_resources.fetch::<SwapchainRenderResource>();
         let swapchain_info = swapchain_render_resource.surface_info().unwrap();
         let static_resources = render_resources.fetch::<BasicPipelineStaticResources>();
-        let previous_update_dt = render_resources
-            .fetch::<TimeRenderResource>()
-            .previous_update_dt();
 
         render_resources
             .fetch_mut::<DebugPipRenderResource>()
@@ -122,10 +116,6 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
             }
         };
 
-        let tonemap_debug_data = extract_resources
-            .try_fetch::<BasicPipelineTonemapDebugData>()
-            .map(|x| x.clone());
-
         let mut graph = RenderGraphBuilder::default();
 
         let mut graph_context = RenderGraphContext {
@@ -150,35 +140,6 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
             Default::default(),
             RafxResourceState::PRESENT,
             RafxResourceState::PRESENT,
-        );
-
-        let tonemap_histogram_result = graph_context.graph.add_external_buffer(
-            static_resources.tonemap_histogram_result.clone(),
-            RenderGraphBufferSpecification {
-                resource_type: RafxResourceType::BUFFER_READ_WRITE,
-                size: static_resources
-                    .tonemap_histogram_result
-                    .get_raw()
-                    .buffer
-                    .buffer_def()
-                    .size,
-            },
-            RafxResourceState::UNORDERED_ACCESS,
-            RafxResourceState::UNORDERED_ACCESS,
-        );
-
-        let tonemap_debug_output = graph_context.graph.add_external_buffer(
-            static_resources.tonemap_debug_output[rotating_frame_index].clone(),
-            RenderGraphBufferSpecification {
-                resource_type: RafxResourceType::BUFFER_READ_WRITE,
-                size: static_resources.tonemap_debug_output[rotating_frame_index]
-                    .get_raw()
-                    .buffer
-                    .buffer_def()
-                    .size,
-            },
-            RafxResourceState::UNORDERED_ACCESS,
-            RafxResourceState::UNORDERED_ACCESS,
         );
 
         let depth_prepass = depth_prepass::depth_prepass(&mut graph_context);
@@ -206,40 +167,10 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
                 .get_single_material_pass()
                 .unwrap();
 
-            let luma_build_histogram = asset_manager
-                .committed_asset(&static_resources.luma_build_histogram)
-                .unwrap()
-                .compute_pipeline
-                .clone();
-
-            let luma_average_histogram = asset_manager
-                .committed_asset(&static_resources.luma_average_histogram)
-                .unwrap()
-                .compute_pipeline
-                .clone();
-
             let bloom_extract_pass = bloom_extract_pass::bloom_extract_pass(
                 &mut graph_context,
                 bloom_extract_material_pass,
                 &opaque_pass,
-            );
-
-            let luma_build_histogram_pass = luma_pass::luma_build_histogram_pass(
-                &mut graph_context,
-                &luma_build_histogram,
-                &opaque_pass,
-                &swapchain_info.swapchain_surface_info,
-            );
-
-            let luma_average_histogram_pass = luma_pass::luma_average_histogram_pass(
-                &mut graph_context,
-                &luma_build_histogram_pass,
-                &luma_average_histogram,
-                tonemap_histogram_result,
-                tonemap_debug_data,
-                tonemap_debug_output,
-                &swapchain_info.swapchain_surface_info,
-                previous_update_dt,
             );
 
             let blurred_color = if graph_config.enable_bloom && graph_config.blur_pass_count > 0 {
@@ -258,7 +189,6 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
                 bloom_combine_material_pass,
                 &bloom_extract_pass,
                 blurred_color,
-                &luma_average_histogram_pass,
                 &*swapchain_render_resource,
             );
 

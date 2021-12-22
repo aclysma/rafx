@@ -1,6 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
-#include "tonemapping.glsl"
+#include "../post_shared/tonemapping.glsl"
 #include "luma_histogram_types.glsl"
 
 // @[export]
@@ -60,7 +60,7 @@ void main()
         return;
     }
 
-    vec3 color_srgb_linear = tonemap(
+    vec3 color_srgb_linear = tonemap_adv(
         color,
         config.tonemapper_type,
         config.max_color_component_value,
