@@ -54,7 +54,7 @@ pub struct MeshAdvPrefabJsonFormatObjectLight {
     color: [f32; 3],
     kind: MeshAdvPrefabJsonFormatObjectLightKind,
     intensity: f32,
-    cutoff_distance: f32,
+    cutoff_distance: Option<f32>,
     spot: Option<MeshAdvPrefabJsonFormatObjectLightSpot>,
 }
 
@@ -82,7 +82,7 @@ impl Importer for MeshAdvBlenderPrefabImporter {
     where
         Self: Sized,
     {
-        3
+        4
     }
 
     fn version(&self) -> u32 {
@@ -130,10 +130,10 @@ impl Importer for MeshAdvBlenderPrefabImporter {
                         outer_angle: x.outer_angle,
                     });
 
-                let range = if light.cutoff_distance < 0.0 {
+                let range = if light.cutoff_distance.unwrap_or(-1.0) < 0.0 {
                     None
                 } else {
-                    Some(light.cutoff_distance)
+                    light.cutoff_distance
                 };
                 Some(PrefabAdvAssetDataObjectLight {
                     color: light.color.into(),
