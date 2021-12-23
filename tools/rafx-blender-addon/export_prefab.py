@@ -58,7 +58,8 @@ def iterate_object(project_settings, export_dir, out_objects, object: bpy.types.
             object_attributes["light"] = {
                 "color": [c.r, c.g, c.b],
                 "kind": light_kind_names[light.type],
-                "intensity": light.energy
+                "intensity": light.energy,
+                "cutoff_distance": light.cutoff_distance if light.use_custom_distance else -1.0,
             }
 
             if light.type == "SPOT":
