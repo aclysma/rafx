@@ -155,7 +155,6 @@ vec3 cube_sample_to_uv_and_face_index(vec3 dir)
 	return vec3(uv * ma + 0.5, faceIndex);
 }
 
-
 float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_vs, vec3 normal_vs, int index, float bias_multiplier) {
     // Determine the equivalent depth value that would come out of the shadow cubemap if this surface
     // was the sampled depth. We have 6 different view/projections but those are defined by the spec.
@@ -180,7 +179,6 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
 
     //return bias_angle_factor;
     float bias = 0.0006 + (0.0060 * bias_angle_factor);
-
 
 #ifdef PCF_CUBE_SAMPLE_1
     float depth_of_surface = calculate_cubemap_equivalent_depth(

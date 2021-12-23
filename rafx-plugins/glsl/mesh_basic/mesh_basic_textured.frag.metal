@@ -158,8 +158,8 @@ static inline __attribute__((always_inline))
 float4 normal_map(thread const float3x3& tangent_binormal_normal, thread const float2& uv, thread texture2d<float> normal_texture, thread sampler smp)
 {
     float3 normal = normal_texture.sample(smp, uv).xyz;
-    normal = normal * 2.0 - float3(1.0);
-    normal.z = 0;
+    normal = (normal * 2.0) - float3(1.0);
+    normal.z = 0.0;
     normal.z = sqrt(1.0 - dot(normal, normal));
     normal.x = -normal.x;
     normal.y = -normal.y;
@@ -180,68 +180,9 @@ float DeferredLightingNDFRoughnessFilter(thread const float3& normal, thread con
 }
 
 static inline __attribute__((always_inline))
-float calculate_cubemap_equivalent_depth(thread const float3& light_to_surface_ws, thread const float& near, thread const float& far)
+float attenuate_light_for_range(thread const float& light_range, thread const float& _distance)
 {
-    float3 light_to_surface_ws_abs = abs(light_to_surface_ws);
-    float face_local_z_depth = fast::max(light_to_surface_ws_abs.x, fast::max(light_to_surface_ws_abs.y, light_to_surface_ws_abs.z));
-    float depth_value = ((far + near) / (far - near)) - ((((2.0 * far) * near) / (far - near)) / face_local_z_depth);
-    return (depth_value + 1.0) * 0.5;
-}
-
-static inline __attribute__((always_inline))
-float do_calculate_percent_lit_cube(
-    constant spvDescriptorSetBuffer0& spvDescriptorSet0,
-    thread const float3& light_position_ws,
-    thread const float3& light_position_vs,
-    thread const float3& normal_vs,
-    thread const int& index,
-    thread const float& bias_multiplier,
-    thread float4& in_position_ws,
-    thread float3& in_position_vs,
-    thread float3& in_normal_vs,
-    thread sampler smp_depth
-)
-{
-    float near_plane = spvDescriptorSet0.per_view_data->shadow_map_cube_data[index].cube_map_projection_near_z;
-    float far_plane = spvDescriptorSet0.per_view_data->shadow_map_cube_data[index].cube_map_projection_far_z;
-    float3 light_to_surface_ws = in_position_ws.xyz - light_position_ws;
-    float3 surface_to_light_dir_vs = normalize(light_position_vs - in_position_vs);
-    float bias_angle_factor = 1.0 - fast::max(0.0, dot(in_normal_vs, surface_to_light_dir_vs));
-    bias_angle_factor = pow(bias_angle_factor, 3.0);
-    float bias0 = 0.00019999999494757503271102905273438 + (0.001000000047497451305389404296875 * bias_angle_factor);
-    float3 param = light_to_surface_ws;
-    float param_1 = near_plane;
-    float param_2 = far_plane;
-    float depth_of_surface = calculate_cubemap_equivalent_depth(param, param_1, param_2);
-    float4 _316 = float4(light_to_surface_ws, depth_of_surface + bias0);
-    float shadow = spvDescriptorSet0.shadow_map_images_cube[index].sample_compare(smp_depth, _316.xyz, _316.w);
-    return shadow;
-}
-
-static inline __attribute__((always_inline))
-float calculate_percent_lit_cube(
-    constant spvDescriptorSetBuffer0& spvDescriptorSet0,
-    thread const float3& light_position_ws,
-    thread const float3& light_position_vs,
-    thread const float3& normal_vs,
-    thread const int& index,
-    thread const float& bias_multiplier,
-    thread float4& in_position_ws,
-    thread float3& in_position_vs,
-    thread float3& in_normal_vs,
-    thread sampler smp_depth
-)
-{
-    if (index == (-1))
-    {
-        return 1.0;
-    }
-    float3 param = light_position_ws;
-    float3 param_1 = light_position_vs;
-    float3 param_2 = normal_vs;
-    int param_3 = index;
-    float param_4 = bias_multiplier;
-    return do_calculate_percent_lit_cube(spvDescriptorSet0, param, param_1, param_2, param_3, param_4, in_position_ws, in_position_vs, in_normal_vs, smp_depth);
+    return 1.0 - smoothstep(light_range * 0.75, light_range, _distance);
 }
 
 static inline __attribute__((always_inline))
@@ -300,8 +241,7 @@ float3 shade_pbr(
     float3 param = normal_vs;
     float3 param_1 = halfway_dir_vs;
     float param_2 = roughness_ndf_filtered_squared;
-    float _565 = ndf_ggx(param, param_1, param_2);
-    float NDF = _565;
+    float NDF = ndf_ggx(param, param_1, param_2);
     float3 param_3 = normal_vs;
     float3 param_4 = surface_to_eye_dir_vs;
     float3 param_5 = surface_to_light_dir_vs;
@@ -338,7 +278,7 @@ float3 point_light_pbr(
     float3 surface_to_light_dir_vs = light.position_vs - surface_position_vs;
     float _distance = length(surface_to_light_dir_vs);
     surface_to_light_dir_vs /= float3(_distance);
-    float attenuation = 1.0 / (_distance * _distance);
+    float attenuation = 1.0 / (0.001000000047497451305389404296875 + (_distance * _distance));
     float3 radiance = (light.color.xyz * attenuation) * light.intensity;
     float3 param = surface_to_light_dir_vs;
     float3 param_1 = surface_to_eye_dir_vs;
@@ -346,9 +286,125 @@ float3 point_light_pbr(
     float3 param_3 = F0;
     float3 param_4 = base_color;
     float param_5 = roughness;
-    float param_6 = metalness;
-    float3 param_7 = radiance;
-    return shade_pbr(param, param_1, param_2, param_3, param_4, param_5, roughness_ndf_filtered_squared, param_6, param_7);
+    float param_6 = roughness_ndf_filtered_squared;
+    float param_7 = metalness;
+    float3 param_8 = radiance;
+    return shade_pbr(param, param_1, param_2, param_3, param_4, param_5, param_6, param_7, param_8);
+}
+
+static inline __attribute__((always_inline))
+float calculate_cubemap_equivalent_depth(thread const float3& light_to_surface_ws, thread const float& near, thread const float& far)
+{
+    float3 light_to_surface_ws_abs = abs(light_to_surface_ws);
+    float face_local_z_depth = fast::max(light_to_surface_ws_abs.x, fast::max(light_to_surface_ws_abs.y, light_to_surface_ws_abs.z));
+    float depth_value = ((far + near) / (far - near)) - ((((2.0 * far) * near) / (far - near)) / face_local_z_depth);
+    return (depth_value + 1.0) * 0.5;
+}
+
+static inline __attribute__((always_inline))
+float do_calculate_percent_lit_cube(
+    constant spvDescriptorSetBuffer0& spvDescriptorSet0,
+    thread const float3& light_position_ws,
+    thread const float3& light_position_vs,
+    thread const float3& normal_vs,
+    thread const int& index,
+    thread const float& bias_multiplier,
+    thread float4& in_position_ws,
+    thread float3& in_position_vs,
+    thread float3& in_normal_vs,
+    thread sampler smp_depth
+)
+{
+    float near_plane = spvDescriptorSet0.per_view_data->shadow_map_cube_data[index].cube_map_projection_near_z;
+    float far_plane = spvDescriptorSet0.per_view_data->shadow_map_cube_data[index].cube_map_projection_far_z;
+    float3 light_to_surface_ws = in_position_ws.xyz - light_position_ws;
+    float3 surface_to_light_dir_vs = normalize(light_position_vs - in_position_vs);
+    float bias_angle_factor = 1.0 - fast::max(0.0, dot(in_normal_vs, surface_to_light_dir_vs));
+    bias_angle_factor = pow(bias_angle_factor, 3.0);
+    float bias0 = 0.000600000028498470783233642578125 + (0.006000000052154064178466796875 * bias_angle_factor);
+    float3 param = light_to_surface_ws;
+    float param_1 = near_plane;
+    float param_2 = far_plane;
+    float depth_of_surface = calculate_cubemap_equivalent_depth(param, param_1, param_2);
+    float4 _338 = float4(light_to_surface_ws, depth_of_surface + bias0);
+    float shadow = spvDescriptorSet0.shadow_map_images_cube[index].sample_compare(smp_depth, _338.xyz, _338.w);
+    return shadow;
+}
+
+static inline __attribute__((always_inline))
+float calculate_percent_lit_cube(
+    constant spvDescriptorSetBuffer0& spvDescriptorSet0,
+    thread const float3& light_position_ws,
+    thread const float3& light_position_vs,
+    thread const float3& normal_vs,
+    thread const int& index,
+    thread const float& bias_multiplier,
+    thread float4& in_position_ws,
+    thread float3& in_position_vs,
+    thread float3& in_normal_vs,
+    thread sampler smp_depth
+)
+{
+    if (index == (-1))
+    {
+        return 1.0;
+    }
+    float3 param = light_position_ws;
+    float3 param_1 = light_position_vs;
+    float3 param_2 = normal_vs;
+    int param_3 = index;
+    float param_4 = bias_multiplier;
+    return do_calculate_percent_lit_cube(spvDescriptorSet0, param, param_1, param_2, param_3, param_4, in_position_ws, in_position_vs, in_normal_vs, smp_depth);
+}
+
+static inline __attribute__((always_inline))
+float spotlight_cone_falloff(thread const float3& surface_to_light_dir, thread const float3& spotlight_dir, thread const float& spotlight_half_angle)
+{
+    float cos_angle = dot(-spotlight_dir, surface_to_light_dir);
+    float min_cos = cos(spotlight_half_angle);
+    float max_cos = mix(min_cos, 1.0, 0.5);
+    return smoothstep(min_cos, max_cos, cos_angle);
+}
+
+static inline __attribute__((always_inline))
+float3 spot_light_pbr(
+    thread const SpotLight& light,
+    thread const float3& surface_to_eye_dir_vs,
+    thread const float3& surface_position_vs,
+    thread const float3& normal_vs,
+    thread const float3& F0,
+    thread const float3& base_color,
+    thread const float& roughness,
+    thread const float& roughness_ndf_filtered_squared,
+    thread const float& metalness
+)
+{
+    float3 surface_to_light_dir_vs = light.position_vs - surface_position_vs;
+    float _distance = length(surface_to_light_dir_vs);
+    surface_to_light_dir_vs /= float3(_distance);
+    float attenuation = 1.0 / (0.001000000047497451305389404296875 + (_distance * _distance));
+    float3 param = surface_to_light_dir_vs;
+    float3 param_1 = light.direction_vs;
+    float param_2 = light.spotlight_half_angle;
+    float spotlight_direction_intensity = spotlight_cone_falloff(param, param_1, param_2);
+    float radiance = (attenuation * light.intensity) * spotlight_direction_intensity;
+    if (radiance > 0.0)
+    {
+        float3 param_3 = surface_to_light_dir_vs;
+        float3 param_4 = surface_to_eye_dir_vs;
+        float3 param_5 = normal_vs;
+        float3 param_6 = F0;
+        float3 param_7 = base_color;
+        float param_8 = roughness;
+        float param_9 = roughness_ndf_filtered_squared;
+        float param_10 = metalness;
+        float3 param_11 = light.color.xyz * radiance;
+        return shade_pbr(param_3, param_4, param_5, param_6, param_7, param_8, param_9, param_10, param_11);
+    }
+    else
+    {
+        return float3(0.0);
+    }
 }
 
 static inline __attribute__((always_inline))
@@ -371,20 +427,14 @@ float do_calculate_percent_lit(
     float3 surface_to_light_dir_vs = -light_dir_vs;
     float bias_angle_factor = 1.0 - dot(normal_vs, surface_to_light_dir_vs);
     float bias0 = fast::max(((0.00999999977648258209228515625 * bias_angle_factor) * bias_angle_factor) * bias_angle_factor, 0.0005000000237487256526947021484375) * bias_multiplier;
-
-    // PCF 1
-    //float3 _417 = float3(sample_location_uv, depth_of_surface + bias0);
-    //float shadow = spvDescriptorSet0.shadow_map_images[index].sample_compare(smp_depth, _417.xy, _417.z);
-
-    // PCF 9
     float shadow = 0.0;
     float2 texelSize = float2(1.0) / float2(int2(spvDescriptorSet0.shadow_map_images[index].get_width(), spvDescriptorSet0.shadow_map_images[index].get_height()));
     for (int x = -1; x <= 1; x++)
     {
         for (int y = -1; y <= 1; y++)
         {
-            float3 _452 = float3(sample_location_uv + (float2(float(x), float(y)) * texelSize), depth_of_surface + bias0);
-            shadow += spvDescriptorSet0.shadow_map_images[index].sample_compare(smp_depth, _452.xy, _452.z);
+            float3 _475 = float3(sample_location_uv + (float2(float(x), float(y)) * texelSize), depth_of_surface + bias0);
+            shadow += spvDescriptorSet0.shadow_map_images[index].sample_compare(smp_depth, _475.xy, _475.z);
         }
     }
     shadow /= 9.0;
@@ -413,48 +463,6 @@ float calculate_percent_lit(
 }
 
 static inline __attribute__((always_inline))
-float spotlight_cone_falloff(thread const float3& surface_to_light_dir, thread const float3& spotlight_dir, thread const float& spotlight_half_angle)
-{
-    float cos_angle = dot(-spotlight_dir, surface_to_light_dir);
-    float min_cos = cos(spotlight_half_angle);
-    float max_cos = mix(min_cos, 1.0, 0.5);
-    return smoothstep(min_cos, max_cos, cos_angle);
-}
-
-static inline __attribute__((always_inline))
-float3 spot_light_pbr(
-    thread const SpotLight& light,
-    thread const float3& surface_to_eye_dir_vs,
-    thread const float3& surface_position_vs,
-    thread const float3& normal_vs,
-    thread const float3& F0,
-    thread const float3& base_color,
-    thread const float& roughness,
-    thread const float& roughness_ndf_filtered_squared,
-    thread const float& metalness
-)
-{
-    float3 surface_to_light_dir_vs = light.position_vs - surface_position_vs;
-    float _distance = length(surface_to_light_dir_vs);
-    surface_to_light_dir_vs /= float3(_distance);
-    float attenuation = 1.0 / (_distance * _distance);
-    float3 param = surface_to_light_dir_vs;
-    float3 param_1 = light.direction_vs;
-    float param_2 = light.spotlight_half_angle;
-    float spotlight_direction_intensity = spotlight_cone_falloff(param, param_1, param_2);
-    float3 radiance = ((light.color.xyz * attenuation) * light.intensity) * spotlight_direction_intensity;
-    float3 param_3 = surface_to_light_dir_vs;
-    float3 param_4 = surface_to_eye_dir_vs;
-    float3 param_5 = normal_vs;
-    float3 param_6 = F0;
-    float3 param_7 = base_color;
-    float param_8 = roughness;
-    float param_9 = metalness;
-    float3 param_10 = radiance;
-    return shade_pbr(param_3, param_4, param_5, param_6, param_7, param_8, roughness_ndf_filtered_squared, param_9, param_10);
-}
-
-static inline __attribute__((always_inline))
 float3 directional_light_pbr(
     thread const DirectionalLight& light,
     thread const float3& surface_to_eye_dir_vs,
@@ -468,17 +476,17 @@ float3 directional_light_pbr(
 )
 {
     float3 surface_to_light_dir_vs = -light.direction_vs;
-    float attenuation = 1.0;
-    float3 radiance = (light.color.xyz * attenuation) * light.intensity;
+    float3 radiance = light.color.xyz * light.intensity;
     float3 param = surface_to_light_dir_vs;
     float3 param_1 = surface_to_eye_dir_vs;
     float3 param_2 = normal_vs;
     float3 param_3 = F0;
     float3 param_4 = base_color;
     float param_5 = roughness;
-    float param_6 = metalness;
-    float3 param_7 = radiance;
-    return shade_pbr(param, param_1, param_2, param_3, param_4, param_5, roughness_ndf_filtered_squared, param_6, param_7);
+    float param_6 = roughness_ndf_filtered_squared;
+    float param_7 = metalness;
+    float3 param_8 = radiance;
+    return shade_pbr(param, param_1, param_2, param_3, param_4, param_5, param_6, param_7, param_8);
 }
 
 static inline __attribute__((always_inline))
@@ -499,77 +507,113 @@ float4 pbr_path(
 {
     float3 fresnel_base = float3(0.039999999105930328369140625);
     fresnel_base = mix(fresnel_base, base_color.xyz, float3(metalness));
-    float roughness_ndf_filtered_squared = DeferredLightingNDFRoughnessFilter(normal_vs, roughness * roughness);
+    float3 param = normal_vs;
+    float param_1 = roughness * roughness;
+    float roughness_ndf_filtered_squared = DeferredLightingNDFRoughnessFilter(param, param_1);
     float3 total_light = float3(0.0);
-    PointLight param_5;
+    PointLight param_4;
     for (uint i = 0u; i < spvDescriptorSet0.per_view_data->point_light_count; i++)
     {
-        float3 param = float3(spvDescriptorSet0.per_view_data->point_lights[i].position_ws);
-        float3 param_1 = float3(spvDescriptorSet0.per_view_data->point_lights[i].position_vs);
-        float3 param_2 = normal_vs;
-        int param_3 = spvDescriptorSet0.per_view_data->point_lights[i].shadow_map;
-        float param_4 = 1.0;
-        float percent_lit = calculate_percent_lit_cube(spvDescriptorSet0, param, param_1, param_2, param_3, param_4, in_position_ws, in_position_vs, in_normal_vs, smp_depth);
-        param_5.position_ws = float3(spvDescriptorSet0.per_view_data->point_lights[i].position_ws);
-        param_5.range = spvDescriptorSet0.per_view_data->point_lights[i].range;
-        param_5.position_vs = float3(spvDescriptorSet0.per_view_data->point_lights[i].position_vs);
-        param_5.intensity = spvDescriptorSet0.per_view_data->point_lights[i].intensity;
-        param_5.color = spvDescriptorSet0.per_view_data->point_lights[i].color;
-        param_5.shadow_map = spvDescriptorSet0.per_view_data->point_lights[i].shadow_map;
-        float3 param_6 = surface_to_eye_vs;
-        float3 param_7 = in_position_vs;
-        float3 param_8 = normal_vs;
-        float3 param_9 = fresnel_base;
-        float3 param_10 = base_color.xyz;
-        float param_11 = roughness;
-        float param_12 = metalness;
-        total_light += (point_light_pbr(param_5, param_6, param_7, param_8, param_9, param_10, param_11, roughness_ndf_filtered_squared, param_12) * percent_lit);
+        float light_surface_distance = distance(float3(spvDescriptorSet0.per_view_data->point_lights[i].position_ws), in_position_ws.xyz);
+        float range = spvDescriptorSet0.per_view_data->point_lights[i].range;
+        if (light_surface_distance <= range)
+        {
+            float param_2 = range;
+            float param_3 = light_surface_distance;
+            float soft_falloff_factor = attenuate_light_for_range(param_2, param_3);
+            param_4.position_ws = float3(spvDescriptorSet0.per_view_data->point_lights[i].position_ws);
+            param_4.range = spvDescriptorSet0.per_view_data->point_lights[i].range;
+            param_4.position_vs = float3(spvDescriptorSet0.per_view_data->point_lights[i].position_vs);
+            param_4.intensity = spvDescriptorSet0.per_view_data->point_lights[i].intensity;
+            param_4.color = spvDescriptorSet0.per_view_data->point_lights[i].color;
+            param_4.shadow_map = spvDescriptorSet0.per_view_data->point_lights[i].shadow_map;
+            float3 param_5 = surface_to_eye_vs;
+            float3 param_6 = in_position_vs;
+            float3 param_7 = normal_vs;
+            float3 param_8 = fresnel_base;
+            float3 param_9 = base_color.xyz;
+            float param_10 = roughness;
+            float param_11 = roughness_ndf_filtered_squared;
+            float param_12 = metalness;
+            float3 pbr = point_light_pbr(param_4, param_5, param_6, param_7, param_8, param_9, param_10, param_11, param_12) * soft_falloff_factor;
+            float percent_lit = 0.0;
+            if (any(pbr > float3(0.0)))
+            {
+                float3 param_13 = float3(spvDescriptorSet0.per_view_data->point_lights[i].position_ws);
+                float3 param_14 = float3(spvDescriptorSet0.per_view_data->point_lights[i].position_vs);
+                float3 param_15 = normal_vs;
+                int param_16 = spvDescriptorSet0.per_view_data->point_lights[i].shadow_map;
+                float param_17 = 1.0;
+                percent_lit = calculate_percent_lit_cube(spvDescriptorSet0, param_13, param_14, param_15, param_16, param_17, in_position_ws, in_position_vs, in_normal_vs, smp_depth);
+            }
+            total_light += (pbr * percent_lit);
+        }
     }
-    SpotLight param_16;
+    SpotLight param_20;
     for (uint i_1 = 0u; i_1 < spvDescriptorSet0.per_view_data->spot_light_count; i_1++)
     {
-        float3 param_13 = normal_vs;
-        int param_14 = spvDescriptorSet0.per_view_data->spot_lights[i_1].shadow_map;
-        float param_15 = 0.4000000059604644775390625;
-        float percent_lit_1 = calculate_percent_lit(spvDescriptorSet0, param_13, param_14, param_15, in_position_ws, smp_depth, in_model_view);
-        param_16.position_ws = float3(spvDescriptorSet0.per_view_data->spot_lights[i_1].position_ws);
-        param_16.spotlight_half_angle = spvDescriptorSet0.per_view_data->spot_lights[i_1].spotlight_half_angle;
-        param_16.direction_ws = float3(spvDescriptorSet0.per_view_data->spot_lights[i_1].direction_ws);
-        param_16.range = spvDescriptorSet0.per_view_data->spot_lights[i_1].range;
-        param_16.position_vs = float3(spvDescriptorSet0.per_view_data->spot_lights[i_1].position_vs);
-        param_16.intensity = spvDescriptorSet0.per_view_data->spot_lights[i_1].intensity;
-        param_16.color = spvDescriptorSet0.per_view_data->spot_lights[i_1].color;
-        param_16.direction_vs = float3(spvDescriptorSet0.per_view_data->spot_lights[i_1].direction_vs);
-        param_16.shadow_map = spvDescriptorSet0.per_view_data->spot_lights[i_1].shadow_map;
-        float3 param_17 = surface_to_eye_vs;
-        float3 param_18 = in_position_vs;
-        float3 param_19 = normal_vs;
-        float3 param_20 = fresnel_base;
-        float3 param_21 = base_color.xyz;
-        float param_22 = roughness;
-        float param_23 = metalness;
-        total_light += (spot_light_pbr(param_16, param_17, param_18, param_19, param_20, param_21, param_22, roughness_ndf_filtered_squared, param_23) * percent_lit_1);
+        float light_surface_distance_1 = distance(float3(spvDescriptorSet0.per_view_data->spot_lights[i_1].position_ws), in_position_ws.xyz);
+        float range_1 = spvDescriptorSet0.per_view_data->spot_lights[i_1].range;
+        if (light_surface_distance_1 <= range_1)
+        {
+            float param_18 = range_1;
+            float param_19 = light_surface_distance_1;
+            float soft_falloff_factor_1 = attenuate_light_for_range(param_18, param_19);
+            param_20.position_ws = float3(spvDescriptorSet0.per_view_data->spot_lights[i_1].position_ws);
+            param_20.spotlight_half_angle = spvDescriptorSet0.per_view_data->spot_lights[i_1].spotlight_half_angle;
+            param_20.direction_ws = float3(spvDescriptorSet0.per_view_data->spot_lights[i_1].direction_ws);
+            param_20.range = spvDescriptorSet0.per_view_data->spot_lights[i_1].range;
+            param_20.position_vs = float3(spvDescriptorSet0.per_view_data->spot_lights[i_1].position_vs);
+            param_20.intensity = spvDescriptorSet0.per_view_data->spot_lights[i_1].intensity;
+            param_20.color = spvDescriptorSet0.per_view_data->spot_lights[i_1].color;
+            param_20.direction_vs = float3(spvDescriptorSet0.per_view_data->spot_lights[i_1].direction_vs);
+            param_20.shadow_map = spvDescriptorSet0.per_view_data->spot_lights[i_1].shadow_map;
+            float3 param_21 = surface_to_eye_vs;
+            float3 param_22 = in_position_vs;
+            float3 param_23 = normal_vs;
+            float3 param_24 = fresnel_base;
+            float3 param_25 = base_color.xyz;
+            float param_26 = roughness;
+            float param_27 = roughness_ndf_filtered_squared;
+            float param_28 = metalness;
+            float3 pbr_1 = spot_light_pbr(param_20, param_21, param_22, param_23, param_24, param_25, param_26, param_27, param_28) * soft_falloff_factor_1;
+            float percent_lit_1 = 0.0;
+            if (any(pbr_1 > float3(0.0)))
+            {
+                float3 param_29 = normal_vs;
+                int param_30 = spvDescriptorSet0.per_view_data->spot_lights[i_1].shadow_map;
+                float param_31 = 1.0;
+                percent_lit_1 = calculate_percent_lit(spvDescriptorSet0, param_29, param_30, param_31, in_position_ws, smp_depth, in_model_view);
+            }
+            total_light += (pbr_1 * percent_lit_1);
+        }
     }
-    DirectionalLight param_27;
+    DirectionalLight param_32;
     for (uint i_2 = 0u; i_2 < spvDescriptorSet0.per_view_data->directional_light_count; i_2++)
     {
-        float3 param_24 = normal_vs;
-        int param_25 = spvDescriptorSet0.per_view_data->directional_lights[i_2].shadow_map;
-        float param_26 = 1.0;
-        float percent_lit_2 = calculate_percent_lit(spvDescriptorSet0, param_24, param_25, param_26, in_position_ws, smp_depth, in_model_view);
-        param_27.direction_ws = float3(spvDescriptorSet0.per_view_data->directional_lights[i_2].direction_ws);
-        param_27.intensity = spvDescriptorSet0.per_view_data->directional_lights[i_2].intensity;
-        param_27.color = spvDescriptorSet0.per_view_data->directional_lights[i_2].color;
-        param_27.direction_vs = float3(spvDescriptorSet0.per_view_data->directional_lights[i_2].direction_vs);
-        param_27.shadow_map = spvDescriptorSet0.per_view_data->directional_lights[i_2].shadow_map;
-        float3 param_28 = surface_to_eye_vs;
-        float3 param_29 = in_position_vs;
-        float3 param_30 = normal_vs;
-        float3 param_31 = fresnel_base;
-        float3 param_32 = base_color.xyz;
-        float param_33 = roughness;
-        float param_34 = metalness;
-        total_light += (directional_light_pbr(param_27, param_28, param_29, param_30, param_31, param_32, param_33, roughness_ndf_filtered_squared, param_34) * percent_lit_2);
+        param_32.direction_ws = float3(spvDescriptorSet0.per_view_data->directional_lights[i_2].direction_ws);
+        param_32.intensity = spvDescriptorSet0.per_view_data->directional_lights[i_2].intensity;
+        param_32.color = spvDescriptorSet0.per_view_data->directional_lights[i_2].color;
+        param_32.direction_vs = float3(spvDescriptorSet0.per_view_data->directional_lights[i_2].direction_vs);
+        param_32.shadow_map = spvDescriptorSet0.per_view_data->directional_lights[i_2].shadow_map;
+        float3 param_33 = surface_to_eye_vs;
+        float3 param_34 = in_position_vs;
+        float3 param_35 = normal_vs;
+        float3 param_36 = fresnel_base;
+        float3 param_37 = base_color.xyz;
+        float param_38 = roughness;
+        float param_39 = roughness_ndf_filtered_squared;
+        float param_40 = metalness;
+        float3 pbr_2 = directional_light_pbr(param_32, param_33, param_34, param_35, param_36, param_37, param_38, param_39, param_40);
+        float percent_lit_2 = 0.0;
+        if (any(pbr_2 > float3(0.0)))
+        {
+            float3 param_41 = normal_vs;
+            int param_42 = spvDescriptorSet0.per_view_data->directional_lights[i_2].shadow_map;
+            float param_43 = 1.0;
+            percent_lit_2 = calculate_percent_lit(spvDescriptorSet0, param_41, param_42, param_43, in_position_ws, smp_depth, in_model_view);
+        }
+        total_light += (pbr_2 * percent_lit_2);
     }
     float3 ambient = spvDescriptorSet0.per_view_data->ambient_light.xyz * base_color.xyz;
     float3 color = (ambient + total_light) + emissive_color.xyz;
@@ -614,7 +658,8 @@ float4 pbr_main(
         metalness *= sampled.z;
         roughness *= sampled.y;
     }
-    roughness = (roughness + 0.0) / 1.0;
+    metalness = fast::clamp(metalness, 0.0, 1.0);
+    roughness = fast::clamp(roughness, 0.0, 1.0);
     float3 normal_vs;
     if (per_material_data.data.has_normal_texture != 0u)
     {

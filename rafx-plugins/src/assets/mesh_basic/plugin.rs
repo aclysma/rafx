@@ -7,7 +7,6 @@ use rafx::renderer::RendererAssetPlugin;
 pub struct MeshBasicAssetTypeRendererPlugin;
 
 impl RendererAssetPlugin for MeshBasicAssetTypeRendererPlugin {
-    //
     fn configure_asset_daemon(
         &self,
         asset_daemon: AssetDaemon,

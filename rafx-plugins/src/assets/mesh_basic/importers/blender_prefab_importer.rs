@@ -57,6 +57,7 @@ pub struct MeshBasicPrefabJsonFormatObjectLight {
     color: [f32; 3],
     kind: MeshBasicPrefabJsonFormatObjectLightKind,
     intensity: f32,
+    cutoff_distance: f32,
     spot: Option<MeshBasicPrefabJsonFormatObjectLightSpot>,
 }
 
@@ -132,10 +133,16 @@ impl Importer for MeshBasicBlenderPrefabImporter {
                         outer_angle: x.outer_angle,
                     });
 
+                let range = if light.cutoff_distance < 0.0 {
+                    None
+                } else {
+                    Some(light.cutoff_distance)
+                };
                 Some(PrefabBasicAssetDataObjectLight {
                     color: light.color.into(),
                     kind: light.kind.into(),
                     intensity: light.intensity,
+                    range,
                     spot,
                 })
             } else {

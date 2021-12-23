@@ -183,7 +183,7 @@ fn calculate_shadow_map_views(
         let view = glam::Mat4::look_at_rh(eye_position, light_to, glam::Vec3::new(0.0, 0.0, 1.0));
 
         let near_plane = 0.25;
-        let far_plane = 100.0;
+        let far_plane = light.range();
 
         let view_frustum: ViewFrustumArc = light.view_frustum.clone();
         let projection = Projection::Perspective(PerspectiveParameters::new(
@@ -229,7 +229,7 @@ fn calculate_shadow_map_views(
         );
 
         let near_plane = 0.25;
-        let far_plane = 100.0;
+        let far_plane = 1000.0;
         let ortho_projection_size = 10.0;
         let view_frustum: ViewFrustumArc = light.view_frustum.clone();
         let projection = Projection::Orthographic(OrthographicParameters::new(
@@ -293,7 +293,7 @@ fn calculate_shadow_map_views(
             cube_map_view_directions: &(glam::Vec3, glam::Vec3),
         ) -> RenderView {
             let near = 0.25;
-            let far = light.range;
+            let far = light.range();
 
             let view_frustum: ViewFrustumArc = light.view_frustums[face_idx].clone();
             let projection = Projection::Perspective(PerspectiveParameters::new(
