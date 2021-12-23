@@ -8,9 +8,7 @@ use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::components::{
-    MeshComponent, PointLightComponent, TransformComponent, VisibilityComponent,
-};
+use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
 use rand::{thread_rng, Rng};
 
 const NUM_CUBES: usize = 10000;
@@ -53,32 +51,15 @@ impl ManyCubesScene {
             spawnable_mesh.spawn(resources, world, transform_component);
         }
 
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-
-        //
-        // POINT LIGHT
-        //
-        let view_frustums = [
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-        ];
-
         super::util::add_point_light(
             resources,
             world,
-            glam::Vec3::new(-4., -4., 10.),
-            PointLightComponent {
-                color: [1.0, 1.0, 1.0, 1.0].into(),
-                intensity: 200.0,
-                range: 20.0,
-                view_frustums,
-            },
+            [-4., -4., 10.].into(),
+            [1.0, 1.0, 1.0, 1.0].into(),
+            200.0,
         );
 
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
         let main_view_frustum = visibility_region.register_view_frustum();
 
         ManyCubesScene { main_view_frustum }

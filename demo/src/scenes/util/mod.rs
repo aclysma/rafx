@@ -41,6 +41,7 @@ use rafx_plugins::features::mesh_adv::{
 
 mod fly_camera;
 pub use fly_camera::*;
+use rafx::visibility::VisibilityRegion;
 
 mod spawnable_mesh;
 pub use spawnable_mesh::*;
@@ -79,7 +80,7 @@ pub(super) fn add_light_debug_draw(
     let mut query = <(Read<TransformComponent>, Read<PointLightComponent>)>::query();
     for (transform, light) in query.iter(world) {
         debug_draw.add_sphere(transform.translation, 0.1, light.color, 12);
-        debug_draw.add_sphere(transform.translation, light.range, light.color, 12);
+        debug_draw.add_sphere(transform.translation, light.range(), light.color, 12);
     }
 
     let mut query = <(Read<TransformComponent>, Read<SpotLightComponent>)>::query();
@@ -90,8 +91,8 @@ pub(super) fn add_light_debug_draw(
 
         debug_draw.add_cone(
             light_from,
-            light_from + (light.range * light_direction),
-            light.range * light.spotlight_half_angle.tan(),
+            light_from + (light.range() * light_direction),
+            light.range() * light.spotlight_half_angle.tan(),
             light.color,
             10,
         );
@@ -99,36 +100,81 @@ pub(super) fn add_light_debug_draw(
 }
 
 pub(super) fn add_directional_light(
-    _resources: &Resources,
+    resources: &Resources,
     world: &mut World,
-    light_component: DirectionalLightComponent,
+    direction: glam::Vec3,
+    color: glam::Vec4,
+    intensity: f32,
 ) {
+    let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+    let view_frustum = visibility_region.register_view_frustum();
+
+    let light_component = DirectionalLightComponent {
+        direction,
+        color,
+        intensity,
+        view_frustum,
+    };
+
     world.extend(vec![(light_component,)]);
 }
 
 pub(super) fn add_spot_light(
-    _resources: &Resources,
+    resources: &Resources,
     world: &mut World,
     position: glam::Vec3,
-    light_component: SpotLightComponent,
+    direction: glam::Vec3,
+    spotlight_half_angle: f32,
+    color: glam::Vec4,
+    intensity: f32,
 ) {
+    let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+    let view_frustum = visibility_region.register_view_frustum();
+
     let position_component = TransformComponent {
         translation: position,
         ..Default::default()
+    };
+
+    let light_component = SpotLightComponent {
+        direction,
+        spotlight_half_angle,
+        range: None,
+        color,
+        intensity,
+        view_frustum,
     };
 
     world.extend(vec![(position_component, light_component)]);
 }
 
 pub(super) fn add_point_light(
-    _resources: &Resources,
+    resources: &Resources,
     world: &mut World,
     position: glam::Vec3,
-    light_component: PointLightComponent,
+    color: glam::Vec4,
+    intensity: f32,
 ) {
+    let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+    let view_frustums = [
+        visibility_region.register_view_frustum(),
+        visibility_region.register_view_frustum(),
+        visibility_region.register_view_frustum(),
+        visibility_region.register_view_frustum(),
+        visibility_region.register_view_frustum(),
+        visibility_region.register_view_frustum(),
+    ];
+
     let position_component = TransformComponent {
         translation: position,
         ..Default::default()
+    };
+
+    let light_component = PointLightComponent {
+        color,
+        intensity,
+        range: None,
+        view_frustums,
     };
 
     world.extend(vec![(position_component, light_component)]);

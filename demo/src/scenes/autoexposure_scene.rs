@@ -25,8 +25,6 @@ impl AutoexposureScene {
         super::util::setup_skybox(resources, "textures/skybox.basis");
         super::util::set_ambient_light(resources, glam::Vec3::new(0.005, 0.005, 0.005));
 
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-
         let floor_mesh =
             SpawnableMesh::blocking_load_from_path(resources, "blender/cement_floor.glb");
         let container_1 =
@@ -78,27 +76,15 @@ impl AutoexposureScene {
         //
         // POINT LIGHT
         //
-        let view_frustums = [
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-        ];
         super::util::add_point_light(
             resources,
             world,
-            //glam::Vec3::new(-3.0, 3.0, 2.0),
-            glam::Vec3::new(5.0, 5.0, 2.0),
-            PointLightComponent {
-                color: [1.0, 1.0, 1.0, 1.0].into(),
-                intensity: 50.0,
-                range: 25.0,
-                view_frustums,
-            },
+            [5.0, 5.0, 2.0].into(),
+            [1.0, 1.0, 1.0, 1.0].into(),
+            50.0,
         );
 
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
         let main_view_frustum = visibility_region.register_view_frustum();
 
         AutoexposureScene { main_view_frustum }

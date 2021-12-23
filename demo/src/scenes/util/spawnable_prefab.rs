@@ -4,10 +4,7 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::rafx_visibility::VisibleBounds;
 use rafx::visibility::{CullModel, ObjectId, VisibilityRegion};
-use rafx_plugins::components::{
-    DirectionalLightComponent, MeshComponent, PointLightComponent, SpotLightComponent,
-    TransformComponent, VisibilityComponent,
-};
+use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
 
 #[cfg(feature = "basic-pipeline")]
 use rafx_plugins::assets::mesh_basic::prefab_asset::PrefabBasicAssetDataObjectLightKind as PrefabAssetDataObjectLightKind;
@@ -156,61 +153,39 @@ impl SpawnablePrefab {
                 match light.kind {
                     PrefabAssetDataObjectLightKind::Point => {
                         if point_light_count < 15 {
-                            let view_frustums = [
-                                visibility_region.register_view_frustum(),
-                                visibility_region.register_view_frustum(),
-                                visibility_region.register_view_frustum(),
-                                visibility_region.register_view_frustum(),
-                                visibility_region.register_view_frustum(),
-                                visibility_region.register_view_frustum(),
-                            ];
                             super::add_point_light(
                                 resources,
                                 world,
-                                //glam::Vec3::new(-3.0, 3.0, 2.0),
                                 object.transform.position,
-                                PointLightComponent {
-                                    color: light.color.extend(1.0),
-                                    intensity: light.intensity * 0.15,
-                                    range: 25.0,
-                                    view_frustums,
-                                },
+                                light.color.extend(1.0),
+                                light.intensity * 0.15,
                             );
                             point_light_count += 1;
                         }
                     }
                     PrefabAssetDataObjectLightKind::Spot => {
                         if spot_light_count < 15 {
-                            let view_frustum = visibility_region.register_view_frustum();
                             super::add_spot_light(
                                 resources,
                                 world,
                                 //glam::Vec3::new(-3.0, 3.0, 2.0),
                                 object.transform.position,
-                                SpotLightComponent {
-                                    color: light.color.extend(1.0),
-                                    intensity: light.intensity * 0.15,
-                                    range: 25.0,
-                                    view_frustum,
-                                    spotlight_half_angle: light.spot.as_ref().unwrap().outer_angle,
-                                    direction: object.transform.rotation * -glam::Vec3::Z,
-                                },
+                                object.transform.rotation * -glam::Vec3::Z,
+                                light.spot.as_ref().unwrap().outer_angle,
+                                light.color.extend(1.0),
+                                light.intensity * 0.15,
                             );
                             spot_light_count += 1;
                         }
                     }
                     PrefabAssetDataObjectLightKind::Directional => {
                         if directional_light_count < 15 {
-                            let view_frustum = visibility_region.register_view_frustum();
                             super::add_directional_light(
                                 resources,
                                 world,
-                                DirectionalLightComponent {
-                                    color: light.color.extend(1.0),
-                                    intensity: light.intensity * 0.15,
-                                    view_frustum,
-                                    direction: object.transform.rotation * -glam::Vec3::Z,
-                                },
+                                object.transform.rotation * -glam::Vec3::Z,
+                                light.color.extend(1.0),
+                                light.intensity * 0.15,
                             );
                             directional_light_count += 1;
                         }

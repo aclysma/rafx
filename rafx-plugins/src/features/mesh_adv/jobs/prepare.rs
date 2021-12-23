@@ -455,7 +455,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     .truncate()
                     .into();
                     out.color = light.light.color.into();
-                    out.range = light.light.range;
+                    out.range = light.light.range();
                     out.intensity = light.light.intensity;
                     out.shadow_map = if has_shadows {
                         shadow_map_index.map(|x| x as i32).unwrap_or(-1)
@@ -500,7 +500,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     out.direction_vs = light_direction_vs.into();
                     out.spotlight_half_angle = light.light.spotlight_half_angle;
                     out.color = light.light.color.into();
-                    out.range = light.light.range;
+                    out.range = light.light.range();
                     out.intensity = light.light.intensity;
                     out.shadow_map = if has_shadows {
                         shadow_map_index.map(|x| x as i32).unwrap_or(-1)

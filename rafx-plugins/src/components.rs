@@ -69,12 +69,36 @@ impl TransformComponent {
     }
 }
 
+const LIGHT_MIN_INTENSITY_TO_RENDER: f32 = 0.2;
+
 #[derive(Clone)]
 pub struct PointLightComponent {
     pub color: glam::Vec4,
-    pub range: f32,
+    pub range: Option<f32>,
     pub intensity: f32,
     pub view_frustums: [ViewFrustumArc; 6],
+}
+
+impl PointLightComponent {
+    pub fn range_sq_from_intensity(intensity: f32) -> f32 {
+        intensity / LIGHT_MIN_INTENSITY_TO_RENDER
+    }
+
+    pub fn range(&self) -> f32 {
+        if let Some(range) = self.range {
+            range
+        } else {
+            Self::range_sq_from_intensity(self.intensity).sqrt()
+        }
+    }
+
+    pub fn range_sq(&self) -> f32 {
+        if let Some(range) = self.range {
+            range * range
+        } else {
+            Self::range_sq_from_intensity(self.intensity)
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -90,7 +114,29 @@ pub struct SpotLightComponent {
     pub direction: glam::Vec3,
     pub color: glam::Vec4,
     pub spotlight_half_angle: f32,
-    pub range: f32,
+    pub range: Option<f32>,
     pub intensity: f32,
     pub view_frustum: ViewFrustumArc,
+}
+
+impl SpotLightComponent {
+    pub fn range_sq_from_intensity(intensity: f32) -> f32 {
+        intensity / LIGHT_MIN_INTENSITY_TO_RENDER
+    }
+
+    pub fn range(&self) -> f32 {
+        if let Some(range) = self.range {
+            range
+        } else {
+            Self::range_sq_from_intensity(self.intensity).sqrt()
+        }
+    }
+
+    pub fn range_sq(&self) -> f32 {
+        if let Some(range) = self.range {
+            range * range
+        } else {
+            Self::range_sq_from_intensity(self.intensity)
+        }
+    }
 }

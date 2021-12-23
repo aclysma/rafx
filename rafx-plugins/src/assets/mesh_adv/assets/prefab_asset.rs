@@ -37,6 +37,7 @@ pub struct PrefabAdvAssetDataObjectLight {
     pub color: glam::Vec3,
     pub kind: PrefabAdvAssetDataObjectLightKind,
     pub intensity: f32,
+    pub range: Option<f32>,
     pub spot: Option<PrefabAdvAssetDataObjectLightSpot>,
 }
 

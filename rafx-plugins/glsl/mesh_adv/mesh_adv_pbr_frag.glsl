@@ -202,7 +202,7 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
     // Convert the [0, 1] value to location in texture atlas
     vec2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
     float shadow = texture(
-        sampler2DShadow(shadow_map_atlas, smp_depth),
+        sampler2DShadow(shadow_map_atlas, smp_depth_nearest),
         vec3(
             uv_to_sample,
             depth_of_surface + bias
@@ -242,7 +242,7 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
             // Convert the [0, 1] value to location in texture atlas
             vec2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
             shadow += texture(
-                sampler2DShadow(shadow_map_atlas, smp_depth),
+                sampler2DShadow(shadow_map_atlas, smp_depth_nearest),
                 vec3(
                     uv_to_sample,
                     depth_of_surface + bias
@@ -279,7 +279,7 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
                     // Convert the [0, 1] value to location in texture atlas
                     vec2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
                     shadow += texture(
-                        sampler2DShadow(shadow_map_atlas, smp_depth),
+                        sampler2DShadow(shadow_map_atlas, smp_depth_nearest),
                         vec3(
                             uv_to_sample,
                             depth_of_surface + bias
@@ -319,7 +319,7 @@ float do_calculate_percent_lit_cube(vec3 light_position_ws, vec3 light_position_
                     // Convert the [0, 1] value to location in texture atlas
                     vec2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
                     shadow += texture(
-                        sampler2DShadow(shadow_map_atlas, smp_depth),
+                        sampler2DShadow(shadow_map_atlas, smp_depth_nearest),
                         vec3(
                             uv_to_sample,
                             depth_of_surface + bias
@@ -383,7 +383,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     float percent_lit = 1.0;
     if (all(greaterThanEqual(vec4(sample_location_uv, -sample_location_uv), uv_min_max_compare))) {
         float distance_from_closest_object_to_light = texture(
-            sampler2D(shadow_map_atlas, smp_depth),
+            sampler2D(shadow_map_atlas, smp_depth_linear),
             sample_location_uv
         ).r;
         float percent_lit = depth_of_surface + bias < distance_from_closest_object_to_light ? 1.0 : 0.0;
@@ -395,7 +395,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     float percent_lit = 1.0;
     if (all(greaterThanEqual(vec4(sample_location_uv, -sample_location_uv), uv_min_max_compare))) {
         percent_lit = texture(
-            sampler2DShadow(shadow_map_atlas, smp_depth),
+            sampler2DShadow(shadow_map_atlas, smp_depth_linear),
             vec3(
                 sample_location_uv,
                 depth_of_surface + bias
@@ -407,7 +407,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     // PCF reasonable sample count
 #ifdef PCF_SAMPLE_9
     float percent_lit = 0.0;
-    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth), 0);
+    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth_linear), 0);
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
@@ -417,7 +417,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
 
             if (all(greaterThanEqual(uv, uv_min_max_compare))) {
                 percent_lit += texture(
-                    sampler2DShadow(shadow_map_atlas, smp_depth),
+                    sampler2DShadow(shadow_map_atlas, smp_depth_linear),
                     vec3(
                         uv.xy,
                         depth_of_surface + bias
@@ -435,7 +435,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     // PCF probably too many samples
 #ifdef PCF_SAMPLE_25
     float percent_lit = 0.0;
-    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth), 0);
+    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth_linear), 0);
     for(int x = -2; x <= 2; ++x)
     {
         for(int y = -2; y <= 2; ++y)
@@ -445,7 +445,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
 
             if (all(greaterThanEqual(uv, uv_min_max_compare))) {
                 percent_lit += texture(
-                    sampler2DShadow(shadow_map_atlas, smp_depth),
+                    sampler2DShadow(shadow_map_atlas, smp_depth_linear),
                     vec3(
                         uv.xy,
                         depth_of_surface + bias
@@ -469,17 +469,6 @@ float calculate_percent_lit(vec3 normal, int index, float bias_multiplier) {
     }
 
     return do_calculate_percent_lit(normal, index, bias_multiplier);
-}
-
-//
-// Basic non-pbr lighting
-//
-float attenuate_light(
-    float light_range,
-    float distance
-) {
-    // Full lighting until 75% away, then step down to no lighting
-    return 1.0 - smoothstep(light_range * .75, light_range, distance);
 }
 
 vec4 diffuse_light(
@@ -550,24 +539,6 @@ vec4 shade_diffuse_specular(
     return diffuse + specular;
 }
 
-vec4 point_light(
-    PointLight light,
-    vec3 surface_to_eye_dir_vs,
-    vec3 surface_position_vs,
-    vec3 normal_vs
-) {
-    // Get the distance to the light and normalize the surface_to_light direction. (Not
-    // using normalize since we want the distance too)
-    vec3 surface_to_light_dir = light.position_vs - surface_position_vs;
-    float distance = length(surface_to_light_dir);
-    surface_to_light_dir = surface_to_light_dir / distance;
-
-    // Figure out the falloff of light intensity due to distance from light source
-    float attenuation = attenuate_light(light.range, distance);
-
-    return shade_diffuse_specular(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color, attenuation * light.intensity);
-}
-
 float spotlight_cone_falloff(
     vec3 surface_to_light_dir,
     vec3 spotlight_dir,
@@ -588,39 +559,6 @@ float spotlight_cone_falloff(
 
     // based on the angle found in cos_angle, calculate the contribution
     return smoothstep(min_cos, max_cos, cos_angle);
-}
-
-vec4 spot_light(
-    SpotLight light,
-    vec3 surface_to_eye_dir_vs,
-    vec3 surface_position_vs,
-    vec3 normal_vs
-) {
-    // Get the distance to the light and normalize the surface_to_light direction. (Not
-    // using normalize since we want the distance too)
-    vec3 surface_to_light_dir = light.position_vs - surface_position_vs;
-    float distance = length(surface_to_light_dir);
-    surface_to_light_dir = surface_to_light_dir / distance;
-
-    // Figure out the falloff of light intensity due to distance from light source
-    float attenuation = attenuate_light(light.range, distance);
-    float spotlight_direction_intensity = spotlight_cone_falloff(
-        surface_to_light_dir,
-        light.direction_vs,
-        light.spotlight_half_angle
-    );
-
-    return shade_diffuse_specular(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color, attenuation * light.intensity * spotlight_direction_intensity);
-}
-
-vec4 directional_light(
-    DirectionalLight light,
-    vec3 surface_to_eye_dir_vs,
-    vec3 surface_position_vs,
-    vec3 normal_vs
-) {
-    vec3 surface_to_light_dir = -light.direction_vs;
-    return shade_diffuse_specular(surface_to_light_dir, surface_to_eye_dir_vs, normal_vs, light.color, light.intensity);
 }
 
 // "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering"
@@ -790,7 +728,7 @@ vec3 point_light_pbr(
     surface_to_light_dir_vs = surface_to_light_dir_vs / distance;
 
     // Figure out the falloff of light intensity due to distance from light source
-    float attenuation = 1.0 / (distance * distance);
+    float attenuation = 1.0 / (0.001 + (distance * distance));
 
     vec3 radiance = light.color.rgb * attenuation * light.intensity;
 
@@ -826,7 +764,7 @@ vec3 spot_light_pbr(
     surface_to_light_dir_vs = surface_to_light_dir_vs / distance;
 
     // Figure out the falloff of light intensity due to distance from light source
-    float attenuation = 1.0 / (distance * distance);
+    float attenuation = 1.0 / (0.001 + (distance * distance));
 
     // Figure out the falloff of light intensity around the projected cone of light
     float spotlight_direction_intensity = spotlight_cone_falloff(
@@ -863,10 +801,7 @@ vec3 directional_light_pbr(
 ) {
     vec3 surface_to_light_dir_vs = -light.direction_vs;
 
-    // directional lights are infinitely far away and have no fall-off
-    float attenuation = 1.0;
-
-    vec3 radiance = light.color.rgb * attenuation * light.intensity;
+    vec3 radiance = light.color.rgb * light.intensity;
 
     return shade_pbr(
         surface_to_light_dir_vs,
@@ -879,6 +814,17 @@ vec3 directional_light_pbr(
         metalness,
         radiance
     );
+}
+
+//
+// Basic non-pbr lighting
+//
+float attenuate_light_for_range(
+    float light_range,
+    float distance
+) {
+    // Full lighting until 75% away, then step down to no lighting
+    return 1.0 - smoothstep(light_range * .75, light_range, distance);
 }
 
 //TODO: Light range is not being considered. Will want a method of tapering it to zero
@@ -898,58 +844,66 @@ vec4 pbr_path(
     // Point Lights
     vec3 total_light = vec3(0.0);
     for (uint i = 0; i < per_view_data.point_light_count; ++i) {
-        // TODO: Early out by distance?
+        float light_surface_distance = distance(per_view_data.point_lights[i].position_ws, in_position_ws.xyz);
+        float range = per_view_data.point_lights[i].range;
+        if (light_surface_distance <= range) {
+            float percent_lit = calculate_percent_lit_cube(
+                per_view_data.point_lights[i].position_ws,
+                per_view_data.point_lights[i].position_vs,
+                normal_vs,
+                per_view_data.point_lights[i].shadow_map,
+                1.0
+            );
 
-
-        float percent_lit = calculate_percent_lit_cube(
-            per_view_data.point_lights[i].position_ws,
-            per_view_data.point_lights[i].position_vs,
-            normal_vs,
-            per_view_data.point_lights[i].shadow_map,
-            1.0
-        );
+            float soft_falloff_factor = attenuate_light_for_range(range, light_surface_distance);
 
 #ifdef DEBUG_RENDER_PERCENT_LIT
-        total_light += percent_lit;
+            total_light += soft_falloff_factor * percent_lit;
 #else
-        total_light += percent_lit * point_light_pbr(
-            per_view_data.point_lights[i],
-            surface_to_eye_vs,
-            in_position_vs,
-            normal_vs,
-            fresnel_base,
-            base_color.rgb,
-            roughness,
-            roughness_ndf_filtered_squared,
-            metalness
-        );
+            total_light += soft_falloff_factor * percent_lit * point_light_pbr(
+                per_view_data.point_lights[i],
+                surface_to_eye_vs,
+                in_position_vs,
+                normal_vs,
+                fresnel_base,
+                base_color.rgb,
+                roughness,
+                roughness_ndf_filtered_squared,
+                metalness
+            );
 #endif
+        }
     }
 
     // Spot Lights
     for (uint i = 0; i < per_view_data.spot_light_count; ++i) {
-        // TODO: Early out by distance?
-        float percent_lit = calculate_percent_lit(
-            normal_vs,
-            per_view_data.spot_lights[i].shadow_map,
-            SPOT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER
-        );
+        float light_surface_distance = distance(per_view_data.spot_lights[i].position_ws, in_position_ws.xyz);
+        float range = per_view_data.spot_lights[i].range;
+        if (light_surface_distance <= range) {
+            float percent_lit = calculate_percent_lit(
+                normal_vs,
+                per_view_data.spot_lights[i].shadow_map,
+                SPOT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER
+            );
+
+            float soft_falloff_factor = attenuate_light_for_range(range, light_surface_distance);
 
 #ifdef DEBUG_RENDER_PERCENT_LIT
-        total_light += percent_lit;
+            total_light += soft_falloff_factor * percent_lit;
 #else
-        total_light += percent_lit * spot_light_pbr(
-            per_view_data.spot_lights[i],
-            surface_to_eye_vs,
-            in_position_vs,
-            normal_vs,
-            fresnel_base,
-            base_color.rgb,
-            roughness,
-            roughness_ndf_filtered_squared,
-            metalness
-        );
+            total_light += soft_falloff_factor * percent_lit * spot_light_pbr(
+                per_view_data.spot_lights[i],
+                surface_to_eye_vs,
+                in_position_vs,
+                normal_vs,
+                fresnel_base,
+                base_color.rgb,
+                roughness,
+                roughness_ndf_filtered_squared,
+                metalness
+            );
 #endif
+        }
     }
 
     // directional Lights

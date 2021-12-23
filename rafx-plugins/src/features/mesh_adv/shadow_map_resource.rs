@@ -540,7 +540,7 @@ impl MeshAdvShadowMapResource {
                     glam::Mat4::look_at_rh(eye_position, light_to, glam::Vec3::new(0.0, 0.0, 1.0));
 
                 let near_plane = 0.25;
-                let far_plane = 100.0;
+                let far_plane = light.range();
                 let projection = Projection::Perspective(PerspectiveParameters::new(
                     light.spotlight_half_angle * 2.0,
                     1.0,
@@ -614,7 +614,7 @@ impl MeshAdvShadowMapResource {
                 );
 
                 let near_plane = 0.25;
-                let far_plane = 100.0;
+                let far_plane = 1000.0;
                 let ortho_projection_size = 10.0;
                 let view_frustum: ViewFrustumArc = light.view_frustum.clone();
                 let projection = Projection::Orthographic(OrthographicParameters::new(
@@ -701,7 +701,7 @@ impl MeshAdvShadowMapResource {
                     let eye_position = transform.translation;
 
                     let near = 0.25;
-                    let far = light.range;
+                    let far = light.range();
 
                     let view_frustum: ViewFrustumArc = light.view_frustums[face_index].clone();
                     let projection = Projection::Perspective(PerspectiveParameters::new(

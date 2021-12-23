@@ -8,7 +8,7 @@ use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
-use rafx_plugins::components::{DirectionalLightComponent, SpotLightComponent};
+use rafx_plugins::components::DirectionalLightComponent;
 use rafx_plugins::components::{PointLightComponent, TransformComponent};
 use rand::{thread_rng, Rng};
 
@@ -25,8 +25,6 @@ impl ShadowsScene {
         *render_options = RenderOptions::default_3d();
         super::util::setup_skybox(resources, "textures/skybox.basis");
         super::util::set_ambient_light(resources, glam::Vec3::new(0.005, 0.005, 0.005));
-
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
         let floor_mesh =
             SpawnableMesh::blocking_load_from_path(resources, "blender/cement_floor.glb");
@@ -80,25 +78,12 @@ impl ShadowsScene {
         //
         // POINT LIGHT
         //
-        let view_frustums = [
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-        ];
         super::util::add_point_light(
             resources,
             world,
-            //glam::Vec3::new(-3.0, 3.0, 2.0),
-            glam::Vec3::new(5.0, 5.0, 2.0),
-            PointLightComponent {
-                color: [0.0, 1.0, 0.0, 1.0].into(),
-                intensity: 75.0,
-                range: 25.0,
-                view_frustums,
-            },
+            [5.0, 5.0, 2.0].into(),
+            [0.0, 1.0, 0.0, 1.0].into(),
+            75.0,
         );
 
         //
@@ -110,12 +95,9 @@ impl ShadowsScene {
         super::util::add_directional_light(
             resources,
             world,
-            DirectionalLightComponent {
-                direction: light_direction,
-                intensity: 1.0,
-                color: [0.0, 0.0, 1.0, 1.0].into(),
-                view_frustum: visibility_region.register_view_frustum(),
-            },
+            light_direction,
+            [0.0, 0.0, 1.0, 1.0].into(),
+            1.0,
         );
 
         //
@@ -128,16 +110,13 @@ impl ShadowsScene {
             resources,
             world,
             light_from,
-            SpotLightComponent {
-                direction: light_direction,
-                spotlight_half_angle: 40.0 * (std::f32::consts::PI / 180.0),
-                range: 12.0,
-                color: [1.0, 0.0, 0.0, 1.0].into(),
-                intensity: 150.0,
-                view_frustum: visibility_region.register_view_frustum(),
-            },
+            light_direction,
+            40.0 * (std::f32::consts::PI / 180.0),
+            [1.0, 0.0, 0.0, 1.0].into(),
+            150.0,
         );
 
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
         let main_view_frustum = visibility_region.register_view_frustum();
 
         ShadowsScene { main_view_frustum }

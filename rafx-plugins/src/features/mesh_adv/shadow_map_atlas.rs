@@ -97,19 +97,29 @@ impl ShadowMapAtlas {
             min_uv: glam::Vec2,
             size_uv: glam::Vec2,
             divisions: u32,
+            atlas_width_height: u32,
             texture_size_pixels: u16,
             quality: u8,
         ) {
             for y in 0..divisions {
                 for x in 0..divisions {
+                    // We add padding to each element to avoid sampling neighboring atlas tiles when
+                    // using lienar PCF. (Sampling the black border is ok for non-cubemaps).
+                    // For cubemaps, this can cause a seam... we need to use nearest filtering.
                     let inner = ShadowMapAtlasElementInner {
                         uv_min: glam::Vec2::new(
-                            min_uv.x + size_uv.x * (x as f32 / divisions as f32),
-                            min_uv.y + size_uv.y * (y as f32 / divisions as f32),
+                            min_uv.x
+                                + size_uv.x * (x as f32 / divisions as f32)
+                                + (1.0 / atlas_width_height as f32),
+                            min_uv.y
+                                + size_uv.y * (y as f32 / divisions as f32)
+                                + (1.0 / atlas_width_height as f32),
                         ),
                         uv_max: glam::Vec2::new(
-                            min_uv.x + size_uv.x * ((x + 1) as f32 / divisions as f32),
-                            min_uv.y + size_uv.y * ((y + 1) as f32 / divisions as f32),
+                            min_uv.x + size_uv.x * ((x + 1) as f32 / divisions as f32)
+                                - (1.0 / atlas_width_height as f32),
+                            min_uv.y + size_uv.y * ((y + 1) as f32 / divisions as f32)
+                                - (1.0 / atlas_width_height as f32),
                         ),
                         texture_size_pixels,
                         quality,
@@ -136,6 +146,7 @@ impl ShadowMapAtlas {
                 glam::Vec2::new((i % 2) as f32 / 2.0, (i / 2) as f32 / 2.0),
                 glam::Vec2::new(0.5, 0.5),
                 divisions as u32,
+                atlas_width_height,
                 (atlas_width_height / 2 / divisions as u32) as u16,
                 quality as u8,
             );

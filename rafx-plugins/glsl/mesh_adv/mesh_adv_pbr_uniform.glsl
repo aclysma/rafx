@@ -94,10 +94,26 @@ layout (set = 0, binding = 1) uniform sampler smp;
 //         compare_op: Greater,
 //     )
 // ])]
-layout (set = 0, binding = 2) uniform sampler smp_depth;
+layout (set = 0, binding = 2) uniform sampler smp_depth_linear;
+
+// Can't use linear PCF with cubemaps,
+// @[immutable_samplers([
+//     (
+//         mag_filter: Nearest,
+//         min_filter: Nearest,
+//         mip_map_mode: Nearest,
+//         address_mode_u: ClampToEdge,
+//         address_mode_v: ClampToEdge,
+//         address_mode_w: ClampToEdge,
+//         anisotropy_enable: true,
+//         max_anisotropy: 1.0,
+//         compare_op: Greater,
+//     )
+// ])]
+layout (set = 0, binding = 3) uniform sampler smp_depth_nearest;
 
 // @[export]
-layout (set = 0, binding = 3) uniform texture2D shadow_map_atlas;
+layout (set = 0, binding = 4) uniform texture2D shadow_map_atlas;
 
 //
 // Per-Material Bindings
