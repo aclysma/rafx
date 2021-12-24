@@ -6,7 +6,7 @@ use crate::components::{
 use crate::features::mesh_adv::internal::{ShadowMapAtlas, ShadowMapAtlasElement};
 use crate::features::mesh_adv::ShadowMapAtlasElementInfo;
 use crate::phases::ShadowMapRenderPhase;
-use fnv::{FnvHashMap, FnvHashSet};
+use fnv::{FnvHashMap, FnvHashSet, FnvHasher};
 use legion::*;
 use rafx::framework::render_features::RenderFeatureFlagMask;
 use rafx::rafx_visibility::{
@@ -18,6 +18,7 @@ use rafx::render_features::{
 };
 use rafx::visibility::{ObjectId, ViewFrustumArc};
 use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum MeshAdvLightId {
@@ -110,7 +111,8 @@ impl MeshAdvShadowMapRenderViewIndices {
 struct PotentialShadowView {
     score: f32,
     shadow_view_id: MeshAdvShadowViewId,
-    // other info?
+    // We hash everything that must be the same in order to reuse the light
+    light_state_hash: u64,
 }
 
 // Based on the way we're using floats here, I think this is ok, even if the rust compiler by default
@@ -179,6 +181,7 @@ pub struct MeshAdvShadowMapResource {
     // so dropping them will free the atlas space for future allocation.
     pub(super) shadow_map_atlas_element_assignments: Vec<Option<ShadowMapAtlasElement>>,
 
+    pub(super) previous_light_state_hashes: Vec<u64>,
     pub(super) shadow_maps_needing_redraw: FnvHashSet<ShadowViewIndex>,
 
     //
@@ -285,6 +288,7 @@ impl MeshAdvShadowMapResource {
         Self::reassign_shadow_atlas_elements(
             &mut self.shadow_map_lookup_by_shadow_view_id,
             &mut self.shadow_map_atlas_element_assignments,
+            &mut self.previous_light_state_hashes,
             &mut self.shadow_maps_needing_redraw,
             extract_resources,
             main_view_eye_position,
@@ -302,6 +306,50 @@ impl MeshAdvShadowMapResource {
             &mut self.shadow_map_lookup_by_render_view_index,
             &mut self.shadow_map_lookup_by_light_id,
         );
+    }
+
+    // If this hashing method becomes problematic, we can quantize it later. It just needs to work
+    // well enough to decide when to redraw shadow maps due to lights moving, etc.
+    fn hash_f32<HasherT: Hasher>(
+        value: f32,
+        hasher: &mut HasherT,
+    ) {
+        rafx::base::DecimalF32(value).hash(hasher);
+    }
+
+    fn hash_option_f32<HasherT: Hasher>(
+        value: Option<f32>,
+        hasher: &mut HasherT,
+    ) {
+        value.map(|x| Self::hash_f32(x, hasher));
+    }
+
+    fn hash_vec3<HasherT: Hasher>(
+        value: glam::Vec3,
+        hasher: &mut HasherT,
+    ) {
+        Self::hash_f32(value.x, hasher);
+        Self::hash_f32(value.y, hasher);
+        Self::hash_f32(value.z, hasher);
+    }
+
+    fn hash_quat<HasherT: Hasher>(
+        value: glam::Quat,
+        hasher: &mut HasherT,
+    ) {
+        Self::hash_f32(value.x, hasher);
+        Self::hash_f32(value.y, hasher);
+        Self::hash_f32(value.z, hasher);
+        Self::hash_f32(value.w, hasher);
+    }
+
+    fn hash_transform<HasherT: Hasher>(
+        value: &TransformComponent,
+        hasher: &mut HasherT,
+    ) {
+        Self::hash_vec3(value.translation, hasher);
+        Self::hash_quat(value.rotation, hasher);
+        Self::hash_vec3(value.scale, hasher);
     }
 
     // Find all views we would like to generate shadow maps for and sort by descending priority
@@ -322,38 +370,54 @@ impl MeshAdvShadowMapResource {
         let mut heap = std::collections::binary_heap::BinaryHeap::<PotentialShadowView>::new();
 
         let mut query = <(Entity, Read<SpotLightComponent>, Read<TransformComponent>)>::query();
-        for (entity, _light, transform) in query.iter(world) {
+        for (entity, light, transform) in query.iter(world) {
             let shadow_view_id = MeshAdvShadowViewId::SpotLight(ObjectId::from(*entity));
             let score = calculate_score(main_view_eye_position, transform.translation);
+
+            let mut h = FnvHasher::default();
+            Self::hash_transform(&transform, &mut h);
+            Self::hash_vec3(light.direction, &mut h);
+            Self::hash_f32(light.spotlight_half_angle, &mut h);
+            Self::hash_option_f32(light.range, &mut h);
 
             heap.push(PotentialShadowView {
                 shadow_view_id,
                 score,
+                light_state_hash: h.finish(),
             });
         }
 
         let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
-        for (entity, _light) in query.iter(world) {
+        for (entity, light) in query.iter(world) {
             // Hardcode a score of 0 for these because directional lights have no position, there
             // tend to be few of them per scene, and they tend to be important.
             let shadow_view_id = MeshAdvShadowViewId::DirectionalLight(ObjectId::from(*entity));
             let score = 0.0;
 
+            let mut h = FnvHasher::default();
+            Self::hash_vec3(light.direction, &mut h);
+
             heap.push(PotentialShadowView {
                 shadow_view_id,
                 score,
+                light_state_hash: h.finish(),
             });
         }
 
         let mut query = <(Entity, Read<PointLightComponent>, Read<TransformComponent>)>::query();
-        for (entity, _light, transform) in query.iter(world) {
+        for (entity, light, transform) in query.iter(world) {
             for i in 0..6 {
                 let shadow_view_id = MeshAdvShadowViewId::PointLight(ObjectId::from(*entity), i);
                 let score = calculate_score(main_view_eye_position, transform.translation);
 
+                let mut h = FnvHasher::default();
+                Self::hash_transform(&transform, &mut h);
+                Self::hash_option_f32(light.range, &mut h);
+
                 heap.push(PotentialShadowView {
                     shadow_view_id,
                     score,
+                    light_state_hash: h.finish(),
                 });
             }
         }
@@ -367,6 +431,7 @@ impl MeshAdvShadowMapResource {
     fn reassign_shadow_atlas_elements(
         shadow_map_lookup_by_shadow_view_id: &mut FnvHashMap<MeshAdvShadowViewId, ShadowViewIndex>,
         shadow_map_atlas_element_assignments: &mut Vec<Option<ShadowMapAtlasElement>>,
+        previous_light_state_hashes: &mut Vec<u64>,
         shadow_maps_needing_redraw: &mut FnvHashSet<ShadowViewIndex>,
         extract_resources: &ExtractResources,
         main_view_eye_position: glam::Vec3,
@@ -381,6 +446,7 @@ impl MeshAdvShadowMapResource {
             Self::find_potential_shadow_views(extract_resources, main_view_eye_position);
 
         let mut new_assignments = Vec::with_capacity(potential_views.len());
+        let mut new_light_state_hashes = Vec::with_capacity(potential_views.len());
 
         //
         // Place them into a lookup by shadow view ID and carry shadow assignments from previous frame
@@ -392,13 +458,22 @@ impl MeshAdvShadowMapResource {
                 shadow_map_lookup_by_shadow_view_id.get(&potential_view.shadow_view_id)
             {
                 // unwrap should always succeed, we do not take the value from any one index more than once
-                //TODO: Don't preserve shadow maps for shadow map views that have moved/changed (by a hash?)
                 let assignment = shadow_map_atlas_element_assignments[old_shadow_view_index.0]
                     .take()
                     .unwrap();
+
+                let new_shadow_view_index = ShadowViewIndex(new_assignments.len());
                 new_assignments.push(Some(assignment));
+                new_light_state_hashes.push(potential_view.light_state_hash);
+
+                if potential_view.light_state_hash
+                    != previous_light_state_hashes[old_shadow_view_index.0]
+                {
+                    shadow_maps_needing_redraw.insert(new_shadow_view_index);
+                }
             } else {
                 new_assignments.push(None);
+                new_light_state_hashes.push(potential_view.light_state_hash);
             }
         }
 
@@ -474,6 +549,7 @@ impl MeshAdvShadowMapResource {
 
         *shadow_map_lookup_by_shadow_view_id = new_lookup;
         *shadow_map_atlas_element_assignments = new_assignments;
+        *previous_light_state_hashes = new_light_state_hashes;
     }
 
     // Iterate through all lights. If we have allocated a shadow map to the light, set up a render view for it.

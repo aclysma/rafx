@@ -182,7 +182,6 @@ pub(super) fn shadow_map_passes(
                     byte_offset: 0,
                 }],
             )?;
-            println!("write {} cleraing verts", vertex_count);
             command_buffer.cmd_draw(vertex_count as u32, 0).unwrap();
         }
 
