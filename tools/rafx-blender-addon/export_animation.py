@@ -5,6 +5,8 @@ import os
 
 import logging
 
+from .rafx_export_types import ExportContext
+
 logging = logging.getLogger(__name__)
 
 from . import rafx_blender_paths, rafx_errors, rafx_utils
@@ -162,7 +164,16 @@ def get_action_data(armature: bpy.types.Armature, action: bpy.types.Action, bone
     }
 
 
-def export_animation_data(obj: bpy.types.Object, project_settings):
+def export_animation_data(export_context: ExportContext, obj: bpy.types.Object):
+    if not export_context.visit_animation():
+        return
+
+    log_str = "Exporting animation data {}".format(object.name_full)
+    export_context.info(log_str)
+    logging.info(log_str)
+
+    assert(object.type == "ARMATURE")
+    
     actions = {}
 
     if obj.animation_data:
@@ -210,18 +221,3 @@ def export_animation_data(obj: bpy.types.Object, project_settings):
     armature_as_json = json.dumps(output_data, indent=4)
     #print(armature_as_json)
     rafx_utils.write_string_to_file(export_path, armature_as_json)
-    
-
-
-# def export_armature(armature: bpy.types.Armature, project_settings):
-#     export_path = rafx_blender_paths.find_export_path_for_blender_data_block(project_settings, armature)
-#     output_data = get_armature_data(armature)
-#     armature_as_json = json.dumps(output_data, indent=4)
-#     rafx_utils.write_string_to_file(export_path, armature_as_json)
-
-
-# def export_action(action: bpy.types.Action, project_settings):
-#     export_path = rafx_blender_paths.find_export_path_for_blender_data_block(project_settings, action)
-#     action_data = get_action_data(action)
-#     action_as_json = json.dumps(action_data, indent=4)
-#     rafx_utils.write_string_to_file(export_path, action_as_json)

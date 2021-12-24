@@ -6,6 +6,7 @@ import bpy
 import os
 
 from . import rafx_blender_paths, rafx_errors, rafx_utils
+from .rafx_export_types import ExportContext
 
 def group_loops_by_materials(mesh):
     # Create an array of loop indices
@@ -30,10 +31,17 @@ def group_loops_by_materials(mesh):
     
     return grouped
 
-def export(object: bpy.types.Object, project_settings):
-    export_path = rafx_blender_paths.find_export_path_for_blender_data_block(project_settings, object)
-    export_dir = os.path.dirname(export_path)
+def export(export_context: ExportContext, object: bpy.types.Object):
     assert(object.type == "MESH")
+    if not export_context.visit_mesh(object):
+        return
+    
+    log_str = "Exporting mesh {}".format(object.name_full)
+    export_context.info(log_str)
+    
+    export_path = rafx_blender_paths.find_export_path_for_blender_data_block(export_context.project_settings, object)
+    export_dir = os.path.dirname(export_path)
+
     mesh = object.data
     use_normals = True
     if use_normals:
@@ -188,7 +196,7 @@ def export(object: bpy.types.Object, project_settings):
         if int(material_index) < len(object.material_slots):
             material = object.material_slots[int(material_index)].material
             if material:
-                material_path = rafx_blender_paths.find_export_path_for_blender_data_block(project_settings, material)
+                material_path = rafx_blender_paths.find_export_path_for_blender_data_block(export_context.project_settings, material)
                 material_path = rafx_blender_paths.make_cross_platform_relative_path(material_path, export_dir)
                 mesh_part_fields['material'] = material_path
 

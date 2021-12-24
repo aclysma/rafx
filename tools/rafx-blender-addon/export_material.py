@@ -3,6 +3,7 @@ import json
 import hashlib
 import os
 from . import gltf_export, rafx_blender_paths, gltf_blender_image, rafx_errors, rafx_project, rafx_utils
+from .rafx_export_types import ExportContext
 from .gltf_blender_image import Channel
 
 # def add_generic_texture_map(socket):
@@ -193,8 +194,14 @@ def setup_pbr_texture(bsdf_node: bpy.types.ShaderNodeBsdfPrincipled, attributes,
     #     dst_channel = "G"
 
 
-def export(material: bpy.types.Material, project_settings):
-    export_path = rafx_blender_paths.find_export_path_for_blender_data_block(project_settings, material)
+def export(export_context: ExportContext, material: bpy.types.Material):
+    if not export_context.visit_material(material):
+        return
+
+    log_str = "Exporting material {}".format(material.name_full)
+    export_context.info(log_str)
+
+    export_path = rafx_blender_paths.find_export_path_for_blender_data_block(export_context.project_settings, material)
     export_dir = os.path.dirname(export_path)
     if not material.use_nodes:
         raise Exception("ERROR: Material " + str(material) + " does not use nodes and can't be exported")
@@ -227,11 +234,11 @@ def export(material: bpy.types.Material, project_settings):
         
         if base_color_node.image:
             #base_color_info['use_alpha'] = use_alpha
-            image_path = rafx_blender_paths.find_export_path_for_blender_data_block(project_settings, base_color_node.image)
+            image_path = rafx_blender_paths.find_export_path_for_blender_data_block(export_context.project_settings, base_color_node.image)
             image_path = rafx_blender_paths.make_cross_platform_relative_path(image_path, export_dir)
 
 
-            #export_base_dir = rafx_blender_paths.find_base_export_path_for_data_block(project_settings, base_color_node.image)
+            #export_base_dir = rafx_blender_paths.find_base_export_path_for_data_block(export_context.project_settings, base_color_node.image)
             #image_path = os.path.join(export_base_dir, "{}.{}".format(base_color_node.image.name, "png"))
 
             attributes['color_texture'] = image_path
@@ -249,13 +256,13 @@ def export(material: bpy.types.Material, project_settings):
                 raise rafx_errors.RafxUnsupportedMaterialGraphNode("ShaderNodeNormalMap does not have a ShaderNodeTexImage color input")
         
         if normal_image_node.image:
-            image_path = rafx_blender_paths.find_export_path_for_blender_data_block(project_settings, normal_image_node.image)
+            image_path = rafx_blender_paths.find_export_path_for_blender_data_block(export_context.project_settings, normal_image_node.image)
             image_path = rafx_blender_paths.make_cross_platform_relative_path(image_path, export_dir)
             attributes['normal_texture'] = image_path
         else:
             raise rafx_errors.RafxUnsupportedMaterialGraphNode("ShaderNodeTexImage used as normal map has no image selected")
     
-    setup_pbr_texture(bsdf, attributes, project_settings, export_dir)
+    setup_pbr_texture(bsdf, attributes, export_context.project_settings, export_dir)
      
     json_data = json.dumps(attributes, indent = 4)
     rafx_utils.write_string_to_file(export_path, json_data)

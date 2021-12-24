@@ -4,103 +4,75 @@ import os
 
 logging = logging.getLogger(__name__)
 
-from . import export_material, export_mesh, export_prefab, export_image, export_animation, rafx_project, rafx_blender_paths, rafx_utils, rafx_errors, export_model
+from . import export_material, export_mesh, export_prefab, export_image, export_animation, rafx_project, rafx_blender_paths, rafx_utils, rafx_errors, export_model, rafx_export_properties
+from .rafx_export_types import ExportContext, ObjectKey
 
-
-def do_export_image(op, image, project_settings):
+def do_export_image(export_context: ExportContext, image: bpy.types.Image, ignore_export_properties: bool):
     try:
-        log_str = "Exporting image {}".format(image.name_full)
-        op.report({'INFO'}, log_str)
-        logging.info(log_str)
-        export_image.export(image, project_settings)
+        if ignore_export_properties or export_context.export_properties.enable_image_export:
+            export_image.export(export_context, image)
     except rafx_errors.RafxError as e:
         error_str = "Failed to export {}: {}".format(image.name_full, str(e))
-        op.report({"ERROR"}, error_str)
+        export_context.error(error_str)
 
-def do_export_material(op, material, project_settings):
-    if material.name == "Dots Stroke" and not material.use_nodes:
-        op.report({'WARNING'}, "Ignoring default material 'Dots Stroke', it is not using nodes")
-        return
-    
+
+def do_export_material(export_context: ExportContext, material: bpy.types.Material, ignore_export_properties: bool):   
     try:
-        log_str = "Exporting material {}".format(material.name_full)
-        op.report({'INFO'}, log_str)
-        logging.info(log_str)
-        export_material.export(material, project_settings)
+        if ignore_export_properties or export_context.export_properties.enable_material_export:
+            export_material.export(export_context, material)
     except rafx_errors.RafxError as e:
         error_str = "Failed to export {}: {}".format(material.name_full, str(e))
-        op.report({"ERROR"}, error_str)
+        export_context.error(error_str)
 
-def do_export_mesh(op, object, project_settings):
+
+def do_export_mesh(export_context: ExportContext, object: bpy.types.Object, ignore_export_properties: bool):
     try:
-        log_str = "Exporting mesh {}".format(object.name_full)
-        op.report({'INFO'}, log_str)
-        logging.info(log_str)
-        export_mesh.export(object, project_settings)
+        if ignore_export_properties or export_context.export_properties.enable_mesh_export:
+            export_mesh.export(export_context, object)
     except rafx_errors.RafxError as e:
         error_str = "Failed to export {}: {}".format(object.name_full, str(e))
-        op.report({"ERROR"}, error_str)
+        export_context.error(error_str)
 
 
-
-def do_export_animation_data(op, object, project_settings):
+def do_export_animation_data(export_context: ExportContext, object: bpy.types.Object, ignore_export_properties: bool):
     try:
-        log_str = "Exporting animation data {}".format(object.name_full)
-        op.report({'INFO'}, log_str)
-        logging.info(log_str)
-        export_animation.export_animation_data(object, project_settings)
+        if ignore_export_properties or export_context.export_properties.enable_animation_export:
+            export_animation.export_animation_data(export_context, object)
     except rafx_errors.RafxError as e:
         error_str = "Failed to export {}: {}".format(object.name_full, str(e))
-        op.report({"ERROR"}, error_str)
+        export_context.error(error_str)
 
 
-# def do_export_armature(op, object, project_settings):
-#     try:
-#         log_str = "Exporting armature {}".format(object.name_full)
-#         op.report({'INFO'}, log_str)
-#         logging.info(log_str)
-#         export_animation.export_armature(object, project_settings)
-#     except rafx_errors.RafxError as e:
-#         error_str = "Failed to export {}: {}".format(object.name_full, str(e))
-#         op.report({"ERROR"}, error_str)
-
-# def do_export_action(op, object, project_settings):
-#     try:
-#         log_str = "Exporting action {}".format(object.name_full)
-#         op.report({'INFO'}, log_str)
-#         logging.info(log_str)
-#         export_animation.export_action(object, project_settings)
-#     except rafx_errors.RafxError as e:
-#         error_str = "Failed to export {}: {}".format(object.name_full, str(e))
-#         op.report({"ERROR"}, error_str)
-
-
-
-
-def do_export_scene_as_prefab(op, scene, project_settings):
+def do_export_scene_as_prefab(export_context: ExportContext, scene: bpy.types.Scene, ignore_export_properties: bool):
     try:
-        log_str = "Exporting scene {} as prefab".format(scene.name_full)
-        op.report({'INFO'}, log_str)
-        logging.info(log_str)
-        export_prefab.export(scene, project_settings)
+        if ignore_export_properties or export_context.export_properties.enable_prefab_export:
+            export_prefab.export(export_context, scene)
     except rafx_errors.RafxError as e:
         error_str = "Failed to export {}: {}".format(scene.name_full, str(e))
-        op.report({"ERROR"}, error_str)
+        export_context.error(error_str)
 
-def do_export_scene_as_model(op, scene: bpy.types.Scene, project_settings):
-    try:
-        log_str = "Exporting scene {} as model".format(scene.name_full)
-        op.report({'INFO'}, log_str)
-        logging.info(log_str)
-        export_model.export(scene, project_settings)
-    except rafx_errors.RafxError as e:
-        error_str = "Failed to export {}: {}".format(scene.name_full, str(e))
-        op.report({"ERROR"}, error_str)
-    
-    for collection in scene.collection.children:
-        for object in collection.objects:
-            do_export_mesh(op, object, project_settings)
 
+def do_export_scene_as_model(export_context: ExportContext, scene: bpy.types.Scene, ignore_export_properties: bool):
+    if ignore_export_properties or export_context.export_properties.enable_model_export:
+        try:
+            export_model.export(export_context, scene)
+        except rafx_errors.RafxError as e:
+            error_str = "Failed to export {}: {}".format(scene.name_full, str(e))
+            export_context.error(error_str)
+
+    if ignore_export_properties or export_context.export_properties.enable_mesh_export:
+        lod0_collection_names = export_model.find_lod0_collection_names(scene, True, True)
+
+        for collection in scene.collection.children:
+            # for now only export lod0
+            if not collection.name in lod0_collection_names:
+                continue
+
+            print(collection.name)
+            for object in collection.objects:
+                if object.type == "EMPTY":
+                    continue
+                do_export_mesh(export_context, object, ignore_export_properties)
 
 class RafxExportImageOp(bpy.types.Operator):
     bl_idname = "object.rafx_export_current_image"
@@ -113,9 +85,9 @@ class RafxExportImageOp(bpy.types.Operator):
         return context.edit_image
 
     def execute(self, context):
+        export_context = ExportContext(self, context)
         image = context.edit_image
-        project_settings = rafx_blender_paths.find_project_settings_for_current_blender_file()
-        do_export_image(self, image, project_settings)
+        do_export_image(export_context, image, True)
 
         return {'FINISHED'}
 
@@ -123,7 +95,6 @@ class RafxExportMaterialOp(bpy.types.Operator):
     bl_idname = "object.rafx_export_current_material"
     bl_label = "Rafx: Export Current Material"
     
-
     @classmethod
     def poll(cls, context):
         if not hasattr(context, "material"):
@@ -131,9 +102,9 @@ class RafxExportMaterialOp(bpy.types.Operator):
         return context.material
 
     def execute(self, context):
+        export_context = ExportContext(self, context)
         material = context.material
-        project_settings = rafx_blender_paths.find_project_settings_for_current_blender_file()
-        do_export_material(self, material, project_settings)
+        do_export_material(export_context, material, True)
 
         return {'FINISHED'}
 
@@ -148,9 +119,9 @@ class RafxExportMeshOp(bpy.types.Operator):
             and context.active_object.data
 
     def execute(self, context):
+        export_context = ExportContext(self, context)
         object = context.active_object
-        project_settings = rafx_blender_paths.find_project_settings_for_current_blender_file()
-        do_export_mesh(self, object, project_settings)
+        do_export_mesh(export_context, object, True)
 
         return {'FINISHED'}
     
@@ -165,9 +136,9 @@ class RafxExportAnimationDataOp(bpy.types.Operator):
             and context.active_object.data
     
     def execute(self, context):
+        export_context = ExportContext(self, context)
         object = context.active_object
-        project_settings = rafx_blender_paths.find_project_settings_for_current_blender_file()
-        do_export_animation_data(self, object, project_settings)
+        do_export_animation_data(export_context, object, True)
 
         return {'FINISHED'}
 
@@ -196,9 +167,9 @@ class RafxExportSceneAsPrefabOp(bpy.types.Operator):
         return context.scene.collection.rafx_is_prefab
 
     def execute(self, context):
+        export_context = ExportContext(self, context)
         scene = context.scene
-        project_settings = rafx_blender_paths.find_project_settings_for_current_blender_file()
-        do_export_scene_as_prefab(self, scene, project_settings)
+        do_export_scene_as_prefab(export_context, scene, True)
         
         return {'FINISHED'}
 
@@ -211,14 +182,14 @@ class RafxExportSceneAsModelOp(bpy.types.Operator):
         return context.scene.collection.rafx_is_model
 
     def execute(self, context):
+        export_context = ExportContext(self, context)
         scene = context.scene
-        project_settings = rafx_blender_paths.find_project_settings_for_current_blender_file()
         #scene_collection = bpy.context.scene.collection
-        do_export_scene_as_model(self, scene, project_settings)
+        do_export_scene_as_model(export_context, scene, True)
         
         return {'FINISHED'}
 
-def do_export_external_model(op, collection: bpy.types.Collection, project_settings, exported_scenes):
+def do_export_external_model(export_context: ExportContext, collection: bpy.types.Collection, ignore_export_properties: bool):
     assert(collection.library)
 
     # Rename the scenes so we don't have any ID collisions
@@ -246,16 +217,14 @@ def do_export_external_model(op, collection: bpy.types.Collection, project_setti
                     # The passed in collection matched this scene. If it's configured to export as a model,
                     # export all LODs
                     if scene.collection.rafx_is_model:
-                        key = (scene.name, scene.library.filepath)
-                        if key not in exported_scenes:
-                            exported_scenes.add(key)
-
-                            do_export_scene_as_model(op, scene, project_settings)
-                        
+                        if ignore_export_properties or export_context.export_properties.enable_model_export:
+                            do_export_scene_as_model(export_context, scene, ignore_export_properties)
+                    
+                        if ignore_export_properties or export_context.export_properties.enable_mesh_export:
                             for object in child_collection.children:
-                                do_export_mesh(op, object, project_settings)
-                        else:
-                            logging.info("skipping", key, "it's already exported")
+                                if object.type == "EMPTY":
+                                    continue
+                                do_export_mesh(export_context, object, ignore_export_properties)
                     
                     found = True
                     break
@@ -282,46 +251,48 @@ class RafxExportAllOp(bpy.types.Operator):
     bl_label = "Rafx: Export All"
 
     def execute(self, context):
-        project_settings = rafx_blender_paths.find_project_settings_for_current_blender_file()
+        export_context = ExportContext(self, context)
+        export_context.info("-----Export All-----")
 
-        image_count = 0
-        material_count = 0
-        model_count = 0
-        prefab_count = 0
+        scene = context.scene
 
-        logging.info("Exporting images")
-        for image in bpy.data.images:
-            if image.users != 0 or image.use_fake_user:
-                do_export_image(self, image, project_settings)
-                image_count += 1
+        if export_context.export_properties.enable_image_export:
+            export_context.info("Exporting images")
+            for image in bpy.data.images:
+                if image.users != 0 or image.use_fake_user:
+                    do_export_image(export_context, image, False)
+        else:
+            export_context.info("Image export diabled")
         
-        logging.info("Exporting materials")
-        for material in bpy.data.materials:
-            if material.users != 0 or material.use_fake_user:
-                do_export_material(self, material, project_settings)
-                material_count += 1
+
+        if export_context.export_properties.enable_material_export:
+            export_context.info("Exporting materials")
+            for material in bpy.data.materials:
+                if material.users != 0 or material.use_fake_user:
+                    do_export_material(export_context, material, False)
+        else:
+            export_context.info("Material export diabled")
+
         
-        logging.info("Exporting models and scenes")
         # models stored in this blend file can be found by iterating scenes
-        exported_scenes = set()
-        for collection in bpy.data.collections:
-            if collection.library and collection.rafx_is_model:
-                do_export_external_model(self, collection, project_settings, exported_scenes)
-                model_count += 1
+        if export_context.export_properties.enable_model_export:
+            export_context.info("Exporting models")
+            for collection in bpy.data.collections:
+                if collection.library and collection.rafx_is_model:
+                    do_export_external_model(export_context, collection, False)
+        else:
+            export_context.info("Model export diabled")
 
         for scene in bpy.data.scenes:
+            export_context.info("Exporting scenes")
+
             if scene.collection.rafx_is_model:
-                do_export_scene_as_model(self, scene, project_settings)
-                model_count += 1
+                do_export_scene_as_model(export_context, scene, False)
 
             elif scene.collection.rafx_is_prefab:
-                do_export_scene_as_prefab(self, scene, project_settings)
-                
-                prefab_count += 1
+                do_export_scene_as_prefab(export_context, scene, False)
         
-        log_string = "exported {} images, {} materials, {} models, and {} prefabs".format(image_count, material_count, model_count, prefab_count)
-        self.report({'INFO'}, log_string)
-        logging.info(log_string)
+        export_context.info(export_context.summary_text())
 
         return {'FINISHED'}
 

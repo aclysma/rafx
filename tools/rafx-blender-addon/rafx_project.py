@@ -5,6 +5,10 @@ import json
 
 logging = logging.getLogger(__name__)
 
+class ProjectSettings:
+    art_dir: str
+    assets_dir: str
+
 ART_DIR = "art_dir"
 ASSETS_DIR = "assets_dir"
 PROJECT_ROOT_FILE_NAME = ".rafx_project"
@@ -28,7 +32,7 @@ def sanitize_path(root_path, path):
     return os.path.join(root_path, path)
 
 # current_path can be a file or directory, and can be absolute or relative
-def find_project_settings(current_path):
+def find_project_settings(current_path) -> ProjectSettings:
     project_root = find_dir_containing_file_recursing_upwards(current_path, PROJECT_ROOT_FILE_NAME)
     if not project_root:
         return None

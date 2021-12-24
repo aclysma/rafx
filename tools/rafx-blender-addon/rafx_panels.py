@@ -31,8 +31,33 @@ class RafxMaterialEditorPanel(bpy.types.Panel):
         layout = self.layout
         if context.material:
             layout.operator(rafx_export_operators.RafxExportMaterialOp.bl_idname, text = "Export This Material")
-        
-class Rafx3DViewportEditorPanel(bpy.types.Panel):
+
+class Rafx3DViewportEditorExportOptionsPanel(bpy.types.Panel):
+    bl_idname = "RAFX_PT_3d_viewport_export_options"
+    bl_label = "Export Options"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Rafx"
+    bl_context = "objectmode"
+    bl_parent_id = "RAFX_PT_3d_viewport_export"
+    
+    def draw(self, context):
+        layout = self.layout   
+
+        layout.prop(context.scene.rafx_export_properties, "enable_prefab_export")
+        layout.prop(context.scene.rafx_export_properties, "enable_model_export")
+        layout.prop(context.scene.rafx_export_properties, "enable_mesh_export")
+        layout.prop(context.scene.rafx_export_properties, "enable_material_export")
+        layout.prop(context.scene.rafx_export_properties, "enable_image_export")
+        layout.prop(context.scene.rafx_export_properties, "enable_animation_export")
+        #layout.separator()
+        #layout.separator()
+        #layout.separator()
+        #layout.operator(rafx_export_operators.RafxExportAnimationDataOp.bl_idname, text = "Export Animation Data")
+        #layout.separator()
+        #layout.operator(rafx_export_operators.RafxExportAllAnimationDataOp.bl_idname, text = "OLD export animation data")
+
+class Rafx3DViewportEditorExportPanel(bpy.types.Panel):
     bl_idname = "RAFX_PT_3d_viewport_export"
     bl_label = "Export"
     bl_space_type = 'VIEW_3D'
@@ -44,7 +69,7 @@ class Rafx3DViewportEditorPanel(bpy.types.Panel):
         layout = self.layout
 
         layout.prop(context.scene.collection, "rafx_is_model")
-        layout.prop(context.scene.collection, "rafx_is_prefab")
+        layout.prop(context.scene.collection, "rafx_is_prefab")     
 
         if bpy.context.scene.collection.rafx_is_model:
             layout.operator(rafx_export_operators.RafxExportSceneAsModelOp.bl_idname, text = "Export This Model")
@@ -54,14 +79,6 @@ class Rafx3DViewportEditorPanel(bpy.types.Panel):
 
         layout.separator()
         layout.operator(rafx_export_operators.RafxExportAllOp.bl_idname, text = "Export All Referenced Assets")
-
-        
-        layout.separator()
-        layout.separator()
-        layout.separator()
-        layout.operator(rafx_export_operators.RafxExportAnimationDataOp.bl_idname, text = "Export Animation Data")
-        #layout.separator()
-        #layout.operator(rafx_export_operators.RafxExportAllAnimationDataOp.bl_idname, text = "OLD export animation data")
 
 #
 # Property Panels
@@ -93,4 +110,6 @@ class RafxPropertyPanelScene(RafxPropertyPanel):
         row.prop(context.scene.collection, "rafx_is_model")
         row = self.layout.row()
         row.prop(context.scene.collection, "rafx_is_prefab")
+        row = self.layout.row()
+
 

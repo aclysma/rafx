@@ -7,7 +7,8 @@ import os
 
 logging = logging.getLogger(__name__)
 
-from . import rafx_blender_paths, rafx_errors, rafx_utils
+from . import rafx_blender_paths, rafx_errors, rafx_utils, export_model, export_mesh
+from .rafx_export_types import ExportContext
 
 def object_common_attributes(object):
     attributes = {}
@@ -23,7 +24,7 @@ def object_common_attributes(object):
     attributes['scale'] = object.scale
     return attributes
 
-def iterate_object(project_settings, export_dir, out_objects, object: bpy.types.Object, transform: mathutils.Matrix):
+def iterate_object(export_context: ExportContext, export_dir, out_objects, object: bpy.types.Object, transform: mathutils.Matrix):
     transform = transform @ object.matrix_basis
     
     t = transform.translation
@@ -79,34 +80,49 @@ def iterate_object(project_settings, export_dir, out_objects, object: bpy.types.
         # HACK HACK HACK: Assume that the blender file only contains one model, and its scene name matches the filename.
         # The alternative is linking the blend file, iterating over all scenes and trying to find the one that contains
         # the given collection. do_export_external_model does this
-        library_export_path = rafx_blender_paths.find_base_export_path_for_data_block(project_settings, object.instance_collection)
+        library_export_path = rafx_blender_paths.find_base_export_path_for_data_block(export_context.project_settings, object.instance_collection)
         library_path = bpy.path.abspath(library.filepath)
         library_name = os.path.basename(library_path)
         model_name, ext = os.path.splitext(library_name)
         model_name = "{}.blender_model".format(model_name)
         f = os.path.join(library_export_path, model_name)
         collection_export_path = rafx_blender_paths.make_cross_platform_relative_path(f, export_dir)        
-
-        print(collection_export_path)
         object_attributes["model"] = {
             "model": collection_export_path
+        }
+    
+    if object.type == 'MESH':
+        if export_context.export_properties.enable_mesh_export:
+            export_mesh.export(export_context, object)
+        if export_context.export_properties.enable_model_export:
+            export_model.export_model_for_mesh_object(export_context, object)
+        model_path = rafx_blender_paths.find_export_path_for_blender_data_block_with_extension(export_context.project_settings, object, "blender_model")
+        model_path = rafx_blender_paths.make_cross_platform_relative_path(model_path, export_dir)
+        object_attributes["model"] = {
+            "model": model_path
         }
 
     out_objects.append(object_attributes)
 
-def iterate_collection(project_settings, export_dir, out_objects, collection: bpy.types.Collection, transform: mathutils.Matrix):
+def iterate_collection(export_context: ExportContext, export_dir, out_objects, collection: bpy.types.Collection, transform: mathutils.Matrix):
     for object in collection.objects:
         # include only objects in the "root" of the collection
         if object.parent:
             continue
 
-        iterate_object(project_settings, export_dir, out_objects, object, transform)
+        iterate_object(export_context, export_dir, out_objects, object, transform)
     
     for collection in collection.children:
-        iterate_collection(project_settings, export_dir, out_objects, collection, transform)
+        iterate_collection(export_context, export_dir, out_objects, collection, transform)
 
-def export(scene: bpy.types.Scene, project_settings):
-    export_path = rafx_blender_paths.find_export_path_for_blender_data_block(project_settings, scene)
+def export(export_context: ExportContext, scene: bpy.types.Scene):
+    if not export_context.visit_scene_as_prefab(scene):
+        return
+
+    log_str = "Exporting scene {} as prefab".format(scene.name_full)
+    export_context.info(log_str)
+
+    export_path = rafx_blender_paths.find_export_path_for_blender_data_block(export_context.project_settings, scene)
     export_dir = os.path.dirname(export_path)
     scene_collection = scene.collection
     if scene_collection.rafx_is_model:
@@ -115,7 +131,7 @@ def export(scene: bpy.types.Scene, project_settings):
         raise rafx_errors.RafxSceneIsNotAPrefab(error_string)
 
     out_objects = []
-    iterate_collection(project_settings, export_dir, out_objects, scene_collection, mathutils.Matrix())
+    iterate_collection(export_context, export_dir, out_objects, scene_collection, mathutils.Matrix())
 
     prefab_object = {
         "objects": out_objects

@@ -38,6 +38,7 @@ from . import rafx_export_operators
 from . import rafx_level_operators
 from . import rafx_panels
 from . import rafx_level_properties
+from . import rafx_export_properties
 from . import rafx_level_panels
 from . import rafx_slice
 
@@ -87,6 +88,7 @@ classes = (
     #
     rafx_level_properties.RafxSliceProperties,
     rafx_level_properties.RafxLevelProperties,
+    rafx_export_properties.RafxExportProperties,
 
     #
     # Misc/Debug operators
@@ -136,7 +138,8 @@ classes = (
     # These are in the "n" menu for the respective editing contexts
     rafx_panels.RafxImageEditorPanel,
     rafx_panels.RafxMaterialEditorPanel,
-    rafx_panels.Rafx3DViewportEditorPanel,
+    rafx_panels.Rafx3DViewportEditorExportPanel,
+    rafx_panels.Rafx3DViewportEditorExportOptionsPanel,
 
     # Property panels
     rafx_panels.RafxPropertyPanelMaterial,
@@ -163,7 +166,7 @@ def register_handler(handler_list, handler_key, handler):
 
 
 def register():
-    logging.basicConfig(level=logging.WARN)
+    logging.basicConfig(level=logging.INFO)
     logging.getLogger('werkzeug').setLevel(logging.WARN)
     logging.getLogger('rafx_addon').setLevel(logging.INFO)
 
@@ -175,6 +178,7 @@ def register():
     bpy.types.Collection.rafx_is_prefab = bpy.props.BoolProperty(name="Export Scene As Prefab", default=False)
 
     bpy.types.Scene.rafx_level_properties = PointerProperty(type=rafx_level_properties.RafxLevelProperties)
+    bpy.types.Scene.rafx_export_properties = PointerProperty(type=rafx_export_properties.RafxExportProperties)
 
     #register_handler(bpy.app.handlers.depsgraph_update_pre, rafx_depsgraph_update_pre_driver_key, rafx_depsgraph_update_pre)
     #register_handler(bpy.app.handlers.save_post, rafx_save_post_driver_key, rafx_save_post)

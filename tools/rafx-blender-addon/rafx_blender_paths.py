@@ -96,12 +96,8 @@ def find_base_export_path_for_data_block(project_settings, data_block):
 
     return base_dir
 
-
-def find_export_path_for_blender_data_block(project_settings, data_block):
+def find_export_path_for_blender_data_block_with_extension(project_settings, data_block, extension):
     base_dir = find_base_export_path_for_data_block(project_settings, data_block)
-    extension = get_export_extension(data_block)
-    if not extension:
-        raise RafxNoExtensionForDataBlockType
     name_without_extension = data_block.name
     
     # See if the image block ends with an extension so that we can avoid saving
@@ -117,6 +113,14 @@ def find_export_path_for_blender_data_block(project_settings, data_block):
         export_file_name = "{}.{}".format(name_without_extension, extension)
 
     return os.path.join(base_dir, export_file_name)
+
+# This is generally the right function call to find where the export data of a blender data block will be written
+def find_export_path_for_blender_data_block(project_settings, data_block):
+    extension = get_export_extension(data_block)
+    if not extension:
+        raise RafxNoExtensionForDataBlockType
+    
+    return find_export_path_for_blender_data_block_with_extension(project_settings, data_block, extension)
 
 def make_cross_platform_relative_path(path, relative_to_dir):
     path = os.path.relpath(path, relative_to_dir)
