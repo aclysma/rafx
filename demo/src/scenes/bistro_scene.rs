@@ -34,7 +34,7 @@ impl BistroScene {
 
         let prefab = SpawnablePrefab::blocking_load_from_path(
             resources,
-            "bistro/bistro_merged/Scene.blender_prefab",
+            "bistro/bistro/Scene.blender_prefab",
         );
         prefab.spawn_prefab(world, resources);
 
