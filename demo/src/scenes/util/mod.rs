@@ -192,7 +192,7 @@ pub fn default_main_view_masks(
         .add_render_phase::<OpaqueRenderPhase>()
         .add_render_phase::<TransparentRenderPhase>()
         .add_render_phase::<WireframeRenderPhase>()
-        .add_render_phase::<DebugPipRenderPhase>()
+        //.add_render_phase::<DebugPipRenderPhase>()
         .add_render_phase::<UiRenderPhase>();
 
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
