@@ -786,10 +786,14 @@ fn generate_struct_test_code(st: &GenerateStructResult) -> String {
             "        assert_eq!(std::mem::align_of::<{}>(), {});\n",
             m.ty, m.align
         );
-        result_string += &format!(
-            "        assert_eq!(memoffset::offset_of!({}, {}), {});\n",
-            st.name, m.name, m.offset
-        );
+
+        // Very large structs may be larger than can fit on the stack, which doesn't work with memoffset::offset_of!()
+        if st.size < (1024 * 1024) {
+            result_string += &format!(
+                "        assert_eq!(memoffset::offset_of!({}, {}), {});\n",
+                st.name, m.name, m.offset
+            );
+        }
     }
     result_string += &format!("    }}\n");
     result_string

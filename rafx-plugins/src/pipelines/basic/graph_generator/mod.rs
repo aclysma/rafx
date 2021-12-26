@@ -1,6 +1,5 @@
 use rafx::api::{
-    RafxFormat, RafxPrimitiveTopology, RafxResourceState, RafxResourceType, RafxResult,
-    RafxSampleCount,
+    RafxFormat, RafxPrimitiveTopology, RafxResourceState, RafxResult, RafxSampleCount,
 };
 use rafx::framework::VertexDataSetLayout;
 use rafx::framework::{ImageViewResource, ResourceArc};
@@ -129,14 +128,6 @@ impl RenderGraphGenerator for BasicPipelineRenderGraphGenerator {
 
         let swapchain_image_id = graph_context.graph.add_external_image(
             swapchain_image,
-            RenderGraphImageSpecification {
-                samples: RafxSampleCount::SampleCount1,
-                format: graph_config.swapchain_format,
-                resource_type: RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR,
-                extents: RenderGraphImageExtents::MatchSurface,
-                layer_count: 1,
-                mip_count: 1,
-            },
             Default::default(),
             RafxResourceState::PRESENT,
             RafxResourceState::PRESENT,

@@ -365,7 +365,7 @@ impl Renderer {
             .fetch_mut::<SwapchainRenderResource>()
             .set_max_color_component_value(max_color_component_value);
 
-        let render_view_set = RenderViewSet::default();
+        let render_view_set = RenderViewSet::new(presentable_frame.incrementing_frame_index());
 
         //
         // Determine Camera Location

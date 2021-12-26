@@ -4,14 +4,17 @@ use super::*;
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, WireframeRenderPhase,
 };
-use rafx::base::resource_map::ReadBorrow;
-use rafx::framework::{MaterialPassResource, ResourceArc, ResourceContext};
+use rafx::base::resource_map::{ReadBorrow, WriteBorrow};
+use rafx::framework::{DescriptorSetBindings, MaterialPassResource, ResourceArc, ResourceContext};
 
 use crate::shaders::mesh_adv::mesh_adv_textured_frag;
 use glam::Mat4;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 
+use crate::features::mesh_adv::light_binning::MeshAdvLightBinRenderResource;
 use crate::shaders::depth::depth_vert;
+use crate::shaders::mesh_adv::lights_bin_comp;
+use crate::shaders::mesh_adv::mesh_adv_textured_frag::LightInListStd430;
 use crate::shaders::mesh_adv::shadow_atlas_depth_vert;
 use mesh_adv_textured_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
 
@@ -28,6 +31,7 @@ pub struct MeshAdvPrepareJob<'prepare> {
     depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     shadow_map_atlas_depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     shadow_map_data: ReadBorrow<'prepare, MeshAdvShadowMapResource>,
+    light_bin_resource: WriteBorrow<'prepare, MeshAdvLightBinRenderResource>,
     render_object_instance_transforms: Arc<AtomicOnceCellStack<[[f32; 4]; 4]>>,
     #[allow(dead_code)]
     render_objects: MeshAdvRenderObjectSet,
@@ -73,6 +77,11 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
                     prepare_context
                         .render_resources
                         .fetch::<MeshAdvShadowMapResource>()
+                },
+                light_bin_resource: {
+                    prepare_context
+                        .render_resources
+                        .fetch_mut::<MeshAdvLightBinRenderResource>()
                 },
                 requires_textured_descriptor_sets,
                 requires_untextured_descriptor_sets,
@@ -375,6 +384,22 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         let has_shadows = !view.feature_flag_is_relevant::<MeshAdvNoShadowsRenderFeatureFlag>();
 
         let opaque_descriptor_set = if view.phase_is_relevant::<OpaqueRenderPhase>() {
+            let mut all_lights_buffer_data = mesh_adv_textured_frag::AllLightsBuffer {
+                light_count: 0,
+                _padding0: Default::default(),
+                data: [LightInListStd430 {
+                    position_ws: Default::default(),
+                    range: Default::default(),
+                    position_vs: Default::default(),
+                    intensity: Default::default(),
+                    color: Default::default(),
+                    spotlight_direction_ws: Default::default(),
+                    spotlight_half_angle: Default::default(),
+                    spotlight_direction_vs: Default::default(),
+                    shadow_map: Default::default(),
+                }; 512],
+            };
+
             let per_view_frag_data = {
                 let mut per_view_frag_data = MeshPerViewFragmentShaderParam::default();
 
@@ -385,24 +410,33 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 } else {
                     glam::Vec4::ONE.into()
                 };
+                per_view_frag_data.use_clustered_lighting = if per_view_data.use_clustered_lighting
+                {
+                    1
+                } else {
+                    0
+                };
+                per_view_frag_data.viewport_width = view.extents_width();
+                per_view_frag_data.viewport_height = view.extents_height();
 
-                for directional_light in &per_view_data.directional_lights {
-                    if directional_light.is_none() {
-                        break;
-                    }
+                let mut light_bounds_data = lights_bin_comp::LightsInputListBuffer {
+                    light_count: 0,
+                    _padding0: Default::default(),
+                    lights: [lights_bin_comp::LightStd430 {
+                        position: [0.0, 0.0, 0.0],
+                        radius: 0.0,
+                    }; 512],
+                };
 
+                for light in &per_view_data.directional_lights {
                     let light_count = per_view_frag_data.directional_light_count as usize;
-                    if light_count > per_view_frag_data.directional_lights.len() {
+                    if light_count >= per_view_frag_data.directional_lights.len() {
                         break;
                     }
 
-                    let directional_light = directional_light.as_ref().unwrap();
-                    let light = directional_light;
                     let shadow_map_index = shadow_map_data
                         .shadow_map_lookup_by_light_id
-                        .get(&MeshAdvLightId::DirectionalLight(
-                            directional_light.object_id,
-                        ))
+                        .get(&MeshAdvLightId::DirectionalLight(light.object_id))
                         .map(|x| {
                             per_frame_submit_data.shadow_map_image_index_remap[&x.unwrap_single()]
                         });
@@ -429,93 +463,171 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     per_view_frag_data.directional_light_count += 1;
                 }
 
-                for point_light in &per_view_data.point_lights {
-                    if point_light.is_none() {
-                        break;
-                    }
+                for light in &per_view_data.point_lights {
+                    let position_vs = (view.view_matrix()
+                        * light.transform.translation.extend(1.0))
+                    .truncate()
+                    .into();
+                    let range = light.light.range();
 
-                    let light_count = per_view_frag_data.point_light_count as usize;
-                    if light_count > per_view_frag_data.point_lights.len() {
-                        break;
-                    }
-
-                    let point_light = point_light.as_ref().unwrap();
-                    let light = point_light;
                     let shadow_map_index = shadow_map_data
                         .shadow_map_lookup_by_light_id
-                        .get(&MeshAdvLightId::PointLight(point_light.object_id))
+                        .get(&MeshAdvLightId::PointLight(light.object_id))
                         .map(|x| {
                             per_frame_submit_data.shadow_map_image_index_remap[&x.unwrap_cube_any()]
                         });
 
-                    let out = &mut per_view_frag_data.point_lights[light_count];
-                    out.position_ws = light.transform.translation.into();
-                    out.position_vs = (view.view_matrix()
-                        * light.transform.translation.extend(1.0))
-                    .truncate()
-                    .into();
-                    out.color = light.light.color.into();
-                    out.range = light.light.range();
-                    out.intensity = light.light.intensity;
-                    out.shadow_map = if has_shadows {
-                        shadow_map_index.map(|x| x as i32).unwrap_or(-1)
-                    } else {
-                        -1
-                    };
+                    {
+                        light_bounds_data.lights[light_bounds_data.light_count as usize] =
+                            lights_bin_comp::LightBuffer {
+                                position: position_vs,
+                                radius: range,
+                            };
+                        light_bounds_data.light_count += 1;
+                    }
 
-                    per_view_frag_data.point_light_count += 1;
+                    {
+                        let out = &mut all_lights_buffer_data.data
+                            [all_lights_buffer_data.light_count as usize];
+                        out.position_ws = light.transform.translation.into();
+                        out.position_vs = (view.view_matrix()
+                            * light.transform.translation.extend(1.0))
+                        .truncate()
+                        .into();
+                        out.color = light.light.color.into();
+                        out.range = light.light.range();
+                        out.intensity = light.light.intensity;
+                        out.shadow_map = if has_shadows {
+                            shadow_map_index.map(|x| x as i32).unwrap_or(-1)
+                        } else {
+                            -1
+                        };
+
+                        all_lights_buffer_data.light_count += 1;
+                    }
+
+                    let light_count = per_view_frag_data.point_light_count as usize;
+                    if light_count < per_view_frag_data.point_lights.len() {
+                        let out = &mut per_view_frag_data.point_lights[light_count];
+                        out.position_ws = light.transform.translation.into();
+                        out.position_vs = (view.view_matrix()
+                            * light.transform.translation.extend(1.0))
+                        .truncate()
+                        .into();
+                        out.color = light.light.color.into();
+                        out.range = light.light.range();
+                        out.intensity = light.light.intensity;
+                        out.shadow_map = if has_shadows {
+                            shadow_map_index.map(|x| x as i32).unwrap_or(-1)
+                        } else {
+                            -1
+                        };
+
+                        per_view_frag_data.point_light_count += 1;
+                    }
                 }
 
-                for spot_light in &per_view_data.spot_lights {
-                    if spot_light.is_none() {
-                        break;
-                    }
-
-                    let light_count = per_view_frag_data.spot_light_count as usize;
-                    if light_count > per_view_frag_data.spot_lights.len() {
-                        break;
-                    }
-
-                    let spot_light = spot_light.as_ref().unwrap();
-                    let light = spot_light;
-                    let shadow_map_index = shadow_map_data
-                        .shadow_map_lookup_by_light_id
-                        .get(&MeshAdvLightId::SpotLight(spot_light.object_id))
-                        .map(|x| {
-                            per_frame_submit_data.shadow_map_image_index_remap[&x.unwrap_single()]
-                        });
-
+                for light in &per_view_data.spot_lights {
                     let light_from = light.transform.translation;
                     let light_from_vs = (view.view_matrix() * light_from.extend(1.0)).truncate();
+
                     let light_to = light.transform.translation + light.light.direction;
                     let light_to_vs = (view.view_matrix() * light_to.extend(1.0)).truncate();
 
                     let light_direction = (light_to - light_from).normalize();
                     let light_direction_vs = (light_to_vs - light_from_vs).normalize();
 
-                    let out = &mut per_view_frag_data.spot_lights[light_count];
-                    out.position_ws = light_from.into();
-                    out.position_vs = light_from_vs.into();
-                    out.direction_ws = light_direction.into();
-                    out.direction_vs = light_direction_vs.into();
-                    out.spotlight_half_angle = light.light.spotlight_half_angle;
-                    out.color = light.light.color.into();
-                    out.range = light.light.range();
-                    out.intensity = light.light.intensity;
-                    out.shadow_map = if has_shadows {
-                        shadow_map_index.map(|x| x as i32).unwrap_or(-1)
-                    } else {
-                        -1
-                    };
+                    let range = light.light.range();
 
-                    per_view_frag_data.spot_light_count += 1;
+                    let shadow_map_index = shadow_map_data
+                        .shadow_map_lookup_by_light_id
+                        .get(&MeshAdvLightId::SpotLight(light.object_id))
+                        .map(|x| {
+                            per_frame_submit_data.shadow_map_image_index_remap[&x.unwrap_single()]
+                        });
+
+                    {
+                        light_bounds_data.lights[light_bounds_data.light_count as usize] =
+                            lights_bin_comp::LightBuffer {
+                                position: light_from_vs.into(),
+                                radius: range,
+                            };
+                        light_bounds_data.light_count += 1;
+                    }
+
+                    {
+                        let out = &mut all_lights_buffer_data.data
+                            [all_lights_buffer_data.light_count as usize];
+                        out.position_ws = light_from.into();
+                        out.position_vs = light_from_vs.into();
+                        out.spotlight_direction_ws = light_direction.into();
+                        out.spotlight_direction_vs = light_direction_vs.into();
+                        out.spotlight_half_angle = light.light.spotlight_half_angle;
+                        out.color = light.light.color.into();
+                        out.range = light.light.range();
+                        out.intensity = light.light.intensity;
+                        out.shadow_map = if has_shadows {
+                            shadow_map_index.map(|x| x as i32).unwrap_or(-1)
+                        } else {
+                            -1
+                        };
+
+                        all_lights_buffer_data.light_count += 1;
+                    }
+
+                    let light_count = per_view_frag_data.spot_light_count as usize;
+                    if light_count < per_view_frag_data.spot_lights.len() {
+                        let out = &mut per_view_frag_data.spot_lights[light_count];
+                        out.position_ws = light_from.into();
+                        out.position_vs = light_from_vs.into();
+                        out.direction_ws = light_direction.into();
+                        out.direction_vs = light_direction_vs.into();
+                        out.spotlight_half_angle = light.light.spotlight_half_angle;
+                        out.color = light.light.color.into();
+                        out.range = light.light.range();
+                        out.intensity = light.light.intensity;
+                        out.shadow_map = if has_shadows {
+                            shadow_map_index.map(|x| x as i32).unwrap_or(-1)
+                        } else {
+                            -1
+                        };
+
+                        per_view_frag_data.spot_light_count += 1;
+                    }
                 }
 
                 per_view_frag_data.shadow_map_2d_data = per_frame_submit_data.shadow_map_2d_data;
                 per_view_frag_data.shadow_map_cube_data =
                     per_frame_submit_data.shadow_map_cube_data;
 
+                self.light_bin_resource
+                    .update_light_bounds(context.view().frame_index(), &light_bounds_data)
+                    .unwrap();
+
                 per_view_frag_data
+            };
+
+            let all_lights_buffer = {
+                let dyn_resource_allocator_set =
+                    self.resource_context.create_dyn_resource_allocator_set();
+
+                let all_lights_buffer_size =
+                    std::mem::size_of::<mesh_adv_textured_frag::AllLightsBuffer>();
+                let all_lights_buffer = self
+                    .device_context
+                    .create_buffer(&RafxBufferDef {
+                        size: all_lights_buffer_size as u64,
+                        memory_usage: RafxMemoryUsage::CpuToGpu,
+                        resource_type: RafxResourceType::BUFFER,
+                        ..Default::default()
+                    })
+                    .unwrap();
+
+                all_lights_buffer
+                    .copy_to_host_visible_buffer(&[all_lights_buffer_data])
+                    .unwrap();
+
+                dyn_resource_allocator_set.insert_buffer(all_lights_buffer)
             };
 
             let shadow_map_atlas = context.per_frame_data().shadow_map_atlas.clone();
@@ -556,15 +668,30 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
 
             opaque_per_view_descriptor_set_layout.as_ref().and_then(
                 |per_view_descriptor_set_layout| {
-                    descriptor_set_allocator
-                        .create_descriptor_set(
-                            &per_view_descriptor_set_layout,
-                            mesh_adv_textured_frag::DescriptorSet0Args {
-                                shadow_map_atlas: &shadow_map_atlas,
-                                per_view_data: &per_view_frag_data,
-                            },
-                        )
-                        .ok()
+                    let mut dyn_descriptor_set = descriptor_set_allocator
+                        .create_dyn_descriptor_set_uninitialized(per_view_descriptor_set_layout)
+                        .ok()?;
+                    dyn_descriptor_set.set_buffer_data(
+                        mesh_adv_textured_frag::PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+                        &per_view_frag_data,
+                    );
+                    dyn_descriptor_set.set_image(
+                        mesh_adv_textured_frag::SHADOW_MAP_ATLAS_DESCRIPTOR_BINDING_INDEX as u32,
+                        &shadow_map_atlas,
+                    );
+                    dyn_descriptor_set.set_buffer(
+                        mesh_adv_textured_frag::LIGHT_BIN_OUTPUT_DESCRIPTOR_BINDING_INDEX as u32,
+                        self.light_bin_resource
+                            .output_gpu_buffer(view.frame_index()),
+                    );
+                    dyn_descriptor_set.set_buffer(
+                        mesh_adv_textured_frag::ALL_LIGHTS_DESCRIPTOR_BINDING_INDEX as u32,
+                        &all_lights_buffer,
+                    );
+                    dyn_descriptor_set
+                        .flush(&mut descriptor_set_allocator)
+                        .ok()?;
+                    Some(dyn_descriptor_set.descriptor_set().clone())
                 },
             )
         } else {

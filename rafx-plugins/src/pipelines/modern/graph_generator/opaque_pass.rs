@@ -3,6 +3,7 @@ use rafx::graph::*;
 
 use super::depth_prepass::DepthPrepass;
 use super::RenderGraphContext;
+use crate::pipelines::modern::graph_generator::light_binning::LightBuildListsPass;
 use crate::pipelines::modern::graph_generator::shadow_map_pass::ShadowMapPassOutput;
 use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
 use rafx::render_features::RenderJobCommandBufferContext;
@@ -19,6 +20,7 @@ pub(super) fn opaque_pass(
     context: &mut RenderGraphContext,
     depth_prepass: Option<DepthPrepass>,
     shadow_map_pass_output: &ShadowMapPassOutput,
+    light_build_lists_pass: &LightBuildListsPass,
 ) -> OpaquePass {
     let node = context
         .graph
@@ -66,6 +68,13 @@ pub(super) fn opaque_pass(
         );
         context.graph.set_image_name(depth, "depth");
     }
+
+    // This is a buffer owned by MeshAdvLightBinRenderResource
+    context.graph.read_storage_buffer(
+        node,
+        light_build_lists_pass.light_lists_buffer,
+        Default::default(),
+    );
 
     let shadow_map_atlas = context.graph.sample_image(
         node,

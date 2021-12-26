@@ -1,6 +1,7 @@
 //
 // Per-Frame Pass
 //
+#include "lights_processing.glsl"
 
 struct PointLight {
     vec3 position_ws;
@@ -25,14 +26,16 @@ struct DirectionalLight {
 
 struct SpotLight {
     vec3 position_ws;
-    float spotlight_half_angle;
-    vec3 direction_ws;
     float range;
     vec3 position_vs;
     float intensity;
     vec4 color;
 
+    //spotlight only
+    vec3 direction_ws;
+    float spotlight_half_angle;
     vec3 direction_vs;
+
     // Index into shadow_map_images and per_view_data.shadow_map_2d_data
     int shadow_map;
 };
@@ -58,11 +61,14 @@ layout (set = 0, binding = 0) uniform PerViewData {
     mat4 view;
     mat4 view_proj;
     vec4 ambient_light;
+    uint viewport_width;
+    uint viewport_height;
     uint point_light_count;
     uint directional_light_count;
     uint spot_light_count;
+    bool use_clustered_lighting;
     PointLight point_lights[16];
-    DirectionalLight directional_lights[16];
+    DirectionalLight directional_lights[8];
     SpotLight spot_lights[16];
     ShadowMap2DData shadow_map_2d_data[32];
     ShadowMapCubeData shadow_map_cube_data[16];
@@ -114,6 +120,33 @@ layout (set = 0, binding = 3) uniform sampler smp_depth_nearest;
 
 // @[export]
 layout (set = 0, binding = 4) uniform texture2D shadow_map_atlas;
+
+// @[export]
+layout (set = 0, binding = 5) buffer LightBinOutput {
+    LightBinningOutput data;
+} light_bin_output;
+
+struct LightInList {
+    vec3 position_ws;
+    float range;
+    vec3 position_vs;
+    float intensity;
+    vec4 color;
+
+    //spotlight only
+    vec3 spotlight_direction_ws;
+    float spotlight_half_angle;
+    vec3 spotlight_direction_vs;
+
+    // Index into shadow_map_images and per_view_data.shadow_map_2d_data
+    int shadow_map;
+};
+
+// @[export]
+layout (set = 0, binding = 6) buffer AllLights {
+    uint light_count;
+    LightInList data[512];
+} all_lights;
 
 //
 // Per-Material Bindings

@@ -84,6 +84,7 @@ impl ShadowsScene {
             [5.0, 5.0, 2.0].into(),
             [0.0, 1.0, 0.0, 1.0].into(),
             75.0,
+            true,
         );
 
         //
@@ -98,6 +99,7 @@ impl ShadowsScene {
             light_direction,
             [0.0, 0.0, 1.0, 1.0].into(),
             1.0,
+            true,
         );
 
         //
@@ -114,6 +116,7 @@ impl ShadowsScene {
             40.0 * (std::f32::consts::PI / 180.0),
             [1.0, 0.0, 0.0, 1.0].into(),
             150.0,
+            true,
         );
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();

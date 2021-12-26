@@ -159,6 +159,7 @@ impl SpawnablePrefab {
                                 object.transform.position,
                                 light.color.extend(1.0),
                                 light.intensity * 0.15,
+                                true,
                             );
                             point_light_count += 1;
                         }
@@ -174,6 +175,7 @@ impl SpawnablePrefab {
                                 light.spot.as_ref().unwrap().outer_angle,
                                 light.color.extend(1.0),
                                 light.intensity * 0.15,
+                                true,
                             );
                             spot_light_count += 1;
                         }
@@ -186,6 +188,7 @@ impl SpawnablePrefab {
                                 object.transform.rotation * -glam::Vec3::Z,
                                 light.color.extend(1.0),
                                 light.intensity * 0.15,
+                                true,
                             );
                             directional_light_count += 1;
                         }

@@ -4,10 +4,7 @@ use rafx::api::{
     RafxSampleCount, RafxTextureDef, RafxTextureDimensions,
 };
 use rafx::framework::{ImageViewResource, ResourceArc, ResourceLookupSet};
-use rafx::graph::{
-    RenderGraphBuilder, RenderGraphExternalImageId, RenderGraphImageExtents,
-    RenderGraphImageSpecification,
-};
+use rafx::graph::{RenderGraphBuilder, RenderGraphExternalImageId};
 use rafx::RafxResult;
 
 // A raw info struct that can be passed around but does not keep the atlas space allocated
@@ -66,8 +63,8 @@ pub struct ShadowMapAtlas {
     _device_context: RafxDeviceContext,
     image_view: ResourceArc<ImageViewResource>,
     free_elements_by_quality: Vec<Vec<ShadowMapAtlasElementInner>>,
-    image_width: u32,
-    image_height: u32,
+    _image_width: u32,
+    _image_height: u32,
     // First render should do a full-clear to get rid of NaN in the image. Call take_requires_full_clear()
     // to check for this condition and clear it.
     requires_full_clear: bool,
@@ -179,8 +176,8 @@ impl ShadowMapAtlas {
             _device_context: device_context,
             image_view,
             free_elements_by_quality,
-            image_width: atlas_width_height,
-            image_height: atlas_width_height,
+            _image_width: atlas_width_height,
+            _image_height: atlas_width_height,
             requires_full_clear: true,
             drop_tx,
             drop_rx,
@@ -199,15 +196,6 @@ impl ShadowMapAtlas {
     ) -> RenderGraphExternalImageId {
         graph.add_external_image(
             self.shadow_atlas_image_view().clone(),
-            RenderGraphImageSpecification {
-                samples: RafxSampleCount::SampleCount1,
-                format: RafxFormat::D32_SFLOAT,
-                resource_type: RafxResourceType::RENDER_TARGET_DEPTH_STENCIL
-                    | RafxResourceType::TEXTURE,
-                extents: RenderGraphImageExtents::Custom(self.image_width, self.image_height, 1),
-                layer_count: 1,
-                mip_count: 1,
-            },
             Default::default(),
             RafxResourceState::SHADER_RESOURCE,
             RafxResourceState::SHADER_RESOURCE,

@@ -4,7 +4,6 @@ use crate::time::TimeState;
 //
 // Camera by default points along +X axis, +Z up
 //
-#[derive(Default)]
 pub struct FlyCamera {
     pub position: glam::Vec3,
     pub look_dir: glam::Vec3,
@@ -13,6 +12,20 @@ pub struct FlyCamera {
     pub pitch: f32,
     pub yaw: f32,
     pub lock_view: bool,
+}
+
+impl Default for FlyCamera {
+    fn default() -> Self {
+        FlyCamera {
+            position: glam::Vec3::ZERO,
+            look_dir: glam::Vec3::X,
+            right_dir: -glam::Vec3::Y,
+            up_dir: glam::Vec3::Z,
+            pitch: 0.0,
+            yaw: 0.0,
+            lock_view: false,
+        }
+    }
 }
 
 impl FlyCamera {

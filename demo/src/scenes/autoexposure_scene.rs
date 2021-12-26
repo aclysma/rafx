@@ -82,6 +82,7 @@ impl AutoexposureScene {
             [5.0, 5.0, 2.0].into(),
             [1.0, 1.0, 1.0, 1.0].into(),
             50.0,
+            true,
         );
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();

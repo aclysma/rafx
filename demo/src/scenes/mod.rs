@@ -3,7 +3,7 @@ use legion::{Resources, World};
 use rand::Rng;
 
 // miscellaneous shared code between scenes
-mod util;
+pub mod util;
 
 mod bistro_scene;
 use bistro_scene::BistroScene;

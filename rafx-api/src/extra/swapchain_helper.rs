@@ -31,6 +31,7 @@ pub trait RafxSwapchainEventListener {
 // It contains the swapchain, sync primitives required to wait for the GPU to complete work, and
 // sync primitives to allow the helper/presentable frame to communicate.
 struct RafxSwapchainHelperSharedState {
+    global_frame_index: AtomicUsize,
     sync_frame_index: AtomicUsize,
     image_available_semaphores: Vec<RafxSemaphore>,
     render_finished_semaphores: Vec<RafxSemaphore>,
@@ -60,6 +61,7 @@ impl RafxSwapchainHelperSharedState {
         let (result_tx, result_rx) = crossbeam_channel::unbounded();
 
         Ok(RafxSwapchainHelperSharedState {
+            global_frame_index: AtomicUsize::new(0),
             sync_frame_index: AtomicUsize::new(0),
             image_available_semaphores,
             render_finished_semaphores,
@@ -81,6 +83,7 @@ pub struct RafxPresentableFrame {
     // but the swapchain itself is stored in it, wrapped by a mutex
     shared_state: Option<Arc<RafxSwapchainHelperSharedState>>,
     swapchain_image: RafxSwapchainImage,
+    global_frame_index: usize,
     sync_frame_index: usize,
 }
 
@@ -92,6 +95,10 @@ impl RafxPresentableFrame {
     pub fn rotating_frame_index(&self) -> usize {
         // The sync_frame_index can be used as-is for this purpose
         self.sync_frame_index
+    }
+
+    pub fn incrementing_frame_index(&self) -> usize {
+        self.global_frame_index
     }
 
     /// Returns the acquired swapchain image
@@ -184,6 +191,9 @@ impl RafxPresentableFrame {
             (sync_frame_index + 1) % shared_state.in_flight_fences.len(),
             Ordering::Relaxed,
         );
+        shared_state
+            .global_frame_index
+            .fetch_add(1, Ordering::Relaxed);
 
         Ok(result)
     }
@@ -473,6 +483,7 @@ impl RafxSwapchainHelper {
         // This index iterates from 0..max_num_frames, wrapping around to 0. This ensures we use a
         // different set of sync primitives per frame in flight
         let sync_frame_index = shared_state.sync_frame_index.load(Ordering::Relaxed);
+        let global_frame_index = shared_state.global_frame_index.load(Ordering::Relaxed);
 
         // If this swapchain image is still being process on the GPU, block until it is flushed
         let frame_fence = &shared_state.in_flight_fences[sync_frame_index];
@@ -488,6 +499,7 @@ impl RafxSwapchainHelper {
             shared_state: Some(shared_state.clone()),
             swapchain_image,
             sync_frame_index,
+            global_frame_index,
         }))
     }
 

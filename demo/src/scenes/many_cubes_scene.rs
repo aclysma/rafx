@@ -57,6 +57,7 @@ impl ManyCubesScene {
             [-4., -4., 10.].into(),
             [1.0, 1.0, 1.0, 1.0].into(),
             200.0,
+            true,
         );
 
         let visibility_region = resources.get::<VisibilityRegion>().unwrap();
