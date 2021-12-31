@@ -381,7 +381,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     float percent_lit = 1.0;
     if (all(greaterThanEqual(vec4(sample_location_uv, -sample_location_uv), uv_min_max_compare))) {
         float distance_from_closest_object_to_light = texture(
-            sampler2D(shadow_map_atlas, smp_depth_nearest),
+            sampler2D(shadow_map_atlas, smp_depth_linear),
             sample_location_uv
         ).r;
         float percent_lit = depth_of_surface + bias < distance_from_closest_object_to_light ? 1.0 : 0.0;
@@ -393,7 +393,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     float percent_lit = 1.0;
     if (all(greaterThanEqual(vec4(sample_location_uv, -sample_location_uv), uv_min_max_compare))) {
         percent_lit = texture(
-            sampler2DShadow(shadow_map_atlas, smp_depth_nearest),
+            sampler2DShadow(shadow_map_atlas, smp_depth_linear),
             vec3(
                 sample_location_uv,
                 depth_of_surface + bias
@@ -405,7 +405,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     // PCF reasonable sample count
 #ifdef PCF_SAMPLE_9
     float percent_lit = 0.0;
-    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth_nearest), 0);
+    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth_linear), 0);
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
@@ -415,7 +415,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
 
             if (all(greaterThanEqual(uv, uv_min_max_compare))) {
                 percent_lit += texture(
-                    sampler2DShadow(shadow_map_atlas, smp_depth_nearest),
+                    sampler2DShadow(shadow_map_atlas, smp_depth_linear),
                     vec3(
                         uv.xy,
                         depth_of_surface + bias
@@ -433,7 +433,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
     // PCF probably too many samples
 #ifdef PCF_SAMPLE_25
     float percent_lit = 0.0;
-    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth_nearest), 0);
+    vec2 texelSize = 1 / textureSize(sampler2DShadow(shadow_map_atlas, smp_depth_linear), 0);
     for(int x = -2; x <= 2; ++x)
     {
         for(int y = -2; y <= 2; ++y)
@@ -443,7 +443,7 @@ float do_calculate_percent_lit(vec3 normal_vs, int index, float bias_multiplier)
 
             if (all(greaterThanEqual(uv, uv_min_max_compare))) {
                 percent_lit += texture(
-                    sampler2DShadow(shadow_map_atlas, smp_depth_nearest),
+                    sampler2DShadow(shadow_map_atlas, smp_depth_linear),
                     vec3(
                         uv.xy,
                         depth_of_surface + bias
