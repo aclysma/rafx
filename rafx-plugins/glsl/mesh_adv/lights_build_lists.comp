@@ -1,0 +1,49 @@
+#version 450
+
+#include "lights_processing.glsl"
+
+// @[export]
+layout(set = 0, binding = 0) readonly buffer LightBitfields
+{
+    LightBitfieldsData data;
+} input_data;
+
+// @[export]
+layout(set = 0, binding = 1) writeonly buffer LightBuildListsOutput
+{
+    LightBinningOutput data;
+} output_data;
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+void main() {
+    // We will scan the bits associated with this cluster
+    uint cluster_index = gl_GlobalInvocationID.x;
+    uint cluster_first_u32_index = cluster_index * (512/32);
+
+    uint count = input_data.data.light_count[cluster_index];
+    output_data.data.offsets[cluster_index].count = count;
+    if (count == 0) {
+        output_data.data.offsets[cluster_index].first_light = 0;
+        return;
+    }
+
+    uint list_start_index = atomicAdd(output_data.data.data_write_ptr, count);
+    output_data.data.offsets[cluster_index].first_light = list_start_index;
+
+    int written_light_count = 0;
+    // iterate all u32 bitfields for this cluster
+    for (uint u32_index = 0; u32_index < 16; ++u32_index) {
+        uint u32_value = input_data.data.bitfields[cluster_first_u32_index + u32_index];
+        int lsb = findLSB(u32_value);
+        while (lsb > -1) {
+            // clear this bit
+            u32_value &= ~(1<<lsb);
+
+            // append the light index to the list
+            uint light_index = 32 * u32_index + lsb;
+            output_data.data.data[list_start_index + written_light_count] = light_index;
+            ++written_light_count;
+            lsb = findLSB(u32_value);
+        }
+    }
+}

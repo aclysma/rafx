@@ -10,7 +10,6 @@ use rafx_plugins::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
 use rafx_plugins::features::debug3d::{Debug3DRenderFeature, Debug3DResource};
-use rafx_plugins::features::debug_pip::DebugPipRenderFeature;
 use rafx_plugins::features::skybox::{SkyboxRenderFeature, SkyboxResource};
 use rafx_plugins::features::sprite::SpriteRenderFeature;
 use rafx_plugins::features::text::TextRenderFeature;
@@ -63,7 +62,7 @@ pub(super) fn set_ambient_light(
     mesh_render_options.ambient_light = ambient_light;
 }
 
-pub(super) fn add_light_debug_draw(
+pub fn add_light_debug_draw(
     resources: &Resources,
     world: &World,
 ) {
@@ -105,15 +104,20 @@ pub(super) fn add_directional_light(
     direction: glam::Vec3,
     color: glam::Vec4,
     intensity: f32,
+    cast_shadows: bool,
 ) {
-    let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-    let view_frustum = visibility_region.register_view_frustum();
+    let view_frustum = if cast_shadows {
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+        Some(visibility_region.register_view_frustum())
+    } else {
+        None
+    };
 
     let light_component = DirectionalLightComponent {
         direction,
         color,
         intensity,
-        view_frustum,
+        shadow_view_frustum: view_frustum,
     };
 
     world.extend(vec![(light_component,)]);
@@ -127,9 +131,14 @@ pub(super) fn add_spot_light(
     spotlight_half_angle: f32,
     color: glam::Vec4,
     intensity: f32,
+    cast_shadows: bool,
 ) {
-    let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-    let view_frustum = visibility_region.register_view_frustum();
+    let view_frustum = if cast_shadows {
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+        Some(visibility_region.register_view_frustum())
+    } else {
+        None
+    };
 
     let position_component = TransformComponent {
         translation: position,
@@ -142,7 +151,7 @@ pub(super) fn add_spot_light(
         range: None,
         color,
         intensity,
-        view_frustum,
+        shadow_view_frustum: view_frustum,
     };
 
     world.extend(vec![(position_component, light_component)]);
@@ -154,16 +163,21 @@ pub(super) fn add_point_light(
     position: glam::Vec3,
     color: glam::Vec4,
     intensity: f32,
+    cast_shadows: bool,
 ) {
-    let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-    let view_frustums = [
-        visibility_region.register_view_frustum(),
-        visibility_region.register_view_frustum(),
-        visibility_region.register_view_frustum(),
-        visibility_region.register_view_frustum(),
-        visibility_region.register_view_frustum(),
-        visibility_region.register_view_frustum(),
-    ];
+    let view_frustums = if cast_shadows {
+        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+        Some([
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+            visibility_region.register_view_frustum(),
+        ])
+    } else {
+        None
+    };
 
     let position_component = TransformComponent {
         translation: position,
@@ -174,7 +188,7 @@ pub(super) fn add_point_light(
         color,
         intensity,
         range: None,
-        view_frustums,
+        shadow_view_frustums: view_frustums,
     };
 
     world.extend(vec![(position_component, light_component)]);
@@ -195,11 +209,12 @@ pub fn default_main_view_masks(
         .add_render_phase::<DebugPipRenderPhase>()
         .add_render_phase::<UiRenderPhase>();
 
+    use rafx_plugins::features::debug_pip::DebugPipRenderFeature;
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
         .add_render_feature::<MeshRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<TileLayerRenderFeature>()
-        .add_render_feature::<DebugPipRenderFeature>();
+        .add_render_feature::<DebugPipRenderFeature>()
+        .add_render_feature::<TileLayerRenderFeature>();
 
     #[cfg(feature = "egui")]
     {

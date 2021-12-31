@@ -176,6 +176,10 @@ fn calculate_shadow_map_views(
 
     let mut query = <(Entity, Read<SpotLightComponent>, Read<TransformComponent>)>::query();
     for (entity, light, transform) in query.iter(world) {
+        if light.shadow_view_frustum.is_none() {
+            continue;
+        }
+
         //TODO: Transform direction by rotation
         let eye_position = transform.translation;
         let light_to = transform.translation + light.direction;
@@ -185,7 +189,7 @@ fn calculate_shadow_map_views(
         let near_plane = 0.25;
         let far_plane = light.range();
 
-        let view_frustum: ViewFrustumArc = light.view_frustum.clone();
+        let view_frustum: ViewFrustumArc = light.shadow_view_frustum.clone().unwrap();
         let projection = Projection::Perspective(PerspectiveParameters::new(
             light.spotlight_half_angle * 2.0,
             1.0,
@@ -221,6 +225,10 @@ fn calculate_shadow_map_views(
 
     let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
     for (entity, light) in query.iter(world) {
+        if light.shadow_view_frustum.is_none() {
+            continue;
+        }
+
         let eye_position = light.direction * -40.0;
         let view = glam::Mat4::look_at_rh(
             eye_position,
@@ -231,7 +239,7 @@ fn calculate_shadow_map_views(
         let near_plane = 0.25;
         let far_plane = 1000.0;
         let ortho_projection_size = 10.0;
-        let view_frustum: ViewFrustumArc = light.view_frustum.clone();
+        let view_frustum: ViewFrustumArc = light.shadow_view_frustum.clone().unwrap();
         let projection = Projection::Orthographic(OrthographicParameters::new(
             -ortho_projection_size,
             ortho_projection_size,
@@ -295,7 +303,8 @@ fn calculate_shadow_map_views(
             let near = 0.25;
             let far = light.range();
 
-            let view_frustum: ViewFrustumArc = light.view_frustums[face_idx].clone();
+            let view_frustum: ViewFrustumArc =
+                light.shadow_view_frustums.as_ref().unwrap()[face_idx].clone();
             let projection = Projection::Perspective(PerspectiveParameters::new(
                 std::f32::consts::FRAC_PI_2,
                 1.0,
@@ -329,6 +338,10 @@ fn calculate_shadow_map_views(
                 RenderFeatureFlagMask::empty(),
                 format!("shadow_map_point_light_face_{}", face_idx),
             )
+        }
+
+        if light.shadow_view_frustums.is_none() {
+            continue;
         }
 
         #[rustfmt::skip]

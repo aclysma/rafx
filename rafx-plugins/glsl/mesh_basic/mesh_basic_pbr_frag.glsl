@@ -727,7 +727,6 @@ float attenuate_light_for_range(
     return 1.0 - smoothstep(light_range * .75, light_range, distance);
 }
 
-//TODO: Light range is not being considered. Will want a method of tapering it to zero
 vec4 pbr_path(
     vec3 surface_to_eye_vs,
     vec4 base_color,

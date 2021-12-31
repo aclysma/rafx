@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+pub mod lights_bin_comp;
+pub mod lights_build_lists_comp;
 pub mod mesh_adv_textured_frag;
 pub mod mesh_adv_textured_vert;
 pub mod mesh_adv_untextured_frag;

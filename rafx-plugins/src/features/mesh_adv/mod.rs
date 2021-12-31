@@ -47,5 +47,7 @@ pub use shadow_map_resource::*;
 mod render_options;
 pub use render_options::*;
 
+pub mod light_binning;
 mod shadow_map_atlas;
+
 pub use shadow_map_atlas::*;

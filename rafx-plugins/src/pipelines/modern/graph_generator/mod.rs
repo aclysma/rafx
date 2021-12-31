@@ -1,6 +1,5 @@
 use rafx::api::{
-    RafxFormat, RafxPrimitiveTopology, RafxResourceState, RafxResourceType, RafxResult,
-    RafxSampleCount,
+    RafxFormat, RafxPrimitiveTopology, RafxResourceState, RafxResult, RafxSampleCount,
 };
 use rafx::framework::VertexDataSetLayout;
 use rafx::framework::{ImageViewResource, ResourceArc};
@@ -29,6 +28,8 @@ use rafx::renderer::{RenderGraphGenerator, TimeRenderResource};
 mod bloom_blur_pass;
 
 mod bloom_combine_pass;
+
+mod light_binning;
 
 mod luma_pass;
 
@@ -141,14 +142,6 @@ impl RenderGraphGenerator for ModernPipelineRenderGraphGenerator {
 
         let swapchain_image_id = graph_context.graph.add_external_image(
             swapchain_image,
-            RenderGraphImageSpecification {
-                samples: RafxSampleCount::SampleCount1,
-                format: graph_config.swapchain_format,
-                resource_type: RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR,
-                extents: RenderGraphImageExtents::MatchSurface,
-                layer_count: 1,
-                mip_count: 1,
-            },
             Default::default(),
             RafxResourceState::PRESENT,
             RafxResourceState::PRESENT,
@@ -160,29 +153,12 @@ impl RenderGraphGenerator for ModernPipelineRenderGraphGenerator {
 
         let tonemap_histogram_result = graph_context.graph.add_external_buffer(
             static_resources.tonemap_histogram_result.clone(),
-            RenderGraphBufferSpecification {
-                resource_type: RafxResourceType::BUFFER_READ_WRITE,
-                size: static_resources
-                    .tonemap_histogram_result
-                    .get_raw()
-                    .buffer
-                    .buffer_def()
-                    .size,
-            },
             RafxResourceState::UNORDERED_ACCESS,
             RafxResourceState::UNORDERED_ACCESS,
         );
 
         let tonemap_debug_output = graph_context.graph.add_external_buffer(
             static_resources.tonemap_debug_output[rotating_frame_index].clone(),
-            RenderGraphBufferSpecification {
-                resource_type: RafxResourceType::BUFFER_READ_WRITE,
-                size: static_resources.tonemap_debug_output[rotating_frame_index]
-                    .get_raw()
-                    .buffer
-                    .buffer_def()
-                    .size,
-            },
             RafxResourceState::UNORDERED_ACCESS,
             RafxResourceState::UNORDERED_ACCESS,
         );
@@ -195,8 +171,16 @@ impl RenderGraphGenerator for ModernPipelineRenderGraphGenerator {
             shadow_atlas_needs_full_clear,
         );
 
-        let opaque_pass =
-            opaque_pass::opaque_pass(&mut graph_context, depth_prepass, &shadow_map_pass_output);
+        let light_bin_pass = light_binning::lights_bin_pass(&mut graph_context);
+        let build_light_lists_pass =
+            light_binning::lights_build_lists_pass(&mut graph_context, light_bin_pass);
+
+        let opaque_pass = opaque_pass::opaque_pass(
+            &mut graph_context,
+            depth_prepass,
+            &shadow_map_pass_output,
+            &build_light_lists_pass,
+        );
 
         let mut previous_pass_color = if graph_config.enable_hdr {
             let bloom_extract_material_pass = asset_manager

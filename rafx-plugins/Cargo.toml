@@ -48,9 +48,9 @@ serde = "1"
 serde_bytes = "0.11"
 crossbeam-channel = "0.5"
 profiling = "1.0.1"
+memoffset = "0.6"
 
 [dev-dependencies]
-memoffset = "0.6"
 
 [features]
 # legion: if enabled, include some helper setup code

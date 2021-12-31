@@ -16,9 +16,9 @@ pub struct MeshAdvRenderFeatureTypes;
 //TODO: Pull this const from the shader
 pub const MAX_SHADOW_MAPS_2D: usize = 32;
 pub const MAX_SHADOW_MAPS_CUBE: usize = 16;
-pub const MAX_DIRECTIONAL_LIGHTS: usize = 16;
-pub const MAX_POINT_LIGHTS: usize = 16;
-pub const MAX_SPOT_LIGHTS: usize = 16;
+// pub const MAX_DIRECTIONAL_LIGHTS: usize = 16;
+// pub const MAX_POINT_LIGHTS: usize = 16;
+// pub const MAX_SPOT_LIGHTS: usize = 16;
 
 //---------
 // EXTRACT
@@ -39,13 +39,13 @@ pub struct MeshAdvRenderObjectInstanceData {
 
 #[derive(Default)]
 pub struct MeshAdvPerViewData {
-    pub directional_lights: [Option<ExtractedDirectionalLight>; MAX_DIRECTIONAL_LIGHTS],
-    pub point_lights: [Option<ExtractedPointLight>; MAX_POINT_LIGHTS],
-    pub spot_lights: [Option<ExtractedSpotLight>; MAX_SPOT_LIGHTS],
-    pub num_directional_lights: u32,
-    pub num_point_lights: u32,
-    pub num_spot_lights: u32,
+    //TODO: Replace with arrayvec/tinyvec? These were static arrays but they can get big enough now
+    // that working with them as static arrays is difficult
+    pub directional_lights: Vec<ExtractedDirectionalLight>,
+    pub point_lights: Vec<ExtractedPointLight>,
+    pub spot_lights: Vec<ExtractedSpotLight>,
     pub ambient_light: glam::Vec3,
+    pub use_clustered_lighting: bool,
 }
 
 pub struct ExtractedDirectionalLight {

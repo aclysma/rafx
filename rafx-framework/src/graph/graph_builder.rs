@@ -890,14 +890,25 @@ impl RenderGraphBuilder {
     pub fn add_external_image(
         &mut self,
         image_resource: ResourceArc<ImageViewResource>,
-        specification: RenderGraphImageSpecification,
         view_options: RenderGraphImageViewOptions,
         initial_state: RafxResourceState,
         final_state: RafxResourceState,
     ) -> RenderGraphExternalImageId {
-        if specification.resource_type == RafxResourceType::UNDEFINED {
-            panic!("An input image with empty resource_type in the specification is almost certainly a mistake.");
-        }
+        let image_view = image_resource.get_raw().image;
+        let image = image_view.get_raw().image;
+        let texture_def = image.texture_def();
+        let specification = RenderGraphImageSpecification {
+            resource_type: texture_def.resource_type,
+            format: texture_def.format,
+            extents: RenderGraphImageExtents::Custom(
+                texture_def.extents.width,
+                texture_def.extents.height,
+                texture_def.extents.depth,
+            ),
+            mip_count: texture_def.mip_count,
+            layer_count: texture_def.array_length,
+            samples: texture_def.sample_count,
+        };
 
         let external_image_id = RenderGraphExternalImageId(self.external_images.len());
 
@@ -924,13 +935,15 @@ impl RenderGraphBuilder {
     pub fn add_external_buffer(
         &mut self,
         buffer_resource: ResourceArc<BufferResource>,
-        specification: RenderGraphBufferSpecification,
         initial_state: RafxResourceState,
         final_state: RafxResourceState,
     ) -> RenderGraphExternalBufferId {
-        if specification.resource_type == RafxResourceType::UNDEFINED {
-            panic!("An input buffer with empty resource_type in the specification is almost certainly a mistake.");
-        }
+        let buffer = buffer_resource.get_raw().buffer;
+        let buffer_def = buffer.buffer_def();
+        let specification = RenderGraphBufferSpecification {
+            size: buffer_def.size,
+            resource_type: buffer_def.resource_type,
+        };
 
         let external_buffer_id = RenderGraphExternalBufferId(self.external_buffers.len());
 

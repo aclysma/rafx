@@ -1,17 +1,20 @@
 use rafx::render_feature_renderer_prelude::*;
 
 use super::*;
+use crate::features::mesh_adv::light_binning::MeshAdvLightBinRenderResource;
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
     WireframeRenderPhase,
 };
 use distill::loader::handle::Handle;
-use rafx::assets::MaterialAsset;
+use rafx::assets::{ComputePipelineAsset, MaterialAsset};
 
 pub struct MeshAdvStaticResources {
     pub depth_material: Handle<MaterialAsset>,
     pub shadow_map_atlas_depth_material: Handle<MaterialAsset>,
     pub shadow_map_atlas_clear_tiles_material: Handle<MaterialAsset>,
+    pub lights_bin_compute_pipeline: Handle<ComputePipelineAsset>,
+    pub lights_build_lists_compute_pipeline: Handle<ComputePipelineAsset>,
 }
 
 pub struct MeshAdvRendererPlugin {
@@ -98,6 +101,16 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
                 "rafx-plugins/materials/modern_pipeline/shadow_atlas_clear_tiles.material",
             );
 
+        let lights_bin_compute_pipeline = asset_resource
+            .load_asset_path::<ComputePipelineAsset, _>(
+                "rafx-plugins/compute_pipelines/lights_bin.compute",
+            );
+
+        let lights_build_lists_compute_pipeline = asset_resource
+            .load_asset_path::<ComputePipelineAsset, _>(
+                "rafx-plugins/compute_pipelines/lights_build_lists.compute",
+            );
+
         asset_manager.wait_for_asset_to_load(&depth_material, asset_resource, "depth")?;
         asset_manager.wait_for_asset_to_load(
             &shadow_map_atlas_depth_material,
@@ -109,14 +122,31 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             asset_resource,
             "shadow atlas clear",
         )?;
+        asset_manager.wait_for_asset_to_load(
+            &lights_bin_compute_pipeline,
+            asset_resource,
+            "lights_bin.compute",
+        )?;
+        asset_manager.wait_for_asset_to_load(
+            &lights_build_lists_compute_pipeline,
+            asset_resource,
+            "lights_build_lists.compute",
+        )?;
 
         render_resources.insert(MeshAdvStaticResources {
             depth_material,
             shadow_map_atlas_depth_material,
             shadow_map_atlas_clear_tiles_material,
+            lights_bin_compute_pipeline,
+            lights_build_lists_compute_pipeline,
         });
 
         render_resources.insert(MeshAdvShadowMapResource::default());
+
+        let lights_bin_render_resource = MeshAdvLightBinRenderResource::new(
+            &asset_manager.resource_manager().resource_context(),
+        )?;
+        render_resources.insert(lights_bin_render_resource);
 
         render_resources.insert(ShadowMapAtlas::new(asset_manager.resources())?);
 

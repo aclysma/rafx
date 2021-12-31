@@ -1,0 +1,4 @@
+(
+    shader_module: "../shaders/mesh_adv/lights_bin.comp.cookedshaderpackage",
+    entry_name: "main"
+)

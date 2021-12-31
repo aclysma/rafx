@@ -114,42 +114,41 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshAdvExtractJob<'extract> {
 
         let world = &*self.world;
 
+        per_view.directional_lights.reserve(32);
         let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
         for light in query.iter(world).map(|(e, l)| ExtractedDirectionalLight {
             object_id: ObjectId::from(*e),
             light: l.clone(),
         }) {
-            let next_index = per_view.num_directional_lights;
-            per_view.directional_lights[next_index as usize] = Some(light);
-            per_view.num_directional_lights += 1;
+            per_view.directional_lights.push(light);
         }
 
+        per_view.point_lights.reserve(512);
         let mut query = <(Entity, Read<TransformComponent>, Read<PointLightComponent>)>::query();
         for light in query.iter(world).map(|(e, p, l)| ExtractedPointLight {
             object_id: ObjectId::from(*e),
             light: l.clone(),
             transform: p.clone(),
         }) {
-            let next_index = per_view.num_point_lights;
-            per_view.point_lights[next_index as usize] = Some(light);
-            per_view.num_point_lights += 1;
+            per_view.point_lights.push(light);
         }
 
+        per_view.spot_lights.reserve(512);
         let mut query = <(Entity, Read<TransformComponent>, Read<SpotLightComponent>)>::query();
         for light in query.iter(world).map(|(e, p, l)| ExtractedSpotLight {
             object_id: ObjectId::from(*e),
             light: l.clone(),
             transform: p.clone(),
         }) {
-            let next_index = per_view.num_spot_lights;
-            per_view.spot_lights[next_index as usize] = Some(light);
-            per_view.num_spot_lights += 1;
+            per_view.spot_lights.push(light);
         }
 
         if let Some(mesh_render_options) = &self.mesh_render_options {
             per_view.ambient_light = mesh_render_options.ambient_light;
+            per_view.use_clustered_lighting = mesh_render_options.use_clustered_lighting;
         } else {
             per_view.ambient_light = glam::Vec3::ZERO;
+            per_view.use_clustered_lighting = true;
         }
 
         context.view_packet().per_view_data().set(per_view);

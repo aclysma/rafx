@@ -31,7 +31,6 @@ layout (location = 4) out vec2 out_uv;
 
 // for shadows
 layout (location = 5) out vec4 out_position_ws;
-
 layout (location = 6) out mat3 out_model_view;
 
 void pbr_main() {

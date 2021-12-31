@@ -6,8 +6,8 @@ use rafx::framework::{
     VertexDataLayout,
 };
 use rafx::graph::{
-    PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageExtents,
-    RenderGraphImageSpecification, RenderGraphQueue, SwapchainSurfaceInfo,
+    PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphQueue,
+    SwapchainSurfaceInfo,
 };
 use rafx::render_features::{PreparedRenderData, RenderFeatureSubmitNode};
 use std::sync::Arc;
@@ -361,15 +361,6 @@ fn run() -> RafxResult<()> {
             //
             let external_image_id = graph_builder.add_external_image(
                 swapchain_image_view,
-                RenderGraphImageSpecification {
-                    samples: RafxSampleCount::SampleCount1,
-                    format: swapchain_helper.format(),
-                    resource_type: RafxResourceType::TEXTURE
-                        | RafxResourceType::RENDER_TARGET_COLOR,
-                    extents: RenderGraphImageExtents::MatchSurface,
-                    layer_count: 1,
-                    mip_count: 1,
-                },
                 Default::default(),
                 RafxResourceState::PRESENT,
                 RafxResourceState::PRESENT,

@@ -4,8 +4,7 @@ use rafx::assets::AssetManager;
 use rafx::framework::render_features::{ExtractResources, RenderView};
 use rafx::framework::{ImageViewResource, RenderResources, ResourceArc};
 use rafx::graph::{
-    PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageExtents,
-    RenderGraphImageSpecification, RenderGraphQueue,
+    PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphQueue,
 };
 use rafx::render_features::RenderJobCommandBufferContext;
 use rafx::renderer::{RenderGraphGenerator, SwapchainRenderResource};
@@ -73,14 +72,6 @@ impl RenderGraphGenerator for ExampleRenderGraphGenerator {
         //
         let external_image_id = graph_builder.add_external_image(
             swapchain_image,
-            RenderGraphImageSpecification {
-                samples: RafxSampleCount::SampleCount1,
-                format: swapchain_info.swapchain_surface_info.format,
-                resource_type: RafxResourceType::TEXTURE | RafxResourceType::RENDER_TARGET_COLOR,
-                extents: RenderGraphImageExtents::MatchSurface,
-                layer_count: 1,
-                mip_count: 1,
-            },
             Default::default(),
             RafxResourceState::PRESENT,
             RafxResourceState::PRESENT,

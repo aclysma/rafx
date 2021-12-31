@@ -8,8 +8,8 @@ use rafx::distill::loader::{storage::DefaultIndirectionResolver, Loader, RpcIO};
 use rafx::framework::render_features::{RenderJobWriteContext, SubmitNodeBlocks};
 use rafx::framework::{DescriptorSetBindings, RenderResources, VertexDataLayout};
 use rafx::graph::{
-    PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphImageExtents,
-    RenderGraphImageSpecification, RenderGraphQueue, SwapchainSurfaceInfo,
+    PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphQueue,
+    SwapchainSurfaceInfo,
 };
 use rafx::render_features::RenderFeatureSubmitNode;
 use rafx::render_features::{PreparedRenderData, RenderPhase};
@@ -392,15 +392,6 @@ fn run() -> RafxResult<()> {
             //
             let external_image_id = graph_builder.add_external_image(
                 swapchain_image_view,
-                RenderGraphImageSpecification {
-                    samples: RafxSampleCount::SampleCount1,
-                    format: swapchain_helper.format(),
-                    resource_type: RafxResourceType::TEXTURE
-                        | RafxResourceType::RENDER_TARGET_COLOR,
-                    extents: RenderGraphImageExtents::MatchSurface,
-                    layer_count: 1,
-                    mip_count: 1,
-                },
                 Default::default(),
                 RafxResourceState::PRESENT,
                 RafxResourceState::PRESENT,

@@ -1,0 +1,76 @@
+#version 450
+
+#include "lights_processing.glsl"
+
+struct Light {
+    vec3 position;
+    float radius;
+};
+
+struct ClusterAABB {
+    vec3 min;
+    vec3 max;
+};
+
+// @[export]
+layout(set = 0, binding = 0) readonly buffer BinLightsConfig
+{
+    // Size of image in pixels
+    ClusterAABB clusters[3072]; // 8*16*24 clusters
+} config;
+
+// @[export]
+layout(set = 0, binding = 1) readonly buffer LightsInputList
+{
+    uint light_count;
+    Light lights[512]; // Support for 512 total lights in the scene
+} lights;
+
+// @[export]
+layout(set = 0, binding = 2) writeonly buffer LightBitfields
+{
+    LightBitfieldsData data;
+} bitfields;
+
+// Each invocation handles 1 cluster and 512 lights (encoded as bits in a u32[16])
+layout(local_size_x = 64, local_size_y = 16, local_size_z = 1) in;
+void main()
+{
+    // Get the cluster we will check against
+    uint cluster_index = gl_GlobalInvocationID.x;
+    ClusterAABB cluster = config.clusters[cluster_index];
+
+    // The Nth group of 32 (u32-sized) lights we will process
+    uint light_u32_index = gl_GlobalInvocationID.y;
+
+    // Iterate through the lights in the u32-sized group and accumulate high bits for intersecting lights into the
+    // bitfield
+    uint count = 0;
+    uint bitfield = 0;
+    for (int light_bit_index = 0; light_bit_index < 32; ++light_bit_index) {
+        // Find the light we will process
+        uint light_index = light_u32_index * 32 + light_bit_index;
+        if (light_index >= lights.light_count) {
+            break;
+        }
+
+        Light light = lights.lights[light_index];
+
+        // Make the AABB bounds for this light
+        vec3 light_min = light.position - vec3(light.radius);
+        vec3 light_max = light.position + vec3(light.radius);
+
+        // Do an AABB vs. AABB intersection test. If intersecting, we set this light/cluster bit high
+        if ((all(lessThanEqual(light_min, cluster.max)) && all(greaterThanEqual(light_max, cluster.min))) == true) {
+            ++count;
+            bitfield |= 1<<light_bit_index;
+        }
+    }
+
+    // Copy the bits for this group of 32 lights into the global bitfield
+    if (bitfield != 0) {
+        bitfields.data.bitfields[cluster_index * (512/32) + light_u32_index] = bitfield;
+    }
+
+    atomicAdd(bitfields.data.light_count[cluster_index], count);
+}

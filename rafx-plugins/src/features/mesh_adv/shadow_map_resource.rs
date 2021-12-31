@@ -371,6 +371,10 @@ impl MeshAdvShadowMapResource {
 
         let mut query = <(Entity, Read<SpotLightComponent>, Read<TransformComponent>)>::query();
         for (entity, light, transform) in query.iter(world) {
+            if light.shadow_view_frustum.is_none() {
+                continue;
+            }
+
             let shadow_view_id = MeshAdvShadowViewId::SpotLight(ObjectId::from(*entity));
             let score = calculate_score(main_view_eye_position, transform.translation);
 
@@ -389,6 +393,10 @@ impl MeshAdvShadowMapResource {
 
         let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
         for (entity, light) in query.iter(world) {
+            if light.shadow_view_frustum.is_none() {
+                continue;
+            }
+
             // Hardcode a score of 0 for these because directional lights have no position, there
             // tend to be few of them per scene, and they tend to be important.
             let shadow_view_id = MeshAdvShadowViewId::DirectionalLight(ObjectId::from(*entity));
@@ -406,6 +414,10 @@ impl MeshAdvShadowMapResource {
 
         let mut query = <(Entity, Read<PointLightComponent>, Read<TransformComponent>)>::query();
         for (entity, light, transform) in query.iter(world) {
+            if light.shadow_view_frustums.is_none() {
+                continue;
+            }
+
             for i in 0..6 {
                 let shadow_view_id = MeshAdvShadowViewId::PointLight(ObjectId::from(*entity), i);
                 let score = calculate_score(main_view_eye_position, transform.translation);
@@ -617,8 +629,9 @@ impl MeshAdvShadowMapResource {
 
                 let near_plane = 0.25;
                 let far_plane = light.range();
+                let fov_y_radians = light.spotlight_half_angle * 2.0;
                 let projection = Projection::Perspective(PerspectiveParameters::new(
-                    light.spotlight_half_angle * 2.0,
+                    fov_y_radians,
                     1.0,
                     near_plane,
                     far_plane,
@@ -632,7 +645,8 @@ impl MeshAdvShadowMapResource {
                 );
 
                 if shadow_maps_needing_redraw.contains(&shadow_view_index) {
-                    let view_frustum: ViewFrustumArc = light.view_frustum.clone();
+                    let view_frustum: ViewFrustumArc =
+                        light.shadow_view_frustum.as_ref().unwrap().clone();
                     view_frustum.set_projection(&projection).set_transform(
                         eye_position,
                         light_to,
@@ -692,7 +706,8 @@ impl MeshAdvShadowMapResource {
                 let near_plane = 0.25;
                 let far_plane = 1000.0;
                 let ortho_projection_size = 10.0;
-                let view_frustum: ViewFrustumArc = light.view_frustum.clone();
+                let view_frustum: ViewFrustumArc =
+                    light.shadow_view_frustum.as_ref().unwrap().clone();
                 let projection = Projection::Orthographic(OrthographicParameters::new(
                     -ortho_projection_size,
                     ortho_projection_size,
@@ -779,9 +794,11 @@ impl MeshAdvShadowMapResource {
                     let near = 0.25;
                     let far = light.range();
 
-                    let view_frustum: ViewFrustumArc = light.view_frustums[face_index].clone();
+                    let view_frustum: ViewFrustumArc =
+                        light.shadow_view_frustums.as_ref().unwrap()[face_index].clone();
+                    let fov_y_radians = std::f32::consts::FRAC_PI_2;
                     let projection = Projection::Perspective(PerspectiveParameters::new(
-                        std::f32::consts::FRAC_PI_2,
+                        fov_y_radians,
                         1.0,
                         near,
                         far,

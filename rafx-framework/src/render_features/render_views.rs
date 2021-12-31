@@ -12,12 +12,19 @@ use std::sync::Arc;
 pub type RenderViewIndex = u32;
 pub type RenderViewCount = u32;
 
-#[derive(Default)]
 pub struct RenderViewSet {
     view_count: AtomicU32,
+    frame_index: usize,
 }
 
 impl RenderViewSet {
+    pub fn new(frame_index: usize) -> Self {
+        RenderViewSet {
+            view_count: Default::default(),
+            frame_index,
+        }
+    }
+
     pub fn create_view(
         &self,
         view_frustum: ViewFrustumArc,
@@ -44,6 +51,7 @@ impl RenderViewSet {
             render_feature_mask,
             render_feature_flag_mask,
             debug_name,
+            self.frame_index,
         )
     }
 
@@ -68,6 +76,7 @@ pub struct RenderViewInner {
     render_feature_mask: RenderFeatureMask,
     render_feature_flag_mask: RenderFeatureFlagMask,
     debug_name: String,
+    frame_index: usize,
 }
 
 #[derive(Clone)]
@@ -178,6 +187,7 @@ impl RenderView {
         render_feature_mask: RenderFeatureMask,
         render_feature_flag_mask: RenderFeatureFlagMask,
         debug_name: String,
+        frame_index: usize,
     ) -> RenderView {
         let view_dir = Self::view_mat4_to_view_dir(&view);
 
@@ -196,11 +206,16 @@ impl RenderView {
             render_feature_mask,
             render_feature_flag_mask,
             debug_name,
+            frame_index,
         };
 
         RenderView {
             inner: Arc::new(inner),
         }
+    }
+
+    pub fn frame_index(&self) -> usize {
+        self.inner.frame_index
     }
 
     pub fn view_frustum(&self) -> ViewFrustumArc {

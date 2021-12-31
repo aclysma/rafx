@@ -110,9 +110,11 @@ pub struct RenderOptions {
     pub show_skybox: bool,
     pub show_feature_toggles: bool,
     pub show_shadows: bool,
+    pub show_lights_debug_draw: bool,
     pub blur_pass_count: usize,
     pub tonemapper_type: TonemapperType,
     pub enable_visibility_update: bool,
+    pub use_clustered_lighting: bool,
 }
 
 impl RenderOptions {
@@ -130,9 +132,11 @@ impl RenderOptions {
             show_skybox: false,
             show_shadows: true,
             show_feature_toggles: false,
+            show_lights_debug_draw: false,
             blur_pass_count: 0,
             tonemapper_type: TonemapperType::None,
             enable_visibility_update: true,
+            use_clustered_lighting: true,
         }
     }
 
@@ -150,9 +154,11 @@ impl RenderOptions {
             show_skybox: true,
             show_shadows: true,
             show_feature_toggles: true,
+            show_lights_debug_draw: false,
             blur_pass_count: 5,
             tonemapper_type: TonemapperType::default(),
             enable_visibility_update: true,
+            use_clustered_lighting: true,
         }
     }
 }
@@ -196,6 +202,9 @@ impl RenderOptions {
                 }
             });
         }
+
+        ui.checkbox(&mut self.show_lights_debug_draw, "show_lights_debug_draw");
+        ui.checkbox(&mut self.use_clustered_lighting, "use_clustered_lighting");
 
         if self.show_feature_toggles {
             ui.checkbox(&mut self.show_wireframes, "show_wireframes");
@@ -435,6 +444,12 @@ impl DemoApp {
                 glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
             );
         }
+        {
+            let debug_ui_state = self.resources.get::<RenderOptions>().unwrap();
+            if debug_ui_state.show_lights_debug_draw {
+                crate::scenes::util::add_light_debug_draw(&self.resources, &self.world);
+            }
+        }
 
         {
             self.scene_manager
@@ -633,6 +648,10 @@ impl DemoApp {
             mesh_render_options.show_surfaces = render_options.show_surfaces;
             mesh_render_options.show_shadows = render_options.show_shadows;
             mesh_render_options.enable_lighting = render_options.enable_lighting;
+            #[cfg(not(feature = "basic-pipeline"))]
+            {
+                mesh_render_options.use_clustered_lighting = render_options.use_clustered_lighting;
+            }
         }
 
         //

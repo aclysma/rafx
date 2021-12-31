@@ -195,6 +195,78 @@ impl Debug3DResource {
         }
     }
 
+    pub fn add_aabb(
+        &mut self,
+        min: glam::Vec3,
+        max: glam::Vec3,
+        color: glam::Vec4,
+    ) {
+        self.add_line(
+            glam::Vec3::new(min.x, min.y, min.z),
+            glam::Vec3::new(max.x, min.y, min.z),
+            color,
+        );
+        self.add_line(
+            glam::Vec3::new(min.x, min.y, min.z),
+            glam::Vec3::new(min.x, max.y, min.z),
+            color,
+        );
+        self.add_line(
+            glam::Vec3::new(min.x, min.y, min.z),
+            glam::Vec3::new(min.x, min.y, max.z),
+            color,
+        );
+
+        self.add_line(
+            glam::Vec3::new(max.x, max.y, max.z),
+            glam::Vec3::new(min.x, max.y, max.z),
+            color,
+        );
+        self.add_line(
+            glam::Vec3::new(max.x, max.y, max.z),
+            glam::Vec3::new(max.x, min.y, max.z),
+            color,
+        );
+        self.add_line(
+            glam::Vec3::new(max.x, max.y, max.z),
+            glam::Vec3::new(max.x, max.y, min.z),
+            color,
+        );
+
+        self.add_line(
+            glam::Vec3::new(max.x, min.y, min.z),
+            glam::Vec3::new(max.x, max.y, min.z),
+            color,
+        );
+        self.add_line(
+            glam::Vec3::new(max.x, min.y, min.z),
+            glam::Vec3::new(max.x, min.y, max.z),
+            color,
+        );
+
+        self.add_line(
+            glam::Vec3::new(min.x, max.y, min.z),
+            glam::Vec3::new(max.x, max.y, min.z),
+            color,
+        );
+        self.add_line(
+            glam::Vec3::new(min.x, max.y, min.z),
+            glam::Vec3::new(min.x, max.y, max.z),
+            color,
+        );
+
+        self.add_line(
+            glam::Vec3::new(min.x, min.y, max.z),
+            glam::Vec3::new(max.x, min.y, max.z),
+            color,
+        );
+        self.add_line(
+            glam::Vec3::new(min.x, min.y, max.z),
+            glam::Vec3::new(min.x, max.y, max.z),
+            color,
+        );
+    }
+
     pub fn add_axis_aligned_grid(
         &mut self,
         step_distance: f32,
