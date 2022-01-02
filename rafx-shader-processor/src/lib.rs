@@ -13,8 +13,9 @@ use crate::reflect::ShaderProcessorRefectionData;
 use fnv::{FnvHashMap, FnvHashSet};
 use include::include_impl;
 use include::IncludeType;
-use shaderc::ShaderKind;
+use shaderc::{ShaderKind, SpirvVersion, TargetEnv};
 use spirv_cross::glsl::Target;
+use spirv_cross::msl::Platform;
 use spirv_cross::spirv::{Ast, ShaderResources};
 
 mod codegen;
@@ -392,6 +393,8 @@ fn process_glsl_shader(
         let mut compile_options = shaderc::CompileOptions::new().unwrap();
         compile_options.set_include_callback(include::shaderc_include_callback);
         compile_options.set_generate_debug_info();
+        compile_options.set_target_spirv(SpirvVersion::V1_3);
+        compile_options.set_target_env(TargetEnv::Vulkan, shaderc::EnvVersion::Vulkan1_1 as u32);
 
         compiler.compile_into_spirv(
             &code,
@@ -510,6 +513,8 @@ fn process_glsl_shader(
         let mut compile_options = shaderc::CompileOptions::new().unwrap();
         compile_options.set_include_callback(include::shaderc_include_callback);
         compile_options.set_optimization_level(shaderc::OptimizationLevel::Performance);
+        compile_options.set_target_spirv(SpirvVersion::V1_3);
+        compile_options.set_target_env(TargetEnv::Vulkan, shaderc::EnvVersion::Vulkan1_1 as u32);
         //NOTE: Could also use shaderc::OptimizationLevel::Size
 
         compiler
@@ -534,7 +539,7 @@ fn process_glsl_shader(
         let mut msl_ast =
             spirv_cross::spirv::Ast::<spirv_cross::msl::Target>::parse(&spirv_cross_module)?;
         let mut spirv_cross_msl_options = spirv_cross::msl::CompilerOptions::default();
-        spirv_cross_msl_options.version = spirv_cross::msl::Version::V2_0;
+        spirv_cross_msl_options.version = spirv_cross::msl::Version::V2_2;
         spirv_cross_msl_options.enable_argument_buffers = true;
         spirv_cross_msl_options.force_active_argument_buffer_resources = true;
         //TODO: Add equivalent to --msl-no-clip-distance-user-varying

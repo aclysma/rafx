@@ -23,12 +23,13 @@ void main() {
     uint count = input_data.data.light_count[cluster_index];
     output_data.data.offsets[cluster_index].count = count;
     if (count == 0) {
-        output_data.data.offsets[cluster_index].first_light = 0;
         return;
     }
 
     uint list_start_index = atomicAdd(output_data.data.data_write_ptr, count);
     output_data.data.offsets[cluster_index].first_light = list_start_index;
+
+    uint hash = 0x811c9dc5;
 
     int written_light_count = 0;
     // iterate all u32 bitfields for this cluster
@@ -43,7 +44,10 @@ void main() {
             uint light_index = 32 * u32_index + lsb;
             output_data.data.data[list_start_index + written_light_count] = light_index;
             ++written_light_count;
+            hash = (hash ^ light_index) * 0x01000193;
             lsb = findLSB(u32_value);
         }
     }
+    output_data.data.offsets[cluster_index].hash = hash;
+    output_data.data.offsets[cluster_index].written_light_count = written_light_count;
 }

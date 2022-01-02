@@ -6,7 +6,9 @@ struct LightBitfieldsData {
 
 struct ClusterMeta {
     uint count;
+    uint hash;
     uint first_light;
+    uint written_light_count;
 };
 
 struct LightBinningOutput {
