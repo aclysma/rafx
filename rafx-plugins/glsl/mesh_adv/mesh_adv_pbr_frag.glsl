@@ -835,198 +835,6 @@ float attenuate_light_for_range(
     return 1.0 - smoothstep(light_range * .75, light_range, distance);
 }
 
-vec3 iterate_point_and_spot_lights_uniform(
-    vec3 surface_to_eye_vs,
-    vec4 base_color,
-    float metalness,
-    float roughness,
-    vec3 normal_vs,
-    vec3 fresnel_base,
-    float roughness_ndf_filtered_squared,
-    uint light_cluster_index
-) {
-
-    // Point Lights
-    vec3 total_light = vec3(0.0);
-    for (uint i = 0; i < per_view_data.point_light_count; ++i) {
-        float light_surface_distance = distance(per_view_data.point_lights[i].position_ws, in_position_ws.xyz);
-        float range = per_view_data.point_lights[i].range;
-        if (light_surface_distance <= range) {
-            float soft_falloff_factor = attenuate_light_for_range(range, light_surface_distance);
-
-#ifndef DEBUG_RENDER_PERCENT_LIT
-            vec3 pbr = soft_falloff_factor * point_light_pbr(
-                per_view_data.point_lights[i].position_vs,
-                per_view_data.point_lights[i].color.rgb,
-                per_view_data.point_lights[i].intensity,
-                surface_to_eye_vs,
-                in_position_vs,
-                normal_vs,
-                fresnel_base,
-                base_color.rgb,
-                roughness,
-                roughness_ndf_filtered_squared,
-                metalness
-            );
-#else
-            vec3 pbr = vec3(soft_falloff_factor);
-#endif
-
-            float percent_lit = 1.0;
-            if (any(greaterThan(pbr, vec3(0.0)))) {
-                percent_lit = calculate_percent_lit_cube(
-                    per_view_data.point_lights[i].position_ws,
-                    per_view_data.point_lights[i].position_vs,
-                    normal_vs,
-                    per_view_data.point_lights[i].shadow_map,
-                    1.0
-                );
-            }
-
-            total_light += percent_lit * pbr;
-        }
-    }
-
-    // Spot Lights
-    for (uint i = 0; i < per_view_data.spot_light_count; ++i) {
-        float light_surface_distance = distance(per_view_data.spot_lights[i].position_ws, in_position_ws.xyz);
-        float range = per_view_data.spot_lights[i].range;
-        if (light_surface_distance <= range) {
-            float soft_falloff_factor = attenuate_light_for_range(range, light_surface_distance);
-
-#ifndef DEBUG_RENDER_PERCENT_LIT
-            vec3 pbr = soft_falloff_factor * spot_light_pbr(
-                per_view_data.spot_lights[i].position_vs,
-                per_view_data.spot_lights[i].color.rgb,
-                per_view_data.spot_lights[i].intensity,
-                per_view_data.spot_lights[i].direction_vs,
-                per_view_data.spot_lights[i].spotlight_half_angle,
-                surface_to_eye_vs,
-                in_position_vs,
-                normal_vs,
-                fresnel_base,
-                base_color.rgb,
-                roughness,
-                roughness_ndf_filtered_squared,
-                metalness
-            );
-#else
-            vec3 pbr = vec3(soft_falloff_factor);
-#endif
-
-            float percent_lit = 1.0;
-            if (any(greaterThan(pbr, vec3(0.0)))) {
-                percent_lit = calculate_percent_lit(
-                    normal_vs,
-                    per_view_data.spot_lights[i].shadow_map,
-                    SPOT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER
-                );
-            }
-
-            total_light += percent_lit * pbr;
-        }
-    }
-
-    return total_light;
-}
-
-vec3 iterate_point_and_spot_lights_all(
-    vec3 surface_to_eye_vs,
-    vec4 base_color,
-    float metalness,
-    float roughness,
-    vec3 normal_vs,
-    vec3 fresnel_base,
-    float roughness_ndf_filtered_squared,
-    uint light_cluster_index
-) {
-    vec3 total_light = vec3(0.0);
-    for (uint light_index = 0; light_index < all_lights.light_count; ++light_index) {
-        LightInList light = all_lights.data[light_index];
-        if (dot(light.spotlight_direction_vs, light.spotlight_direction_vs) > 0.01) {
-            // it has a valid direction, so treat as a spot light
-            float light_surface_distance = distance(light.position_ws, in_position_ws.xyz);
-            float range = light.range;
-            if (light_surface_distance <= range) {
-                float soft_falloff_factor = attenuate_light_for_range(range, light_surface_distance);
-
-#ifndef DEBUG_RENDER_PERCENT_LIT
-                vec3 pbr = soft_falloff_factor * spot_light_pbr(
-                    light.position_vs,
-                    light.color.rgb,
-                    light.intensity,
-                    light.spotlight_direction_vs,
-                    light.spotlight_half_angle,
-                    surface_to_eye_vs,
-                    in_position_vs,
-                    normal_vs,
-                    fresnel_base,
-                    base_color.rgb,
-                    roughness,
-                    roughness_ndf_filtered_squared,
-                    metalness
-                );
-#else
-                vec3 pbr = vec3(soft_falloff_factor);
-#endif
-
-                float percent_lit = 1.0;
-                if (any(greaterThan(pbr, vec3(0.0)))) {
-                    percent_lit = calculate_percent_lit(
-                        normal_vs,
-                        light.shadow_map,
-                        SPOT_LIGHT_SHADOW_MAP_BIAS_MULTIPLIER
-                    );
-                }
-
-                total_light += percent_lit * pbr;
-            }
-
-        } else {
-            // Directionless lights are point lights
-
-            float light_surface_distance = distance(light.position_ws, in_position_ws.xyz);
-            float range = light.range;
-            if (light_surface_distance <= range) {
-                float soft_falloff_factor = attenuate_light_for_range(range, light_surface_distance);
-
-#ifndef DEBUG_RENDER_PERCENT_LIT
-                vec3 pbr = soft_falloff_factor * point_light_pbr(
-                    light.position_vs,
-                    light.color.rgb,
-                    light.intensity,
-                    surface_to_eye_vs,
-                    in_position_vs,
-                    normal_vs,
-                    fresnel_base,
-                    base_color.rgb,
-                    roughness,
-                    roughness_ndf_filtered_squared,
-                    metalness
-                );
-#else
-                vec3 pbr = vec3(soft_falloff_factor);
-#endif
-
-                float percent_lit = 1.0;
-                if (any(greaterThan(pbr, vec3(0.0)))) {
-                    percent_lit = calculate_percent_lit_cube(
-                        light.position_ws,
-                        light.position_vs,
-                        normal_vs,
-                        light.shadow_map,
-                        1.0
-                    );
-                }
-
-                total_light += percent_lit * pbr;
-            }
-        }
-    }
-
-    return total_light;
-}
-
 vec3 iterate_point_and_spot_lights_clustered(
     vec3 surface_to_eye_vs,
     vec4 base_color,
@@ -1038,6 +846,7 @@ vec3 iterate_point_and_spot_lights_clustered(
     uint light_cluster_index
 ) {
     vec3 total_light = vec3(0.0);
+
     uint light_first = light_bin_output.data.offsets[light_cluster_index].first_light;
     uint light_last = light_first + light_bin_output.data.offsets[light_cluster_index].count;
 
@@ -1051,21 +860,22 @@ vec3 iterate_point_and_spot_lights_clustered(
             if (light_surface_distance <= range) {
                 float soft_falloff_factor = attenuate_light_for_range(range, light_surface_distance);
 
+                vec3 pbr = vec3(soft_falloff_factor);
 #ifndef DEBUG_RENDER_PERCENT_LIT
-                vec3 pbr = soft_falloff_factor * spot_light_pbr(
-                    light.position_vs,
-                    light.color.rgb,
-                    light.intensity,
-                    light.spotlight_direction_vs,
-                    light.spotlight_half_angle,
-                    surface_to_eye_vs,
-                    in_position_vs,
-                    normal_vs,
-                    fresnel_base,
-                    base_color.rgb,
-                    roughness,
-                    roughness_ndf_filtered_squared,
-                    metalness
+                pbr = soft_falloff_factor * spot_light_pbr(
+                        light.position_vs,
+                        light.color.rgb,
+                        light.intensity,
+                        light.spotlight_direction_vs,
+                        light.spotlight_half_angle,
+                        surface_to_eye_vs,
+                        in_position_vs,
+                        normal_vs,
+                        fresnel_base,
+                        base_color.rgb,
+                        roughness,
+                        roughness_ndf_filtered_squared,
+                        metalness
                 );
 #else
                 vec3 pbr = vec3(soft_falloff_factor);
@@ -1089,19 +899,20 @@ vec3 iterate_point_and_spot_lights_clustered(
             if (light_surface_distance <= range) {
                 float soft_falloff_factor = attenuate_light_for_range(range, light_surface_distance);
 
+                vec3 pbr = vec3(soft_falloff_factor);
 #ifndef DEBUG_RENDER_PERCENT_LIT
-                vec3 pbr = soft_falloff_factor * point_light_pbr(
-                    light.position_vs,
-                    light.color.rgb,
-                    light.intensity,
-                    surface_to_eye_vs,
-                    in_position_vs,
-                    normal_vs,
-                    fresnel_base,
-                    base_color.rgb,
-                    roughness,
-                    roughness_ndf_filtered_squared,
-                    metalness
+                pbr = soft_falloff_factor * point_light_pbr(
+                        light.position_vs,
+                        light.color.rgb,
+                        light.intensity,
+                        surface_to_eye_vs,
+                        in_position_vs,
+                        normal_vs,
+                        fresnel_base,
+                        base_color.rgb,
+                        roughness,
+                        roughness_ndf_filtered_squared,
+                        metalness
                 );
 #else
                 vec3 pbr = vec3(soft_falloff_factor);
@@ -1110,11 +921,11 @@ vec3 iterate_point_and_spot_lights_clustered(
                 float percent_lit = 1.0;
                 if (any(greaterThan(pbr, vec3(0.0)))) {
                     percent_lit = calculate_percent_lit_cube(
-                        light.position_ws,
-                        light.position_vs,
-                        normal_vs,
-                        light.shadow_map,
-                        1.0
+                            light.position_ws,
+                            light.position_vs,
+                            normal_vs,
+                            light.shadow_map,
+                            1.0
                     );
                 }
 
@@ -1141,46 +952,32 @@ vec4 pbr_path(
     float roughness_ndf_filtered_squared = DeferredLightingNDFRoughnessFilter(normal_vs, roughness * roughness);
 
     vec3 total_light = vec3(0.0);
-    if (per_view_data.use_clustered_lighting)
-    {
-        total_light = iterate_point_and_spot_lights_clustered(
-            surface_to_eye_vs,
-            base_color,
-            metalness,
-            roughness,
-            normal_vs,
-            fresnel_base,
-            roughness_ndf_filtered_squared,
-            light_cluster_index
-        );
-    } else {
-        total_light = iterate_point_and_spot_lights_uniform(
-            surface_to_eye_vs,
-            base_color,
-            metalness,
-            roughness,
-            normal_vs,
-            fresnel_base,
-            roughness_ndf_filtered_squared,
-            light_cluster_index
-        );
-    }
+    total_light = iterate_point_and_spot_lights_clustered(
+        surface_to_eye_vs,
+        base_color,
+        metalness,
+        roughness,
+        normal_vs,
+        fresnel_base,
+        roughness_ndf_filtered_squared,
+        light_cluster_index
+    );
 
     // directional Lights
     for (uint i = 0; i < per_view_data.directional_light_count; ++i) {
-
+        vec3 pbr = vec3(1.0);
 #ifndef DEBUG_RENDER_PERCENT_LIT
-        vec3 pbr = directional_light_pbr(
-           per_view_data.directional_lights[i],
-           surface_to_eye_vs,
-           in_position_vs,
-           normal_vs,
-           fresnel_base,
-           base_color.rgb,
-           roughness,
-           roughness_ndf_filtered_squared,
-           metalness
-       );
+    pbr = directional_light_pbr(
+            per_view_data.directional_lights[i],
+            surface_to_eye_vs,
+            in_position_vs,
+            normal_vs,
+            fresnel_base,
+            base_color.rgb,
+            roughness,
+            roughness_ndf_filtered_squared,
+            metalness
+    );
 #else
         vec3 pbr = vec3(1.0);
 #endif
@@ -1259,7 +1056,7 @@ vec4 pbr_main() {
 #ifdef PBR_TEXTURES
     if (per_material_data.data.has_emissive_texture) {
         emissive_color *= texture(sampler2D(emissive_texture, smp), in_uv);
-        base_color = vec4(1.0, 1.0, 0.0, 1.0);
+        //base_color = vec4(1.0, 1.0, 0.0, 1.0);
     }
 #endif
 
@@ -1291,10 +1088,10 @@ vec4 pbr_main() {
             in_uv
         ).xyz;
     } else {
-        normal_vs = normalize(vec4(in_normal_vs, 0)).xyz;
+        normal_vs = vec3(in_normal_vs);
     }
 #else
-    normal_vs = normalize(vec4(in_normal_vs, 0)).xyz;
+    normal_vs = normalize(in_normal_vs);
 #endif
 
     //TOOD: AO
