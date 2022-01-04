@@ -82,10 +82,6 @@ impl SpawnablePrefab {
                 .map(|x| x.inner.asset_data.visible_bounds)
         }
 
-        let mut point_light_count = 0;
-        let mut spot_light_count = 0;
-        let mut directional_light_count = 0;
-
         for object in &prefab_asset.inner.objects {
             log::debug!("create object {:?}", object);
             if let Some(model) = &object.model {
@@ -152,46 +148,37 @@ impl SpawnablePrefab {
             if let Some(light) = &object.light {
                 match light.kind {
                     PrefabAssetDataObjectLightKind::Point => {
-                        if point_light_count < 15 {
-                            super::add_point_light(
-                                resources,
-                                world,
-                                object.transform.position,
-                                light.color.extend(1.0),
-                                light.intensity * 0.15,
-                                true,
-                            );
-                            point_light_count += 1;
-                        }
+                        super::add_point_light(
+                            resources,
+                            world,
+                            object.transform.position,
+                            light.color.extend(1.0),
+                            light.intensity * 0.15,
+                            true,
+                        );
                     }
                     PrefabAssetDataObjectLightKind::Spot => {
-                        if spot_light_count < 15 {
-                            super::add_spot_light(
-                                resources,
-                                world,
-                                //glam::Vec3::new(-3.0, 3.0, 2.0),
-                                object.transform.position,
-                                object.transform.rotation * -glam::Vec3::Z,
-                                light.spot.as_ref().unwrap().outer_angle,
-                                light.color.extend(1.0),
-                                light.intensity * 0.15,
-                                true,
-                            );
-                            spot_light_count += 1;
-                        }
+                        super::add_spot_light(
+                            resources,
+                            world,
+                            //glam::Vec3::new(-3.0, 3.0, 2.0),
+                            object.transform.position,
+                            object.transform.rotation * -glam::Vec3::Z,
+                            light.spot.as_ref().unwrap().outer_angle,
+                            light.color.extend(1.0),
+                            light.intensity * 0.15,
+                            true,
+                        );
                     }
                     PrefabAssetDataObjectLightKind::Directional => {
-                        if directional_light_count < 15 {
-                            super::add_directional_light(
-                                resources,
-                                world,
-                                object.transform.rotation * -glam::Vec3::Z,
-                                light.color.extend(1.0),
-                                light.intensity * 0.15,
-                                true,
-                            );
-                            directional_light_count += 1;
-                        }
+                        super::add_directional_light(
+                            resources,
+                            world,
+                            object.transform.rotation * -glam::Vec3::Z,
+                            light.color.extend(1.0),
+                            light.intensity * 0.15,
+                            true,
+                        );
                     }
                 }
             }

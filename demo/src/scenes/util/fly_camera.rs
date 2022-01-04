@@ -72,11 +72,12 @@ impl FlyCamera {
 
         // Recalculate frenet frame, do this even if the camera is locked so that if the pitch/yaw
         // is set manually, the directions refresh
-        // Z-Up
         let z = self.pitch.sin();
-        let z_inv = 1.0 - z.abs();
+        let z_inv = self.pitch.cos();
         let x = self.yaw.cos() * z_inv;
         let y = self.yaw.sin() * z_inv;
+
+        // (should already be very close to unit length already)
         let look_dir = glam::Vec3::new(x, y, z).normalize();
         let up_dir = glam::Vec3::Z;
         let right_dir = look_dir.cross(up_dir).normalize();

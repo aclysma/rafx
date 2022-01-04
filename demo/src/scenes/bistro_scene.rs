@@ -1,5 +1,5 @@
 use crate::input::InputResource;
-use crate::scenes::util::SpawnablePrefab;
+use crate::scenes::util::{DemoCamera, SpawnablePrefab};
 use crate::time::TimeState;
 use crate::RenderOptions;
 use legion::{Resources, World};
@@ -8,11 +8,9 @@ use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
 use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
 
-use super::util::FlyCamera;
-
 pub(super) struct BistroScene {
     main_view_frustum: ViewFrustumArc,
-    fly_camera: FlyCamera,
+    demo_camera: DemoCamera,
 }
 
 impl BistroScene {
@@ -26,11 +24,11 @@ impl BistroScene {
 
         super::util::set_ambient_light(resources, glam::Vec3::new(0.005, 0.005, 0.005));
 
-        let mut fly_camera = FlyCamera::default();
-        fly_camera.position = glam::Vec3::new(-15.510543, 2.3574839, 5.751496);
-        fly_camera.pitch = -0.23093751;
-        fly_camera.yaw = -0.16778418;
-        fly_camera.lock_view = true;
+        let mut demo_camera = DemoCamera::new();
+        demo_camera.fly_camera.position = glam::Vec3::new(-15.510543, 2.3574839, 5.751496);
+        demo_camera.fly_camera.pitch = -0.23093751;
+        demo_camera.fly_camera.yaw = -0.16778418;
+        demo_camera.fly_camera.lock_view = true;
 
         let prefab = SpawnablePrefab::blocking_load_from_path(
             resources,
@@ -43,7 +41,7 @@ impl BistroScene {
 
         BistroScene {
             main_view_frustum,
-            fly_camera,
+            demo_camera,
         }
     }
 }
@@ -60,21 +58,19 @@ impl super::TestScene for BistroScene {
         {
             let input_resource = resources.get::<InputResource>().unwrap();
             let time_state = resources.get::<TimeState>().unwrap();
-            self.fly_camera
+            self.demo_camera
                 .update(input_resource.input_state(), &*time_state);
         }
 
         {
-            let time_state = resources.get::<TimeState>().unwrap();
             let mut viewports_resource = resources.get_mut::<ViewportsResource>().unwrap();
             let render_options = resources.get::<RenderOptions>().unwrap();
 
             update_main_view_3d(
-                &*time_state,
                 &*render_options,
                 &mut self.main_view_frustum,
                 &mut *viewports_resource,
-                &self.fly_camera,
+                &self.demo_camera,
             );
         }
     }
@@ -90,11 +86,10 @@ impl super::TestScene for BistroScene {
 
 #[profiling::function]
 fn update_main_view_3d(
-    _time_state: &TimeState,
     render_options: &RenderOptions,
     main_view_frustum: &mut ViewFrustumArc,
     viewports_resource: &mut ViewportsResource,
-    fly_camera: &FlyCamera,
+    demo_camera: &DemoCamera,
 ) {
     let (phase_mask_builder, feature_mask_builder, feature_flag_mask_builder) =
         super::util::default_main_view_masks(render_options);
@@ -102,8 +97,8 @@ fn update_main_view_3d(
     let aspect_ratio = viewports_resource.main_window_size.width as f32
         / viewports_resource.main_window_size.height as f32;
 
-    let eye = fly_camera.position;
-    let look_at = fly_camera.position + fly_camera.look_dir;
+    let eye = demo_camera.position();
+    let look_at = demo_camera.position() + demo_camera.look_dir();
     let up = glam::Vec3::Z;
 
     let view = glam::Mat4::look_at_rh(eye, look_at, up);

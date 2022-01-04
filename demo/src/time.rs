@@ -192,7 +192,8 @@ impl TimeState {
         let now_instant = Instant::now();
         let elapsed = now_instant - self.previous_update_instant;
         self.previous_update_instant = now_instant;
-        self.app_time_context.update(elapsed);
+        self.app_time_context
+            .update(elapsed.min(Duration::from_secs_f32(0.25)));
     }
 
     /// rust Instant object captured when the application started

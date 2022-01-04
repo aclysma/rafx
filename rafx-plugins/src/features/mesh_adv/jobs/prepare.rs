@@ -100,9 +100,13 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
     ) {
         let mut per_frame_submit_data = Box::new(MeshAdvPerFrameSubmitData {
             num_shadow_map_2d: 0,
-            shadow_map_2d_data: Default::default(),
+            shadow_map_2d_data: [mesh_adv_textured_frag::ShadowMap2DDataUniform {
+                ..Default::default()
+            }; MAX_SHADOW_MAPS_2D],
             num_shadow_map_cube: 0,
-            shadow_map_cube_data: Default::default(),
+            shadow_map_cube_data: [mesh_adv_textured_frag::ShadowMapCubeDataUniform {
+                ..Default::default()
+            }; MAX_SHADOW_MAPS_CUBE],
             shadow_map_image_index_remap: Default::default(),
             model_matrix_buffer: Default::default(),
         });
@@ -137,7 +141,10 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
 
                         let num_shadow_map_2d = per_frame_submit_data.num_shadow_map_2d;
                         if num_shadow_map_2d >= MAX_SHADOW_MAPS_2D {
-                            log::warn!("More 2D shadow maps than the mesh shader can support");
+                            log::warn!(
+                                "More 2D shadow maps than the mesh shader can support {}",
+                                MAX_SHADOW_MAPS_2D
+                            );
                             continue;
                         }
 
@@ -505,26 +512,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
 
                         all_lights_buffer_data.light_count += 1;
                     }
-
-                    let light_count = per_view_frag_data.point_light_count as usize;
-                    if light_count < per_view_frag_data.point_lights.len() {
-                        let out = &mut per_view_frag_data.point_lights[light_count];
-                        out.position_ws = light.transform.translation.into();
-                        out.position_vs = (view.view_matrix()
-                            * light.transform.translation.extend(1.0))
-                        .truncate()
-                        .into();
-                        out.color = light.light.color.into();
-                        out.range = light.light.range();
-                        out.intensity = light.light.intensity;
-                        out.shadow_map = if has_shadows {
-                            shadow_map_index.map(|x| x as i32).unwrap_or(-1)
-                        } else {
-                            -1
-                        };
-
-                        per_view_frag_data.point_light_count += 1;
-                    }
                 }
 
                 for light in &per_view_data.spot_lights {
@@ -543,8 +530,11 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         .shadow_map_lookup_by_light_id
                         .get(&MeshAdvLightId::SpotLight(light.object_id))
                         .map(|x| {
-                            per_frame_submit_data.shadow_map_image_index_remap[&x.unwrap_single()]
-                        });
+                            per_frame_submit_data
+                                .shadow_map_image_index_remap
+                                .get(&x.unwrap_single())
+                        })
+                        .flatten();
 
                     {
                         light_bounds_data.lights[light_bounds_data.light_count as usize] =
@@ -567,32 +557,12 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         out.range = light.light.range();
                         out.intensity = light.light.intensity;
                         out.shadow_map = if has_shadows {
-                            shadow_map_index.map(|x| x as i32).unwrap_or(-1)
+                            shadow_map_index.map(|x| *x as i32).unwrap_or(-1)
                         } else {
                             -1
                         };
 
                         all_lights_buffer_data.light_count += 1;
-                    }
-
-                    let light_count = per_view_frag_data.spot_light_count as usize;
-                    if light_count < per_view_frag_data.spot_lights.len() {
-                        let out = &mut per_view_frag_data.spot_lights[light_count];
-                        out.position_ws = light_from.into();
-                        out.position_vs = light_from_vs.into();
-                        out.direction_ws = light_direction.into();
-                        out.direction_vs = light_direction_vs.into();
-                        out.spotlight_half_angle = light.light.spotlight_half_angle;
-                        out.color = light.light.color.into();
-                        out.range = light.light.range();
-                        out.intensity = light.light.intensity;
-                        out.shadow_map = if has_shadows {
-                            shadow_map_index.map(|x| x as i32).unwrap_or(-1)
-                        } else {
-                            -1
-                        };
-
-                        per_view_frag_data.spot_light_count += 1;
                     }
                 }
 

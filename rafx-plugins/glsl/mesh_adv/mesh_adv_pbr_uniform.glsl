@@ -63,15 +63,11 @@ layout (set = 0, binding = 0) uniform PerViewData {
     vec4 ambient_light;
     uint viewport_width;
     uint viewport_height;
-    uint point_light_count;
     uint directional_light_count;
-    uint spot_light_count;
     bool use_clustered_lighting;
-    PointLight point_lights[16];
     DirectionalLight directional_lights[8];
-    SpotLight spot_lights[16];
-    ShadowMap2DData shadow_map_2d_data[32];
-    ShadowMapCubeData shadow_map_cube_data[16];
+    ShadowMap2DData shadow_map_2d_data[96];
+    ShadowMapCubeData shadow_map_cube_data[32];
 } per_view_data;
 
 // @[immutable_samplers([

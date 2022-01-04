@@ -87,7 +87,7 @@ impl LightBinningFrustumAABBStructure {
                 -1.0 * config.near_z * far_over_near.powf(i as f32 / (config.z_bins as f32 - 1.0)),
             );
         }
-        println!("desired z divisions: {:?}", z_divisions);
+        log::trace!("desired z divisions: {:?}", z_divisions);
 
         // Validation for math in shader that determines cluster using z depth
         for i in 0..160 {
@@ -98,7 +98,7 @@ impl LightBinningFrustumAABBStructure {
             let result = (((top / bottom) + 1.0).clamp(0.0, (config.z_bins - 1) as f32)) as u32;
             assert!(view_depth.max(-config.far_z + 0.001) > z_divisions[result as usize + 1]);
             assert!(view_depth <= z_divisions[result as usize]);
-            println!(
+            log::trace!(
                 "{} = {} {} [{}, {}]",
                 view_depth,
                 top / bottom,
@@ -120,7 +120,7 @@ impl LightBinningFrustumAABBStructure {
         projected_ray_near /= projected_ray_near.w;
         projected_ray_far /= projected_ray_far.w;
 
-        println!("near {:?} far {:?}", projected_ray_near, projected_ray_far);
+        log::trace!("near {:?} far {:?}", projected_ray_near, projected_ray_far);
 
         // Determine the slope and z plane intersect between the near/far positions
         use glam::Vec4Swizzles;
@@ -128,7 +128,7 @@ impl LightBinningFrustumAABBStructure {
             / (projected_ray_far.z - projected_ray_near.z);
         let offset = projected_ray_near.xy() + (0.0 - projected_ray_near.z) * slope;
 
-        println!("SLOPE: {:?} OFFSET {:?}", slope, offset);
+        log::trace!("SLOPE: {:?} OFFSET {:?}", slope, offset);
 
         // Iterate across clusters in the top-right quadrant (we can mirror results to other quadrants)
         // x0,x1 and y0,y1 will be index of z division. We iterate across clusters between the

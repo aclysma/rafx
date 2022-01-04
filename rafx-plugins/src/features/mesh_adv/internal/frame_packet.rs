@@ -14,11 +14,8 @@ use rafx::framework::{
 pub struct MeshAdvRenderFeatureTypes;
 
 //TODO: Pull this const from the shader
-pub const MAX_SHADOW_MAPS_2D: usize = 32;
-pub const MAX_SHADOW_MAPS_CUBE: usize = 16;
-// pub const MAX_DIRECTIONAL_LIGHTS: usize = 16;
-// pub const MAX_POINT_LIGHTS: usize = 16;
-// pub const MAX_SPOT_LIGHTS: usize = 16;
+pub const MAX_SHADOW_MAPS_2D: usize = 96;
+pub const MAX_SHADOW_MAPS_CUBE: usize = 32;
 
 //---------
 // EXTRACT
