@@ -18,7 +18,6 @@ use rafx_plugins::phases::{
     DebugPipRenderPhase, DepthPrepassRenderPhase, OpaqueRenderPhase, TransparentRenderPhase,
     UiRenderPhase, WireframeRenderPhase,
 };
-use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "basic-pipeline")]
 use rafx_plugins::features::mesh_basic::{
@@ -40,6 +39,13 @@ use rafx_plugins::features::mesh_adv::{
 
 mod fly_camera;
 pub use fly_camera::*;
+
+mod path_camera;
+pub use path_camera::*;
+
+mod demo_camera;
+pub use demo_camera::*;
+
 use rafx::visibility::VisibilityRegion;
 
 mod spawnable_mesh;
@@ -47,12 +53,6 @@ pub use spawnable_mesh::*;
 
 mod spawnable_prefab;
 pub use spawnable_prefab::*;
-
-#[derive(Serialize, Deserialize)]
-pub(super) struct PathData {
-    pub(super) position: [f32; 3],
-    pub(super) rotation: [f32; 4],
-}
 
 pub(super) fn set_ambient_light(
     resources: &Resources,
@@ -145,9 +145,12 @@ pub(super) fn add_spot_light(
         ..Default::default()
     };
 
+    const MAX_HALF_ANGLE_DEG: f32 = 80.0;
+    const MAX_HALF_HANGLE_RAD: f32 = MAX_HALF_ANGLE_DEG * (std::f32::consts::PI / 180.0);
+
     let light_component = SpotLightComponent {
         direction,
-        spotlight_half_angle,
+        spotlight_half_angle: spotlight_half_angle.min(MAX_HALF_HANGLE_RAD),
         range: None,
         color,
         intensity,
@@ -209,11 +212,11 @@ pub fn default_main_view_masks(
         .add_render_phase::<DebugPipRenderPhase>()
         .add_render_phase::<UiRenderPhase>();
 
-    use rafx_plugins::features::debug_pip::DebugPipRenderFeature;
+    //use rafx_plugins::features::debug_pip::DebugPipRenderFeature;
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
         .add_render_feature::<MeshRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
-        .add_render_feature::<DebugPipRenderFeature>()
+        //.add_render_feature::<DebugPipRenderFeature>()
         .add_render_feature::<TileLayerRenderFeature>();
 
     #[cfg(feature = "egui")]

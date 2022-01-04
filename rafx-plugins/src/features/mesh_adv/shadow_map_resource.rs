@@ -629,7 +629,21 @@ impl MeshAdvShadowMapResource {
 
                 let near_plane = 0.25;
                 let far_plane = light.range();
-                let fov_y_radians = light.spotlight_half_angle * 2.0;
+
+                const MAX_HALF_ANGLE_DEG: f32 = 89.0;
+                const MAX_HALF_HANGLE_RAD: f32 =
+                    MAX_HALF_ANGLE_DEG * (std::f32::consts::PI / 180.0);
+                let spotlight_half_angle = if light.spotlight_half_angle > MAX_HALF_HANGLE_RAD {
+                    log::warn!(
+                        "Spotlight has > {} degree FOV, clamping the value",
+                        2.0 * MAX_HALF_ANGLE_DEG
+                    );
+                    MAX_HALF_HANGLE_RAD
+                } else {
+                    light.spotlight_half_angle
+                };
+
+                let fov_y_radians = spotlight_half_angle * 2.0;
                 let projection = Projection::Perspective(PerspectiveParameters::new(
                     fov_y_radians,
                     1.0,
