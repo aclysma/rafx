@@ -19,7 +19,7 @@ egui = { version = "0.15", features = ["default_fonts"], optional = true }
 # This could be turned on but we are leaving it off due to RUSTSEC-2021-0019
 # https://rustsec.org/advisories/RUSTSEC-2021-0019.html
 #clipboard = { version = "0.5", optional = true }
-puffin_egui = { version = "0.10.1", optional = true }
+puffin_egui = { version = "0.11", optional = true }
 legion = { version = "0.4.0", default-features = false, features = ["serialize"] }
 image = "0.23.12"
 
