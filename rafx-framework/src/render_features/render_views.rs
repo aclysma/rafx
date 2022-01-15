@@ -250,6 +250,10 @@ impl RenderView {
         self.inner.extents
     }
 
+    pub fn extents_vec2(&self) -> glam::Vec2 {
+        glam::Vec2::new(self.inner.extents.0 as f32, self.inner.extents.1 as f32)
+    }
+
     pub fn extents_width(&self) -> u32 {
         self.inner.extents.0
     }

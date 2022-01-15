@@ -2,7 +2,7 @@ use crate::render_features::render_features_prelude::*;
 use crate::render_features::VisibilityVecs;
 use crate::visibility::VisibilityObjectId;
 use rafx_base::owned_pool::Pooled;
-use rafx_visibility::{ObjectHandle, VisibilityResult};
+use rafx_visibility::{VisibilityObjectHandle, VisibilityResult};
 use slotmap::KeyData;
 
 pub type VisibleRenderObjects = Pooled<VisibilityVecs>;
@@ -40,17 +40,17 @@ impl RenderViewVisibilityQuery {
 /// simultaneously.
 pub struct ViewVisibilityJob<'a> {
     pub view: RenderView,
-    pub visibility_region: &'a VisibilityRegion,
+    pub visibility_resource: &'a VisibilityResource,
 }
 
 impl<'a> ViewVisibilityJob<'a> {
     pub fn new(
         view: RenderView,
-        visibility_region: &'a VisibilityRegion,
+        visibility_resource: &'a VisibilityResource,
     ) -> Self {
         Self {
             view,
-            visibility_region,
+            visibility_resource,
         }
     }
 
@@ -62,38 +62,46 @@ impl<'a> ViewVisibilityJob<'a> {
     pub fn query_visibility<'extract>(
         &self,
         extract_context: &RenderJobExtractContext<'extract>,
+        visibility_resource: &VisibilityResource,
     ) -> RenderViewVisibilityQuery {
-        let mut view_frustum = self.view.view_frustum();
+        let view_frustum = self.view.view_frustum();
         let visibility_query = view_frustum
-            .query_visibility(extract_context.visibility_config)
+            .query_visibility(visibility_resource, extract_context.visibility_config)
             .unwrap();
 
-        let visibility_object_lookup = self.visibility_region.object_lookup();
         let render_feature_mask = self.view.render_feature_mask();
 
-        let mut render_objects = extract_context
+        let mut all_render_objects = extract_context
             .allocation_context
             .query_visibility_vecs(&self.view);
 
         let visible_objects = &visibility_query.objects;
-        for visibility_object in visible_objects.iter().map(|visibility_result| {
-            visibility_object_lookup.object_ref(self.visibility_object_id(visibility_result))
-        }) {
-            let object_id = visibility_object.object_id();
-            for render_object in visibility_object.render_objects() {
+        for visibility_handle in visible_objects {
+            let visibility_object_id = self.visibility_object_id(visibility_handle);
+            let visibility_object_arc = self
+                .visibility_resource
+                .visibility_object_arc(visibility_object_id)
+                .unwrap();
+            let object_id = visibility_object_arc.object_id();
+            let render_objects = visibility_object_arc.render_objects();
+
+            for render_object_id in render_objects {
                 // TODO(dvd): Should this use a render phase bitmask as another culling option?
-                let render_feature_index = render_object.render_feature_index();
+                let render_feature_index = render_object_id.render_feature_index();
                 if !render_feature_mask.is_included_index(render_feature_index) {
                     continue;
                 }
 
-                render_objects[render_feature_index as usize]
-                    .push(RenderObjectInstance::new(object_id, *render_object));
+                all_render_objects[render_feature_index as usize].push(RenderObjectInstance::new(
+                    object_id,
+                    render_object_id.as_id(),
+                    visibility_object_id,
+                ));
             }
         }
 
         // Sort the results.
-        for feature in render_objects.iter_mut() {
+        for feature in all_render_objects.iter_mut() {
             if feature.is_empty() {
                 continue;
             }
@@ -102,7 +110,7 @@ impl<'a> ViewVisibilityJob<'a> {
             feature.sort_unstable_by_key(|render_object| render_object.render_object_id);
         }
 
-        let per_view_render_objects = render_objects;
+        let per_view_render_objects = all_render_objects;
         RenderViewVisibilityQuery {
             view: self.view().clone(),
             per_view_render_objects,
@@ -111,7 +119,7 @@ impl<'a> ViewVisibilityJob<'a> {
 
     fn visibility_object_id(
         &self,
-        visibility_result: &VisibilityResult<ObjectHandle>,
+        visibility_result: &VisibilityResult<VisibilityObjectHandle>,
     ) -> VisibilityObjectId {
         VisibilityObjectId::from(KeyData::from_ffi(visibility_result.id))
     }

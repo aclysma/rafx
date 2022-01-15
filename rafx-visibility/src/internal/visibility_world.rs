@@ -2,25 +2,23 @@ use crate::frustum_culling::PackedBoundingSphereChunk;
 use crate::geometry::{BoundingSphere, Transform};
 use crate::internal::{VisibilityObject, Volume, Zone};
 use crate::{
-    DepthRange, ModelHandle, ObjectHandle, PolygonSoup, PolygonSoupIndex, ViewFrustum,
-    ViewFrustumHandle, VisibleBounds, VolumeHandle, ZoneHandle,
+    DepthRange, ModelHandle, PolygonSoup, PolygonSoupIndex, ViewFrustum, ViewFrustumHandle,
+    VisibilityObjectHandle, VisibleBounds, VolumeHandle, ZoneHandle,
 };
 use glam::Vec3;
-use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
 use slotmap::{DenseSlotMap, SecondaryMap, SlotMap};
-use std::sync::Arc;
 
-pub struct VisibilityWorld {
+pub struct VisibilityWorldInternal {
     pub(crate) zones: DenseSlotMap<ZoneHandle, Zone>,
 
     pub(crate) models: SlotMap<ModelHandle, VisibleBounds>,
     pub(crate) model_ref_counts: SecondaryMap<ModelHandle, u64>,
     pub(crate) model_hashes: FxHashMap<u64, ModelHandle>,
 
-    pub(crate) objects: DenseSlotMap<ObjectHandle, VisibilityObject>,
+    pub(crate) objects: DenseSlotMap<VisibilityObjectHandle, VisibilityObject>,
 
-    pub(crate) view_frustums: DenseSlotMap<ViewFrustumHandle, Arc<RwLock<ViewFrustum>>>,
+    pub(crate) view_frustums: DenseSlotMap<ViewFrustumHandle, ViewFrustum>,
     pub(crate) view_frustum_ids: SecondaryMap<ViewFrustumHandle, u64>,
     pub(crate) view_frustum_zones: SecondaryMap<ViewFrustumHandle, ZoneHandle>,
 
@@ -28,9 +26,9 @@ pub struct VisibilityWorld {
     pub(crate) volumes: DenseSlotMap<VolumeHandle, Volume>,
 }
 
-impl VisibilityWorld {
+impl VisibilityWorldInternal {
     pub fn new() -> Self {
-        VisibilityWorld {
+        VisibilityWorldInternal {
             zones: Default::default(),
 
             models: Default::default(),
@@ -73,8 +71,14 @@ impl VisibilityWorld {
 
     /// Creates a new `ViewFrustum`. A `ViewFrustum` must be in a `Zone` to query visibility.
     pub fn new_view_frustum(&mut self) -> ViewFrustumHandle {
-        self.view_frustums
-            .insert(Arc::new(RwLock::new(ViewFrustum::empty())))
+        self.view_frustums.insert(ViewFrustum::empty())
+    }
+
+    pub fn view_frustum(
+        &self,
+        handle: ViewFrustumHandle,
+    ) -> Option<&ViewFrustum> {
+        self.view_frustums.get(handle)
     }
 
     /// Sets the `ViewFrustum`'s ID. This is an arbitrary 64-bit number for use by the application.
@@ -89,7 +93,7 @@ impl VisibilityWorld {
 
     /// Sets `angle`, `ratio`, `near_distance`, and `far_distance` for perspective `ViewFrustum`.
     pub fn set_view_frustum_perspective(
-        &self,
+        &mut self,
         view_frustum: ViewFrustumHandle,
         fov_y_radians: f32,
         ratio: f32,
@@ -97,7 +101,7 @@ impl VisibilityWorld {
         far_distance: f32,
         depth_range: DepthRange,
     ) {
-        let mut view_frustum = self.view_frustums.get(view_frustum).unwrap().write();
+        let view_frustum = self.view_frustums.get_mut(view_frustum).unwrap();
         view_frustum.set_perspective(
             fov_y_radians,
             ratio,
@@ -109,7 +113,7 @@ impl VisibilityWorld {
 
     /// Sets `left`, `right`, `bottom`, `top`, `near_distance`, and `far_distance` for orthographic `ViewFrustum`.
     pub fn set_view_frustum_orthographic(
-        &self,
+        &mut self,
         view_frustum: ViewFrustumHandle,
         left: f32,
         right: f32,
@@ -119,7 +123,7 @@ impl VisibilityWorld {
         far_distance: f32,
         depth_range: DepthRange,
     ) {
-        let mut view_frustum = self.view_frustums.get(view_frustum).unwrap().write();
+        let view_frustum = self.view_frustums.get_mut(view_frustum).unwrap();
         view_frustum.set_orthographic(
             left,
             right,
@@ -154,27 +158,14 @@ impl VisibilityWorld {
 
     /// Sets the `ViewFrustum`'s transform relative to the `Zone`'s position.
     pub fn set_view_frustum_transforms(
-        &self,
+        &mut self,
         view_frustum: ViewFrustumHandle,
         eye_position: Vec3,
         look_at: Vec3,
         up: Vec3,
     ) {
-        let mut view_frustum = self.view_frustums.get(view_frustum).unwrap().write();
+        let view_frustum = self.view_frustums.get_mut(view_frustum).unwrap();
         view_frustum.set_transforms(eye_position, look_at, up);
-    }
-
-    /// Returns the `ViewFrustum`'s transform relative to the `Zone`'s position.
-    pub fn get_view_frustum_transforms(
-        &self,
-        view_frustum: ViewFrustumHandle,
-    ) -> (Vec3, Vec3, Vec3) {
-        let view_frustum = self.view_frustums.get(view_frustum).unwrap().read();
-        (
-            view_frustum.eye_position(),
-            view_frustum.look_at(),
-            view_frustum.up(),
-        )
     }
 
     /// Destroying a `ViewFrustum` will also remove it from the `Zone`.
@@ -276,26 +267,32 @@ impl VisibilityWorld {
     // --------
 
     /// Creates a new `Object`. An `Object` must be in a `Zone` to be visible.
-    pub fn new_object(&mut self) -> ObjectHandle {
+    pub fn new_object(&mut self) -> VisibilityObjectHandle {
         self.objects
             .insert_with_key(|handle| VisibilityObject::new(0, handle))
+    }
+
+    pub fn visibility_object(
+        &self,
+        handle: VisibilityObjectHandle,
+    ) -> Option<&VisibilityObject> {
+        self.objects.get(handle)
     }
 
     /// Sets the `Object`'s ID. This is an arbitrary 64-bit number for use by the application.
     /// It should correspond to a game object ID, or a pointer, or an ECS entity ID.
     pub fn set_object_id(
         &mut self,
-        object: ObjectHandle,
+        object: VisibilityObjectHandle,
         id: u64,
     ) {
         let object = self.objects.get_mut(object).unwrap();
         object.id = id;
         if let Some(zone) = object.zone {
             let zone = self.zones.get_mut(zone).unwrap();
-            let mut chunks = zone.chunks.write();
 
             let (chunk_idx, in_chunk_idx) = *zone.objects.get(object.handle).unwrap();
-            let chunk: &mut PackedBoundingSphereChunk = chunks.get_mut(chunk_idx).unwrap();
+            let chunk: &mut PackedBoundingSphereChunk = zone.chunks.get_mut(chunk_idx).unwrap();
 
             chunk.update_id(in_chunk_idx, id);
         }
@@ -304,7 +301,7 @@ impl VisibilityWorld {
     /// Sets the `Object`'s `Zone`. An `Object` must be in a `Zone` to be visible.
     pub fn set_object_zone(
         &mut self,
-        object: ObjectHandle,
+        object: VisibilityObjectHandle,
         zone: Option<ZoneHandle>,
     ) {
         let handle = object;
@@ -323,42 +320,26 @@ impl VisibilityWorld {
         object.zone = zone;
     }
 
-    /// Returns the `Object`'s `Zone`. An `Object` must be in a `Zone` to be visible.
-    pub fn get_object_zone(
-        &self,
-        object: ObjectHandle,
-    ) -> Option<ZoneHandle> {
-        self.objects.get(object).unwrap().zone
-    }
-
     /// Sets the `Object`'s position relative to the `Zone`'s position.
-    pub fn set_object_position(
+    pub fn set_object_transform(
         &mut self,
-        object: ObjectHandle,
+        object: VisibilityObjectHandle,
         transform: Transform,
     ) {
         let handle = object;
         let object = self.objects.get_mut(object).unwrap();
-        object.transform = transform;
+        object.transform = Some(transform);
 
         if let Some(zone) = object.zone {
             self.internal_update_object_in_zone(handle, zone);
         }
     }
 
-    /// Returns the `Object`'s position relative to the `Zone`'s position.
-    pub fn get_object_position(
-        &self,
-        object: ObjectHandle,
-    ) -> Transform {
-        self.objects.get(object).unwrap().transform
-    }
-
     /// Sets the `Object`'s cull `Model`. The cull `Model` is tested against the occlusion buffer.
     /// This is like a `Collider` in a collision API.
     pub fn set_object_cull_model(
         &mut self,
-        object: ObjectHandle,
+        object: VisibilityObjectHandle,
         model: Option<ModelHandle>,
     ) {
         let handle = object;
@@ -381,19 +362,11 @@ impl VisibilityWorld {
         }
     }
 
-    /// Returns the cull `Model` associated with the `Object`.
-    pub fn get_object_cull_model(
-        &self,
-        object: ObjectHandle,
-    ) -> Option<ModelHandle> {
-        self.objects.get(object).unwrap().cull_model
-    }
-
     /// Destroying an `Object` will also remove it from the `Zone`.
     /// This will **NOT** destroy the cull `Model`.
     pub fn destroy_object(
         &mut self,
-        object: ObjectHandle,
+        object: VisibilityObjectHandle,
     ) {
         self.set_object_zone(object, None);
         self.set_object_cull_model(object, None);
@@ -484,12 +457,12 @@ impl VisibilityWorld {
 
     fn internal_add_object_to_zone(
         &mut self,
-        object: ObjectHandle,
+        object: VisibilityObjectHandle,
         zone: ZoneHandle,
     ) {
         let object = self.objects.get(object).unwrap();
         let zone = self.zones.get_mut(zone).unwrap();
-        let mut chunks = zone.chunks.write();
+        let chunks = &mut zone.chunks;
         let mut chunk_idx = chunks.len();
 
         let next_chunk = {
@@ -508,11 +481,12 @@ impl VisibilityWorld {
             }
         };
 
+        let transform = object.transform.unwrap_or_default();
         let in_chunk_idx = next_chunk
             .add(
                 object.handle,
                 object.id,
-                VisibilityObject::default_bounding_sphere(object.transform),
+                VisibilityObject::default_bounding_sphere(transform),
             )
             .unwrap();
         zone.objects
@@ -521,45 +495,43 @@ impl VisibilityWorld {
 
     fn internal_update_object_in_zone(
         &mut self,
-        object: ObjectHandle,
+        object: VisibilityObjectHandle,
         zone: ZoneHandle,
     ) {
         let object = self.objects.get(object).unwrap();
         let zone = self.zones.get_mut(zone).unwrap();
-        let mut chunks = zone.chunks.write();
 
         let (chunk_idx, in_chunk_idx) = *zone.objects.get(object.handle).unwrap();
-        let chunk: &mut PackedBoundingSphereChunk = chunks.get_mut(chunk_idx).unwrap();
+        let chunk: &mut PackedBoundingSphereChunk = zone.chunks.get_mut(chunk_idx).unwrap();
 
+        let transform = object.transform.unwrap_or_default();
         if let Some(model) = object.cull_model {
             let model = self.models.get(model).unwrap();
             chunk.update(
                 in_chunk_idx,
                 BoundingSphere::new(
-                    object.transform.translation
-                        + model.bounding_sphere.position * object.transform.scale,
-                    model.bounding_sphere.radius * object.transform.scale.max_element(),
+                    transform.translation + model.bounding_sphere.position * transform.scale,
+                    model.bounding_sphere.radius * transform.scale.max_element(),
                 ),
             )
         } else {
             chunk.update(
                 in_chunk_idx,
-                VisibilityObject::default_bounding_sphere(object.transform),
+                VisibilityObject::default_bounding_sphere(transform),
             );
         }
     }
 
     fn internal_remove_object_in_zone(
         &mut self,
-        object: ObjectHandle,
+        object: VisibilityObjectHandle,
         zone: ZoneHandle,
     ) {
         let object = self.objects.get(object).unwrap();
         let zone = self.zones.get_mut(zone).unwrap();
-        let mut chunks = zone.chunks.write();
 
         let (chunk_idx, in_chunk_idx) = zone.objects.remove(object.handle).unwrap();
-        let chunk: &mut PackedBoundingSphereChunk = chunks.get_mut(chunk_idx).unwrap();
+        let chunk: &mut PackedBoundingSphereChunk = zone.chunks.get_mut(chunk_idx).unwrap();
         chunk.remove(in_chunk_idx);
         if in_chunk_idx < chunk.len() {
             let metadata = chunk.metadata(in_chunk_idx);

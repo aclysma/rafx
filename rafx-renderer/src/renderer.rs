@@ -2,7 +2,7 @@ use rafx_assets::distill_impl::AssetResource;
 use rafx_assets::{image_upload, AssetManagerRenderResource, GpuImageDataColorSpace};
 use rafx_assets::{AssetManager, GpuImageData};
 use rafx_framework::render_features::render_features_prelude::*;
-use rafx_framework::visibility::{VisibilityConfig, VisibilityRegion};
+use rafx_framework::visibility::{VisibilityConfig, VisibilityResource};
 use rafx_framework::{DynResourceAllocatorSet, RenderResources};
 use rafx_framework::{ImageViewResource, ResourceArc};
 use std::sync::{Arc, Mutex};
@@ -10,7 +10,8 @@ use std::time::Duration;
 
 use super::*;
 
-use super::{RenderFeaturePlugin, RenderGraphGenerator, ViewportsResource};
+use super::{RenderFeaturePlugin, RendererPipelinePlugin, ViewportsResource};
+use crate::main_view_render_resource::PreviousMainViewInfo;
 use rafx_api::extra::upload::{RafxTransferUpload, RafxUploadError};
 use rafx_api::{
     RafxDeviceContext, RafxError, RafxPresentableFrame, RafxQueue, RafxResourceType, RafxResult,
@@ -40,7 +41,7 @@ pub struct RendererInner {
 pub struct Renderer {
     pub(super) inner: Arc<Mutex<RendererInner>>,
     pub(super) render_thread: Option<RenderThread>,
-    pub(super) render_graph_generator: Box<dyn RenderGraphGenerator>,
+    pub(super) pipeline_plugin: Arc<dyn RendererPipelinePlugin>,
     pub(super) asset_plugins: Vec<Arc<dyn RendererAssetPlugin>>,
     pub(super) feature_plugins: Arc<Vec<Arc<dyn RenderFeaturePlugin>>>,
     pub(super) render_resources: Arc<RenderResources>,
@@ -61,6 +62,10 @@ impl Drop for Renderer {
                 .prepare_renderer_destroy(&self.render_resources)
                 .unwrap();
         }
+
+        self.pipeline_plugin
+            .prepare_renderer_destroy(&self.render_resources)
+            .unwrap();
     }
 }
 
@@ -73,7 +78,7 @@ impl Renderer {
         transfer_queue: &RafxQueue,
         feature_plugins: Vec<Arc<dyn RenderFeaturePlugin>>,
         asset_plugins: Vec<Arc<dyn RendererAssetPlugin>>,
-        render_graph_generator: Box<dyn RenderGraphGenerator>,
+        pipeline_plugin: Arc<dyn RendererPipelinePlugin>,
         thread_pool: Box<dyn RendererThreadPool>,
         allow_use_render_thread: bool,
     ) -> RafxResult<Self> {
@@ -146,6 +151,7 @@ impl Renderer {
         render_resources.insert(SwapchainRenderResource::default());
         render_resources.insert(AssetManagerRenderResource::default());
         render_resources.insert(TimeRenderResource::default());
+        render_resources.insert(MainViewRenderResource::default());
 
         for plugin in &*asset_plugins {
             plugin.initialize_static_resources(
@@ -166,6 +172,14 @@ impl Renderer {
                 &mut upload,
             )?;
         }
+
+        pipeline_plugin.initialize_static_resources(
+            asset_manager,
+            asset_resource,
+            &extract_resources,
+            &mut render_resources,
+            &mut upload,
+        )?;
 
         render_resources.insert(invalid_resources.clone());
 
@@ -188,9 +202,9 @@ impl Renderer {
         Ok(Renderer {
             inner: Arc::new(Mutex::new(renderer)),
             render_thread,
-            render_graph_generator,
             asset_plugins,
             feature_plugins,
+            pipeline_plugin,
             render_resources: Arc::new(render_resources),
             graphics_queue: graphics_queue.clone(),
             transfer_queue: transfer_queue.clone(),
@@ -388,8 +402,18 @@ impl Renderer {
             view_meta.render_feature_flag_mask,
             view_meta.debug_name,
         );
+        {
+            let mut main_view_render_resource =
+                render_resources.fetch_mut::<MainViewRenderResource>();
 
-        //TODO: Add main view to a resource of some kind?
+            if let Some(main_view) = &main_view_render_resource.main_view {
+                main_view_render_resource.previous_main_view_info = Some(PreviousMainViewInfo {
+                    view_matrix: main_view.view_matrix(),
+                    projection_matrix: main_view.projection_matrix(),
+                });
+            }
+            main_view_render_resource.main_view = Some(main_view.clone());
+        }
 
         //
         // Compute Views
@@ -440,14 +464,21 @@ impl Renderer {
             let visibility_results = {
                 profiling::scope!("Calculate View Visibility");
 
-                let visibility_region = extract_resources.fetch::<VisibilityRegion>();
+                {
+                    let mut visibility_resource =
+                        extract_resources.fetch_mut::<VisibilityResource>();
+                    visibility_resource.update();
+                }
 
+                let visibility_resource = extract_resources.fetch::<VisibilityResource>();
                 let view_visibility_jobs =
-                    Renderer::create_view_visibility_jobs(&render_views, &visibility_region);
+                    Renderer::create_view_visibility_jobs(&render_views, &visibility_resource);
 
-                renderer_inner
-                    .thread_pool
-                    .run_view_visibility_jobs(&view_visibility_jobs, &extract_context)
+                renderer_inner.thread_pool.run_view_visibility_jobs(
+                    &view_visibility_jobs,
+                    &extract_context,
+                    &*visibility_resource,
+                )
             };
 
             {
@@ -476,8 +507,11 @@ impl Renderer {
             };
 
             {
+                let visibility_resource = extract_resources.fetch::<VisibilityResource>();
                 profiling::scope!("Run Extract Jobs");
-                renderer_inner.thread_pool.run_extract_jobs(&extract_jobs);
+                renderer_inner
+                    .thread_pool
+                    .run_extract_jobs(&extract_jobs, &*visibility_resource);
             }
 
             Renderer::take_frame_packets(extract_jobs)
@@ -488,7 +522,7 @@ impl Renderer {
             .end_extract();
 
         //TODO: This is now possible to run on the render thread
-        let prepared_render_graph = renderer.render_graph_generator.generate_render_graph(
+        let prepared_render_graph = renderer.pipeline_plugin.generate_render_graph(
             asset_manager,
             swapchain_image,
             presentable_frame.rotating_frame_index(),
@@ -499,6 +533,7 @@ impl Renderer {
 
         let graphics_queue = renderer.graphics_queue.clone();
         let feature_plugins = renderer.feature_plugins.clone();
+        let pipeline_plugin = renderer.pipeline_plugin.clone();
         let thread_pool = renderer_inner.thread_pool.clone_to_box();
         let render_resources = renderer.render_resources.clone();
 
@@ -512,6 +547,7 @@ impl Renderer {
             device_context,
             graphics_queue,
             feature_plugins,
+            pipeline_plugin,
             render_views,
         };
 
@@ -520,13 +556,13 @@ impl Renderer {
 
     fn create_view_visibility_jobs<'visibility>(
         render_views: &[RenderView],
-        visibility_region: &'visibility VisibilityRegion,
+        visibility_resource: &'visibility VisibilityResource,
     ) -> Vec<Arc<ViewVisibilityJob<'visibility>>> {
         render_views
             .iter()
             .map(|view| {
                 log::trace!("Add visibility job {}", view.debug_name());
-                Arc::new(ViewVisibilityJob::new(view.clone(), visibility_region))
+                Arc::new(ViewVisibilityJob::new(view.clone(), visibility_resource))
             })
             .collect::<Vec<_>>()
     }
@@ -534,8 +570,9 @@ impl Renderer {
     pub fn run_view_visibility_job<'extract>(
         view_visibility_job: &Arc<ViewVisibilityJob>,
         extract_context: &RenderJobExtractContext<'extract>,
+        visibility_resource: &VisibilityResource,
     ) -> RenderViewVisibilityQuery {
-        view_visibility_job.query_visibility(extract_context)
+        view_visibility_job.query_visibility(extract_context, visibility_resource)
     }
 
     pub fn calculate_frame_packet_size(
@@ -737,20 +774,23 @@ impl Renderer {
 
     pub fn extract_render_object_instance_chunk<'extract>(
         extract_job: &Arc<dyn RenderFeatureExtractJob<'extract> + 'extract>,
+        visibility_resource: &VisibilityResource,
         chunk_index: usize,
         chunk_size: usize,
     ) {
         let num_render_object_instances = extract_job.num_render_object_instances();
         let start_id = chunk_index * chunk_size;
         let end_id = usize::min(start_id + chunk_size, num_render_object_instances);
-        extract_job.extract_render_object_instance(start_id..end_id);
+        extract_job.extract_render_object_instance(visibility_resource, start_id..end_id);
     }
 
     pub fn extract_render_object_instance_all<'extract>(
-        extract_job: &Arc<dyn RenderFeatureExtractJob<'extract> + 'extract>
+        extract_job: &Arc<dyn RenderFeatureExtractJob<'extract> + 'extract>,
+        visibility_resource: &VisibilityResource,
     ) {
         Renderer::extract_render_object_instance_chunk(
             extract_job,
+            visibility_resource,
             0,
             extract_job.num_render_object_instances(),
         );
@@ -758,6 +798,7 @@ impl Renderer {
 
     pub fn extract_render_object_instance_per_view_chunk<'extract>(
         extract_job: &Arc<dyn RenderFeatureExtractJob<'extract> + 'extract>,
+        visibility_resource: &VisibilityResource,
         view_packet: &dyn RenderFeatureViewPacket,
         chunk_index: usize,
         chunk_size: usize,
@@ -765,15 +806,21 @@ impl Renderer {
         let num_render_object_instances = view_packet.num_render_object_instances();
         let start_id = chunk_index * chunk_size;
         let end_id = usize::min(start_id + chunk_size, num_render_object_instances);
-        extract_job.extract_render_object_instance_per_view(view_packet, start_id..end_id);
+        extract_job.extract_render_object_instance_per_view(
+            view_packet,
+            visibility_resource,
+            start_id..end_id,
+        );
     }
 
     pub fn extract_render_object_instance_per_view_all<'extract>(
         extract_job: &Arc<dyn RenderFeatureExtractJob<'extract> + 'extract>,
+        visibility_resource: &VisibilityResource,
         view_packet: &dyn RenderFeatureViewPacket,
     ) {
         Renderer::extract_render_object_instance_per_view_chunk(
             extract_job,
+            visibility_resource,
             view_packet,
             0,
             view_packet.num_render_object_instances(),

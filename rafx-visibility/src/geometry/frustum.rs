@@ -2,38 +2,16 @@ use crate::geometry::plane::Plane;
 use crate::geometry::BoundingSphere;
 use glam::Vec3;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Frustum {
-    pub planes: Vec<Plane>,
-    is_invalid: bool,
+    pub planes: [Plane; 6],
 }
 
 impl Frustum {
-    pub fn new(num_planes: usize) -> Self {
-        Frustum {
-            planes: Vec::with_capacity(num_planes),
-            is_invalid: true,
-        }
-    }
-
-    pub fn update(&mut self) {
-        self.is_invalid = false;
-    }
-
-    pub fn invalidate(&mut self) {
-        self.is_invalid = true;
-    }
-
-    pub fn is_invalid(&self) -> bool {
-        self.is_invalid
-    }
-
     pub fn contains_point(
         &self,
         point: Vec3,
     ) -> bool {
-        assert_ne!(self.is_invalid, true);
-
         for plane in &self.planes {
             if plane.distance(point) < 0. {
                 return false;
@@ -48,8 +26,6 @@ impl Frustum {
         &self,
         sphere: &BoundingSphere,
     ) -> bool {
-        assert_ne!(self.is_invalid, true);
-
         let negative_radius = -sphere.radius;
 
         for plane in &self.planes {
@@ -66,9 +42,6 @@ impl Frustum {
         &self,
         sphere: &BoundingSphere,
     ) -> bool {
-        assert_ne!(self.is_invalid, true);
-        assert_eq!(self.planes.len(), 6);
-
         let radius = sphere.radius;
         let spx = sphere.position.x;
         let spy = sphere.position.y;

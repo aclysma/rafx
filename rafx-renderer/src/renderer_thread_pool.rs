@@ -24,6 +24,7 @@ pub trait RendererThreadPool: Sync + Send {
         &mut self,
         view_visibility_jobs: &[Arc<ViewVisibilityJob>],
         extract_context: &RenderJobExtractContext<'extract>,
+        visibility_resource: &VisibilityResource,
     ) -> Vec<RenderViewVisibilityQuery>;
 
     /// All of the visibility results from `run_view_visibility_jobs` for all of the `RenderView`s
@@ -50,6 +51,7 @@ pub trait RendererThreadPool: Sync + Send {
     fn run_extract_jobs<'extract>(
         &mut self,
         extract_jobs: &Vec<Arc<dyn RenderFeatureExtractJob<'extract> + 'extract>>,
+        visibility_resource: &VisibilityResource,
     );
 
     /// Each `RenderFeature` uses the `RenderFeaturePrepareJob` to process data from the `FramePacket`

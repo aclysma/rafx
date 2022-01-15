@@ -245,10 +245,6 @@ impl UpdateFrustum for OrthographicParameters {
         let near_center = eye_position - z * self.near_distance;
         let far_center = eye_position - z * self.far_distance;
 
-        while frustum.planes.len() < 6 {
-            frustum.planes.push(Plane::default());
-        }
-
         frustum.planes[ViewFrustum::NEAR] = Plane::new(-z, near_center);
         frustum.planes[ViewFrustum::FAR] = Plane::new(z, far_center);
 
@@ -332,10 +328,6 @@ impl UpdateFrustum for PerspectiveParameters {
 
         let near_center = eye_position - z * self.near_distance;
         let far_center = eye_position - z * self.far_distance;
-
-        while frustum.planes.len() < 6 {
-            frustum.planes.push(Plane::default());
-        }
 
         frustum.planes[ViewFrustum::NEAR] = Plane::new(-z, near_center);
         frustum.planes[ViewFrustum::FAR] = Plane::new(z, far_center);

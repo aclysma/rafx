@@ -1,10 +1,10 @@
 use crate::geometry::{BoundingSphere, Frustum};
-use crate::{ObjectHandle, VisibilityResult, VisibleObjects};
+use crate::{VisibilityObjectHandle, VisibilityResult, VisibleObjects};
 use glam::{Vec3, Vec4};
 
 #[derive(Default, Copy, Clone)]
 pub struct ObjectMetadata {
-    pub handle: ObjectHandle,
+    pub handle: VisibilityObjectHandle,
     pub id: u64,
 }
 
@@ -42,7 +42,7 @@ impl PackedBoundingSphereChunk {
 
     pub fn add(
         &mut self,
-        handle: ObjectHandle,
+        handle: VisibilityObjectHandle,
         id: u64,
         sphere: BoundingSphere,
     ) -> Option<usize> {

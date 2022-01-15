@@ -1,4 +1,4 @@
-use crate::{RenderFeaturePlugin, RendererThreadPool};
+use crate::{RenderFeaturePlugin, RendererPipelinePlugin, RendererThreadPool};
 use fnv::FnvBuildHasher;
 use rafx_api::{RafxCommandBuffer, RafxDeviceContext, RafxQueue};
 use rafx_api::{RafxPresentableFrame, RafxResult};
@@ -22,6 +22,7 @@ pub struct RenderFrameJob {
     pub graphics_queue: RafxQueue,
     pub render_views: Vec<RenderView>,
     pub feature_plugins: Arc<Vec<Arc<dyn RenderFeaturePlugin>>>,
+    pub pipeline_plugin: Arc<dyn RendererPipelinePlugin>,
 }
 
 impl RenderFrameJob {
@@ -41,6 +42,7 @@ impl RenderFrameJob {
             self.graphics_queue,
             self.render_views,
             self.feature_plugins,
+            self.pipeline_plugin,
             &mut *self.thread_pool,
         );
 
@@ -84,6 +86,7 @@ impl RenderFrameJob {
         graphics_queue: RafxQueue,
         render_views: Vec<RenderView>,
         feature_plugins: Arc<Vec<Arc<dyn RenderFeaturePlugin>>>,
+        pipeline_plugin: Arc<dyn RendererPipelinePlugin>,
         thread_pool: &mut dyn RendererThreadPool,
     ) -> RafxResult<Vec<DynCommandBuffer>> {
         let t0 = rafx_base::Instant::now();
@@ -164,6 +167,8 @@ impl RenderFrameJob {
                 )?
             }
         };
+
+        pipeline_plugin.finish_frame(render_resources);
 
         let t2 = rafx_base::Instant::now();
         log::trace!(

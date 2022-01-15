@@ -1,45 +1,43 @@
-use crate::visibility::visibility_object_allocator::{SlotMapArc, ViewFrustumObjectId};
-use crate::visibility::VisibilityConfig;
+use crate::visibility::{VisibilityConfig, VisibilityResource};
 use crate::RafxResult;
 use crossbeam_channel::Sender;
 use glam::Vec3;
 use parking_lot::{RwLock, RwLockReadGuard};
 use rafx_api::RafxError;
-use rafx_visibility::{
-    AsyncCommand, Projection, ViewFrustumHandle, VisibilityQuery, VisibilityWorldArc, ZoneHandle,
-};
-use slotmap::SlotMap;
+use rafx_visibility::{AsyncCommand, Projection, ViewFrustumHandle, VisibilityQuery, ZoneHandle};
 use std::sync::Arc;
 
-pub type ViewFrustumId = (Option<ViewFrustumObjectId>, Option<ViewFrustumObjectId>);
+pub type ViewFrustumId = (Option<ViewFrustumHandle>, Option<ViewFrustumHandle>);
+
+struct ViewFrustumArcInner {
+    visibility_query: RwLock<VisibilityQuery>,
+    static_view_frustum: Option<ViewFrustumRaii>,
+    dynamic_view_frustum: Option<ViewFrustumRaii>,
+}
 
 #[derive(Clone)]
 pub struct ViewFrustumArc {
-    inner: Arc<RemoveViewFrustumWhenDropped>,
+    inner: Arc<ViewFrustumArcInner>,
 }
 
 impl ViewFrustumArc {
     pub fn new(
-        static_view_frustum: Option<ViewFrustumObjectId>,
-        dynamic_view_frustum: Option<ViewFrustumObjectId>,
-        storage: SlotMapArc<ViewFrustumObjectId, ViewFrustumObject>,
-        visibility_world: VisibilityWorldArc,
+        static_view_frustum: Option<ViewFrustumRaii>,
+        dynamic_view_frustum: Option<ViewFrustumRaii>,
     ) -> Self {
         Self {
-            inner: Arc::new(RemoveViewFrustumWhenDropped {
+            inner: Arc::new(ViewFrustumArcInner {
+                visibility_query: Default::default(),
                 static_view_frustum,
                 dynamic_view_frustum,
-                storage,
-                visibility_world,
-                visibility_query: Default::default(),
             }),
         }
     }
 
     pub fn view_frustum_id(&self) -> ViewFrustumId {
         (
-            self.inner.static_view_frustum,
-            self.inner.dynamic_view_frustum,
+            self.inner.static_view_frustum.as_ref().map(|x| x.handle),
+            self.inner.dynamic_view_frustum.as_ref().map(|x| x.handle),
         )
     }
 
@@ -49,17 +47,11 @@ impl ViewFrustumArc {
         static_zone: Option<ZoneHandle>,
         dynamic_zone: Option<ZoneHandle>,
     ) -> &Self {
-        let storage = self.inner.storage.read();
-
-        if let Some(static_view_frustum) =
-            self.view_frustum(&self.inner.static_view_frustum, &storage)
-        {
+        if let Some(static_view_frustum) = &self.inner.static_view_frustum {
             static_view_frustum.set_zone(static_zone);
         }
 
-        if let Some(dynamic_view_frustum) =
-            self.view_frustum(&self.inner.dynamic_view_frustum, &storage)
-        {
+        if let Some(dynamic_view_frustum) = &self.inner.dynamic_view_frustum {
             dynamic_view_frustum.set_zone(dynamic_zone);
         }
 
@@ -72,17 +64,11 @@ impl ViewFrustumArc {
         look_at: Vec3,
         up: Vec3,
     ) -> &Self {
-        let storage = self.inner.storage.read();
-
-        if let Some(static_view_frustum) =
-            self.view_frustum(&self.inner.static_view_frustum, &storage)
-        {
+        if let Some(static_view_frustum) = &self.inner.static_view_frustum {
             static_view_frustum.set_transform(eye, look_at, up);
         }
 
-        if let Some(dynamic_view_frustum) =
-            self.view_frustum(&self.inner.dynamic_view_frustum, &storage)
-        {
+        if let Some(dynamic_view_frustum) = &self.inner.dynamic_view_frustum {
             dynamic_view_frustum.set_transform(eye, look_at, up);
         }
 
@@ -93,17 +79,11 @@ impl ViewFrustumArc {
         &self,
         projection: &Projection,
     ) -> &Self {
-        let storage = self.inner.storage.read();
-
-        if let Some(static_view_frustum) =
-            self.view_frustum(&self.inner.static_view_frustum, &storage)
-        {
+        if let Some(static_view_frustum) = &self.inner.static_view_frustum {
             static_view_frustum.set_projection(projection);
         }
 
-        if let Some(dynamic_view_frustum) =
-            self.view_frustum(&self.inner.dynamic_view_frustum, &storage)
-        {
+        if let Some(dynamic_view_frustum) = &self.inner.dynamic_view_frustum {
             dynamic_view_frustum.set_projection(projection);
         }
 
@@ -111,84 +91,48 @@ impl ViewFrustumArc {
     }
 
     pub fn query_visibility(
-        &mut self,
+        &self,
+        visibility_resource: &VisibilityResource,
         visibility_config: &VisibilityConfig,
     ) -> RafxResult<RwLockReadGuard<VisibilityQuery>> {
-        self.inner.visibility_world.update();
-
         if visibility_config.enable_visibility_update {
             let mut results = self.inner.visibility_query.write();
 
             results.objects.clear();
             results.volumes.clear();
-
-            let storage = self.inner.storage.read();
-
-            if let Some(static_view_frustum) =
-                self.view_frustum(&self.inner.static_view_frustum, &storage)
-            {
-                static_view_frustum.query_visibility(&mut results)?;
+            if let Some(static_view_frustum) = &self.inner.static_view_frustum {
+                static_view_frustum.query_visibility(visibility_resource, &mut results)?;
             }
 
-            if let Some(dynamic_view_frustum) =
-                self.view_frustum(&self.inner.dynamic_view_frustum, &storage)
-            {
-                dynamic_view_frustum.query_visibility(&mut results)?;
+            if let Some(dynamic_view_frustum) = &self.inner.dynamic_view_frustum {
+                dynamic_view_frustum.query_visibility(visibility_resource, &mut results)?;
             }
         }
 
         Ok(self.inner.visibility_query.read())
     }
-
-    fn view_frustum<'a>(
-        &self,
-        view_frustum: &Option<ViewFrustumObjectId>,
-        storage: &'a SlotMap<ViewFrustumObjectId, ViewFrustumObject>,
-    ) -> Option<&'a ViewFrustumObject> {
-        view_frustum.as_ref().map(|key| storage.get(*key).unwrap())
-    }
 }
 
-struct RemoveViewFrustumWhenDropped {
-    static_view_frustum: Option<ViewFrustumObjectId>,
-    dynamic_view_frustum: Option<ViewFrustumObjectId>,
-    storage: SlotMapArc<ViewFrustumObjectId, ViewFrustumObject>,
-    visibility_world: VisibilityWorldArc,
-    visibility_query: RwLock<VisibilityQuery>,
-}
-
-impl Drop for RemoveViewFrustumWhenDropped {
-    fn drop(&mut self) {
-        // NOTE(dvd): When this inner handle is dropped, we'll remove the key
-        // from the storage. That will then destroy the object created in
-        // in the visibility world.
-        let mut storage = self.storage.write();
-        if let Some(id) = self.static_view_frustum {
-            storage.remove(id).unwrap();
-        }
-        if let Some(id) = self.dynamic_view_frustum {
-            storage.remove(id).unwrap();
-        }
-    }
-}
-
-pub struct ViewFrustumObject {
+// An RAII object for a ViewFrustumHandle
+pub struct ViewFrustumRaii {
     commands: Sender<AsyncCommand>,
-    visibility_world: VisibilityWorldArc,
     handle: ViewFrustumHandle,
 }
 
-impl ViewFrustumObject {
+impl Drop for ViewFrustumRaii {
+    fn drop(&mut self) {
+        let _ = self
+            .commands
+            .send(AsyncCommand::DestroyViewFrustum(self.handle));
+    }
+}
+
+impl ViewFrustumRaii {
     pub fn new(
         handle: ViewFrustumHandle,
         commands: Sender<AsyncCommand>,
-        visibility_world: VisibilityWorldArc,
     ) -> Self {
-        Self {
-            handle,
-            commands,
-            visibility_world,
-        }
+        Self { handle, commands }
     }
 
     #[allow(dead_code)]
@@ -234,19 +178,13 @@ impl ViewFrustumObject {
 
     pub fn query_visibility(
         &self,
+        visibility_resource: &VisibilityResource,
         results: &mut VisibilityQuery,
     ) -> RafxResult<()> {
-        self.visibility_world
+        visibility_resource
+            .world()
             .query_visibility(self.handle, results)
             .map_err(|_err| RafxError::StringError("Unable to query visibility.".to_string()))?;
         Ok(())
-    }
-}
-
-impl Drop for ViewFrustumObject {
-    fn drop(&mut self) {
-        let _ = self
-            .commands
-            .send(AsyncCommand::DestroyViewFrustum(self.handle));
     }
 }

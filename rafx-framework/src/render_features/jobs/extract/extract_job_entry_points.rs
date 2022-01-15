@@ -1,5 +1,6 @@
 use crate::render_features::render_features_prelude::*;
 use crate::render_features::RenderObjectInstancePerView;
+use crate::visibility::VisibilityObjectInfo;
 
 /// `ExtractJobEntryPoints` provides a generic set of callbacks for a `RenderFeature`
 /// compatible with the `ExtractJob` struct. This simplifies the work of implementing
@@ -101,6 +102,7 @@ pub struct ExtractRenderObjectInstanceContext<
     ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>,
 > {
     frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
+    visibility_resource: &'entry VisibilityResource,
     render_object_instance: &'entry RenderObjectInstance,
     id: usize,
 }
@@ -110,11 +112,13 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
 {
     pub fn new(
         frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
+        visibility_resource: &'entry VisibilityResource,
         id: usize,
     ) -> Self {
         let render_object_instance = &frame_packet.render_object_instances[id];
         Self {
             frame_packet,
+            visibility_resource,
             render_object_instance,
             id,
         }
@@ -126,6 +130,16 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
 
     pub fn render_object_id(&self) -> &RenderObjectId {
         &self.render_object_instance.render_object_id
+    }
+
+    pub fn visibility_resource(&self) -> &VisibilityResource {
+        self.visibility_resource
+    }
+
+    pub fn visibility_object_info(&self) -> VisibilityObjectInfo {
+        self.visibility_resource
+            .visibility_object_info(self.render_object_instance.visibility_object_id)
+            .unwrap()
     }
 
     pub fn set_render_object_instance_data(
@@ -196,6 +210,7 @@ pub struct ExtractRenderObjectInstancePerViewContext<
     frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
     view_packet: &'entry ViewPacket<ExtractJobEntryPointsT::FramePacketDataT>,
     render_object_instance_per_view: &'entry RenderObjectInstancePerView,
+    visibility_resource: &'entry VisibilityResource,
     id: usize,
 }
 
@@ -205,6 +220,7 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
     pub fn new(
         frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
         view_packet: &'entry ViewPacket<ExtractJobEntryPointsT::FramePacketDataT>,
+        visibility_resource: &'entry VisibilityResource,
         id: usize,
     ) -> Self {
         let render_object_instance_per_view = &view_packet.render_object_instances[id];
@@ -212,6 +228,7 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
             frame_packet,
             view_packet,
             render_object_instance_per_view,
+            visibility_resource,
             id,
         }
     }
@@ -255,5 +272,19 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
         self.view_packet
             .render_object_instances_data
             .set(self.id, data);
+    }
+
+    pub fn visibility_resource(&self) -> &VisibilityResource {
+        self.visibility_resource
+    }
+
+    pub fn visibility_object_info(&self) -> VisibilityObjectInfo {
+        self.visibility_resource
+            .visibility_object_info(
+                self.render_object_instance_per_view
+                    .render_object_instance
+                    .visibility_object_id,
+            )
+            .unwrap()
     }
 }

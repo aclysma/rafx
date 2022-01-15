@@ -18,11 +18,16 @@ impl RendererThreadPool for RendererThreadPoolNone {
         &mut self,
         view_visibility_jobs: &[Arc<ViewVisibilityJob>],
         extract_context: &RenderJobExtractContext<'extract>,
+        visibility_resource: &VisibilityResource,
     ) -> Vec<RenderViewVisibilityQuery> {
         view_visibility_jobs
             .iter()
             .map(|visibility_job: &Arc<ViewVisibilityJob>| {
-                Renderer::run_view_visibility_job(visibility_job, extract_context)
+                Renderer::run_view_visibility_job(
+                    visibility_job,
+                    extract_context,
+                    visibility_resource,
+                )
             })
             .collect()
     }
@@ -61,6 +66,7 @@ impl RendererThreadPool for RendererThreadPoolNone {
     fn run_extract_jobs<'extract>(
         &mut self,
         extract_jobs: &Vec<Arc<dyn RenderFeatureExtractJob<'extract> + 'extract>>,
+        visibility_resource: &VisibilityResource,
     ) {
         extract_jobs
             .iter()
@@ -69,7 +75,7 @@ impl RendererThreadPool for RendererThreadPoolNone {
 
                 extract_job.begin_per_frame_extract();
 
-                Renderer::extract_render_object_instance_all(extract_job);
+                Renderer::extract_render_object_instance_all(extract_job, visibility_resource);
 
                 (0..extract_job.num_views())
                     .into_iter()
@@ -78,6 +84,7 @@ impl RendererThreadPool for RendererThreadPoolNone {
 
                         Renderer::extract_render_object_instance_per_view_all(
                             extract_job,
+                            visibility_resource,
                             view_packet,
                         );
 

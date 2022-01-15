@@ -1,15 +1,13 @@
-use crate::frustum_culling::{collect_visible_objects, PackedBoundingSphereChunk};
+use crate::frustum_culling::collect_visible_objects;
 use crate::geometry::{BoundingSphere, Transform};
-use crate::internal::VisibilityWorld;
-use crate::{Projection, ViewFrustum};
+use crate::internal::VisibilityWorldInternal;
+use crate::Projection;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use glam::Vec3;
-use parking_lot::{Mutex, MutexGuard, RwLock};
 use slotmap::new_key_type;
 use std::hash::Hash;
-use std::sync::Arc;
 
-pub type VisibleObjects = Vec<VisibilityResult<ObjectHandle>>;
+pub type VisibleObjects = Vec<VisibilityResult<VisibilityObjectHandle>>;
 pub type VisibleVolumes = Vec<VisibilityResult<VolumeHandle>>;
 
 // Private keys.
@@ -20,22 +18,22 @@ new_key_type! { struct ChunkHandle; }
 
 new_key_type! { pub struct ModelHandle; }
 new_key_type! { pub struct ZoneHandle; }
-new_key_type! { pub struct ObjectHandle; }
+new_key_type! { pub struct VisibilityObjectHandle; }
 new_key_type! { pub struct ViewFrustumHandle; }
 new_key_type! { pub struct VolumeHandle; }
 
 pub enum AsyncCommand {
-    SetObjectPosition(ObjectHandle, Transform),
-    SetObjectZone(ObjectHandle, Option<ZoneHandle>),
-    SetObjectId(ObjectHandle, u64),
-    SetObjectCullModel(ObjectHandle, Option<ModelHandle>),
+    SetObjectTransform(VisibilityObjectHandle, Transform),
+    SetObjectZone(VisibilityObjectHandle, Option<ZoneHandle>),
+    SetObjectId(VisibilityObjectHandle, u64),
+    SetObjectCullModel(VisibilityObjectHandle, Option<ModelHandle>),
     SetViewFrustumZone(ViewFrustumHandle, Option<ZoneHandle>),
     SetViewFrustumTransforms(ViewFrustumHandle, Vec3, Vec3, Vec3),
     SetViewFrustumId(ViewFrustumHandle, u64),
     SetViewFrustumProjection(ViewFrustumHandle, Projection),
     DestroyViewFrustum(ViewFrustumHandle),
     DestroyZone(ZoneHandle),
-    DestroyObject(ObjectHandle),
+    DestroyObject(VisibilityObjectHandle),
     DestroyModel(ModelHandle),
     QueuedCommands(Vec<AsyncCommand>),
 }
@@ -44,7 +42,7 @@ pub enum AsyncCommand {
 pub struct VisibilityResult<T> {
     pub handle: T,
     pub id: u64,
-    pub bounding_sphere: BoundingSphere,
+    //pub bounding_sphere: BoundingSphere,
     pub distance_from_view_frustum: f32,
 }
 
@@ -58,7 +56,7 @@ impl<T> VisibilityResult<T> {
         VisibilityResult {
             handle,
             id,
-            bounding_sphere,
+            //bounding_sphere,
             distance_from_view_frustum: view_frustum_position.distance(bounding_sphere.position),
         }
     }
@@ -70,9 +68,8 @@ pub struct VisibilityQuery {
     pub volumes: VisibleVolumes,
 }
 
-#[derive(Clone)]
-pub struct VisibilityWorldArc {
-    pub inner: Arc<Mutex<VisibilityWorld>>,
+pub struct VisibilityWorld {
+    pub inner: VisibilityWorldInternal,
     sender: Sender<AsyncCommand>,
     receiver: Receiver<AsyncCommand>,
 }
@@ -81,24 +78,28 @@ pub enum QueryError {
     NoViewFrustumZone,
 }
 
-impl VisibilityWorldArc {
+impl VisibilityWorld {
     pub fn new() -> Self {
         let (sender, receiver) = unbounded();
-        VisibilityWorldArc {
-            inner: Arc::new(Mutex::new(VisibilityWorld::new())),
+        VisibilityWorld {
+            inner: VisibilityWorldInternal::new(),
             receiver,
             sender,
         }
     }
 
     #[profiling::function]
-    pub fn update(&self) {
-        let mut inner = self.inner.lock();
+    pub fn update(&mut self) {
+        let mut inner = &mut self.inner;
+
+        for (_, object) in &mut inner.objects {
+            object.previous_frame_transform = object.transform;
+        }
 
         {
             profiling::scope!("receiver.try_iter");
             for command in self.receiver.try_iter() {
-                VisibilityWorldArc::handle_command(&mut inner, command);
+                VisibilityWorld::handle_command(&mut inner, command);
             }
         }
     }
@@ -108,12 +109,12 @@ impl VisibilityWorldArc {
     }
 
     fn handle_command(
-        inner: &mut MutexGuard<VisibilityWorld>,
+        inner: &mut VisibilityWorldInternal,
         command: AsyncCommand,
     ) {
         match command {
-            AsyncCommand::SetObjectPosition(object, transform) => {
-                inner.set_object_position(object, transform);
+            AsyncCommand::SetObjectTransform(object, transform) => {
+                inner.set_object_transform(object, transform);
             }
             AsyncCommand::SetObjectZone(object, zone) => {
                 inner.set_object_zone(object, zone);
@@ -174,7 +175,7 @@ impl VisibilityWorldArc {
             }
             AsyncCommand::QueuedCommands(commands) => {
                 for inner_command in commands {
-                    VisibilityWorldArc::handle_command(inner, inner_command);
+                    VisibilityWorld::handle_command(inner, inner_command);
                 }
             }
         }
@@ -187,37 +188,21 @@ impl VisibilityWorldArc {
         view_frustum: ViewFrustumHandle,
         result: &mut VisibilityQuery,
     ) -> Result<(), QueryError> {
-        let work = {
-            let inner = self.inner.lock();
-
-            let zone = {
-                let view_frustum_zone = inner.view_frustum_zones.get(view_frustum);
-                if let Some(zone) = view_frustum_zone {
-                    Ok(*zone)
-                } else {
-                    return Err(QueryError::NoViewFrustumZone);
-                }
-            }?;
-
-            let active_view_frustum = inner.view_frustums.get(view_frustum).unwrap().clone();
-            let chunks = inner.zones.get(zone).unwrap().chunks.clone();
-
-            Ok(QueryWork {
-                active_view_frustum,
-                chunks,
-            })
+        let zone = {
+            let view_frustum_zone = self.inner.view_frustum_zones.get(view_frustum);
+            if let Some(zone) = view_frustum_zone {
+                Ok(*zone)
+            } else {
+                return Err(QueryError::NoViewFrustumZone);
+            }
         }?;
 
-        // NOTE(dvd): Acquire exclusive lock on the view frustum.
-
-        let active_view_frustum = work.active_view_frustum.write();
+        let active_view_frustum = self.inner.view_frustums.get(view_frustum).unwrap();
         let view_frustum_position = active_view_frustum.eye_position();
         let frustum = active_view_frustum.acquire_frustum().clone();
 
-        // NOTE(dvd): Iterate through a read-only view of the chunks in the zone.
-
-        let zone = work.chunks.read();
-        for chunk in zone.iter() {
+        let chunks = self.inner.zones.get(zone).unwrap().chunks.clone();
+        for chunk in &chunks {
             collect_visible_objects(chunk, view_frustum_position, &frustum, &mut result.objects)
         }
 
@@ -235,9 +220,4 @@ impl VisibilityWorldArc {
     ) {
         unimplemented!();
     }
-}
-
-struct QueryWork {
-    pub active_view_frustum: Arc<RwLock<ViewFrustum>>,
-    pub chunks: Arc<RwLock<Vec<PackedBoundingSphereChunk>>>,
 }

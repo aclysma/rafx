@@ -90,6 +90,7 @@ struct CachedGraphicsPipelineKey {
 struct CachedGraphicsPipeline {
     material_pass_resource: WeakResourceArc<MaterialPassResource>,
     graphics_pipeline: ResourceArc<GraphicsPipelineResource>,
+    keep_until_frame: u64,
 }
 
 #[derive(Debug)]
@@ -110,7 +111,7 @@ pub struct GraphicsPipelineCacheInner {
     cached_pipelines: FnvHashMap<CachedGraphicsPipelineKey, CachedGraphicsPipeline>,
 
     current_frame_index: u64,
-    frames_to_persist: u64,
+    frames_to_persist: Option<u64>,
 
     #[cfg(debug_assertions)]
     vertex_data_set_layouts: FnvHashMap<VertexDataSetLayoutHash, VertexDataSetLayout>,
@@ -155,7 +156,8 @@ impl GraphicsPipelineCache {
     ) -> Self {
         // 0 keeps to end of current frame
         // 1 keeps to end of next frame
-        const DEFAULT_FRAMES_TO_PERSIST: u64 = 1;
+        // None keeps pipelines forever
+        const DEFAULT_FRAMES_TO_PERSIST: Option<u64> = None;
 
         let mut render_target_meta_assignments =
             Vec::with_capacity(MAX_RENDER_PHASE_COUNT as usize);
@@ -308,21 +310,24 @@ impl GraphicsPipelineCache {
         render_phase_index: RenderPhaseIndex,
     ) {
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
-        if let Some(existing) = inner.render_target_meta_assignments[render_phase_index as usize]
-            .get_mut(&render_target_meta.render_target_meta_hash())
-        {
-            existing.keep_until_frame = inner.current_frame_index + inner.frames_to_persist;
-            // Nothing to do here, the previous ref is still valid
-            return;
-        }
+        if let Some(frames_to_persist) = inner.frames_to_persist {
+            if let Some(existing) = inner.render_target_meta_assignments
+                [render_phase_index as usize]
+                .get_mut(&render_target_meta.render_target_meta_hash())
+            {
+                existing.keep_until_frame = inner.current_frame_index + frames_to_persist;
+                // Nothing to do here, the previous ref is still valid
+                return;
+            }
 
-        inner.render_target_meta_assignments[render_phase_index as usize].insert(
-            render_target_meta.render_target_meta_hash(),
-            RegisteredRenderTargetMeta {
-                keep_until_frame: inner.current_frame_index + inner.frames_to_persist,
-                meta: render_target_meta.clone(),
-            },
-        );
+            inner.render_target_meta_assignments[render_phase_index as usize].insert(
+                render_target_meta.render_target_meta_hash(),
+                RegisteredRenderTargetMeta {
+                    keep_until_frame: inner.current_frame_index + frames_to_persist,
+                    meta: render_target_meta.clone(),
+                },
+            );
+        }
 
         //TODO: Do we need to mark this as a dirty renderpass that may need to build additional
         // pipelines?
@@ -367,7 +372,7 @@ impl GraphicsPipelineCache {
 
     pub fn try_get_graphics_pipeline(
         &self,
-        render_phase_index: RenderPhaseIndex,
+        render_phase_index: Option<RenderPhaseIndex>,
         material_pass: &ResourceArc<MaterialPassResource>,
         render_target_meta: &GraphicsPipelineRenderTargetMeta,
         vertex_data_set_layout: &VertexDataSetLayout,
@@ -385,7 +390,7 @@ impl GraphicsPipelineCache {
 
     pub fn get_or_create_graphics_pipeline(
         &self,
-        render_phase_index: RenderPhaseIndex,
+        render_phase_index: Option<RenderPhaseIndex>,
         material_pass: &ResourceArc<MaterialPassResource>,
         render_target_meta: &GraphicsPipelineRenderTargetMeta,
         vertex_data_set_layout: &VertexDataSetLayout,
@@ -403,7 +408,7 @@ impl GraphicsPipelineCache {
 
     pub fn graphics_pipeline(
         &self,
-        render_phase_index: RenderPhaseIndex,
+        render_phase_index: Option<RenderPhaseIndex>,
         material_pass: &ResourceArc<MaterialPassResource>,
         render_target_meta: &GraphicsPipelineRenderTargetMeta,
         vertex_data_set_layout: &VertexDataSetLayout,
@@ -424,114 +429,126 @@ impl GraphicsPipelineCache {
             inner.lock_call_count += 1;
         }
 
-        Self::do_register_renderpass_to_phase_index_per_frame(
-            inner,
-            render_target_meta,
-            render_phase_index,
-        );
-        Self::do_register_material_to_phase_index(inner, material_pass, render_phase_index);
+        if let Some(render_phase_index) = render_phase_index {
+            Self::do_register_renderpass_to_phase_index_per_frame(
+                inner,
+                render_target_meta,
+                render_phase_index,
+            );
+            Self::do_register_material_to_phase_index(inner, material_pass, render_phase_index);
+        }
 
-        inner
+        let keep_until_frame = inner
+            .frames_to_persist
+            .map(|x| x + inner.current_frame_index)
+            .unwrap_or(u64::MAX);
+        let cached_pipeline = inner
             .cached_pipelines
-            .get(&key)
+            .get_mut(&key)
             .map(|x| {
-                debug_assert!(x.material_pass_resource.upgrade().is_some());
-                Ok(x.graphics_pipeline.clone())
-            })
-            .or_else(|| {
-                if create_if_missing {
-                    log::debug!("Creating graphics pipeline");
-                    profiling::scope!("Create Pipeline");
-                    //let mut binding_descriptions = Vec::default();
-                    let mut vertex_layout_buffers =
-                        Vec::with_capacity(vertex_data_set_layout.bindings().len());
-                    for binding in vertex_data_set_layout.bindings() {
-                        vertex_layout_buffers.push(RafxVertexLayoutBuffer {
-                            rate: binding.vertex_rate(),
-                            stride: binding.vertex_stride() as u32,
-                        })
-                    }
-
-                    //let mut attribute_descriptions = Vec::default();
-                    let mut vertex_layout_attributes =
-                        Vec::with_capacity(material_pass.get_raw().vertex_inputs.len());
-
-                    for vertex_input in &*material_pass.get_raw().vertex_inputs {
-                        let member = vertex_data_set_layout
-                            .member(&vertex_input.semantic)
-                            .ok_or_else(|| {
-                                let error_message = format!(
-                                    "Vertex data does not support this material. Missing data {}",
-                                    vertex_input.semantic
-                                );
-                                log::error!("{}", error_message);
-                                log::info!(
-                                    "  required inputs:\n{:#?}",
-                                    material_pass.get_raw().vertex_inputs
-                                );
-                                log::info!(
-                                    "  available inputs:\n{:#?}",
-                                    vertex_data_set_layout.members()
-                                );
-                                error_message
-                            })
-                            .ok()?;
-
-                        vertex_layout_attributes.push(RafxVertexLayoutAttribute {
-                            location: vertex_input.location,
-                            byte_offset: member.byte_offset as u32,
-                            buffer_index: member.binding as u32,
-                            format: member.format,
-                            gl_attribute_name: Some(vertex_input.gl_attribute_name.clone()),
-                        });
-                    }
-
-                    let vertex_layout = RafxVertexLayout {
-                        attributes: vertex_layout_attributes,
-                        buffers: vertex_layout_buffers,
-                    };
-
-                    log::trace!("Creating graphics pipeline. Setting up vertex formats:");
-                    log::trace!(
-                        "  required inputs:\n{:#?}",
-                        material_pass.get_raw().vertex_inputs
-                    );
-                    log::trace!(
-                        "  available inputs:\n{:#?}",
-                        vertex_data_set_layout.members()
-                    );
-
-                    #[cfg(debug_assertions)]
-                    {
-                        inner.pipeline_create_count += 1;
-                    }
-
-                    log::trace!("Create vertex layout {:#?}", vertex_layout);
-                    let pipeline = inner.resource_lookup_set.get_or_create_graphics_pipeline(
-                        &material_pass,
-                        render_target_meta,
-                        vertex_data_set_layout.primitive_topology(),
-                        &vertex_layout,
-                    );
-
-                    if let Ok(pipeline) = pipeline {
-                        inner.cached_pipelines.insert(
-                            key,
-                            CachedGraphicsPipeline {
-                                graphics_pipeline: pipeline.clone(),
-                                //render_target_meta: render_target_meta.clone(),
-                                material_pass_resource: material_pass.downgrade(),
-                            },
-                        );
-
-                        Some(Ok(pipeline))
-                    } else {
-                        Some(pipeline)
-                    }
+                if x.material_pass_resource.upgrade().is_some() {
+                    x.keep_until_frame = x.keep_until_frame.max(keep_until_frame);
+                    Some(x.graphics_pipeline.clone())
                 } else {
                     None
                 }
             })
+            .flatten();
+
+        if cached_pipeline.is_some() {
+            cached_pipeline.map(|x| Ok(x))
+        } else if create_if_missing {
+            log::debug!("Creating graphics pipeline");
+            profiling::scope!("Create Pipeline");
+            //let mut binding_descriptions = Vec::default();
+            let mut vertex_layout_buffers =
+                Vec::with_capacity(vertex_data_set_layout.bindings().len());
+            for binding in vertex_data_set_layout.bindings() {
+                vertex_layout_buffers.push(RafxVertexLayoutBuffer {
+                    rate: binding.vertex_rate(),
+                    stride: binding.vertex_stride() as u32,
+                })
+            }
+
+            //let mut attribute_descriptions = Vec::default();
+            let mut vertex_layout_attributes =
+                Vec::with_capacity(material_pass.get_raw().vertex_inputs.len());
+
+            for vertex_input in &*material_pass.get_raw().vertex_inputs {
+                let member = vertex_data_set_layout
+                    .member(&vertex_input.semantic)
+                    .ok_or_else(|| {
+                        let error_message = format!(
+                            "Vertex data does not support this material. Missing data {}",
+                            vertex_input.semantic
+                        );
+                        log::error!("{}", error_message);
+                        log::info!(
+                            "  required inputs:\n{:#?}",
+                            material_pass.get_raw().vertex_inputs
+                        );
+                        log::info!(
+                            "  available inputs:\n{:#?}",
+                            vertex_data_set_layout.members()
+                        );
+                        error_message
+                    })
+                    .ok()?;
+
+                vertex_layout_attributes.push(RafxVertexLayoutAttribute {
+                    location: vertex_input.location,
+                    byte_offset: member.byte_offset as u32,
+                    buffer_index: member.binding as u32,
+                    format: member.format,
+                    gl_attribute_name: Some(vertex_input.gl_attribute_name.clone()),
+                });
+            }
+
+            let vertex_layout = RafxVertexLayout {
+                attributes: vertex_layout_attributes,
+                buffers: vertex_layout_buffers,
+            };
+
+            log::trace!("Creating graphics pipeline. Setting up vertex formats:");
+            log::trace!(
+                "  required inputs:\n{:#?}",
+                material_pass.get_raw().vertex_inputs
+            );
+            log::trace!(
+                "  available inputs:\n{:#?}",
+                vertex_data_set_layout.members()
+            );
+
+            #[cfg(debug_assertions)]
+            {
+                inner.pipeline_create_count += 1;
+            }
+
+            log::trace!("Create vertex layout {:#?}", vertex_layout);
+            let pipeline = inner.resource_lookup_set.get_or_create_graphics_pipeline(
+                &material_pass,
+                render_target_meta,
+                vertex_data_set_layout.primitive_topology(),
+                &vertex_layout,
+            );
+
+            if let Ok(pipeline) = pipeline {
+                inner.cached_pipelines.insert(
+                    key,
+                    CachedGraphicsPipeline {
+                        graphics_pipeline: pipeline.clone(),
+                        material_pass_resource: material_pass.downgrade(),
+                        keep_until_frame,
+                    },
+                );
+
+                Some(Ok(pipeline))
+            } else {
+                Some(pipeline)
+            }
+        } else {
+            None
+        }
     }
 
     pub fn precache_pipelines_for_all_phases(&self) -> RafxResult<()> {
@@ -592,8 +609,10 @@ impl GraphicsPipelineCache {
     fn drop_stale_pipelines(inner: &mut GraphicsPipelineCacheInner) {
         let current_frame_index = inner.current_frame_index;
 
-        for phase in &mut inner.render_target_meta_assignments {
-            phase.retain(|_k, v| v.keep_until_frame > current_frame_index);
+        if inner.frames_to_persist.is_some() {
+            for phase in &mut inner.render_target_meta_assignments {
+                phase.retain(|_k, v| v.keep_until_frame > current_frame_index);
+            }
         }
 
         for phase in &mut inner.material_pass_assignments {
@@ -608,9 +627,15 @@ impl GraphicsPipelineCache {
             }
         }
 
+        let frames_to_persist = inner.frames_to_persist;
         inner.cached_pipelines.retain(|k, v| {
             let render_target_meta_still_exists = all_render_target_meta.contains(&k.render_target_meta_hash);
             let material_pass_still_exists = v.material_pass_resource.upgrade().is_some();
+
+            // Never drop a pipeline if it has been recently used
+            if frames_to_persist.is_none() || v.keep_until_frame > current_frame_index {
+                return true;
+            }
 
             if !render_target_meta_still_exists || !material_pass_still_exists {
                 log::debug!(

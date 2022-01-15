@@ -1,73 +1,59 @@
-use crate::visibility::view_frustum_arc::{ViewFrustumArc, ViewFrustumObject};
-use crate::visibility::visibility_object_arc::{CullModel, VisibilityObject, VisibilityObjectArc};
+use crate::render_features::RenderObjectHandle;
+use crate::visibility::view_frustum_arc::{ViewFrustumArc, ViewFrustumRaii};
+use crate::visibility::visibility_object_arc::{
+    CullModel, VisibilityObjectArc, VisibilityObjectRaii, VisibilityObjectWeakArcInner,
+};
 use crate::visibility::ObjectId;
-use parking_lot::{RwLock, RwLockReadGuard};
-use rafx_visibility::{ModelHandle, VisibilityWorldArc, ZoneHandle};
+use crossbeam_channel::{Receiver, Sender};
+use rafx_visibility::{ModelHandle, VisibilityWorld, ZoneHandle};
 use slotmap::SlotMap;
 use slotmap::{new_key_type, Key};
-use std::ops::Deref;
-use std::sync::Arc;
 
 new_key_type! { pub struct VisibilityObjectId; }
 new_key_type! { pub struct ViewFrustumObjectId; }
 
-pub(super) type SlotMapArc<K, V> = Arc<RwLock<SlotMap<K, V>>>;
-
-pub struct VisibilityObjectRef<'a>(
-    RwLockReadGuard<'a, SlotMap<VisibilityObjectId, VisibilityObject>>,
-    VisibilityObjectId,
-);
-
-impl<'a> Deref for VisibilityObjectRef<'a> {
-    type Target = VisibilityObject;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.get(self.1).unwrap()
-    }
-}
-
-pub struct VisibilityObjectLookup<'a>(
-    RwLockReadGuard<'a, SlotMap<VisibilityObjectId, VisibilityObject>>,
-);
-
-impl<'a> VisibilityObjectLookup<'a> {
-    pub fn object_ref(
-        &self,
-        id: VisibilityObjectId,
-    ) -> &VisibilityObject {
-        self.0.get(id).unwrap()
-    }
-}
-
-#[derive(Clone)]
 pub struct VisibilityObjectAllocator {
-    view_frustums: SlotMapArc<ViewFrustumObjectId, ViewFrustumObject>,
-    objects: SlotMapArc<VisibilityObjectId, VisibilityObject>,
-    visibility_world: VisibilityWorldArc,
+    visibility_objects: SlotMap<VisibilityObjectId, VisibilityObjectWeakArcInner>,
+    visibility_world: VisibilityWorld,
+    visibility_object_drop_tx: Sender<VisibilityObjectId>,
+    visibility_object_drop_rx: Receiver<VisibilityObjectId>,
 }
 
 impl VisibilityObjectAllocator {
-    pub(super) fn new(visibility_world: VisibilityWorldArc) -> Self {
+    pub(super) fn new(visibility_world: VisibilityWorld) -> Self {
+        let (visibility_object_drop_tx, visibility_object_drop_rx) = crossbeam_channel::unbounded();
+
         VisibilityObjectAllocator {
             visibility_world,
-            view_frustums: Default::default(),
-            objects: Default::default(),
+            visibility_object_drop_tx,
+            visibility_object_drop_rx,
+            visibility_objects: Default::default(),
         }
     }
 
+    pub(super) fn world(&self) -> &VisibilityWorld {
+        &self.visibility_world
+    }
+
+    pub fn update(&mut self) {
+        for id in self.visibility_object_drop_rx.try_iter() {
+            self.visibility_objects.remove(id);
+        }
+        self.visibility_world.update();
+    }
+
     pub fn try_destroy_model(
-        &self,
+        &mut self,
         model: ModelHandle,
     ) -> bool {
-        let mut inner = self.visibility_world.inner.lock();
-        inner.destroy_model(model)
+        self.visibility_world.inner.destroy_model(model)
     }
 
     pub fn new_cull_model(
-        &self,
+        &mut self,
         cull_model: CullModel,
     ) -> Option<ModelHandle> {
-        let mut inner = self.visibility_world.inner.lock();
+        let inner = &mut self.visibility_world.inner;
         match cull_model {
             CullModel::Mesh(polygons) => Some(inner.new_model(polygons)),
             CullModel::Sphere(radius) => Some(inner.new_bounding_sphere(radius)),
@@ -78,45 +64,46 @@ impl VisibilityObjectAllocator {
     }
 
     pub fn new_object(
-        &self,
+        &mut self,
         object_id: ObjectId,
         cull_model: CullModel,
+        render_objects: Vec<RenderObjectHandle>,
         zone: Option<ZoneHandle>,
     ) -> VisibilityObjectArc {
         let cull_model = self.new_cull_model(cull_model);
+        let handle = self.visibility_world.inner.new_object();
 
-        let mut inner = self.visibility_world.inner.lock();
+        let object = VisibilityObjectArc::new(
+            VisibilityObjectRaii::new(
+                object_id,
+                render_objects,
+                handle.clone(),
+                self.visibility_world.new_async_command_sender(),
+            ),
+            self.visibility_object_drop_tx.clone(),
+        );
+        let id = self.visibility_objects.insert(object.downgrade());
+        object.set_visibility_object_id(id);
 
-        let handle = inner.new_object();
-
-        let id = self.objects.write().insert(VisibilityObject::new(
-            object_id,
-            handle.clone(),
-            self.visibility_world.new_async_command_sender(),
-        ));
-
+        let inner = &mut self.visibility_world.inner;
         inner.set_object_id(handle, id.data().as_ffi());
         inner.set_object_cull_model(handle, cull_model);
         inner.set_object_zone(handle, zone);
-
-        VisibilityObjectArc::new(id, self.objects.clone())
-    }
-
-    pub fn object_lookup(&self) -> VisibilityObjectLookup {
-        let guard = self.objects.read();
-        VisibilityObjectLookup(guard)
+        object
     }
 
     pub fn object_ref(
         &self,
         id: VisibilityObjectId,
-    ) -> VisibilityObjectRef {
-        let guard = self.objects.read();
-        VisibilityObjectRef(guard, id)
+    ) -> Option<VisibilityObjectArc> {
+        self.visibility_objects
+            .get(id)
+            .map(|x| x.upgrade())
+            .flatten()
     }
 
     pub fn new_view_frustum(
-        &self,
+        &mut self,
         static_zone: Option<ZoneHandle>,
         dynamic_zone: Option<ZoneHandle>,
     ) -> ViewFrustumArc {
@@ -125,38 +112,30 @@ impl VisibilityObjectAllocator {
             "A ViewFrustumObject requires at least one defined Zone."
         );
 
-        let mut inner = self.visibility_world.inner.lock();
-        let mut view_frustums = self.view_frustums.write();
+        // We don't currently use the ID
+        const UNUSED_ID: u64 = u64::MAX;
 
+        let async_command_sender = self.visibility_world.new_async_command_sender();
+        let inner = &mut self.visibility_world.inner;
         let static_view_frustum = static_zone.map(|region| {
             let handle = inner.new_view_frustum();
             inner.set_view_frustum_zone(handle, Some(region));
-            let id = view_frustums.insert(ViewFrustumObject::new(
-                handle,
-                self.visibility_world.new_async_command_sender(),
-                self.visibility_world.clone(),
-            ));
-            inner.set_view_frustum_id(handle, id.data().as_ffi());
-            id
+            inner.set_view_frustum_id(handle, UNUSED_ID);
+            let static_object = ViewFrustumRaii::new(handle, async_command_sender);
+
+            static_object
         });
 
+        let async_command_sender = self.visibility_world.new_async_command_sender();
+        let inner = &mut self.visibility_world.inner;
         let dynamic_view_frustum = dynamic_zone.map(|region| {
             let handle = inner.new_view_frustum();
             inner.set_view_frustum_zone(handle, Some(region));
-            let id = view_frustums.insert(ViewFrustumObject::new(
-                handle,
-                self.visibility_world.new_async_command_sender(),
-                self.visibility_world.clone(),
-            ));
-            inner.set_view_frustum_id(handle, id.data().as_ffi());
-            id
+            inner.set_view_frustum_id(handle, UNUSED_ID);
+            let dynamic_object = ViewFrustumRaii::new(handle, async_command_sender);
+            dynamic_object
         });
 
-        ViewFrustumArc::new(
-            static_view_frustum,
-            dynamic_view_frustum,
-            self.view_frustums.clone(),
-            self.visibility_world.clone(),
-        )
+        ViewFrustumArc::new(static_view_frustum, dynamic_view_frustum)
     }
 }

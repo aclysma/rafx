@@ -1,13 +1,11 @@
 use crate::frustum_culling::PackedBoundingSphereChunk;
 use crate::internal::Volume;
-use crate::{ObjectHandle, VolumeHandle};
-use parking_lot::RwLock;
+use crate::{VisibilityObjectHandle, VolumeHandle};
 use slotmap::{SecondaryMap, SlotMap};
-use std::sync::Arc;
 
 pub struct Zone {
-    pub(crate) chunks: Arc<RwLock<Vec<PackedBoundingSphereChunk>>>,
-    pub(crate) objects: SecondaryMap<ObjectHandle, (usize, usize)>,
+    pub(crate) chunks: Vec<PackedBoundingSphereChunk>,
+    pub(crate) objects: SecondaryMap<VisibilityObjectHandle, (usize, usize)>,
     pub(crate) volumes: SlotMap<VolumeHandle, Volume>,
 }
 

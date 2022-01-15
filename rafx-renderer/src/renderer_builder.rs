@@ -1,6 +1,6 @@
 use super::daemon::AssetDaemonOpt;
 use super::{daemon, Renderer};
-use super::{RenderFeaturePlugin, RenderGraphGenerator};
+use super::{RenderFeaturePlugin, RendererPipelinePlugin};
 use crate::renderer_thread_pool_none::RendererThreadPoolNone;
 use crate::{RendererAssetPlugin, RendererThreadPool};
 use fnv::FnvHashSet;
@@ -41,7 +41,7 @@ impl Default for RendererBuilder {
 }
 
 impl RendererBuilder {
-    pub fn add_render_feature(
+    pub fn add_render_feature_plugin(
         mut self,
         plugin: Arc<dyn RenderFeaturePlugin>,
     ) -> Self {
@@ -49,7 +49,7 @@ impl RendererBuilder {
         self
     }
 
-    pub fn add_asset(
+    pub fn add_asset_plugin(
         mut self,
         plugin: Arc<dyn RendererAssetPlugin>,
     ) -> Self {
@@ -70,7 +70,7 @@ impl RendererBuilder {
         extract_resources: ExtractResources,
         rafx_api: &RafxApi,
         asset_source: AssetSource,
-        render_graph_generator: Box<dyn RenderGraphGenerator>,
+        pipeline_plugin: Arc<dyn RendererPipelinePlugin>,
         renderer_thread_pool: fn() -> Option<Box<dyn RendererThreadPool>>, // TODO(dvd): Change to threading type enum with options None, RenderThread, or ThreadPool.
     ) -> RafxResult<RendererBuilderResult> {
         let mut asset_resource = match asset_source {
@@ -119,6 +119,19 @@ impl RendererBuilder {
                         }
                     }
 
+                    {
+                        let mut paths = Default::default();
+                        pipeline_plugin.add_asset_paths(&mut paths);
+                        for path in paths {
+                            log::info!(
+                                "Added asset path {:?} from pipeline plugin {:?}",
+                                path,
+                                pipeline_plugin.plugin_name()
+                            );
+                            asset_dirs.insert(path);
+                        }
+                    }
+
                     let mut asset_daemon = rafx_assets::distill_impl::default_daemon()
                         .with_db_path(daemon_args.db_dir)
                         .with_address(daemon_args.address)
@@ -148,6 +161,8 @@ impl RendererBuilder {
         for plugin in &self.asset_plugins {
             render_registry_builder = plugin.configure_render_registry(render_registry_builder);
         }
+        render_registry_builder =
+            pipeline_plugin.configure_render_registry(render_registry_builder);
 
         let render_registry = render_registry_builder.build();
 
@@ -182,7 +197,7 @@ impl RendererBuilder {
             &transfer_queue,
             self.feature_plugins,
             self.asset_plugins,
-            render_graph_generator,
+            pipeline_plugin,
             renderer_thread_pool()
                 .or_else(|| Some(Box::new(RendererThreadPoolNone::new())))
                 .unwrap(),

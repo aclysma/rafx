@@ -64,7 +64,7 @@ pub mod render_features_prelude {
         ViewVisibilityJob, VisibleRenderObjects,
     };
 
-    pub use crate::visibility::{ObjectId, VisibilityRegion};
+    pub use crate::visibility::{ObjectId, VisibilityResource};
 
     pub use crate::render_features::{
         RenderFeatureFramePacketAsConcrete, RenderFeatureFramePacketIntoConcrete,

@@ -1,12 +1,11 @@
-use crate::geometry::{Frustum, Plane};
+use crate::geometry::Frustum;
 use crate::{DepthRange, OrthographicParameters, PerspectiveParameters, Projection, UpdateFrustum};
 use glam::Vec3;
-use parking_lot::{RwLock, RwLockReadGuard};
-use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct ViewFrustum {
-    frustum: Arc<RwLock<Frustum>>,
+    //NOTE: We could cache the frustum here and RwLock it, but I think we're better off to accept
+    // a bit of overhead to recreate it. If it shows up in a profiler, we can put it back in.
     projection: Projection,
     eye_position: Vec3,
     look_at: Vec3,
@@ -23,7 +22,6 @@ impl ViewFrustum {
 
     pub fn empty() -> Self {
         ViewFrustum {
-            frustum: Arc::new(RwLock::new(Frustum::new(0))),
             projection: Projection::Undefined,
             eye_position: Default::default(),
             look_at: Default::default(),
@@ -50,11 +48,6 @@ impl ViewFrustum {
             depth_range,
         );
         view_frustum.set_transforms(eye_position, look_at, up);
-        {
-            let mut frustum = view_frustum.frustum.write();
-            frustum.planes = vec![Plane::default(); 6];
-            view_frustum.update_frustum(&mut frustum);
-        }
         view_frustum
     }
 
@@ -81,11 +74,6 @@ impl ViewFrustum {
             depth_range,
         );
         view_frustum.set_transforms(eye_position, look_at, up);
-        {
-            let mut frustum = view_frustum.frustum.write();
-            frustum.planes = vec![Plane::default(); 6];
-            view_frustum.update_frustum(&mut frustum);
-        }
         view_frustum
     }
 
@@ -108,10 +96,6 @@ impl ViewFrustum {
             far_distance,
             depth_range,
         ));
-
-        {
-            self.frustum.write().invalidate();
-        }
     }
 
     pub fn set_orthographic(
@@ -133,10 +117,6 @@ impl ViewFrustum {
             far_distance,
             depth_range,
         ));
-
-        {
-            self.frustum.write().invalidate();
-        }
     }
 
     pub fn set_transforms(
@@ -148,10 +128,6 @@ impl ViewFrustum {
         self.eye_position = eye_position;
         self.look_at = look_at;
         self.up = up;
-
-        {
-            self.frustum.write().invalidate();
-        }
     }
 
     pub fn eye_position(&self) -> Vec3 {
@@ -166,27 +142,9 @@ impl ViewFrustum {
         self.up
     }
 
-    /// Returns RwLockReadGuard. If the frustum is invalid, it will first be updated.
-    pub fn acquire_frustum(&self) -> RwLockReadGuard<'_, Frustum> {
-        let frustum = self.frustum.read();
-        return if frustum.is_invalid() {
-            std::mem::drop(frustum);
-
-            let mut frustum = self.frustum.write();
-            self.update_frustum(&mut frustum);
-            std::mem::drop(frustum);
-
-            self.frustum.read()
-        } else {
-            frustum
-        };
-    }
-
-    fn update_frustum(
-        &self,
-        frustum: &mut Frustum,
-    ) {
-        self.projection.update_frustum(self, frustum);
-        frustum.update();
+    pub fn acquire_frustum(&self) -> Frustum {
+        let mut frustum = Frustum::default();
+        self.projection.update_frustum(self, &mut frustum);
+        frustum
     }
 }

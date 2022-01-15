@@ -4,8 +4,8 @@ pub use render_feature_plugin::RenderFeaturePlugin;
 mod renderer_asset_plugin;
 pub use renderer_asset_plugin::RendererAssetPlugin;
 
-mod render_graph_generator;
-pub use render_graph_generator::RenderGraphGenerator;
+mod renderer_pipeline_plugin;
+pub use renderer_pipeline_plugin::RendererPipelinePlugin;
 
 mod viewports_resource;
 pub use viewports_resource::RenderViewMeta;
@@ -19,6 +19,9 @@ pub use time_render_resource::TimeRenderResource;
 
 mod swapchain_render_resource;
 pub use swapchain_render_resource::SwapchainRenderResource;
+
+mod main_view_render_resource;
+pub use main_view_render_resource::MainViewRenderResource;
 
 mod render_frame_job;
 pub use render_frame_job::RenderFrameJob;

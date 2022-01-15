@@ -10,6 +10,7 @@ pub trait RenderFeatureExtractJob<'extract>: Send + Sync {
 
     fn extract_render_object_instance(
         &self,
+        visibility_resource: &VisibilityResource,
         range: Range<usize>,
     );
 
@@ -21,6 +22,7 @@ pub trait RenderFeatureExtractJob<'extract>: Send + Sync {
     fn extract_render_object_instance_per_view(
         &self,
         view_packet: &dyn RenderFeatureViewPacket,
+        visibility_resource: &VisibilityResource,
         range: Range<usize>,
     );
 

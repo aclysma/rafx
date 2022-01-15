@@ -1,19 +1,23 @@
 use crate::geometry::{BoundingSphere, Transform};
-use crate::{ModelHandle, ObjectHandle, ZoneHandle};
+use crate::{ModelHandle, VisibilityObjectHandle, ZoneHandle};
 
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Clone)]
 pub struct VisibilityObject {
-    pub handle: ObjectHandle,
+    // The handle given to this object by the visibility system
+    pub handle: VisibilityObjectHandle,
+    // The opaque object ID (i.e. a pointer or ECS ID)
     pub id: u64,
     pub zone: Option<ZoneHandle>,
     pub cull_model: Option<ModelHandle>,
-    pub transform: Transform,
+    pub transform: Option<Transform>,
+    // This is updated before processing commands in VisibilityWorld::update
+    pub previous_frame_transform: Option<Transform>,
 }
 
 impl VisibilityObject {
     pub fn new(
         id: u64,
-        handle: ObjectHandle,
+        handle: VisibilityObjectHandle,
     ) -> Self {
         VisibilityObject {
             id,

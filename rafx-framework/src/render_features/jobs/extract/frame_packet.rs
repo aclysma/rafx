@@ -1,4 +1,5 @@
 use crate::render_features::render_features_prelude::*;
+use crate::visibility::VisibilityObjectId;
 use fnv::{FnvHashMap, FnvHasher};
 use std::hash::{BuildHasherDefault, Hash};
 
@@ -180,16 +181,19 @@ impl<FramePacketDataT: 'static + Sync + Send + FramePacketData> RenderFeatureFra
 pub struct RenderObjectInstance {
     pub object_id: ObjectId,
     pub render_object_id: RenderObjectId,
+    pub visibility_object_id: VisibilityObjectId,
 }
 
 impl RenderObjectInstance {
     pub fn new(
         object_id: ObjectId,
         render_object_id: RenderObjectId,
+        visibility_object_id: VisibilityObjectId,
     ) -> Self {
         Self {
             object_id,
             render_object_id,
+            visibility_object_id,
         }
     }
 }

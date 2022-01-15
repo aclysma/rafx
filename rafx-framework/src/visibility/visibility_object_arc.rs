@@ -1,13 +1,15 @@
-use crate::render_features::{RenderObjectHandle, RenderObjectId};
-use crate::visibility::visibility_object_allocator::{SlotMapArc, VisibilityObjectId};
+use crate::render_features::RenderObjectHandle;
+use crate::visibility::visibility_object_allocator::VisibilityObjectId;
 use crate::visibility::ObjectId;
 use crossbeam_channel::Sender;
 use glam::{Quat, Vec3};
 use rafx_visibility::geometry::Transform;
 use rafx_visibility::{
-    AsyncCommand, ModelHandle, ObjectHandle, PolygonSoup, VisibleBounds, ZoneHandle,
+    AsyncCommand, ModelHandle, PolygonSoup, VisibilityObjectHandle, VisibleBounds, ZoneHandle,
 };
-use std::sync::Arc;
+use slotmap::Key;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Weak};
 
 pub enum CullModel {
     Mesh(PolygonSoup),
@@ -42,19 +44,68 @@ impl CullModel {
     }
 }
 
+pub struct VisibilityObjectArcInner {
+    object: VisibilityObjectRaii,
+    // This corresponds to the key in VisibilityObjectAllocator::visibility_objects. It's set after
+    // we insert VisibilityObjectArc into the slot map
+    visibility_object_id: AtomicU64,
+    drop_tx: Sender<VisibilityObjectId>,
+}
+
+impl Drop for VisibilityObjectArcInner {
+    fn drop(&mut self) {
+        let _ = self
+            .drop_tx
+            .send(VisibilityObjectId::from(slotmap::KeyData::from_ffi(
+                self.visibility_object_id.load(Ordering::Relaxed),
+            )));
+    }
+}
+
+pub struct VisibilityObjectWeakArcInner {
+    inner: Weak<VisibilityObjectArcInner>,
+}
+
+impl VisibilityObjectWeakArcInner {
+    pub fn upgrade(&self) -> Option<VisibilityObjectArc> {
+        self.inner
+            .upgrade()
+            .map(|inner| VisibilityObjectArc { inner })
+    }
+}
+
 #[derive(Clone)]
 pub struct VisibilityObjectArc {
-    inner: Arc<RemoveObjectWhenDropped>,
+    inner: Arc<VisibilityObjectArcInner>,
 }
 
 impl VisibilityObjectArc {
     pub(crate) fn new(
-        id: VisibilityObjectId,
-        storage: SlotMapArc<VisibilityObjectId, VisibilityObject>,
+        object: VisibilityObjectRaii,
+        drop_tx: Sender<VisibilityObjectId>,
     ) -> Self {
         Self {
-            inner: Arc::new(RemoveObjectWhenDropped { id, storage }),
+            inner: Arc::new(VisibilityObjectArcInner {
+                object,
+                visibility_object_id: AtomicU64::default(),
+                drop_tx,
+            }),
         }
+    }
+
+    pub fn downgrade(&self) -> VisibilityObjectWeakArcInner {
+        VisibilityObjectWeakArcInner {
+            inner: Arc::downgrade(&self.inner),
+        }
+    }
+
+    pub(super) fn set_visibility_object_id(
+        &self,
+        visibility_object_id: VisibilityObjectId,
+    ) {
+        self.inner
+            .visibility_object_id
+            .store(visibility_object_id.data().as_ffi(), Ordering::Relaxed);
     }
 
     #[allow(dead_code)]
@@ -62,39 +113,28 @@ impl VisibilityObjectArc {
         &self,
         zone: Option<ZoneHandle>,
     ) -> &Self {
-        let storage = self.inner.storage.read();
-        let object = storage.get(self.inner.id).unwrap();
-        object.set_zone(zone);
+        self.inner.object.set_zone(zone);
         self
     }
 
-    pub fn add_render_object(
-        &self,
-        render_object: &RenderObjectHandle,
-    ) -> &Self {
-        let mut storage = self.inner.storage.write();
-        let object = storage.get_mut(self.inner.id).unwrap();
-        object.add_render_object(render_object);
-        self
+    pub fn object_id(&self) -> ObjectId {
+        self.inner.object.object_id()
     }
 
-    pub fn remove_render_object(
-        &self,
-        render_object: &RenderObjectHandle,
-    ) -> &Self {
-        let mut storage = self.inner.storage.write();
-        let object = storage.get_mut(self.inner.id).unwrap();
-        object.remove_render_object(render_object);
-        self
+    // This is
+    pub fn visibility_object_handle(&self) -> VisibilityObjectHandle {
+        self.inner.object.handle
+    }
+
+    pub fn render_objects(&self) -> &[RenderObjectHandle] {
+        &self.inner.object.render_objects()
     }
 
     pub fn set_cull_model(
         &self,
         cull_model: Option<ModelHandle>,
     ) -> &Self {
-        let storage = self.inner.storage.read();
-        let object = storage.get(self.inner.id).unwrap();
-        object.set_cull_model(cull_model);
+        self.inner.object.set_cull_model(cull_model);
         self
     }
 
@@ -104,46 +144,40 @@ impl VisibilityObjectArc {
         rotation: Quat,
         scale: Vec3,
     ) -> &Self {
-        let storage = self.inner.storage.read();
-        let object = storage.get(self.inner.id).unwrap();
-        object.set_transform(translation, rotation, scale);
+        self.inner
+            .object
+            .set_transform(translation, rotation, scale);
         self
     }
 }
 
-struct RemoveObjectWhenDropped {
-    id: VisibilityObjectId,
-    storage: SlotMapArc<VisibilityObjectId, VisibilityObject>,
+// An RAII object for a visibility VisibilityObjectHandle
+pub struct VisibilityObjectRaii {
+    commands: Sender<AsyncCommand>,
+    handle: VisibilityObjectHandle,
+    object_id: ObjectId,
+    render_objects: Vec<RenderObjectHandle>, // TODO(dvd): This might be better as a SmallVec.
 }
 
-impl Drop for RemoveObjectWhenDropped {
+impl Drop for VisibilityObjectRaii {
     fn drop(&mut self) {
-        // NOTE(dvd): When this inner handle is dropped, we'll remove the key
-        // from the storage. That will then destroy the object created in
-        // in the visibility world.
-        let mut storage = self.storage.write();
-        storage.remove(self.id).unwrap();
+        // NOTE(dvd): Destroy the associated Object in the visibility world.
+        let _ = self.commands.send(AsyncCommand::DestroyObject(self.handle));
     }
 }
 
-pub struct VisibilityObject {
-    commands: Sender<AsyncCommand>,
-    handle: ObjectHandle,
-    render_objects: Vec<RenderObjectId>, // TODO(dvd): This might be better as a SmallVec.
-    object_id: ObjectId,
-}
-
-impl VisibilityObject {
+impl VisibilityObjectRaii {
     pub fn new(
         object_id: ObjectId,
-        handle: ObjectHandle,
+        render_objects: Vec<RenderObjectHandle>,
+        handle: VisibilityObjectHandle,
         commands: Sender<AsyncCommand>,
     ) -> Self {
         Self {
             commands,
             handle,
             object_id,
-            render_objects: Default::default(),
+            render_objects,
         }
     }
 
@@ -158,35 +192,12 @@ impl VisibilityObject {
         self
     }
 
-    #[inline(always)]
     pub fn object_id(&self) -> ObjectId {
         self.object_id
     }
 
-    pub fn render_objects(&self) -> &[RenderObjectId] {
+    pub fn render_objects(&self) -> &[RenderObjectHandle] {
         &self.render_objects
-    }
-
-    pub fn add_render_object(
-        &mut self,
-        render_object: &RenderObjectHandle,
-    ) -> &Self {
-        let id = render_object.as_id();
-        if !self.render_objects.contains(&id) {
-            self.render_objects.push(id);
-        }
-        self
-    }
-
-    pub fn remove_render_object(
-        &mut self,
-        render_object: &RenderObjectHandle,
-    ) -> &Self {
-        let id = render_object.as_id();
-        if let Some(index) = self.render_objects.iter().position(|value| *value == id) {
-            self.render_objects.swap_remove(index);
-        }
-        self
     }
 
     pub fn set_cull_model(
@@ -206,7 +217,7 @@ impl VisibilityObject {
         scale: Vec3,
     ) -> &Self {
         self.commands
-            .send(AsyncCommand::SetObjectPosition(
+            .send(AsyncCommand::SetObjectTransform(
                 self.handle,
                 Transform {
                     translation,
@@ -216,12 +227,5 @@ impl VisibilityObject {
             ))
             .expect("Unable to send SetObjectPosition command.");
         self
-    }
-}
-
-impl Drop for VisibilityObject {
-    fn drop(&mut self) {
-        // NOTE(dvd): Destroy the associated Object in the visibility world.
-        let _ = self.commands.send(AsyncCommand::DestroyObject(self.handle));
     }
 }

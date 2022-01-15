@@ -191,7 +191,7 @@ impl BuiltinPipelines {
         let pipeline = resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                0, // TEMP
+                None,
                 &self.util_blit_image_material_pass,
                 render_target_meta,
                 &EMPTY_VERTEX_LAYOUT,

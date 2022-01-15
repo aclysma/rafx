@@ -72,6 +72,7 @@ impl<'extract, ExtractJobEntryPointsT: 'extract + ExtractJobEntryPoints<'extract
 
     fn extract_render_object_instance(
         &self,
+        visibility_resource: &VisibilityResource,
         range: Range<usize>,
     ) {
         if range.is_empty() {
@@ -92,7 +93,8 @@ impl<'extract, ExtractJobEntryPointsT: 'extract + ExtractJobEntryPoints<'extract
         let job_context = job_context.as_mut().unwrap();
         let frame_packet = self.frame_packet.as_ref().unwrap();
         for id in range {
-            let context = ExtractRenderObjectInstanceContext::new(frame_packet, id);
+            let context =
+                ExtractRenderObjectInstanceContext::new(frame_packet, visibility_resource, id);
             self.inner
                 .extract_render_object_instance(job_context, &context);
         }
@@ -111,6 +113,7 @@ impl<'extract, ExtractJobEntryPointsT: 'extract + ExtractJobEntryPoints<'extract
     fn extract_render_object_instance_per_view(
         &self,
         view_packet: &dyn RenderFeatureViewPacket,
+        visibility_resource: &VisibilityResource,
         range: Range<usize>,
     ) {
         if range.is_empty() {
@@ -134,8 +137,12 @@ impl<'extract, ExtractJobEntryPointsT: 'extract + ExtractJobEntryPoints<'extract
             view_packet.as_concrete();
 
         for id in range {
-            let context =
-                ExtractRenderObjectInstancePerViewContext::new(frame_packet, view_packet, id);
+            let context = ExtractRenderObjectInstancePerViewContext::new(
+                frame_packet,
+                view_packet,
+                visibility_resource,
+                id,
+            );
             self.inner
                 .extract_render_object_instance_per_view(job_context, &context);
         }
