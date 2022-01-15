@@ -166,7 +166,7 @@ impl<'write> RenderFeatureWriteJob<'write> for EguiWriteJob<'write> {
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
-                    render_phase_index,
+                    Some(render_phase_index),
                     self.egui_material_pass.as_ref().unwrap(),
                     &write_context.render_target_meta,
                     &*EGUI_VERTEX_LAYOUT,

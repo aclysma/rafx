@@ -1,16 +1,17 @@
-use super::RenderGraphContext;
+use super::ModernPipelineContext;
 use crate::phases::DepthPrepassRenderPhase;
-use rafx::api::RafxDepthStencilClearValue;
+use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue, RafxFormat};
 use rafx::graph::*;
 use rafx::render_features::RenderJobCommandBufferContext;
 
 pub(super) struct DepthPrepass {
     #[allow(dead_code)]
     pub(super) node: RenderGraphNodeId,
+    pub(super) velocity_rt: RenderGraphImageUsageId,
     pub(super) depth: RenderGraphImageUsageId,
 }
 
-pub(super) fn depth_prepass(context: &mut RenderGraphContext) -> Option<DepthPrepass> {
+pub(super) fn depth_prepass(context: &mut ModernPipelineContext) -> Option<DepthPrepass> {
     if !context
         .main_view
         .phase_is_relevant::<DepthPrepassRenderPhase>()
@@ -35,6 +36,20 @@ pub(super) fn depth_prepass(context: &mut RenderGraphContext) -> Option<DepthPre
         },
         Default::default(),
     );
+
+    let velocity_rt = context.graph.create_color_attachment(
+        node,
+        0,
+        // Large number means reproject using camera matrices
+        Some(RafxColorClearValue([9999999.0, 9999999.0, 0.0, 0.0])),
+        RenderGraphImageConstraint {
+            samples: Some(context.graph_config.samples),
+            format: Some(RafxFormat::R32G32_SFLOAT),
+            ..Default::default()
+        },
+        Default::default(),
+    );
+
     context.graph.set_image_name(depth, "depth");
 
     context
@@ -52,5 +67,9 @@ pub(super) fn depth_prepass(context: &mut RenderGraphContext) -> Option<DepthPre
             .write_view_phase::<DepthPrepassRenderPhase>(&main_view, &mut write_context)
     });
 
-    Some(DepthPrepass { node, depth })
+    Some(DepthPrepass {
+        node,
+        velocity_rt,
+        depth,
+    })
 }

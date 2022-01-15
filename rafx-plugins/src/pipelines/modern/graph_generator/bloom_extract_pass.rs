@@ -3,8 +3,7 @@ use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::graph::*;
 use rafx::render_features::RenderPhase;
 
-use super::OpaquePass;
-use super::RenderGraphContext;
+use super::ModernPipelineContext;
 use super::EMPTY_VERTEX_LAYOUT;
 use crate::shaders::post_shared::bloom_extract_frag;
 use rafx::api::{RafxColorClearValue, RafxSampleCount};
@@ -17,9 +16,9 @@ pub(super) struct BloomExtractPass {
 }
 
 pub(super) fn bloom_extract_pass(
-    context: &mut RenderGraphContext,
+    context: &mut ModernPipelineContext,
     bloom_extract_material_pass: ResourceArc<MaterialPassResource>,
-    opaque_pass: &OpaquePass,
+    hdr_color: RenderGraphImageUsageId,
 ) -> BloomExtractPass {
     let node = context
         .graph
@@ -53,7 +52,7 @@ pub(super) fn bloom_extract_pass(
 
     let sample_image = context.graph.sample_image(
         node,
-        opaque_pass.color,
+        hdr_color,
         RenderGraphImageConstraint {
             samples: Some(RafxSampleCount::SampleCount1),
             ..Default::default()
@@ -71,7 +70,7 @@ pub(super) fn bloom_extract_pass(
             .resource_context()
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                PostProcessRenderPhase::render_phase_index(),
+                Some(PostProcessRenderPhase::render_phase_index()),
                 &bloom_extract_material_pass,
                 &args.render_target_meta,
                 &EMPTY_VERTEX_LAYOUT,

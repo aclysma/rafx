@@ -5,7 +5,7 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::rafx_visibility::VisibleBounds;
 use rafx::render_features::RenderObjectHandle;
-use rafx::visibility::{CullModel, ObjectId, VisibilityRegion};
+use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
 use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
 
 #[cfg(feature = "basic-pipeline")]
@@ -34,7 +34,7 @@ impl SpawnableMesh {
         world: &mut World,
         transform_component: TransformComponent,
     ) {
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+        let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
         let mesh_component = MeshComponent {
             render_object_handle: self.render_object.clone(),
         };
@@ -43,16 +43,16 @@ impl SpawnableMesh {
         let mut entry = world.entry(entity).unwrap();
         entry.add_component(VisibilityComponent {
             visibility_object_handle: {
-                let handle = visibility_region.register_dynamic_object(
+                let handle = visibility_resource.register_dynamic_object(
                     ObjectId::from(entity),
                     CullModel::VisibleBounds(self.visible_bounds.clone()),
+                    vec![self.render_object.clone()],
                 );
                 handle.set_transform(
                     transform_component.translation,
                     transform_component.rotation,
                     transform_component.scale,
                 );
-                handle.add_render_object(&self.render_object);
                 handle
             },
         });

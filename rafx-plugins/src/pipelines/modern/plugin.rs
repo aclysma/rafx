@@ -11,9 +11,12 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ComputePipelineAsset, MaterialAsset};
 use rafx::base::resource_map::ResourceMap;
 use rafx::distill::loader::handle::Handle;
-use rafx::framework::{BufferResource, ResourceArc, MAX_FRAMES_IN_FLIGHT};
-use rafx::render_features::{ExtractResources, RenderRegistryBuilder};
-use rafx::renderer::RendererAssetPlugin;
+use rafx::framework::{
+    BufferResource, ImageViewResource, RenderResources, ResourceArc, MAX_FRAMES_IN_FLIGHT,
+};
+use rafx::graph::PreparedRenderGraph;
+use rafx::render_features::{ExtractResources, RenderRegistryBuilder, RenderView};
+use rafx::renderer::RendererPipelinePlugin;
 use std::sync::{Arc, Mutex};
 
 // A plugin that add demo-specific configuration
@@ -68,15 +71,17 @@ pub struct ModernPipelineStaticResources {
     pub bloom_extract_material: Handle<MaterialAsset>,
     pub bloom_blur_material: Handle<MaterialAsset>,
     pub bloom_combine_material: Handle<MaterialAsset>,
+    pub taa_material: Handle<MaterialAsset>,
     pub luma_build_histogram: Handle<ComputePipelineAsset>,
     pub luma_average_histogram: Handle<ComputePipelineAsset>,
     pub tonemap_histogram_result: ResourceArc<BufferResource>,
     pub tonemap_debug_output: Vec<ResourceArc<BufferResource>>,
+    pub taa_history_rt: Option<ResourceArc<ImageViewResource>>,
 }
 
 pub struct ModernPipelineRendererPlugin;
 
-impl RendererAssetPlugin for ModernPipelineRendererPlugin {
+impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry_builder: RenderRegistryBuilder,
@@ -114,6 +119,10 @@ impl RendererAssetPlugin for ModernPipelineRendererPlugin {
         let bloom_blur_material = asset_resource
             .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/bloom_blur.material");
 
+        let taa_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "rafx-plugins/materials/modern_pipeline/taa.material",
+        );
+
         //
         // Bloom combine resources
         //
@@ -140,6 +149,8 @@ impl RendererAssetPlugin for ModernPipelineRendererPlugin {
             asset_resource,
             "bloom blur material",
         )?;
+
+        asset_manager.wait_for_asset_to_load(&taa_material, asset_resource, "taa material")?;
 
         asset_manager.wait_for_asset_to_load(
             &bloom_combine_material,
@@ -203,16 +214,39 @@ impl RendererAssetPlugin for ModernPipelineRendererPlugin {
             );
         }
 
+        let taa_history_rt = None;
+
         render_resources.insert(ModernPipelineStaticResources {
             bloom_extract_material,
             bloom_blur_material,
             bloom_combine_material,
+            taa_material,
             luma_build_histogram,
             luma_average_histogram,
             tonemap_histogram_result,
             tonemap_debug_output,
+            taa_history_rt,
         });
 
         Ok(())
+    }
+
+    fn generate_render_graph(
+        &self,
+        asset_manager: &AssetManager,
+        swapchain_image: ResourceArc<ImageViewResource>,
+        rotating_frame_index: usize,
+        main_view: RenderView,
+        extract_resources: &ExtractResources,
+        render_resources: &RenderResources,
+    ) -> RafxResult<PreparedRenderGraph> {
+        super::graph_generator::generate_render_graph(
+            asset_manager,
+            swapchain_image,
+            rotating_frame_index,
+            main_view,
+            extract_resources,
+            render_resources,
+        )
     }
 }

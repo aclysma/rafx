@@ -1,3 +1,5 @@
+#include "../util/taa_jitter.glsl"
+
 // @[semantic("POSITION")]
 layout (location = 0) in vec3 in_pos;
 
@@ -37,7 +39,11 @@ void pbr_main() {
     mat4 model_view_proj = per_view_data.view_proj * in_model_matrix;
     mat4 model_view = per_view_data.view * in_model_matrix;
 
-    gl_Position = model_view_proj * vec4(in_pos, 1.0);
+    vec4 position_clip = model_view_proj * vec4(in_pos, 1.0);
+    vec2 viewport_size = vec2(per_view_data.viewport_width, per_view_data.viewport_height);
+    position_clip = add_jitter(position_clip, per_view_data.jitter_amount);
+
+    gl_Position = position_clip;
     out_position_vs = (model_view * vec4(in_pos, 1.0)).xyz;
 
     // This can be skipped if just using rotation/uniform scale. Required for non-uniform scale/shear

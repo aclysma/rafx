@@ -12,11 +12,12 @@ use glam::Mat4;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 
 use crate::features::mesh_adv::light_binning::MeshAdvLightBinRenderResource;
-use crate::shaders::depth::depth_vert;
+use crate::shaders::depth_velocity::depth_velocity_vert;
 use crate::shaders::mesh_adv::lights_bin_comp;
 use crate::shaders::mesh_adv::mesh_adv_textured_frag::LightInListStd430;
 use crate::shaders::mesh_adv::shadow_atlas_depth_vert;
 use mesh_adv_textured_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
+use rafx::renderer::MainViewRenderResource;
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
     mesh_adv_textured_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
@@ -32,7 +33,11 @@ pub struct MeshAdvPrepareJob<'prepare> {
     shadow_map_atlas_depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     shadow_map_data: ReadBorrow<'prepare, MeshAdvShadowMapResource>,
     light_bin_resource: WriteBorrow<'prepare, MeshAdvLightBinRenderResource>,
-    render_object_instance_transforms: Arc<AtomicOnceCellStack<[[f32; 4]; 4]>>,
+    main_view_resource: ReadBorrow<'prepare, MainViewRenderResource>,
+    pipeline_state: ReadBorrow<'prepare, MeshAdvRenderPipelineState>,
+    render_object_instance_transforms: Arc<AtomicOnceCellStack<MeshModelMatrix>>,
+    render_object_instance_transforms_with_history:
+        Arc<AtomicOnceCellStack<MeshModelMatrixWithHistory>>,
     #[allow(dead_code)]
     render_objects: MeshAdvRenderObjectSet,
 }
@@ -69,6 +74,12 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
                         frame_packet.render_object_instances().len(),
                     ))
                 },
+                render_object_instance_transforms_with_history: {
+                    // TODO: Ideally this would use an allocator from the `prepare_context`.
+                    Arc::new(AtomicOnceCellStack::with_capacity(
+                        frame_packet.render_object_instances().len(),
+                    ))
+                },
                 depth_material_pass: { per_frame_data.depth_material_pass.clone() },
                 shadow_map_atlas_depth_material_pass: {
                     per_frame_data.shadow_map_atlas_depth_material_pass.clone()
@@ -82,6 +93,16 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
                     prepare_context
                         .render_resources
                         .fetch_mut::<MeshAdvLightBinRenderResource>()
+                },
+                main_view_resource: {
+                    prepare_context
+                        .render_resources
+                        .fetch::<MainViewRenderResource>()
+                },
+                pipeline_state: {
+                    prepare_context
+                        .render_resources
+                        .fetch::<MeshAdvRenderPipelineState>()
                 },
                 requires_textured_descriptor_sets,
                 requires_untextured_descriptor_sets,
@@ -109,6 +130,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             }; MAX_SHADOW_MAPS_CUBE],
             shadow_map_image_index_remap: Default::default(),
             model_matrix_buffer: Default::default(),
+            model_matrix_with_history_buffer: Default::default(),
         });
 
         let shadow_map_data = &self.shadow_map_data;
@@ -237,13 +259,31 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
 
         let extracted_data = render_object_instance.as_ref().unwrap();
         let world_transform = Mat4::from_scale_rotation_translation(
-            extracted_data.scale,
-            extracted_data.rotation,
-            extracted_data.translation,
+            extracted_data.transform.scale,
+            extracted_data.transform.rotation,
+            extracted_data.transform.translation,
         );
 
+        let previous_world_transform = extracted_data
+            .previous_transform
+            .as_ref()
+            .map(|x| Mat4::from_scale_rotation_translation(x.scale, x.rotation, x.translation))
+            .unwrap_or(world_transform);
+
         let model = world_transform.to_cols_array_2d();
-        let model_matrix_offset = self.render_object_instance_transforms.push(model);
+        let previous_model = previous_world_transform.to_cols_array_2d();
+        let model_matrix_offset = self
+            .render_object_instance_transforms
+            .push(MeshModelMatrix {
+                model_matrix: model,
+            });
+        let model_matrix_with_history_offset = self
+            .render_object_instance_transforms_with_history
+            .push(MeshModelMatrixWithHistory {
+                current_model_matrix: model,
+                previous_model_matrix: previous_model,
+            });
+        debug_assert_eq!(model_matrix_offset, model_matrix_with_history_offset);
 
         context.set_render_object_instance_submit_data(MeshAdvRenderObjectInstanceSubmitData {
             model_matrix_offset,
@@ -258,7 +298,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         let view = context.view();
 
         if let Some(extracted_data) = context.render_object_instance_data() {
-            let distance = (view.eye_position() - extracted_data.translation).length_squared();
+            let distance =
+                (view.eye_position() - extracted_data.transform.translation).length_squared();
             let render_object_instance_id = context.render_object_instance_id();
 
             let model_matrix_offset = context
@@ -289,7 +330,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                                 .clone(),
                             per_material_descriptor_set: None,
                             mesh_part_index,
-                            model_matrix_offset,
+                            model_matrix_index: model_matrix_offset,
                         },
                         0,
                         distance,
@@ -307,7 +348,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                                 .clone(),
                             per_material_descriptor_set: None,
                             mesh_part_index,
-                            model_matrix_offset,
+                            model_matrix_index: model_matrix_offset,
                         },
                         0,
                         distance,
@@ -334,7 +375,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                             material_pass_resource,
                             per_material_descriptor_set,
                             mesh_part_index,
-                            model_matrix_offset,
+                            model_matrix_index: model_matrix_offset,
                         },
                         0,
                         distance,
@@ -366,7 +407,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                             material_pass_resource,
                             per_material_descriptor_set,
                             mesh_part_index,
-                            model_matrix_offset,
+                            model_matrix_index: model_matrix_offset,
                         },
                         0,
                         distance,
@@ -412,6 +453,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
 
                 per_view_frag_data.view = view.view_matrix().to_cols_array_2d();
                 per_view_frag_data.view_proj = view.view_proj().to_cols_array_2d();
+                per_view_frag_data.ndf_filter_amount = per_view_data.ndf_filter_amount;
                 per_view_frag_data.ambient_light = if is_lit {
                     per_view_data.ambient_light.extend(1.0).into()
                 } else {
@@ -425,6 +467,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 };
                 per_view_frag_data.viewport_width = view.extents_width();
                 per_view_frag_data.viewport_height = view.extents_height();
+                per_view_frag_data.jitter_amount = self.pipeline_state.jitter_amount.into();
+                per_view_frag_data.mip_bias = self.pipeline_state.forward_pass_mip_bias;
 
                 let mut light_bounds_data = lights_bin_comp::LightsInputListBuffer {
                     light_count: 0,
@@ -724,10 +768,22 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         // If we are rendering a depth prepass, make a scriptor set with uniform data for this view
         //
         let depth_descriptor_set = if view.phase_is_relevant::<DepthPrepassRenderPhase>() {
-            let mut per_view_data = depth_vert::PerViewDataUniform::default();
+            let mut per_view_data = depth_velocity_vert::PerViewDataUniform::default();
 
-            per_view_data.view = view.view_matrix().to_cols_array_2d();
-            per_view_data.view_proj = view.view_proj().to_cols_array_2d();
+            per_view_data.current_view_proj = view.view_proj().to_cols_array_2d();
+            per_view_data.current_view_proj_inv = view.view_proj().inverse().to_cols_array_2d();
+            per_view_data.viewport_width = view.extents_width();
+            per_view_data.viewport_height = view.extents_height();
+            per_view_data.jitter_amount = self.pipeline_state.jitter_amount.into();
+
+            if let Some(previous_main_view_info) = &self.main_view_resource.previous_main_view_info
+            {
+                let previous_view_proj =
+                    previous_main_view_info.projection_matrix * previous_main_view_info.view_matrix;
+                per_view_data.previous_view_proj = previous_view_proj.to_cols_array_2d();
+            } else {
+                per_view_data.previous_view_proj = per_view_data.current_view_proj;
+            }
 
             let per_instance_descriptor_set_layout = &self
                 .depth_material_pass
@@ -739,7 +795,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             descriptor_set_allocator
                 .create_descriptor_set(
                     per_instance_descriptor_set_layout,
-                    depth_vert::DescriptorSet0Args {
+                    depth_velocity_vert::DescriptorSet0Args {
                         per_view_data: &per_view_data,
                     },
                 )
@@ -767,6 +823,13 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             .model_matrix_buffer
             .borrow_mut();
 
+        let mut model_matrix_with_history_buffer = context
+            .per_frame_submit_data()
+            .model_matrix_with_history_buffer
+            .borrow_mut();
+
+        let dyn_resource_allocator_set = self.resource_context.create_dyn_resource_allocator_set();
+
         *model_matrix_buffer = if self.render_object_instance_transforms.len() > 0 {
             let dyn_resource_allocator_set =
                 self.resource_context.create_dyn_resource_allocator_set();
@@ -784,20 +847,42 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 })
                 .unwrap();
 
-            // TODO(dvd): Get rid of this copy.
-            let mut data = Vec::with_capacity(self.render_object_instance_transforms.len());
-            for ii in 0..data.capacity() {
-                data.push(self.render_object_instance_transforms.get(ii).clone());
-            }
+            let data = unsafe { self.render_object_instance_transforms.get_all_unchecked() };
 
-            vertex_buffer
-                .copy_to_host_visible_buffer(data.as_slice())
-                .unwrap();
+            vertex_buffer.copy_to_host_visible_buffer(data).unwrap();
 
             Some(dyn_resource_allocator_set.insert_buffer(vertex_buffer))
         } else {
             None
         };
+
+        *model_matrix_with_history_buffer =
+            if self.render_object_instance_transforms_with_history.len() > 0 {
+                let vertex_buffer_size = self.render_object_instance_transforms_with_history.len()
+                    as u64
+                    * std::mem::size_of::<MeshModelMatrixWithHistory>() as u64;
+
+                let vertex_buffer = self
+                    .device_context
+                    .create_buffer(&RafxBufferDef {
+                        size: vertex_buffer_size,
+                        memory_usage: RafxMemoryUsage::CpuToGpu,
+                        resource_type: RafxResourceType::VERTEX_BUFFER,
+                        ..Default::default()
+                    })
+                    .unwrap();
+
+                let data = unsafe {
+                    self.render_object_instance_transforms_with_history
+                        .get_all_unchecked()
+                };
+
+                vertex_buffer.copy_to_host_visible_buffer(data).unwrap();
+
+                Some(dyn_resource_allocator_set.insert_buffer(vertex_buffer))
+            } else {
+                None
+            };
     }
 
     fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {

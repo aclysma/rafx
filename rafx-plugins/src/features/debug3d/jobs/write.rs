@@ -76,7 +76,7 @@ impl<'write> RenderFeatureWriteJob<'write> for Debug3DWriteJob<'write> {
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
-                    render_phase_index,
+                    Some(render_phase_index),
                     self.debug3d_material_pass.as_ref().unwrap(),
                     &write_context.render_target_meta,
                     &*DEBUG_VERTEX_LAYOUT,

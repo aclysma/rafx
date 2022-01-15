@@ -1,8 +1,7 @@
 use rafx::framework::{ComputePipelineResource, DescriptorSetBindings, ResourceArc};
 use rafx::graph::*;
 
-use super::OpaquePass;
-use super::RenderGraphContext;
+use super::ModernPipelineContext;
 use crate::pipelines::modern::ModernPipelineTonemapDebugData;
 use crate::shaders::post_adv::luma_average_histogram_comp;
 use crate::shaders::post_adv::luma_build_histogram_comp;
@@ -18,9 +17,9 @@ pub(super) struct LumaBuildHistogramPass {
 }
 
 pub(super) fn luma_build_histogram_pass(
-    context: &mut RenderGraphContext,
+    context: &mut ModernPipelineContext,
     luma_build_histogram: &ResourceArc<ComputePipelineResource>,
-    opaque_pass: &OpaquePass,
+    color_rt: RenderGraphImageUsageId,
     swapchain_surface_info: &SwapchainSurfaceInfo,
 ) -> LumaBuildHistogramPass {
     let node = context
@@ -40,7 +39,7 @@ pub(super) fn luma_build_histogram_pass(
 
     let luma_sample_hdr_image = context.graph.sample_image(
         node,
-        opaque_pass.color,
+        color_rt,
         RenderGraphImageConstraint {
             samples: Some(RafxSampleCount::SampleCount1),
             ..Default::default()
@@ -113,7 +112,7 @@ pub(super) struct LumaAverageHistogramPass {
 }
 
 pub(super) fn luma_average_histogram_pass(
-    context: &mut RenderGraphContext,
+    context: &mut ModernPipelineContext,
     luma_build_histogram_pass: &LumaBuildHistogramPass,
     luma_average_histogram: &ResourceArc<ComputePipelineResource>,
     histogram_result: RenderGraphExternalBufferId,
@@ -211,7 +210,7 @@ pub(super) fn luma_average_histogram_pass(
                 high_adjust_speed: 2.0,
                 low_percentile: 0.1,
                 high_percentile: 0.9,
-                write_debug_output: if enable_debug_data_collection { 1 } else { 0 },
+                write_debug_output: enable_debug_data_collection as u32,
                 ..Default::default()
             },
         );

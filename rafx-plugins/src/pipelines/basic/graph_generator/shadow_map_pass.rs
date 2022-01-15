@@ -1,4 +1,4 @@
-use super::RenderGraphContext;
+use super::BasicPipelineContext;
 use crate::features::mesh_basic::MeshBasicShadowMapRenderView;
 use crate::features::mesh_basic::MeshBasicShadowMapResource;
 use crate::phases::ShadowMapRenderPhase;
@@ -17,7 +17,9 @@ pub(super) enum ShadowMapImageResources {
     Cube(RenderGraphImageUsageId),
 }
 
-pub(super) fn shadow_map_passes(context: &mut RenderGraphContext) -> Vec<ShadowMapImageResources> {
+pub(super) fn shadow_map_passes(
+    context: &mut BasicPipelineContext
+) -> Vec<ShadowMapImageResources> {
     let mut shadow_map_resource = context
         .render_resources
         .fetch_mut::<MeshBasicShadowMapResource>();
@@ -94,7 +96,7 @@ pub(super) fn shadow_map_passes(context: &mut RenderGraphContext) -> Vec<ShadowM
 }
 
 fn shadow_map_pass(
-    context: &mut RenderGraphContext,
+    context: &mut BasicPipelineContext,
     render_view: &RenderView,
     depth_image: RenderGraphImageUsageId,
     layer: usize,

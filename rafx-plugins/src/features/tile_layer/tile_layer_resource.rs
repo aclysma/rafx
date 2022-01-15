@@ -4,7 +4,7 @@ use glam::{Quat, Vec3};
 use rafx::assets::AssetManager;
 use rafx::distill::loader::handle::Handle;
 use rafx::render_features::RenderObjectHandle;
-use rafx::visibility::{CullModel, ObjectId, VisibilityObjectArc, VisibilityRegion};
+use rafx::visibility::{CullModel, ObjectId, VisibilityObjectArc, VisibilityResource};
 
 #[derive(Default)]
 pub struct TileLayerResource {
@@ -27,7 +27,7 @@ impl TileLayerResource {
         project: &Handle<LdtkProjectAsset>,
         asset_manager: &AssetManager,
         tile_layer_render_object_set: &mut TileLayerRenderObjectSet,
-        visibility_region: &VisibilityRegion,
+        visibility_resource: &mut VisibilityResource,
     ) {
         self.clear_project();
         self.project = Some(project.clone());
@@ -55,14 +55,14 @@ impl TileLayerResource {
 
                     // NOTE(dvd): Not an actual entity, but necessary for the frame packet.
                     tile_layer_object_id += 1;
-                    let handle = visibility_region.register_static_object(
+                    let handle = visibility_resource.register_static_object(
                         ObjectId::from(tile_layer_object_id),
                         CullModel::quad(layer.width as f32, layer.height as f32),
+                        vec![render_object.clone()],
                     );
                     let mut translation = layer.center;
                     translation.y = -translation.y; // NOTE(dvd): +y is up in our world, but _down_ in LDtk.
                     handle.set_transform(translation, Quat::IDENTITY, Vec3::ONE);
-                    handle.add_render_object(&render_object);
 
                     self.visibility_handles.push(handle);
                     self.render_objects.push(render_object);

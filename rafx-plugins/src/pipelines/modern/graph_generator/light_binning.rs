@@ -1,7 +1,7 @@
 use rafx::framework::DescriptorSetBindings;
 use rafx::graph::*;
 
-use super::RenderGraphContext;
+use super::ModernPipelineContext;
 use crate::features::mesh_adv::light_binning::MeshAdvLightBinRenderResource;
 use crate::features::mesh_adv::MeshAdvStaticResources;
 use crate::shaders::mesh_adv::{lights_bin_comp, lights_build_lists_comp};
@@ -11,8 +11,10 @@ pub struct LightBinPass {
     pub bitfields_buffer: RenderGraphBufferUsageId,
 }
 
-pub(super) fn lights_bin_pass(context: &mut RenderGraphContext) -> LightBinPass {
+pub(super) fn lights_bin_pass(context: &mut ModernPipelineContext) -> LightBinPass {
+    //
     // Rebuild the frustum AABB structure if the projection matrix has changed
+    //
     let mut light_bin_render_resource = context
         .render_resources
         .fetch_mut::<MeshAdvLightBinRenderResource>();
@@ -23,7 +25,9 @@ pub(super) fn lights_bin_pass(context: &mut RenderGraphContext) -> LightBinPass 
         )
         .unwrap();
 
+    //
     // Get the compute pipeline
+    //
     let static_resources = context.render_resources.fetch::<MeshAdvStaticResources>();
     let lights_bin_pipeline = context
         .asset_manager
@@ -32,18 +36,13 @@ pub(super) fn lights_bin_pass(context: &mut RenderGraphContext) -> LightBinPass 
         .compute_pipeline
         .clone();
 
-    let node = context
-        .graph
-        .add_node("LightsBin", RenderGraphQueue::DefaultGraphics);
-
     //
-    // REAL STAGING BUFFERS
+    // Get the external clusters buffer
     //
     let clusters_buffer = light_bin_render_resource
         .frustum_bounds_gpu_buffer()
-        .as_ref()
-        .unwrap()
-        .clone();
+        .clone()
+        .unwrap();
     let clusters_buffer = context.graph.add_external_buffer(
         clusters_buffer,
         RafxResourceState::SHADER_RESOURCE,
@@ -51,6 +50,9 @@ pub(super) fn lights_bin_pass(context: &mut RenderGraphContext) -> LightBinPass 
     );
     let clusters_buffer = context.graph.read_external_buffer(clusters_buffer);
 
+    //
+    // Get the external lights buffer
+    //
     let lights_buffer = light_bin_render_resource
         .light_bounds_gpu_buffer(context.main_view.frame_index())
         .clone();
@@ -62,25 +64,19 @@ pub(super) fn lights_bin_pass(context: &mut RenderGraphContext) -> LightBinPass 
     let lights_buffer = context.graph.read_external_buffer(lights_buffer);
 
     //
-    // FAKE DEVICE BUFFERS
+    // Setup the node
     //
-    // let clusters_buffer = context.graph.create_storage_buffer(
-    //     node,
-    //     RenderGraphBufferConstraint {
-    //         size: Some(std::mem::size_of::<lights_bin_comp::BinLightsConfigBuffer>() as u64),
-    //         ..Default::default()
-    //     },
-    //     RafxLoadOp::Clear,
-    // );
-    // let lights_buffer = context.graph.create_storage_buffer(
-    //     node,
-    //     RenderGraphBufferConstraint {
-    //         size: Some(std::mem::size_of::<lights_bin_comp::LightsInputListBuffer>() as u64),
-    //         ..Default::default()
-    //     },
-    //     RafxLoadOp::Clear,
-    // );
+    let node = context
+        .graph
+        .add_node("LightsBin", RenderGraphQueue::DefaultGraphics);
 
+    let clusters_buffer =
+        context
+            .graph
+            .read_storage_buffer(node, clusters_buffer, Default::default());
+    let lights_buffer = context
+        .graph
+        .read_storage_buffer(node, lights_buffer, Default::default());
     let lights_bin_bitfields_buffer = context.graph.create_storage_buffer(
         node,
         RenderGraphBufferConstraint {
@@ -145,7 +141,7 @@ pub struct LightBuildListsPass {
 }
 
 pub(super) fn lights_build_lists_pass(
-    context: &mut RenderGraphContext,
+    context: &mut ModernPipelineContext,
     light_bin_pass: LightBinPass,
 ) -> LightBuildListsPass {
     // Get the compute pipeline

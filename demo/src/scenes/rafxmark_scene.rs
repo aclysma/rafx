@@ -12,7 +12,7 @@ use rafx::distill::loader::handle::Handle;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
+use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityResource};
 use rafx_plugins::assets::font::FontAsset;
 use rafx_plugins::components::SpriteComponent;
 use rafx_plugins::components::{TransformComponent, VisibilityComponent};
@@ -66,10 +66,6 @@ impl RafxmarkScene {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_2d();
 
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-        let main_view_frustum = visibility_region.register_view_frustum();
-        let mut main_view_frustum_copy = main_view_frustum.clone();
-
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             asset_resource.load_asset_path::<ImageAsset, _>("textures/texture-tiny-rust.jpeg")
@@ -79,6 +75,11 @@ impl RafxmarkScene {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf")
         };
+
+        let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
+        let main_view_frustum = visibility_resource.register_view_frustum();
+        let mut main_view_frustum_copy = main_view_frustum.clone();
+        drop(visibility_resource);
 
         let update_camera_system = SystemBuilder::new("update_camera")
             .read_resource::<RenderOptions>()
@@ -94,7 +95,7 @@ impl RafxmarkScene {
 
         let sprite_spawner_system = SystemBuilder::new("sprite_spawner")
             .read_resource::<TimeState>()
-            .read_resource::<VisibilityRegion>()
+            .write_resource::<VisibilityResource>()
             .write_resource::<SpriteRenderObjectSet>()
             .with_query(<(
                 Read<InputComponent>,
@@ -102,7 +103,10 @@ impl RafxmarkScene {
                 Write<TextComponent>,
             )>::query())
             .build(
-                move |commands, world, (time, visibility_region, sprite_render_nodes), queries| {
+                move |commands,
+                      world,
+                      (time, visibility_resource, sprite_render_nodes),
+                      queries| {
                     profiling::scope!("sprite_spawner_system");
                     for (input, sprite_spawner, sprite_count_text) in queries.iter_mut(world) {
                         if input.is_left_mouse_button_down {
@@ -111,7 +115,7 @@ impl RafxmarkScene {
                                 commands,
                                 time,
                                 sprite_render_nodes,
-                                visibility_region,
+                                visibility_resource,
                             );
                         }
 
@@ -256,7 +260,7 @@ fn add_sprites(
     commands: &mut CommandBuffer,
     time: &TimeState,
     sprite_render_objects: &mut SpriteRenderObjectSet,
-    visibility_region: &VisibilityRegion,
+    visibility_resource: &mut VisibilityResource,
 ) {
     let spawn_count = (SPRITES_PER_SECOND as f32 * time.previous_update_dt()) as usize;
 
@@ -308,14 +312,16 @@ fn add_sprites(
             entity,
             VisibilityComponent {
                 visibility_object_handle: {
-                    let handle = visibility_region
-                        .register_dynamic_object(ObjectId::from(entity), CullModel::quad(64., 64.));
+                    let handle = visibility_resource.register_dynamic_object(
+                        ObjectId::from(entity),
+                        CullModel::quad(64., 64.),
+                        vec![sprite_render_object],
+                    );
                     handle.set_transform(
                         transform_component.translation,
                         transform_component.rotation,
                         transform_component.scale,
                     );
-                    handle.add_render_object(&sprite_render_object);
                     handle
                 },
             },

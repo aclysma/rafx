@@ -11,7 +11,7 @@ use rafx::distill::loader::handle::Handle;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
+use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityResource};
 use rafx_plugins::assets::font::FontAsset;
 use rafx_plugins::components::SpriteComponent;
 use rafx_plugins::components::{TransformComponent, VisibilityComponent};
@@ -47,8 +47,6 @@ impl ManySpritesScene {
         *render_options = RenderOptions::default_2d();
         render_options.show_skybox = true;
 
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             asset_resource.load_asset_path::<ImageAsset, _>("textures/texture-tiny-rust.jpeg")
@@ -67,7 +65,8 @@ impl ManySpritesScene {
         let half_x = (map_size.x / 2.0) as i32;
         let half_y = (map_size.y / 2.0) as i32;
 
-        let main_view_frustum = visibility_region.register_view_frustum();
+        let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
+        let main_view_frustum = visibility_resource.register_view_frustum();
         let mut main_view_frustum_copy = main_view_frustum.clone();
 
         let update_camera_system = SystemBuilder::new("update_camera")
@@ -166,16 +165,16 @@ impl ManySpritesScene {
                 let mut entry = world.entry(entity).unwrap();
                 entry.add_component(VisibilityComponent {
                     visibility_object_handle: {
-                        let handle = visibility_region.register_dynamic_object(
+                        let handle = visibility_resource.register_dynamic_object(
                             ObjectId::from(entity),
                             CullModel::quad(64., 64.),
+                            vec![sprite_render_object],
                         );
                         handle.set_transform(
                             transform_component.translation,
                             transform_component.rotation,
                             transform_component.scale,
                         );
-                        handle.add_render_object(&sprite_render_object);
                         handle
                     },
                 });

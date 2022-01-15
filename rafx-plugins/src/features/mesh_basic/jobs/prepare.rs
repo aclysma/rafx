@@ -620,15 +620,9 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                 })
                 .unwrap();
 
-            // TODO(dvd): Get rid of this copy.
-            let mut data = Vec::with_capacity(self.render_object_instance_transforms.len());
-            for ii in 0..data.capacity() {
-                data.push(self.render_object_instance_transforms.get(ii).clone());
-            }
+            let data = unsafe { self.render_object_instance_transforms.get_all_unchecked() };
 
-            vertex_buffer
-                .copy_to_host_visible_buffer(data.as_slice())
-                .unwrap();
+            vertex_buffer.copy_to_host_visible_buffer(data).unwrap();
 
             Some(dyn_resource_allocator_set.insert_buffer(vertex_buffer))
         } else {

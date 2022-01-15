@@ -2,7 +2,7 @@ use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPh
 use rafx::graph::*;
 
 use super::depth_prepass::DepthPrepass;
-use super::RenderGraphContext;
+use super::BasicPipelineContext;
 use super::ShadowMapImageResources;
 use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
 use rafx::render_features::RenderJobCommandBufferContext;
@@ -16,7 +16,7 @@ pub(super) struct OpaquePass {
 }
 
 pub(super) fn opaque_pass(
-    context: &mut RenderGraphContext,
+    context: &mut BasicPipelineContext,
     depth_prepass: Option<DepthPrepass>,
     shadow_map_passes: &[ShadowMapImageResources],
 ) -> OpaquePass {

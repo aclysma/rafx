@@ -81,7 +81,7 @@ impl<'write> RenderFeatureWriteJob<'write> for SpriteWriteJob<'write> {
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                render_phase_index,
+                Some(render_phase_index),
                 self.sprite_material_pass.as_ref().unwrap(),
                 &write_context.render_target_meta,
                 &SPRITE_VERTEX_LAYOUT,

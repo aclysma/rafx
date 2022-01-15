@@ -9,7 +9,7 @@ use rafx::render_features::RenderPhase;
 use rafx::renderer::SwapchainRenderResource;
 
 use super::BloomExtractPass;
-use super::RenderGraphContext;
+use super::ModernPipelineContext;
 use super::EMPTY_VERTEX_LAYOUT;
 use crate::shaders::post_adv::bloom_combine_adv_frag;
 
@@ -20,7 +20,7 @@ pub(super) struct BloomCombinePass {
 }
 
 pub(super) fn bloom_combine_pass(
-    context: &mut RenderGraphContext,
+    context: &mut ModernPipelineContext,
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
     bloom_extract_pass: &BloomExtractPass,
     blurred_color: RenderGraphImageUsageId,
@@ -86,7 +86,7 @@ pub(super) fn bloom_combine_pass(
             .resource_context()
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                PostProcessRenderPhase::render_phase_index(),
+                Some(PostProcessRenderPhase::render_phase_index()),
                 &bloom_combine_material_pass,
                 &args.render_target_meta,
                 &EMPTY_VERTEX_LAYOUT,

@@ -8,8 +8,10 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, MaterialAsset};
 use rafx::base::resource_map::ResourceMap;
 use rafx::distill::loader::handle::Handle;
-use rafx::render_features::{ExtractResources, RenderRegistryBuilder};
-use rafx::renderer::RendererAssetPlugin;
+use rafx::framework::{ImageViewResource, RenderResources, ResourceArc};
+use rafx::graph::PreparedRenderGraph;
+use rafx::render_features::{ExtractResources, RenderRegistryBuilder, RenderView};
+use rafx::renderer::RendererPipelinePlugin;
 
 // A plugin that add demo-specific configuration
 
@@ -21,7 +23,7 @@ pub struct BasicPipelineStaticResources {
 
 pub struct BasicPipelineRendererPlugin;
 
-impl RendererAssetPlugin for BasicPipelineRendererPlugin {
+impl RendererPipelinePlugin for BasicPipelineRendererPlugin {
     fn configure_render_registry(
         &self,
         render_registry_builder: RenderRegistryBuilder,
@@ -91,5 +93,24 @@ impl RendererAssetPlugin for BasicPipelineRendererPlugin {
         });
 
         Ok(())
+    }
+
+    fn generate_render_graph(
+        &self,
+        asset_manager: &AssetManager,
+        swapchain_image: ResourceArc<ImageViewResource>,
+        rotating_frame_index: usize,
+        main_view: RenderView,
+        extract_resources: &ExtractResources,
+        render_resources: &RenderResources,
+    ) -> RafxResult<PreparedRenderGraph> {
+        super::graph_generator::generate_render_graph(
+            asset_manager,
+            swapchain_image,
+            rotating_frame_index,
+            main_view,
+            extract_resources,
+            render_resources,
+        )
     }
 }

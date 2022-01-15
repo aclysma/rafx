@@ -2,6 +2,7 @@ use crate::input::{InputState, KeyboardKey};
 use crate::scenes::util::{FlyCamera, PathCamera, PathData};
 use crate::TimeState;
 use glam::Vec3Swizzles;
+use std::time::Duration;
 
 #[derive(PartialEq)]
 pub enum CameraMode {
@@ -40,6 +41,12 @@ impl DemoCamera {
         if input_state.is_key_just_down(KeyboardKey::T) {
             self.mode = CameraMode::Path
         };
+
+        if input_state.is_key_just_down(KeyboardKey::R) && self.mode == CameraMode::Path {
+            if let Some(path_camera) = &mut self.path_camera {
+                path_camera.time = Duration::ZERO;
+            }
+        }
 
         if input_state.is_key_just_down(KeyboardKey::F) {
             if self.mode != CameraMode::Fly {

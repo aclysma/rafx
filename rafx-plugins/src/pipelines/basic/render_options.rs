@@ -60,9 +60,40 @@ impl std::fmt::Display for TonemapperTypeBasic {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
+pub enum AntiAliasMethodBasic {
+    None,
+    Msaa4x,
+    MAX,
+}
+
+impl Default for AntiAliasMethodBasic {
+    fn default() -> Self {
+        AntiAliasMethodBasic::Msaa4x
+    }
+}
+
+impl AntiAliasMethodBasic {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            AntiAliasMethodBasic::None => "None",
+            AntiAliasMethodBasic::Msaa4x => "4x MSAA",
+            AntiAliasMethodBasic::MAX => "AntiAliasMethodBasic MAX VALUE",
+        }
+    }
+}
+
+impl From<i32> for AntiAliasMethodBasic {
+    fn from(v: i32) -> Self {
+        assert!(v <= Self::MAX as i32);
+        unsafe { std::mem::transmute(v) }
+    }
+}
+
 #[derive(Clone)]
 pub struct BasicPipelineRenderOptions {
-    pub enable_msaa: bool,
+    pub anti_alias_method: AntiAliasMethodBasic,
     pub enable_hdr: bool,
     pub enable_bloom: bool,
     pub enable_textures: bool,
@@ -80,7 +111,7 @@ pub struct BasicPipelineRenderOptions {
 impl Default for BasicPipelineRenderOptions {
     fn default() -> Self {
         BasicPipelineRenderOptions {
-            enable_msaa: true,
+            anti_alias_method: AntiAliasMethodBasic::Msaa4x,
             enable_hdr: true,
             enable_bloom: true,
             enable_textures: true,

@@ -61,8 +61,11 @@ layout (set = 0, binding = 0) uniform PerViewData {
     mat4 view;
     mat4 view_proj;
     vec4 ambient_light;
+    vec2 jitter_amount;
     uint viewport_width;
     uint viewport_height;
+    float mip_bias;
+    float ndf_filter_amount;
     uint directional_light_count;
     bool use_clustered_lighting;
     DirectionalLight directional_lights[8];

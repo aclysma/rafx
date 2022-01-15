@@ -2,7 +2,7 @@ use legion::Resources;
 use rafx::api::{RafxApi, RafxApiDef, RafxDeviceContext, RafxResult, RafxSwapchainHelper};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
-use rafx::framework::visibility::VisibilityRegion;
+use rafx::framework::visibility::VisibilityResource;
 use rafx::render_features::{ExtractResources, RenderRegistry};
 use rafx::renderer::{
     AssetSource, Renderer, RendererBuilder, RendererConfigResource, SwapchainHandler,
@@ -25,18 +25,14 @@ use rafx_plugins::assets::mesh_basic::MeshBasicAssetTypeRendererPlugin;
 #[cfg(feature = "basic-pipeline")]
 use rafx_plugins::features::mesh_basic::MeshBasicRendererPlugin;
 #[cfg(feature = "basic-pipeline")]
-use rafx_plugins::pipelines::basic::{
-    BasicPipelineRenderGraphGenerator, BasicPipelineRendererPlugin,
-};
+use rafx_plugins::pipelines::basic::BasicPipelineRendererPlugin;
 
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::assets::mesh_adv::MeshAdvAssetTypeRendererPlugin;
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::features::mesh_adv::MeshAdvRendererPlugin;
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::pipelines::modern::{
-    ModernPipelineRenderGraphGenerator, ModernPipelineRendererPlugin,
-};
+use rafx_plugins::pipelines::modern::ModernPipelineRendererPlugin;
 
 pub fn rendering_init(
     resources: &mut Resources,
@@ -45,7 +41,7 @@ pub fn rendering_init(
     window_width: u32,
     window_height: u32,
 ) -> RafxResult<()> {
-    resources.insert(VisibilityRegion::new());
+    resources.insert(VisibilityResource::new());
     resources.insert(ViewportsResource::default());
 
     #[cfg(feature = "basic-pipeline")]
@@ -111,48 +107,48 @@ pub fn rendering_init(
 
     let mut renderer_builder = RendererBuilder::default();
     renderer_builder = renderer_builder
-        .add_asset(Arc::new(FontAssetTypeRendererPlugin))
-        .add_asset(Arc::new(LdtkAssetTypeRendererPlugin))
-        .add_asset(Arc::new(AnimAssetTypeRendererPlugin))
-        .add_render_feature(mesh_renderer_plugin)
-        .add_render_feature(sprite_renderer_plugin)
-        .add_render_feature(skybox_renderer_plugin)
-        .add_render_feature(tile_layer_renderer_plugin)
-        .add_render_feature(debug3d_renderer_plugin)
-        .add_render_feature(debug_pip_renderer_plugin)
-        .add_render_feature(text_renderer_plugin)
+        .add_asset_plugin(Arc::new(FontAssetTypeRendererPlugin))
+        .add_asset_plugin(Arc::new(LdtkAssetTypeRendererPlugin))
+        .add_asset_plugin(Arc::new(AnimAssetTypeRendererPlugin))
+        .add_render_feature_plugin(mesh_renderer_plugin)
+        .add_render_feature_plugin(sprite_renderer_plugin)
+        .add_render_feature_plugin(skybox_renderer_plugin)
+        .add_render_feature_plugin(tile_layer_renderer_plugin)
+        .add_render_feature_plugin(debug3d_renderer_plugin)
+        .add_render_feature_plugin(debug_pip_renderer_plugin)
+        .add_render_feature_plugin(text_renderer_plugin)
         .allow_use_render_thread(allow_use_render_thread);
 
     #[cfg(feature = "basic-pipeline")]
     {
-        renderer_builder = renderer_builder.add_asset(Arc::new(MeshBasicAssetTypeRendererPlugin));
-        renderer_builder = renderer_builder.add_asset(Arc::new(BasicPipelineRendererPlugin));
+        renderer_builder =
+            renderer_builder.add_asset_plugin(Arc::new(MeshBasicAssetTypeRendererPlugin));
     }
 
     #[cfg(not(feature = "basic-pipeline"))]
     {
-        renderer_builder = renderer_builder.add_asset(Arc::new(MeshAdvAssetTypeRendererPlugin));
-        renderer_builder = renderer_builder.add_asset(Arc::new(ModernPipelineRendererPlugin));
+        renderer_builder =
+            renderer_builder.add_asset_plugin(Arc::new(MeshAdvAssetTypeRendererPlugin));
     }
 
     #[cfg(feature = "egui")]
     {
-        renderer_builder = renderer_builder.add_render_feature(egui_renderer_plugin)
+        renderer_builder = renderer_builder.add_render_feature_plugin(egui_renderer_plugin)
     }
 
     let mut renderer_builder_result = {
         let extract_resources = ExtractResources::default();
 
         #[cfg(feature = "basic-pipeline")]
-        let render_graph_generator = Box::new(BasicPipelineRenderGraphGenerator);
+        let pipeline_plugin = Arc::new(BasicPipelineRendererPlugin);
         #[cfg(not(feature = "basic-pipeline"))]
-        let render_graph_generator = Box::new(ModernPipelineRenderGraphGenerator);
+        let pipeline_plugin = Arc::new(ModernPipelineRendererPlugin);
 
         renderer_builder.build(
             extract_resources,
             &rafx_api,
             asset_source,
-            render_graph_generator,
+            pipeline_plugin,
             || {
                 None
                 // Some(Box::new(DemoRendererThreadPool::new()))

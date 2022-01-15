@@ -1,6 +1,5 @@
 use log::LevelFilter;
 
-use crate::example_render_graph_generator::ExampleRenderGraphGenerator;
 use crate::features::{ExampleRenderFeature, ExampleRenderFeaturePlugin};
 use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
@@ -12,7 +11,7 @@ use rafx::framework::render_features::{
     ExtractResources, RenderFeatureFlagMask, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
     RenderRegistry, RenderViewDepthRange,
 };
-use rafx::framework::visibility::VisibilityRegion;
+use rafx::framework::visibility::VisibilityResource;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::renderer::{
     AssetSource, RenderViewMeta, Renderer, RendererBuilder, RendererConfigResource,
@@ -24,9 +23,8 @@ use std::time;
 use std::time::Duration;
 
 mod example_plugin;
-use example_plugin::ExampleRendererPlugin;
+use example_plugin::ExampleRendererPipelinePlugin;
 
-mod example_render_graph_generator;
 mod features;
 mod phases;
 
@@ -110,27 +108,25 @@ fn run() -> RafxResult<()> {
 
         let sdl2_window = &sdl2_systems.window;
 
-        resources.insert(VisibilityRegion::new());
+        resources.insert(VisibilityResource::new());
         resources.insert(ViewportsResource::default());
 
         let demo_render_feature_plugin = Arc::new(ExampleRenderFeaturePlugin::default());
         demo_render_feature_plugin.legion_init(&mut resources);
 
         let mut renderer_builder = RendererBuilder::default();
-        renderer_builder = renderer_builder
-            .add_asset(Arc::new(ExampleRendererPlugin))
-            .add_render_feature(demo_render_feature_plugin);
+        renderer_builder = renderer_builder.add_render_feature_plugin(demo_render_feature_plugin);
 
         let mut renderer_builder_result = {
             let extract_resources = ExtractResources::default();
 
-            let render_graph_generator = Box::new(ExampleRenderGraphGenerator);
+            let pipeline_plugin = Arc::new(ExampleRendererPipelinePlugin);
 
             renderer_builder.build(
                 extract_resources,
                 &api,
                 asset_source,
-                render_graph_generator,
+                pipeline_plugin,
                 || None,
             )
         }?;
@@ -162,8 +158,8 @@ fn run() -> RafxResult<()> {
         let mut world = World::default();
 
         let main_view_frustum = {
-            let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-            visibility_region.register_view_frustum()
+            let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
+            visibility_resource.register_view_frustum()
         };
 
         //
@@ -267,7 +263,7 @@ fn run() -> RafxResult<()> {
                     };
                 }
 
-                add_to_extract_resources!(VisibilityRegion);
+                add_to_extract_resources!(VisibilityResource);
                 add_to_extract_resources!(RafxSwapchainHelper);
                 add_to_extract_resources!(ViewportsResource);
                 add_to_extract_resources!(AssetManager);

@@ -3,7 +3,7 @@ use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::graph::*;
 use rafx::render_features::RenderPhase;
 
-use super::RenderGraphContext;
+use super::ModernPipelineContext;
 use super::EMPTY_VERTEX_LAYOUT;
 use crate::shaders::post_shared::bloom_blur_frag;
 use rafx::api::RafxSampleCount;
@@ -19,7 +19,7 @@ pub(super) struct BloomBlurPass {
 }
 
 pub(super) fn bloom_blur_pass(
-    context: &mut RenderGraphContext,
+    context: &mut ModernPipelineContext,
     bloom_blur_material_pass: ResourceArc<MaterialPassResource>,
     bloom_extract_pass: &super::BloomExtractPass,
 ) -> BloomBlurPass {
@@ -44,7 +44,7 @@ pub(super) fn bloom_blur_pass(
 }
 
 fn bloom_blur_internal_pass(
-    context: &mut RenderGraphContext,
+    context: &mut ModernPipelineContext,
     bloom_blur_material_pass: &ResourceArc<MaterialPassResource>,
     blur_src: RenderGraphImageUsageId,
     blur_direction: BlurDirection,
@@ -82,7 +82,7 @@ fn bloom_blur_internal_pass(
             .resource_context()
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                PostProcessRenderPhase::render_phase_index(),
+                Some(PostProcessRenderPhase::render_phase_index()),
                 &bloom_blur_material_pass,
                 &args.render_target_meta,
                 &EMPTY_VERTEX_LAYOUT,

@@ -13,10 +13,10 @@ The main entry point is the `VisibilityWorldArc`. The application creates `Visib
 The `VisibilityWorld` uses handles to avoid bleeding internal design into the application.
 
 - A `ViewFrustumHandle` represents a view in the application, like the main camera, a mini-map, or a light source needed for shadow casting. It has a specific `Projection`. The supported `Projection` types are `Orthogonal` or `Perspective`.
-- An `ObjectHandle` represents a game entity in the application. It is associated with a `Model` for culling and placed into a `Zone` with `View Frustums`.
+- An `VisibilityObjectHandle` represents a game entity in the application. It is associated with a `Model` for culling and placed into a `Zone` with `View Frustums`.
 - A `ZoneHandle` is used to group `Objects` and `View Frustums` together. `View Frustums` are only able to "see" `Objects` in the same `Zone`. `Objects` and `View Frustums` may not be in multiple zones simultaneously. This is similar to a layer in a physics API. In a future release, the intent is for `Zones` to be the way to connect easily segmented levels with `Portals`. [1]
 - A `ModelHandle` represents the visibility bounds for a game entity in the application. Internally, it's represented by one of several possible bounding structures. In a physics API, this is like defining the collider for an entity in the physics world.
-- A `VolumeHandle` is like a `Model`, but instead of being reduced down to the bounding structure, it maintains a well-defined geometric shape like a cone, sphere, capsule, or other supported 3-dimensional shape. Unlike a `Model`, a `Volume` is not associated with an `ObjectHandle`. It is placed into a `Zone` and positioned independently. `Volumes` are included in the list of visibility results from a `View Frustum` when the `Volume` intersects with that `View Frustum`. `Volumes` are currently not implemented. In the future, `Volumes` will be the primary way for the application to determine the visibility of light sources in a view for the purpose of culling unseen lights. [2]
+- A `VolumeHandle` is like a `Model`, but instead of being reduced down to the bounding structure, it maintains a well-defined geometric shape like a cone, sphere, capsule, or other supported 3-dimensional shape. Unlike a `Model`, a `Volume` is not associated with an `VisibilityObjectHandle`. It is placed into a `Zone` and positioned independently. `Volumes` are included in the list of visibility results from a `View Frustum` when the `Volume` intersects with that `View Frustum`. `Volumes` are currently not implemented. In the future, `Volumes` will be the primary way for the application to determine the visibility of light sources in a view for the purpose of culling unseen lights. [2]
 
 The public API also includes a `VisibleBounds` struct for processing an arbitrary `PolygonSoup` provided by the application into the `VisibilityWorld`'s internal bounding structures. `VisibilityBounds` may be computed offline and provided to the `VisibilityWorld` during loading for initializing `Models`. The reason for preferring an internal structure is that the `VisibilityWorld` will need to simplify application models into simpler `OccluderBounds` in the future when occlusion culling is added.
 
@@ -32,7 +32,7 @@ pub fn query_visibility(
 ) -> Result<(), QueryError> 
 ```
 
-The result of a `VisibilityQuery` is a `Vec` of `VisibilityResult<T>` where `T` is either an `ObjectHandle` or a `VolumeHandle`. Each `VisibilityResult` contains the following information:
+The result of a `VisibilityQuery` is a `Vec` of `VisibilityResult<T>` where `T` is either an `VisibilityObjectHandle` or a `VolumeHandle`. Each `VisibilityResult` contains the following information:
 
 ```rust
 pub struct VisibilityResult<T> {
@@ -43,8 +43,8 @@ pub struct VisibilityResult<T> {
 }
 ```
 
-- `handle` is the `ObjectHandle` or `VolumeHandle` visible to the `ViewFrustumHandle` during the query.
-- The `id` is an application-provided value set & retained on each `ObjectHandle` or `VolumeHandle` with the `set_object_id` and `set_volume_id` functions. The `id` is intended to be used by the application as a key back to their game entity, e.g. a `ptr`, or an `Entity ID` in an `ECS`, or a key in some type of `Map`.
+- `handle` is the `VisibilityObjectHandle` or `VolumeHandle` visible to the `ViewFrustumHandle` during the query.
+- The `id` is an application-provided value set & retained on each `VisibilityObjectHandle` or `VolumeHandle` with the `set_object_id` and `set_volume_id` functions. The `id` is intended to be used by the application as a key back to their game entity, e.g. a `ptr`, or an `Entity ID` in an `ECS`, or a key in some type of `Map`.
 - The `bounding_sphere` and `distance_from_view_frustum` are provided to support applications maintaining a level-of-detail budget. [3]
 
 ## Internals

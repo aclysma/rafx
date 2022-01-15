@@ -9,10 +9,14 @@
             shaders: [
                 (
                     stage: Vertex,
-                    shader_module: "../shaders/depth/depth.vert.cookedshaderpackage",
+                    shader_module: "../../shaders/depth_velocity/depth_velocity.vert.cookedshaderpackage",
                     entry_name: "main"
                 ),
-                // No fragment shader required
+                (
+                    stage: Fragment,
+                    shader_module: "../../shaders/depth_velocity/depth_velocity.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
             ],
         )
     ]

@@ -358,7 +358,7 @@ fn run() -> RafxResult<()> {
                         .resource_context()
                         .graphics_pipeline_cache()
                         .get_or_create_graphics_pipeline(
-                            OpaqueRenderPhase::render_phase_index(),
+                            Some(OpaqueRenderPhase::render_phase_index()),
                             &material_pass,
                             &args.render_target_meta,
                             &vertex_layout

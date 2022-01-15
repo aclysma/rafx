@@ -1,6 +1,8 @@
 use crate::shaders::mesh_adv::{lights_bin_comp, lights_build_lists_comp};
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxQueueType, RafxResourceType};
-use rafx::framework::{BufferResource, ResourceArc, ResourceContext, MAX_FRAMES_IN_FLIGHT};
+use rafx::framework::{
+    BufferResource, ResourceArc, ResourceContext, ResourceLookupSet, MAX_FRAMES_IN_FLIGHT,
+};
 use rafx::RafxResult;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -216,46 +218,36 @@ pub struct MeshAdvLightBinRenderResource {
 }
 
 impl MeshAdvLightBinRenderResource {
-    pub fn new(resource_context: &ResourceContext) -> RafxResult<Self> {
+    pub fn new(resources: &ResourceLookupSet) -> RafxResult<Self> {
         // One for CPU to write + GPU frames in flight
         let mut light_bounds_gpu_buffers = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT + 1);
         for _ in 0..=MAX_FRAMES_IN_FLIGHT {
-            light_bounds_gpu_buffers.push(
-                resource_context.resources().insert_buffer(
-                    resource_context
-                        .device_context()
-                        .create_buffer(&RafxBufferDef {
-                            size: std::mem::size_of::<lights_bin_comp::LightsInputListBuffer>()
-                                as u64,
-                            alignment: 256,
-                            memory_usage: RafxMemoryUsage::CpuToGpu,
-                            queue_type: RafxQueueType::Graphics,
-                            resource_type: RafxResourceType::BUFFER,
-                            ..Default::default()
-                        })?,
-                ),
-            );
+            light_bounds_gpu_buffers.push(resources.insert_buffer(
+                resources.device_context().create_buffer(&RafxBufferDef {
+                    size: std::mem::size_of::<lights_bin_comp::LightsInputListBuffer>() as u64,
+                    alignment: 256,
+                    memory_usage: RafxMemoryUsage::CpuToGpu,
+                    queue_type: RafxQueueType::Graphics,
+                    resource_type: RafxResourceType::BUFFER,
+                    ..Default::default()
+                })?,
+            ));
         }
 
         // One per GPU frame in flight (CPU doesn't modify it)
         let mut output_gpu_buffers = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT + 1);
         for _ in 0..MAX_FRAMES_IN_FLIGHT {
-            output_gpu_buffers.push(
-                resource_context.resources().insert_buffer(
-                    resource_context
-                        .device_context()
-                        .create_buffer(&RafxBufferDef {
-                            size: std::mem::size_of::<
-                                lights_build_lists_comp::LightBuildListsOutputBuffer,
-                            >() as u64,
-                            alignment: 256,
-                            memory_usage: RafxMemoryUsage::GpuOnly,
-                            queue_type: RafxQueueType::Graphics,
-                            resource_type: RafxResourceType::BUFFER_READ_WRITE,
-                            ..Default::default()
-                        })?,
-                ),
-            );
+            output_gpu_buffers.push(resources.insert_buffer(
+                resources.device_context().create_buffer(&RafxBufferDef {
+                    size: std::mem::size_of::<lights_build_lists_comp::LightBuildListsOutputBuffer>(
+                    ) as u64,
+                    alignment: 256,
+                    memory_usage: RafxMemoryUsage::GpuOnly,
+                    queue_type: RafxQueueType::Graphics,
+                    resource_type: RafxResourceType::BUFFER_READ_WRITE,
+                    ..Default::default()
+                })?,
+            ));
         }
 
         Ok(MeshAdvLightBinRenderResource {

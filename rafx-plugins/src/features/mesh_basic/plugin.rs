@@ -84,8 +84,9 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         render_resources: &mut ResourceMap,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let depth_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/depth.material");
+        let depth_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "rafx-plugins/materials/basic_pipeline/depth.material",
+        );
 
         asset_manager.wait_for_asset_to_load(&depth_material, asset_resource, "depth")?;
 

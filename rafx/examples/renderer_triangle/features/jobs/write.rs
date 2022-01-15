@@ -149,7 +149,7 @@ impl<'write> RenderFeatureWriteJob<'write> for ExampleWriteJob<'write> {
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                OpaqueRenderPhase::render_phase_index(),
+                Some(OpaqueRenderPhase::render_phase_index()),
                 &material_pass,
                 &write_context.render_target_meta,
                 &self.vertex_layout,

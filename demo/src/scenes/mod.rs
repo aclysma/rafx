@@ -32,29 +32,34 @@ use many_sprites_scene::ManySpritesScene;
 mod many_cubes_scene;
 use many_cubes_scene::ManyCubesScene;
 
+mod taa_test_scene;
+use taa_test_scene::TaaTestScene;
+
 #[derive(Copy, Clone, Debug)]
 pub enum Scene {
     Bistro,
     Shadows,
-    Autoexposure,
     PbrTest,
     Sprite,
     Animation,
     Rafxmark,
     ManySprites,
     ManyCubes,
+    Autoexposure,
+    TaaTestScene,
 }
 
-pub const ALL_SCENES: [Scene; 8] = [
+pub const ALL_SCENES: [Scene; 9] = [
     //Scene::Bistro, // Uncomment to enable the bistro scene
     Scene::Shadows,
-    Scene::Autoexposure,
     Scene::PbrTest,
     Scene::Sprite,
     Scene::Animation,
     Scene::Rafxmark,
     Scene::ManySprites,
     Scene::ManyCubes,
+    Scene::Autoexposure,
+    Scene::TaaTestScene,
 ];
 
 fn random_color(rng: &mut impl Rng) -> Vec3 {
@@ -73,13 +78,14 @@ fn create_scene(
     match scene {
         Scene::Bistro => Box::new(BistroScene::new(world, resources)),
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
-        Scene::Autoexposure => Box::new(AutoexposureScene::new(world, resources)),
         Scene::PbrTest => Box::new(PbrTestScene::new(world, resources)),
         Scene::Sprite => Box::new(SpriteScene::new(world, resources)),
         Scene::Animation => Box::new(AnimationScene::new(world, resources)),
         Scene::Rafxmark => Box::new(RafxmarkScene::new(world, resources)),
         Scene::ManySprites => Box::new(ManySpritesScene::new(world, resources)),
         Scene::ManyCubes => Box::new(ManyCubesScene::new(world, resources)),
+        Scene::Autoexposure => Box::new(AutoexposureScene::new(world, resources)),
+        Scene::TaaTestScene => Box::new(TaaTestScene::new(world, resources)),
     }
 }
 

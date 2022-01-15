@@ -32,7 +32,7 @@
     * [Adding Phases](framework/adding_render_phases.md)
     * [Render Graph](framework/render_graph.md)
     * [Render Graph Triangle Example](../rafx/examples/framework_triangle/framework_triangle.rs)
-    * [Visibility Region](framework/visibility_region.md)
+    * [Visibility Resource](framework/visibility_resource.md)
 * rafx-assets
     * `distill` Architecture and Features
     * [Asset Triangle Example](../rafx/examples/asset_triangle/asset_triangle.rs)
@@ -65,7 +65,7 @@
 * [Key crate dependencies](images/crate_dependencies.png)
 * [Pipelining](images/pipelining.png)
 * [Shader Processor](images/shader_processor.png)
-* [Visibility region](images/visibility_region.png)
+* [Visibility region](images/visibility_resource.png)
 * [Extract, prepare, write](images/extract_prepare_write.png)
 
 ## Other Resources

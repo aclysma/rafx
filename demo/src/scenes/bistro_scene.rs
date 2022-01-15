@@ -6,7 +6,7 @@ use legion::{Resources, World};
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
+use rafx::visibility::{ViewFrustumArc, VisibilityResource};
 
 pub(super) struct BistroScene {
     main_view_frustum: ViewFrustumArc,
@@ -36,8 +36,8 @@ impl BistroScene {
         );
         prefab.spawn_prefab(world, resources);
 
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-        let main_view_frustum = visibility_region.register_view_frustum();
+        let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
+        let main_view_frustum = visibility_resource.register_view_frustum();
 
         BistroScene {
             main_view_frustum,

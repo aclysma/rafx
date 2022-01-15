@@ -106,14 +106,17 @@ pub struct PerViewDataStd140 {
     pub view: [[f32; 4]; 4],                                 // +0 (size: 64)
     pub view_proj: [[f32; 4]; 4],                            // +64 (size: 64)
     pub ambient_light: [f32; 4],                             // +128 (size: 16)
-    pub viewport_width: u32,                                 // +144 (size: 4)
-    pub viewport_height: u32,                                // +148 (size: 4)
-    pub directional_light_count: u32,                        // +152 (size: 4)
-    pub use_clustered_lighting: u32,                         // +156 (size: 4)
-    pub directional_lights: [DirectionalLightStd140; 8],     // +160 (size: 384)
-    pub shadow_map_2d_data: [ShadowMap2DDataStd140; 96],     // +544 (size: 9216)
-    pub shadow_map_cube_data: [ShadowMapCubeDataStd140; 32], // +9760 (size: 3584)
-} // 13344 bytes
+    pub jitter_amount: [f32; 2],                             // +144 (size: 8)
+    pub viewport_width: u32,                                 // +152 (size: 4)
+    pub viewport_height: u32,                                // +156 (size: 4)
+    pub mip_bias: f32,                                       // +160 (size: 4)
+    pub ndf_filter_amount: f32,                              // +164 (size: 4)
+    pub directional_light_count: u32,                        // +168 (size: 4)
+    pub use_clustered_lighting: u32,                         // +172 (size: 4)
+    pub directional_lights: [DirectionalLightStd140; 8],     // +176 (size: 384)
+    pub shadow_map_2d_data: [ShadowMap2DDataStd140; 96],     // +560 (size: 9216)
+    pub shadow_map_cube_data: [ShadowMapCubeDataStd140; 32], // +9776 (size: 3584)
+} // 13360 bytes
 
 impl Default for PerViewDataStd140 {
     fn default() -> Self {
@@ -121,8 +124,11 @@ impl Default for PerViewDataStd140 {
             view: <[[f32; 4]; 4]>::default(),
             view_proj: <[[f32; 4]; 4]>::default(),
             ambient_light: <[f32; 4]>::default(),
+            jitter_amount: <[f32; 2]>::default(),
             viewport_width: <u32>::default(),
             viewport_height: <u32>::default(),
+            mip_bias: <f32>::default(),
+            ndf_filter_amount: <f32>::default(),
             directional_light_count: <u32>::default(),
             use_clustered_lighting: <u32>::default(),
             directional_lights: [<DirectionalLightStd140>::default(); 8],
@@ -578,7 +584,7 @@ mod test {
 
     #[test]
     fn test_struct_per_view_data_std140() {
-        assert_eq!(std::mem::size_of::<PerViewDataStd140>(), 13344);
+        assert_eq!(std::mem::size_of::<PerViewDataStd140>(), 13360);
         assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
         assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
         assert_eq!(memoffset::offset_of!(PerViewDataStd140, view), 0);
@@ -588,47 +594,59 @@ mod test {
         assert_eq!(std::mem::size_of::<[f32; 4]>(), 16);
         assert_eq!(std::mem::align_of::<[f32; 4]>(), 4);
         assert_eq!(memoffset::offset_of!(PerViewDataStd140, ambient_light), 128);
+        assert_eq!(std::mem::size_of::<[f32; 2]>(), 8);
+        assert_eq!(std::mem::align_of::<[f32; 2]>(), 4);
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, jitter_amount), 144);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, viewport_width),
-            144
-        );
-        assert_eq!(std::mem::size_of::<u32>(), 4);
-        assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(PerViewDataStd140, viewport_height),
-            148
-        );
-        assert_eq!(std::mem::size_of::<u32>(), 4);
-        assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(PerViewDataStd140, directional_light_count),
             152
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(PerViewDataStd140, use_clustered_lighting),
+            memoffset::offset_of!(PerViewDataStd140, viewport_height),
             156
+        );
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(memoffset::offset_of!(PerViewDataStd140, mip_bias), 160);
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(PerViewDataStd140, ndf_filter_amount),
+            164
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(PerViewDataStd140, directional_light_count),
+            168
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(PerViewDataStd140, use_clustered_lighting),
+            172
         );
         assert_eq!(std::mem::size_of::<[DirectionalLightStd140; 8]>(), 384);
         assert_eq!(std::mem::align_of::<[DirectionalLightStd140; 8]>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, directional_lights),
-            160
+            176
         );
         assert_eq!(std::mem::size_of::<[ShadowMap2DDataStd140; 96]>(), 9216);
         assert_eq!(std::mem::align_of::<[ShadowMap2DDataStd140; 96]>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, shadow_map_2d_data),
-            544
+            560
         );
         assert_eq!(std::mem::size_of::<[ShadowMapCubeDataStd140; 32]>(), 3584);
         assert_eq!(std::mem::align_of::<[ShadowMapCubeDataStd140; 32]>(), 4);
         assert_eq!(
             memoffset::offset_of!(PerViewDataStd140, shadow_map_cube_data),
-            9760
+            9776
         );
     }
 

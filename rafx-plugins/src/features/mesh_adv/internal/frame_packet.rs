@@ -5,11 +5,11 @@ use crate::components::{
 };
 use crate::shaders::mesh_adv::mesh_adv_textured_frag;
 use fnv::FnvHashMap;
-use glam::{Quat, Vec3};
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{
     BufferResource, DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc,
 };
+use rafx::rafx_visibility::geometry::Transform;
 
 pub struct MeshAdvRenderFeatureTypes;
 
@@ -29,9 +29,8 @@ pub struct MeshAdvPerFrameData {
 
 pub struct MeshAdvRenderObjectInstanceData {
     pub mesh_asset: MeshAdvAsset,
-    pub translation: Vec3,
-    pub rotation: Quat,
-    pub scale: Vec3,
+    pub transform: Transform,
+    pub previous_transform: Option<Transform>,
 }
 
 #[derive(Default)]
@@ -41,6 +40,7 @@ pub struct MeshAdvPerViewData {
     pub directional_lights: Vec<ExtractedDirectionalLight>,
     pub point_lights: Vec<ExtractedPointLight>,
     pub spot_lights: Vec<ExtractedSpotLight>,
+    pub ndf_filter_amount: f32,
     pub ambient_light: glam::Vec3,
     pub use_clustered_lighting: bool,
 }
@@ -90,6 +90,7 @@ pub struct MeshAdvPerFrameSubmitData {
     // Remaps from shadow view index (used to index into the data of MeshAdvShadowMapResource) to the array index in the shader uniform
     pub shadow_map_image_index_remap: FnvHashMap<ShadowViewIndex, usize>,
     pub model_matrix_buffer: TrustCell<Option<ResourceArc<BufferResource>>>,
+    pub model_matrix_with_history_buffer: TrustCell<Option<ResourceArc<BufferResource>>>,
 }
 
 pub struct MeshAdvRenderObjectInstanceSubmitData {
@@ -123,5 +124,5 @@ pub struct MeshAdvDrawCall {
     pub material_pass_resource: ResourceArc<MaterialPassResource>,
     pub per_material_descriptor_set: Option<DescriptorSetArc>,
     pub mesh_part_index: usize,
-    pub model_matrix_offset: usize,
+    pub model_matrix_index: usize,
 }

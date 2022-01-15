@@ -168,7 +168,7 @@ impl<'write> RenderFeatureWriteJob<'write> for TextWriteJob<'write> {
                     .resource_context
                     .graphics_pipeline_cache()
                     .get_or_create_graphics_pipeline(
-                        render_phase_index,
+                        Some(render_phase_index),
                         &text_material_pass,
                         &write_context.render_target_meta,
                         &*TEXT_VERTEX_LAYOUT,

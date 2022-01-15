@@ -3,7 +3,7 @@ use legion::{Resources, World};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::rafx_visibility::VisibleBounds;
-use rafx::visibility::{CullModel, ObjectId, VisibilityRegion};
+use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
 use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
 
 #[cfg(feature = "basic-pipeline")]
@@ -60,7 +60,6 @@ impl SpawnablePrefab {
         let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
         let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
 
         let prefab_asset = asset_resource
             .asset(&self.prefab_asset_handle)
@@ -118,18 +117,20 @@ impl SpawnablePrefab {
                 );
 
                 if let Some(visible_bounds) = visible_bounds {
+                    let mut visibility_resource =
+                        resources.get_mut::<VisibilityResource>().unwrap();
                     entry.add_component(VisibilityComponent {
                         visibility_object_handle: {
-                            let handle = visibility_region.register_static_object(
+                            let handle = visibility_resource.register_static_object(
                                 ObjectId::from(entity),
                                 CullModel::VisibleBounds(visible_bounds),
+                                vec![render_object],
                             );
                             handle.set_transform(
                                 transform_component.translation,
                                 transform_component.rotation,
                                 transform_component.scale,
                             );
-                            handle.add_render_object(&render_object);
                             handle
                         },
                     });

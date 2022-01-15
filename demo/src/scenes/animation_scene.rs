@@ -8,7 +8,7 @@ use rafx::assets::AssetManager;
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{ViewFrustumArc, VisibilityRegion};
+use rafx::visibility::{ViewFrustumArc, VisibilityResource};
 use rafx_plugins::assets::anim::{AnimAsset, AnimClip, Skeleton};
 use rafx_plugins::features::debug3d::Debug3DResource;
 use std::sync::Arc;
@@ -100,8 +100,8 @@ impl AnimationScene {
         _world: &mut World,
         resources: &Resources,
     ) -> Self {
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-        let main_view_frustum = visibility_region.register_view_frustum();
+        let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
+        let main_view_frustum = visibility_resource.register_view_frustum();
 
         let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();

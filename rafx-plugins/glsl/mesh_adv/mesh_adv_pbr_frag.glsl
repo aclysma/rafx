@@ -84,13 +84,12 @@ vec4 normal_map(
 ) {
     // Sample the normal and unflatten it from the texture (i.e. convert
     // range of [0, 1] to [-1, 1])
-    vec3 normal = texture(sampler2D(normal_texture, smp), uv).xyz;
+    vec3 normal = texture(sampler2D(normal_texture, smp), uv, per_view_data.mip_bias).xyz;
     normal = normal * 2.0 - 1.0;
     normal.z = 0.0;
     normal.z = sqrt(1.0 - dot(normal, normal));
     normal.x = -normal.x;
     normal.y = -normal.y;
-
 
     // Transform the normal from the texture with the TNB matrix, which will put
     // it into the TNB's space (view space))
@@ -593,7 +592,7 @@ float ForwardLightingNDFRoughnessFilter(vec3 n, vec3 h, float roughness2) {
 // Input:
 //   normal: Normal in any space
 //   roughness2: Roughness^2
-float DeferredLightingNDFRoughnessFilter(vec3 normal, float roughness2) {
+float DeferredLightingNDFRoughnessFilter(vec3 normal, float roughness2, float ndf_filter_amount) {
     float SIGMA2 = 0.15915494;  // 1/2pi
     float KAPPA = 0.18;         // Max increase in roughness
 
@@ -601,7 +600,7 @@ float DeferredLightingNDFRoughnessFilter(vec3 normal, float roughness2) {
     vec3 dndv = dFdy(normal);
     float kernelRoughness2 = 2.0 * SIGMA2 * (dot(dndu, dndu) + dot(dndv, dndv));
     float clampedKernelRoughness2 = min(kernelRoughness2, KAPPA);
-    return clamp(roughness2 + clampedKernelRoughness2, 0, 1);
+    return clamp(roughness2 + clampedKernelRoughness2 * ndf_filter_amount, 0, 1);
 }
 
 //
@@ -1043,7 +1042,7 @@ vec4 pbr_path(
     // used in fresnel, non-metals use 0.04 and metals use the base color
     vec3 fresnel_base = vec3(0.04);
     fresnel_base = mix(fresnel_base, base_color.rgb, vec3(metalness));
-    float roughness_ndf_filtered_squared = DeferredLightingNDFRoughnessFilter(normal_vs, roughness * roughness);
+    float roughness_ndf_filtered_squared = DeferredLightingNDFRoughnessFilter(normal_vs, roughness * roughness, per_view_data.ndf_filter_amount);
 
     vec3 total_light = vec3(0.0);
     if (per_view_data.use_clustered_lighting)
@@ -1154,7 +1153,7 @@ vec4 pbr_main() {
 
 #ifdef PBR_TEXTURES
     if (per_material_data.data.has_base_color_texture) {
-        base_color *= texture(sampler2D(base_color_texture, smp), in_uv);
+        base_color *= texture(sampler2D(base_color_texture, smp), in_uv, per_view_data.mip_bias);
     }
 #endif
 
@@ -1163,7 +1162,7 @@ vec4 pbr_main() {
 
 #ifdef PBR_TEXTURES
     if (per_material_data.data.has_emissive_texture) {
-        emissive_color *= texture(sampler2D(emissive_texture, smp), in_uv);
+        emissive_color *= texture(sampler2D(emissive_texture, smp), in_uv, per_view_data.mip_bias);
         base_color = vec4(1.0, 1.0, 0.0, 1.0);
     }
 #endif
@@ -1174,7 +1173,7 @@ vec4 pbr_main() {
 
 #ifdef PBR_TEXTURES
     if (per_material_data.data.has_metallic_roughness_texture) {
-        vec4 sampled = texture(sampler2D(metallic_roughness_texture, smp), in_uv);
+        vec4 sampled = texture(sampler2D(metallic_roughness_texture, smp), in_uv, per_view_data.mip_bias);
         metalness *= sampled.b;
         roughness *= sampled.g;
     }

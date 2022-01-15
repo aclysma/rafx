@@ -1,8 +1,7 @@
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
 use rafx::graph::*;
 
-use super::depth_prepass::DepthPrepass;
-use super::RenderGraphContext;
+use super::ModernPipelineContext;
 use crate::pipelines::modern::graph_generator::light_binning::LightBuildListsPass;
 use crate::pipelines::modern::graph_generator::shadow_map_pass::ShadowMapPassOutput;
 use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
@@ -17,8 +16,8 @@ pub(super) struct OpaquePass {
 }
 
 pub(super) fn opaque_pass(
-    context: &mut RenderGraphContext,
-    depth_prepass: Option<DepthPrepass>,
+    context: &mut ModernPipelineContext,
+    depth_prepass: Option<RenderGraphImageUsageId>,
     shadow_map_pass_output: &ShadowMapPassOutput,
     light_build_lists_pass: &LightBuildListsPass,
 ) -> OpaquePass {
@@ -44,7 +43,7 @@ pub(super) fn opaque_pass(
     if context.graph_config.show_surfaces && depth_prepass.is_some() {
         context.graph.read_depth_attachment(
             node,
-            depth_prepass.unwrap().depth,
+            depth_prepass.unwrap(),
             RenderGraphImageConstraint {
                 samples: Some(context.graph_config.samples),
                 format: Some(context.graph_config.depth_format),

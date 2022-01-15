@@ -39,8 +39,15 @@ pub struct MeshModelMatrix {
     pub model_matrix: [[f32; 4]; 4],
 }
 
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Default)]
+#[repr(C)]
+pub struct MeshModelMatrixWithHistory {
+    pub current_model_matrix: [[f32; 4]; 4],
+    pub previous_model_matrix: [[f32; 4]; 4],
+}
+
 lazy_static::lazy_static! {
-    pub static ref MESH_VERTEX_FULL_LAYOUT : VertexDataSetLayout = {
+    pub static ref MESH_VERTEX_PBR_LAYOUT : VertexDataSetLayout = {
         use rafx::api::RafxFormat;
 
         let per_vertex = VertexDataLayout::build_vertex_layout(&MeshVertexFull::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
@@ -51,7 +58,7 @@ lazy_static::lazy_static! {
             builder.add_member(&vertex.tex_coord, "TEXCOORD", RafxFormat::R32G32_SFLOAT);
         });
 
-        let per_instance = VertexDataLayout::build_vertex_layout(&MeshModelMatrix::default(), RafxVertexAttributeRate::Instance,  |builder, vertex| {
+        let per_instance = VertexDataLayout::build_vertex_layout(&MeshModelMatrix::default(), RafxVertexAttributeRate::Instance, |builder, vertex| {
             builder.add_member(&vertex.model_matrix[0], "MODELMATRIX0", RafxFormat::R32G32B32A32_SFLOAT);
             builder.add_member(&vertex.model_matrix[1], "MODELMATRIX1", RafxFormat::R32G32B32A32_SFLOAT);
             builder.add_member(&vertex.model_matrix[2], "MODELMATRIX2", RafxFormat::R32G32B32A32_SFLOAT);
@@ -61,18 +68,39 @@ lazy_static::lazy_static! {
         VertexDataSetLayout::new(vec![per_vertex, per_instance], RafxPrimitiveTopology::TriangleList)
     };
 
-    pub static ref MESH_VERTEX_POSITION_LAYOUT : VertexDataSetLayout = {
+    pub static ref MESH_VERTEX_SHADOW_LAYOUT : VertexDataSetLayout = {
         use rafx::api::RafxFormat;
 
         let per_vertex = VertexDataLayout::build_vertex_layout(&MeshVertexPosition::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
             builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
         });
 
-        let per_instance = VertexDataLayout::build_vertex_layout(&MeshModelMatrix::default(), RafxVertexAttributeRate::Instance,  |builder, vertex| {
+        let per_instance = VertexDataLayout::build_vertex_layout(&MeshModelMatrix::default(), RafxVertexAttributeRate::Instance, |builder, vertex| {
             builder.add_member(&vertex.model_matrix[0], "MODELMATRIX0", RafxFormat::R32G32B32A32_SFLOAT);
             builder.add_member(&vertex.model_matrix[1], "MODELMATRIX1", RafxFormat::R32G32B32A32_SFLOAT);
             builder.add_member(&vertex.model_matrix[2], "MODELMATRIX2", RafxFormat::R32G32B32A32_SFLOAT);
             builder.add_member(&vertex.model_matrix[3], "MODELMATRIX3", RafxFormat::R32G32B32A32_SFLOAT);
+        });
+
+        VertexDataSetLayout::new(vec![per_vertex, per_instance], RafxPrimitiveTopology::TriangleList)
+    };
+
+    pub static ref MESH_VERTEX_DEPTH_PREPASS_LAYOUT : VertexDataSetLayout = {
+        use rafx::api::RafxFormat;
+
+        let per_vertex = VertexDataLayout::build_vertex_layout(&MeshVertexPosition::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
+            builder.add_member(&vertex.position, "POSITION", RafxFormat::R32G32B32_SFLOAT);
+        });
+
+        let per_instance = VertexDataLayout::build_vertex_layout(&MeshModelMatrixWithHistory::default(), RafxVertexAttributeRate::Instance,  |builder, vertex| {
+            builder.add_member(&vertex.current_model_matrix[0], "CURRENTMODELMATRIX0", RafxFormat::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.current_model_matrix[1], "CURRENTMODELMATRIX1", RafxFormat::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.current_model_matrix[2], "CURRENTMODELMATRIX2", RafxFormat::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.current_model_matrix[3], "CURRENTMODELMATRIX3", RafxFormat::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.previous_model_matrix[0], "PREVIOUSMODELMATRIX0", RafxFormat::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.previous_model_matrix[1], "PREVIOUSMODELMATRIX1", RafxFormat::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.previous_model_matrix[2], "PREVIOUSMODELMATRIX2", RafxFormat::R32G32B32A32_SFLOAT);
+            builder.add_member(&vertex.previous_model_matrix[3], "PREVIOUSMODELMATRIX3", RafxFormat::R32G32B32A32_SFLOAT);
         });
 
         VertexDataSetLayout::new(vec![per_vertex, per_instance], RafxPrimitiveTopology::TriangleList)
@@ -153,6 +181,13 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
             .model_matrix_buffer
             .borrow();
 
+        let model_matrix_with_history_buffer = self
+            .submit_packet
+            .per_frame_submit_data()
+            .get()
+            .model_matrix_with_history_buffer
+            .borrow();
+
         let submit_node_data = view_submit_packet
             .get_submit_node_data_from_render_phase(render_phase_index, submit_node_id);
 
@@ -173,26 +208,44 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
             .unwrap();
 
         // Bind the correct pipeline.
-        let (mesh_vertex_layout, vertex_buffer, vertex_buffer_offset_in_bytes) =
-            if render_phase_index == OpaqueRenderPhase::render_phase_index() {
-                (
-                    &*MESH_VERTEX_FULL_LAYOUT,
-                    &mesh_asset.inner.vertex_full_buffer,
-                    mesh_part.vertex_full_buffer_offset_in_bytes,
-                )
-            } else {
-                (
-                    &*MESH_VERTEX_POSITION_LAYOUT,
-                    &mesh_asset.inner.vertex_position_buffer,
-                    mesh_part.vertex_position_buffer_offset_in_bytes,
-                )
-            };
+        let (
+            mesh_vertex_layout,
+            vertex_buffer,
+            vertex_buffer_offset_in_bytes,
+            instance_buffer,
+            instance_buffer_offset_in_bytes,
+        ) = if render_phase_index == OpaqueRenderPhase::render_phase_index() {
+            (
+                &*MESH_VERTEX_PBR_LAYOUT,
+                &mesh_asset.inner.vertex_full_buffer,
+                mesh_part.vertex_full_buffer_offset_in_bytes,
+                model_matrix_buffer,
+                std::mem::size_of::<MeshModelMatrix>() * submit_node_data.model_matrix_index,
+            )
+        } else if render_phase_index == DepthPrepassRenderPhase::render_phase_index() {
+            (
+                &*MESH_VERTEX_DEPTH_PREPASS_LAYOUT,
+                &mesh_asset.inner.vertex_position_buffer,
+                mesh_part.vertex_position_buffer_offset_in_bytes,
+                model_matrix_with_history_buffer,
+                std::mem::size_of::<MeshModelMatrixWithHistory>()
+                    * submit_node_data.model_matrix_index,
+            )
+        } else {
+            (
+                &*MESH_VERTEX_SHADOW_LAYOUT,
+                &mesh_asset.inner.vertex_position_buffer,
+                mesh_part.vertex_position_buffer_offset_in_bytes,
+                model_matrix_buffer,
+                std::mem::size_of::<MeshModelMatrix>() * submit_node_data.model_matrix_index,
+            )
+        };
 
         let pipeline = write_context
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                render_phase_index,
+                Some(render_phase_index),
                 material_pass,
                 &write_context.render_target_meta,
                 mesh_vertex_layout,
@@ -240,10 +293,8 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
                 // well supported on rafx backends. A third option would be some type of dynamic
                 // uniform buffer, but we'd still need to pass in an index to the shader for each instance.
                 RafxVertexBufferBinding {
-                    buffer: &model_matrix_buffer.as_ref().unwrap().get_raw().buffer,
-                    byte_offset: (std::mem::size_of::<MeshModelMatrix>()
-                        * submit_node_data.model_matrix_offset)
-                        as u64,
+                    buffer: &instance_buffer.as_ref().unwrap().get_raw().buffer,
+                    byte_offset: instance_buffer_offset_in_bytes as u64,
                 },
             ],
         )?;
@@ -260,7 +311,6 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
         } as u32;
 
         command_buffer.cmd_draw_indexed(mesh_part.index_buffer_size_in_bytes / index_size, 0, 0)?;
-
         Ok(())
     }
 

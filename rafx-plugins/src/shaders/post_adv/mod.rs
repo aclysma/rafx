@@ -5,3 +5,4 @@
 pub mod bloom_combine_adv_frag;
 pub mod luma_average_histogram_comp;
 pub mod luma_build_histogram_comp;
+pub mod taa_frag;

@@ -8,7 +8,7 @@ use rafx::distill::loader::handle::Handle;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
-use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityRegion};
+use rafx::visibility::{CullModel, ObjectId, ViewFrustumArc, VisibilityResource};
 use rafx_plugins::assets::ldtk::LdtkProjectAsset;
 use rafx_plugins::components::SpriteComponent;
 use rafx_plugins::components::{TransformComponent, VisibilityComponent};
@@ -28,8 +28,6 @@ impl SpriteScene {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_2d();
 
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
@@ -42,6 +40,7 @@ impl SpriteScene {
             //asset_resource.load_asset::<LdtkProjectAsset>("e01f536b-0a05-4d14-81cd-f010d4a45e81".into())
         };
 
+        let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
         for i in 0..100 {
             let position = Vec3::new(
                 ((i / 5) * 100) as f32 + 900.0,
@@ -74,22 +73,22 @@ impl SpriteScene {
             let mut entry = world.entry(entity).unwrap();
             entry.add_component(VisibilityComponent {
                 visibility_object_handle: {
-                    let handle = visibility_region.register_dynamic_object(
+                    let handle = visibility_resource.register_dynamic_object(
                         ObjectId::from(entity),
                         CullModel::quad(800., 450.),
+                        vec![sprite_render_object],
                     );
                     handle.set_transform(
                         transform_component.translation,
                         transform_component.rotation,
                         transform_component.scale,
                     );
-                    handle.add_render_object(&sprite_render_object);
                     handle
                 },
             });
         }
 
-        let main_view_frustum = visibility_region.register_view_frustum();
+        let main_view_frustum = visibility_resource.register_view_frustum();
 
         SpriteScene {
             ldtk_handle,
@@ -130,13 +129,14 @@ impl super::TestScene for SpriteScene {
                 if asset.is_some() {
                     let mut tile_layer_render_nodes =
                         resources.get_mut::<TileLayerRenderObjectSet>().unwrap();
-                    let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+                    let mut visibility_resource =
+                        resources.get_mut::<VisibilityResource>().unwrap();
 
                     tile_layer_resource.set_project(
                         &self.ldtk_handle,
                         &*asset_manager,
                         &mut *tile_layer_render_nodes,
-                        &visibility_region,
+                        &mut *visibility_resource,
                     );
                 }
             }

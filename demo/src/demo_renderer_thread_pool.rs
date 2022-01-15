@@ -126,9 +126,14 @@ impl RendererThreadPool for DemoRendererThreadPool {
         &mut self,
         view_visibility_jobs: &[Arc<ViewVisibilityJob>],
         extract_context: &RenderJobExtractContext<'extract>,
+        visibility_resource: &VisibilityResource,
     ) -> Vec<RenderViewVisibilityQuery> {
         view_visibility_jobs.par_chunk_map(&self.task_pool, 1, |visibility_job| {
-            Renderer::run_view_visibility_job(&visibility_job[0], extract_context)
+            Renderer::run_view_visibility_job(
+                &visibility_job[0],
+                extract_context,
+                visibility_resource,
+            )
         })
     }
 
@@ -176,6 +181,7 @@ impl RendererThreadPool for DemoRendererThreadPool {
     fn run_extract_jobs<'extract>(
         &mut self,
         extract_jobs: &Vec<Arc<dyn RenderFeatureExtractJob<'extract> + 'extract>>,
+        visibility_resource: &VisibilityResource,
     ) {
         extract_jobs.par_chunk_map(&self.task_pool, 1, |extract_job| {
             let extract_job = &extract_job[0];
@@ -191,6 +197,7 @@ impl RendererThreadPool for DemoRendererThreadPool {
                         scope.spawn(async move {
                             Renderer::extract_render_object_instance_chunk(
                                 extract_job,
+                                visibility_resource,
                                 chunk_index,
                                 chunk_size,
                             );
@@ -198,7 +205,7 @@ impl RendererThreadPool for DemoRendererThreadPool {
                     }
                 });
             } else {
-                Renderer::extract_render_object_instance_all(extract_job);
+                Renderer::extract_render_object_instance_all(extract_job, visibility_resource);
             }
 
             self.task_pool.scope(|scope| {
@@ -219,6 +226,7 @@ impl RendererThreadPool for DemoRendererThreadPool {
                                     scope.spawn(async move {
                                         Renderer::extract_render_object_instance_per_view_chunk(
                                             extract_job,
+                                            visibility_resource,
                                             view_packet,
                                             chunk_index,
                                             chunk_size,
@@ -229,6 +237,7 @@ impl RendererThreadPool for DemoRendererThreadPool {
                         } else {
                             Renderer::extract_render_object_instance_per_view_all(
                                 extract_job,
+                                visibility_resource,
                                 view_packet,
                             );
                         }

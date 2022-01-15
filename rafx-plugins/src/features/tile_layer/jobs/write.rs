@@ -79,7 +79,7 @@ impl<'write> RenderFeatureWriteJob<'write> for TileLayerWriteJob<'write> {
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                render_phase_index,
+                Some(render_phase_index),
                 self.tile_layer_material_pass.as_ref().unwrap(),
                 &write_context.render_target_meta,
                 &TILE_LAYER_VERTEX_LAYOUT,

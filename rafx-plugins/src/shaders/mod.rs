@@ -5,6 +5,7 @@
 pub mod debug3d;
 pub mod debug_pip;
 pub mod depth;
+pub mod depth_velocity;
 pub mod egui;
 pub mod imgui;
 pub mod mesh_adv;

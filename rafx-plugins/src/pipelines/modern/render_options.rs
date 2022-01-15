@@ -48,6 +48,7 @@ impl TonemapperTypeAdv {
         }
     }
 }
+
 impl From<i32> for TonemapperTypeAdv {
     fn from(v: i32) -> Self {
         assert!(v <= Self::MAX as i32);
@@ -64,9 +65,104 @@ impl std::fmt::Display for TonemapperTypeAdv {
     }
 }
 
+// Should be kept in sync with the constants in taa_jitter.glsl prefixed with JP_
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
+pub enum JitterPattern {
+    SobolOwen16,
+    SobolOwen64,
+    Halton,
+    QuadJitterTest,
+    MAX,
+}
+
+impl Default for JitterPattern {
+    fn default() -> Self {
+        JitterPattern::SobolOwen16
+    }
+}
+
+impl JitterPattern {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            JitterPattern::SobolOwen16 => "SobolOwen 16",
+            JitterPattern::SobolOwen64 => "SobolOwen 64",
+            JitterPattern::Halton => "Halton",
+            JitterPattern::QuadJitterTest => "QuadJitterTest",
+            JitterPattern::MAX => "JitterPattern MAX VALUE",
+        }
+    }
+}
+
+impl From<i32> for JitterPattern {
+    fn from(v: i32) -> Self {
+        assert!(v <= Self::MAX as i32);
+        unsafe { std::mem::transmute(v) }
+    }
+}
+
+#[derive(Clone)]
+pub struct TemporalAAOptions {
+    pub enable_side_by_side_debug_view: bool,
+    pub jitter_pattern: JitterPattern,
+    pub jitter_multiplier: f32,
+    pub history_weight: f32,
+    pub history_weight_velocity_adjust_multiplier: f32,
+    pub history_weight_velocity_adjust_max: f32,
+    pub forward_pass_mip_bias: f32,
+}
+
+impl Default for TemporalAAOptions {
+    fn default() -> Self {
+        TemporalAAOptions {
+            enable_side_by_side_debug_view: false,
+            jitter_pattern: JitterPattern::SobolOwen16,
+            jitter_multiplier: 0.3,
+            history_weight: 0.01,
+            history_weight_velocity_adjust_multiplier: 50.0,
+            history_weight_velocity_adjust_max: 0.1,
+            forward_pass_mip_bias: -0.5,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(C)]
+pub enum AntiAliasMethodAdv {
+    None,
+    Msaa4x,
+    Taa,
+    MAX,
+}
+
+impl Default for AntiAliasMethodAdv {
+    fn default() -> Self {
+        AntiAliasMethodAdv::Taa
+    }
+}
+
+impl AntiAliasMethodAdv {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            AntiAliasMethodAdv::None => "None",
+            AntiAliasMethodAdv::Msaa4x => "4x MSAA",
+            AntiAliasMethodAdv::Taa => "TAA",
+            AntiAliasMethodAdv::MAX => "AntiAliasMethodAdv MAX VALUE",
+        }
+    }
+}
+
+impl From<i32> for AntiAliasMethodAdv {
+    fn from(v: i32) -> Self {
+        assert!(v <= Self::MAX as i32);
+        unsafe { std::mem::transmute(v) }
+    }
+}
+
 #[derive(Clone)]
 pub struct ModernPipelineRenderOptions {
-    pub enable_msaa: bool,
+    pub anti_alias_method: AntiAliasMethodAdv,
+    pub taa_options: TemporalAAOptions,
     pub enable_hdr: bool,
     pub enable_bloom: bool,
     pub enable_textures: bool,
@@ -84,7 +180,8 @@ pub struct ModernPipelineRenderOptions {
 impl Default for ModernPipelineRenderOptions {
     fn default() -> Self {
         ModernPipelineRenderOptions {
-            enable_msaa: true,
+            anti_alias_method: AntiAliasMethodAdv::Taa,
+            taa_options: TemporalAAOptions::default(),
             enable_hdr: true,
             enable_bloom: true,
             enable_textures: true,

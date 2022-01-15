@@ -46,7 +46,7 @@ pub use path_camera::*;
 mod demo_camera;
 pub use demo_camera::*;
 
-use rafx::visibility::VisibilityRegion;
+use rafx::visibility::VisibilityResource;
 
 mod spawnable_mesh;
 pub use spawnable_mesh::*;
@@ -107,8 +107,8 @@ pub(super) fn add_directional_light(
     cast_shadows: bool,
 ) {
     let view_frustum = if cast_shadows {
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-        Some(visibility_region.register_view_frustum())
+        let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
+        Some(visibility_resource.register_view_frustum())
     } else {
         None
     };
@@ -134,8 +134,8 @@ pub(super) fn add_spot_light(
     cast_shadows: bool,
 ) {
     let view_frustum = if cast_shadows {
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
-        Some(visibility_region.register_view_frustum())
+        let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
+        Some(visibility_resource.register_view_frustum())
     } else {
         None
     };
@@ -169,14 +169,14 @@ pub(super) fn add_point_light(
     cast_shadows: bool,
 ) {
     let view_frustums = if cast_shadows {
-        let visibility_region = resources.get::<VisibilityRegion>().unwrap();
+        let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
         Some([
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
-            visibility_region.register_view_frustum(),
+            visibility_resource.register_view_frustum(),
+            visibility_resource.register_view_frustum(),
+            visibility_resource.register_view_frustum(),
+            visibility_resource.register_view_frustum(),
+            visibility_resource.register_view_frustum(),
+            visibility_resource.register_view_frustum(),
         ])
     } else {
         None

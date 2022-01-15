@@ -1,5 +1,6 @@
 #include "exposure.glsl"
 #include "tonemapping_bgfx.glsl"
+#include "../util/color.glsl"
 
 // The code for ACESFitted was originally written by Stephen Hill (@self_shadow), who deserves all
 // credit for coming up with this fit and implementing it. Buy him a beer next time you see him. :)
@@ -277,9 +278,6 @@ vec3 tonemap_bergstrom(
 
 //////////////////// DEBUG TONEMAPPING //////////////////////
 
-float luma(vec3 color) {
-  return dot(color, vec3(0.299, 0.587, 0.114));
-}
 
 vec3 visualize_value(float val) {
     // blue is used to visualize 0-1 exclusively in a linear fashion.
@@ -352,7 +350,7 @@ vec3 tonemap_basic(
             return visualize_value(max_val);
         } break;
         case TM_BASIC_VisualizeLuma: {
-            float l = luma(color);
+            float l = rgb_to_luminosity(color);
             return visualize_value(l);
         } break;
         default: {
@@ -394,7 +392,7 @@ vec3 tonemap_adv(
             return visualize_value(max_val);
         } break;
         case TM_ADV_VisualizeLuma: {
-            float l = luma(color);
+            float l = rgb_to_luminosity(color);
             return visualize_value(l);
         } break;
         case TM_ADV_AutoExposureOld: {

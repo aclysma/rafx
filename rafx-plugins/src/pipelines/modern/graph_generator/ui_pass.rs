@@ -1,7 +1,7 @@
 use crate::phases::UiRenderPhase;
 use rafx::graph::*;
 
-use super::RenderGraphContext;
+use super::ModernPipelineContext;
 use rafx::render_features::RenderJobCommandBufferContext;
 
 pub(super) struct UiPass {
@@ -11,7 +11,7 @@ pub(super) struct UiPass {
 }
 
 pub(super) fn ui_pass(
-    context: &mut RenderGraphContext,
+    context: &mut ModernPipelineContext,
     previous_pass_color: RenderGraphImageUsageId,
 ) -> UiPass {
     // This node has a single color attachment

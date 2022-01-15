@@ -89,8 +89,9 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
         render_resources: &mut ResourceMap,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let depth_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/depth.material");
+        let depth_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "rafx-plugins/materials/modern_pipeline/depth_velocity.material",
+        );
 
         let shadow_map_atlas_depth_material = asset_resource.load_asset_path::<MaterialAsset, _>(
             "rafx-plugins/materials/modern_pipeline/shadow_atlas_depth.material",
@@ -142,12 +143,11 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
         });
 
         render_resources.insert(MeshAdvShadowMapResource::default());
+        render_resources.insert(MeshAdvRenderPipelineState::default());
 
-        let lights_bin_render_resource = MeshAdvLightBinRenderResource::new(
-            &asset_manager.resource_manager().resource_context(),
-        )?;
-        render_resources.insert(lights_bin_render_resource);
-
+        render_resources.insert(MeshAdvLightBinRenderResource::new(
+            &asset_manager.resources(),
+        )?);
         render_resources.insert(ShadowMapAtlas::new(asset_manager.resources())?);
 
         Ok(())

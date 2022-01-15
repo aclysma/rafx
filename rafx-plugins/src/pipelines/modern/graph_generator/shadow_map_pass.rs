@@ -1,5 +1,4 @@
-use super::RenderGraphContext;
-use crate::features::debug_pip::DebugPipRenderResource;
+use super::ModernPipelineContext;
 use crate::features::mesh_adv::{
     MeshAdvShadowMapResource, MeshAdvStaticResources, ShadowMapAtlasClearTileVertex,
     SHADOW_MAP_ATLAS_CLEAR_TILE_LAYOUT,
@@ -18,7 +17,7 @@ pub(super) struct ShadowMapPassOutput {
 }
 
 pub(super) fn shadow_map_passes(
-    context: &mut RenderGraphContext,
+    context: &mut ModernPipelineContext,
     shadow_atlas_image: RenderGraphExternalImageId,
     shadow_atlas_needs_full_clear: bool,
 ) -> ShadowMapPassOutput {
@@ -29,11 +28,10 @@ pub(super) fn shadow_map_passes(
     //
     let mut shadow_atlas_usage = context.graph.read_external_image(shadow_atlas_image);
     if shadow_map_resource.shadow_maps_needing_redraw().is_empty() {
-        let mut debug_pip_resource = context
-            .render_resources
-            .fetch_mut::<DebugPipRenderResource>();
-
-        debug_pip_resource.add_render_graph_image(shadow_atlas_usage);
+        //let mut debug_pip_resource = context
+        //    .render_resources
+        //    .fetch_mut::<DebugPipRenderResource>()
+        //    .add_render_graph_image(shadow_atlas_usage);
 
         return ShadowMapPassOutput {
             shadow_atlas_image: shadow_atlas_usage,
@@ -162,7 +160,7 @@ pub(super) fn shadow_map_passes(
                 .resource_context()
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
-                    ShadowMapRenderPhase::render_phase_index(),
+                    Some(ShadowMapRenderPhase::render_phase_index()),
                     &clear_tiles_material,
                     &args.render_target_meta,
                     &SHADOW_MAP_ATLAS_CLEAR_TILE_LAYOUT,
@@ -200,14 +198,10 @@ pub(super) fn shadow_map_passes(
         Ok(())
     });
 
-    context
-        .render_resources
-        .fetch_mut::<DebugPipRenderResource>()
-        .add_render_graph_image(shadow_atlas_usage);
-
-    context
-        .graph
-        .write_external_image(shadow_atlas_image, shadow_atlas_usage);
+    //context
+    //    .render_resources
+    //    .fetch_mut::<DebugPipRenderResource>()
+    //    .add_render_graph_image(shadow_atlas_usage);
 
     ShadowMapPassOutput {
         shadow_atlas_image: shadow_atlas_usage,

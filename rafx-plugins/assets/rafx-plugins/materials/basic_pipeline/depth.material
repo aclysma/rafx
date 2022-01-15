@@ -1,0 +1,19 @@
+(
+    passes: [
+        (
+            name: Some("Depth"),
+            fixed_function_state: (
+                depth_testing: EnabledReverseZ,
+                cull_mode: Some(None),
+            ),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../../shaders/depth/depth.vert.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+                // No fragment shader required
+            ],
+        )
+    ]
+)

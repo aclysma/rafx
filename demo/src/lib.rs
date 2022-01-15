@@ -18,9 +18,10 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::render_features::ExtractResources;
 use rafx::renderer::{AssetSource, Renderer};
 use rafx::renderer::{RendererConfigResource, ViewportsResource};
-use rafx::visibility::VisibilityRegion;
+use rafx::visibility::VisibilityResource;
 
 pub mod daemon_args;
+mod demo_ui;
 mod init;
 mod input;
 mod scenes;
@@ -29,10 +30,11 @@ mod time;
 mod demo_renderer_thread_pool;
 
 use crate::input::InputResource;
+use demo_ui::*;
 use rafx::distill::loader::handle::Handle;
 use rafx_plugins::assets::font::FontAsset;
 #[cfg(feature = "egui")]
-use rafx_plugins::features::egui::{EguiContextResource, WinitEguiManager};
+use rafx_plugins::features::egui::WinitEguiManager;
 use rafx_plugins::features::skybox::SkyboxResource;
 use rafx_plugins::features::text::TextResource;
 use rafx_plugins::features::tile_layer::TileLayerResource;
@@ -44,15 +46,11 @@ use rafx_plugins::features::mesh_basic::{
 };
 #[cfg(feature = "basic-pipeline")]
 use rafx_plugins::pipelines::basic::BasicPipelineRenderOptions as PipelineRenderOptions;
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::pipelines::basic::TonemapperTypeBasic as TonemapperType;
 
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::features::mesh_adv::{
     MeshAdvRenderObjectSet as MeshRenderObjectSet, MeshAdvRenderOptions as MeshRenderOptions,
 };
-#[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::pipelines::modern::TonemapperTypeAdv as TonemapperType;
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::pipelines::modern::{
     ModernPipelineRenderOptions as PipelineRenderOptions,
@@ -94,158 +92,6 @@ impl Drop for StatsAllocMemoryRegion<'_> {
             self.region.change_and_reset()
         );
     }
-}
-
-#[derive(Clone)]
-pub struct RenderOptions {
-    pub enable_msaa: bool,
-    pub enable_hdr: bool,
-    pub enable_bloom: bool,
-    pub enable_textures: bool,
-    pub enable_lighting: bool,
-    pub show_surfaces: bool,
-    pub show_wireframes: bool,
-    pub show_debug3d: bool,
-    pub show_text: bool,
-    pub show_skybox: bool,
-    pub show_feature_toggles: bool,
-    pub show_shadows: bool,
-    pub show_lights_debug_draw: bool,
-    pub blur_pass_count: usize,
-    pub tonemapper_type: TonemapperType,
-    pub enable_visibility_update: bool,
-    pub use_clustered_lighting: bool,
-}
-
-impl RenderOptions {
-    fn default_2d() -> Self {
-        RenderOptions {
-            enable_msaa: false,
-            enable_hdr: false,
-            enable_bloom: false,
-            enable_textures: true,
-            enable_lighting: true,
-            show_surfaces: true,
-            show_wireframes: false,
-            show_debug3d: true,
-            show_text: true,
-            show_skybox: false,
-            show_shadows: true,
-            show_feature_toggles: false,
-            show_lights_debug_draw: false,
-            blur_pass_count: 0,
-            tonemapper_type: TonemapperType::None,
-            enable_visibility_update: true,
-            use_clustered_lighting: true,
-        }
-    }
-
-    fn default_3d() -> Self {
-        RenderOptions {
-            enable_msaa: true,
-            enable_hdr: true,
-            enable_bloom: true,
-            enable_textures: true,
-            enable_lighting: true,
-            show_surfaces: true,
-            show_wireframes: false,
-            show_debug3d: true,
-            show_text: true,
-            show_skybox: true,
-            show_shadows: true,
-            show_feature_toggles: true,
-            show_lights_debug_draw: false,
-            blur_pass_count: 5,
-            tonemapper_type: TonemapperType::default(),
-            enable_visibility_update: true,
-            use_clustered_lighting: true,
-        }
-    }
-}
-
-impl RenderOptions {
-    #[cfg(feature = "egui")]
-    pub fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-    ) {
-        ui.checkbox(&mut self.enable_msaa, "enable_msaa");
-        ui.checkbox(&mut self.enable_hdr, "enable_hdr");
-
-        if self.enable_hdr {
-            ui.indent("HDR options", |ui| {
-                let tonemapper_names: Vec<_> = (0..(TonemapperType::MAX as i32))
-                    .map(|t| TonemapperType::from(t).display_name())
-                    .collect();
-
-                egui::ComboBox::from_label("tonemapper_type")
-                    .selected_text(tonemapper_names[self.tonemapper_type as usize])
-                    .show_ui(ui, |ui| {
-                        for (i, name) in tonemapper_names.iter().enumerate() {
-                            ui.selectable_value(
-                                &mut self.tonemapper_type,
-                                TonemapperType::from(i as i32),
-                                name,
-                            );
-                        }
-                    });
-
-                ui.checkbox(&mut self.enable_bloom, "enable_bloom");
-                if self.enable_bloom {
-                    ui.indent("", |ui| {
-                        ui.add(
-                            egui::Slider::new(&mut self.blur_pass_count, 0..=10)
-                                .clamp_to_range(true)
-                                .text("blur_pass_count"),
-                        );
-                    });
-                }
-            });
-        }
-
-        ui.checkbox(&mut self.show_lights_debug_draw, "show_lights_debug_draw");
-        ui.checkbox(&mut self.use_clustered_lighting, "use_clustered_lighting");
-
-        if self.show_feature_toggles {
-            ui.checkbox(&mut self.show_wireframes, "show_wireframes");
-            ui.checkbox(&mut self.show_surfaces, "show_surfaces");
-
-            if self.show_surfaces {
-                ui.indent("", |ui| {
-                    ui.checkbox(&mut self.enable_textures, "enable_textures");
-                    ui.checkbox(&mut self.enable_lighting, "enable_lighting");
-
-                    if self.enable_lighting {
-                        ui.indent("", |ui| {
-                            ui.checkbox(&mut self.show_shadows, "show_shadows");
-                        });
-                    }
-
-                    ui.checkbox(&mut self.show_skybox, "show_skybox_feature");
-                });
-            }
-
-            ui.checkbox(&mut self.show_debug3d, "show_debug3d_feature");
-            ui.checkbox(&mut self.show_text, "show_text_feature");
-        }
-
-        ui.checkbox(
-            &mut self.enable_visibility_update,
-            "enable_visibility_update",
-        );
-    }
-}
-
-#[derive(Default)]
-pub struct DebugUiState {
-    show_render_options: bool,
-    show_asset_list: bool,
-    #[cfg(not(feature = "basic-pipeline"))]
-    show_tonemap_debug: bool,
-    show_shadow_map_debug: bool,
-
-    #[cfg(feature = "profile-with-puffin")]
-    show_profiler: bool,
 }
 
 #[derive(StructOpt)]
@@ -457,163 +303,30 @@ impl DemoApp {
         }
 
         #[cfg(feature = "egui")]
+        demo_ui::draw_ui(&self.resources);
+
         {
-            let ctx = self
-                .resources
-                .get::<EguiContextResource>()
-                .unwrap()
-                .context();
-            let time_state = self.resources.get::<TimeState>().unwrap();
-            let mut debug_ui_state = self.resources.get_mut::<DebugUiState>().unwrap();
-            let mut render_options = self.resources.get_mut::<RenderOptions>().unwrap();
-            #[cfg(not(feature = "basic-pipeline"))]
-            let tonemap_debug_data = self.resources.get::<PipelineTonemapDebugData>().unwrap();
-            let asset_resource = self.resources.get::<AssetResource>().unwrap();
+            let render_options = self.resources.get::<RenderOptions>().unwrap();
 
-            egui::TopBottomPanel::top("top_panel").show(&ctx, |ui| {
-                egui::menu::bar(ui, |ui| {
-                    egui::menu::menu(ui, "Windows", |ui| {
-                        ui.checkbox(&mut debug_ui_state.show_render_options, "Render Options");
-
-                        ui.checkbox(&mut debug_ui_state.show_asset_list, "Asset List");
-                        #[cfg(not(feature = "basic-pipeline"))]
-                        ui.checkbox(&mut debug_ui_state.show_tonemap_debug, "Tonemap Debug");
-                        ui.checkbox(
-                            &mut debug_ui_state.show_shadow_map_debug,
-                            "Shadow Map Debug",
-                        );
-
-                        #[cfg(feature = "profile-with-puffin")]
-                        if ui
-                            .checkbox(&mut debug_ui_state.show_profiler, "Profiler")
-                            .changed()
-                        {
-                            log::info!(
-                                "Setting puffin profiler enabled: {:?}",
-                                debug_ui_state.show_profiler
-                            );
-                            profiling::puffin::set_scopes_on(debug_ui_state.show_profiler);
-                        }
-                    });
-
-                    ui.with_layout(egui::Layout::right_to_left(), |ui| {
-                        ui.label(format!("Frame: {}", time_state.update_count()));
-                        ui.separator();
-                        ui.label(format!(
-                            "FPS: {:.1}",
-                            time_state.updates_per_second_smoothed()
-                        ));
-                    });
-                })
-            });
-
-            #[cfg(not(feature = "basic-pipeline"))]
-            if debug_ui_state.show_tonemap_debug {
-                egui::Window::new("Tonemap Debug")
-                    .open(&mut debug_ui_state.show_tonemap_debug)
-                    .show(&ctx, |ui| {
-                        let data = tonemap_debug_data.inner.lock().unwrap();
-
-                        ui.add(egui::Label::new(format!(
-                            "histogram_sample_count: {}",
-                            data.histogram_sample_count
-                        )));
-                        ui.add(egui::Label::new(format!(
-                            "histogram_max_value: {}",
-                            data.histogram_max_value
-                        )));
-
-                        use egui::plot::{Line, Plot, VLine, Value, Values};
-                        let line_values: Vec<_> = data
-                            .histogram
-                            .iter()
-                            //.skip(1) // don't include index 0
-                            .enumerate()
-                            .map(|(i, value)| Value::new(i as f64, *value as f64))
-                            .collect();
-                        let line =
-                            Line::new(Values::from_values_iter(line_values.into_iter())).fill(0.0);
-                        let average_line = VLine::new(data.result_average_bin);
-                        let low_line = VLine::new(data.result_low_bin);
-                        let high_line = VLine::new(data.result_high_bin);
-                        Some(
-                            ui.add(
-                                Plot::new("my_plot")
-                                    .line(line)
-                                    .vline(average_line)
-                                    .vline(low_line)
-                                    .vline(high_line)
-                                    .include_y(0.0)
-                                    .include_y(1.0)
-                                    .show_axes([false, false]),
-                            ),
-                        )
-                    });
-            }
-
+            let mut pipeline_render_options =
+                self.resources.get_mut::<PipelineRenderOptions>().unwrap();
+            pipeline_render_options.anti_alias_method = render_options.anti_alias_method;
+            pipeline_render_options.enable_hdr = render_options.enable_hdr;
+            pipeline_render_options.enable_bloom = render_options.enable_bloom;
+            pipeline_render_options.enable_textures = render_options.enable_textures;
+            pipeline_render_options.show_surfaces = render_options.show_surfaces;
+            pipeline_render_options.show_wireframes = render_options.show_wireframes;
+            pipeline_render_options.show_debug3d = render_options.show_debug3d;
+            pipeline_render_options.show_text = render_options.show_text;
+            pipeline_render_options.show_skybox = render_options.show_skybox;
+            pipeline_render_options.show_feature_toggles = render_options.show_feature_toggles;
+            pipeline_render_options.blur_pass_count = render_options.blur_pass_count;
+            pipeline_render_options.tonemapper_type = render_options.tonemapper_type;
+            pipeline_render_options.enable_visibility_update =
+                render_options.enable_visibility_update;
             #[cfg(not(feature = "basic-pipeline"))]
             {
-                tonemap_debug_data
-                    .inner
-                    .lock()
-                    .unwrap()
-                    .enable_debug_data_collection = debug_ui_state.show_tonemap_debug;
-            }
-
-            if debug_ui_state.show_render_options {
-                egui::Window::new("Render Options")
-                    .open(&mut debug_ui_state.show_render_options)
-                    .show(&ctx, |ui| {
-                        render_options.ui(ui);
-                    });
-            }
-
-            if debug_ui_state.show_shadow_map_debug {
-                egui::Window::new("Shadow map Debug")
-                    .open(&mut debug_ui_state.show_shadow_map_debug)
-                    .show(&ctx, |ui| {
-                        //TODO: Build a UI for this
-                        ui.add(egui::Label::new("test"));
-                    });
-            }
-
-            if debug_ui_state.show_asset_list {
-                egui::Window::new("Asset List")
-                    .open(&mut debug_ui_state.show_asset_list)
-                    .show(&ctx, |ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            let loader = asset_resource.loader();
-                            let mut asset_info = loader
-                                .get_active_loads()
-                                .into_iter()
-                                .map(|item| loader.get_load_info(item))
-                                .collect::<Vec<_>>();
-                            asset_info.sort_by(|x, y| {
-                                x.as_ref()
-                                    .map(|x| &x.path)
-                                    .cmp(&y.as_ref().map(|y| &y.path))
-                            });
-                            for info in asset_info {
-                                if let Some(info) = info {
-                                    let id = info.asset_id;
-                                    ui.label(format!(
-                                        "{}:{} .. {}",
-                                        info.file_name.unwrap_or_else(|| "???".to_string()),
-                                        info.asset_name.unwrap_or_else(|| format!("{}", id)),
-                                        info.refs
-                                    ));
-                                } else {
-                                    ui.label("NO INFO");
-                                }
-                            }
-                        });
-                    });
-            }
-
-            #[cfg(feature = "profile-with-puffin")]
-            if debug_ui_state.show_profiler {
-                profiling::scope!("puffin profiler");
-                puffin_egui::profiler_window(&ctx);
+                pipeline_render_options.taa_options = render_options.taa_options.clone();
             }
 
             let mut render_config_resource =
@@ -621,28 +334,6 @@ impl DemoApp {
             render_config_resource
                 .visibility_config
                 .enable_visibility_update = render_options.enable_visibility_update;
-        }
-
-        {
-            let render_options = self.resources.get::<RenderOptions>().unwrap();
-
-            let mut basic_pipeline_render_options =
-                self.resources.get_mut::<PipelineRenderOptions>().unwrap();
-            basic_pipeline_render_options.enable_msaa = render_options.enable_msaa;
-            basic_pipeline_render_options.enable_hdr = render_options.enable_hdr;
-            basic_pipeline_render_options.enable_bloom = render_options.enable_bloom;
-            basic_pipeline_render_options.enable_textures = render_options.enable_textures;
-            basic_pipeline_render_options.show_surfaces = render_options.show_surfaces;
-            basic_pipeline_render_options.show_wireframes = render_options.show_wireframes;
-            basic_pipeline_render_options.show_debug3d = render_options.show_debug3d;
-            basic_pipeline_render_options.show_text = render_options.show_text;
-            basic_pipeline_render_options.show_skybox = render_options.show_skybox;
-            basic_pipeline_render_options.show_feature_toggles =
-                render_options.show_feature_toggles;
-            basic_pipeline_render_options.blur_pass_count = render_options.blur_pass_count;
-            basic_pipeline_render_options.tonemapper_type = render_options.tonemapper_type;
-            basic_pipeline_render_options.enable_visibility_update =
-                render_options.enable_visibility_update;
 
             let mut mesh_render_options = self.resources.get_mut::<MeshRenderOptions>().unwrap();
             mesh_render_options.show_surfaces = render_options.show_surfaces;
@@ -650,6 +341,7 @@ impl DemoApp {
             mesh_render_options.enable_lighting = render_options.enable_lighting;
             #[cfg(not(feature = "basic-pipeline"))]
             {
+                mesh_render_options.ndf_filter_amount = render_options.ndf_filter_amount;
                 mesh_render_options.use_clustered_lighting = render_options.use_clustered_lighting;
             }
         }
@@ -696,7 +388,7 @@ impl DemoApp {
                 };
             }
 
-            add_to_extract_resources!(VisibilityRegion);
+            add_to_extract_resources!(VisibilityResource);
             add_to_extract_resources!(RafxSwapchainHelper);
             add_to_extract_resources!(ViewportsResource);
             add_to_extract_resources!(AssetManager);
@@ -774,7 +466,7 @@ impl DemoApp {
         world: &mut World,
         resources: &Resources,
         event: &winit::event::Event<()>,
-        window: &winit::window::Window,
+        _window: &winit::window::Window,
     ) -> bool {
         use winit::event::*;
 
@@ -835,11 +527,11 @@ impl DemoApp {
                         was_handled = true;
                     }
 
-                    if *virtual_keycode == VirtualKeyCode::G {
-                        window
-                            .set_cursor_grab(true)
-                            .expect("Failed to grab mouse cursor");
-                    }
+                    //if *virtual_keycode == VirtualKeyCode::G {
+                    //    window
+                    //        .set_cursor_grab(true)
+                    //        .expect("Failed to grab mouse cursor");
+                    //}
 
                     if *virtual_keycode == VirtualKeyCode::M {
                         let metrics = resources.get::<AssetManager>().unwrap().metrics();

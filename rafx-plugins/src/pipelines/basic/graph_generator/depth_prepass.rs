@@ -1,4 +1,4 @@
-use super::RenderGraphContext;
+use super::BasicPipelineContext;
 use crate::phases::DepthPrepassRenderPhase;
 use rafx::api::RafxDepthStencilClearValue;
 use rafx::graph::*;
@@ -10,7 +10,7 @@ pub(super) struct DepthPrepass {
     pub(super) depth: RenderGraphImageUsageId,
 }
 
-pub(super) fn depth_prepass(context: &mut RenderGraphContext) -> Option<DepthPrepass> {
+pub(super) fn depth_prepass(context: &mut BasicPipelineContext) -> Option<DepthPrepass> {
     if !context
         .main_view
         .phase_is_relevant::<DepthPrepassRenderPhase>()

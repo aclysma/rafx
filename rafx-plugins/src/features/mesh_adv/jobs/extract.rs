@@ -4,7 +4,7 @@ use super::*;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
-use legion::{Entity, EntityStore, IntoQuery, Read, World};
+use legion::{Entity, IntoQuery, Read, World};
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_map::ReadBorrow;
 use rafx::base::resource_ref_map::ResourceRefBorrow;
@@ -86,14 +86,15 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshAdvExtractJob<'extract> {
             .asset_manager
             .committed_asset(&render_object_static_data.mesh);
 
+        let visibility_info = context.visibility_object_info();
+        let transform = visibility_info.transform();
+        let previous_transform = visibility_info.previous_frame_transform();
+
         context.set_render_object_instance_data(mesh_asset.and_then(|mesh_asset| {
-            let entry = self.world.entry_ref(context.object_id().into()).unwrap();
-            let transform_component = entry.get_component::<TransformComponent>().unwrap();
             Some(MeshAdvRenderObjectInstanceData {
                 mesh_asset: mesh_asset.clone(),
-                translation: transform_component.translation,
-                rotation: transform_component.rotation,
-                scale: transform_component.scale,
+                transform,
+                previous_transform,
             })
         }));
     }
@@ -145,9 +146,11 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshAdvExtractJob<'extract> {
 
         if let Some(mesh_render_options) = &self.mesh_render_options {
             per_view.ambient_light = mesh_render_options.ambient_light;
+            per_view.ndf_filter_amount = mesh_render_options.ndf_filter_amount;
             per_view.use_clustered_lighting = mesh_render_options.use_clustered_lighting;
         } else {
             per_view.ambient_light = glam::Vec3::ZERO;
+            per_view.ndf_filter_amount = 1.0;
             per_view.use_clustered_lighting = true;
         }
 
