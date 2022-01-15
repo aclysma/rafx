@@ -159,22 +159,22 @@ pub struct RenderGraphRenderPass {
 }
 
 #[derive(Debug)]
-pub struct RenderGraphComputePass {
+pub struct RenderGraphCallbackPass {
     pub(super) node: RenderGraphNodeId,
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
 }
 
 #[derive(Debug)]
 pub enum RenderGraphPass {
-    Renderpass(RenderGraphRenderPass),
-    Compute(RenderGraphComputePass),
+    Render(RenderGraphRenderPass),
+    Callback(RenderGraphCallbackPass),
 }
 
 impl RenderGraphPass {
     pub fn node(&self) -> RenderGraphNodeId {
         match self {
-            RenderGraphPass::Renderpass(renderpass) => renderpass.node_id,
-            RenderGraphPass::Compute(compute_pass) => compute_pass.node,
+            RenderGraphPass::Render(renderpass) => renderpass.node_id,
+            RenderGraphPass::Callback(compute_pass) => compute_pass.node,
         }
     }
 
@@ -183,8 +183,8 @@ impl RenderGraphPass {
         barrier: PrepassBarrier,
     ) {
         match self {
-            RenderGraphPass::Renderpass(renderpass) => renderpass.pre_pass_barrier = Some(barrier),
-            RenderGraphPass::Compute(compute_pass) => {
+            RenderGraphPass::Render(renderpass) => renderpass.pre_pass_barrier = Some(barrier),
+            RenderGraphPass::Callback(compute_pass) => {
                 compute_pass.pre_pass_barrier = Some(barrier);
             }
         }
@@ -224,9 +224,6 @@ pub struct RenderGraphOutputRenderPass {
     pub(super) color_render_targets: Vec<RenderGraphColorRenderTarget>,
     pub(super) depth_stencil_render_target: Option<RenderGraphDepthStencilRenderTarget>,
     pub(super) render_target_meta: GraphicsPipelineRenderTargetMeta,
-
-    pub(super) image_clears: Vec<PhysicalImageId>,
-    pub(super) buffer_clears: Vec<PhysicalBufferId>,
 }
 
 impl std::fmt::Debug for RenderGraphOutputRenderPass {
@@ -243,63 +240,45 @@ impl std::fmt::Debug for RenderGraphOutputRenderPass {
 }
 
 #[derive(Debug)]
-pub struct RenderGraphOutputComputePass {
+pub struct RenderGraphOutputCallbackPass {
     pub(super) node: RenderGraphNodeId,
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
     pub(super) post_pass_barrier: Option<PostpassBarrier>,
     pub(super) debug_name: Option<RenderGraphNodeName>,
-
-    pub(super) image_clears: Vec<PhysicalImageId>,
-    pub(super) buffer_clears: Vec<PhysicalBufferId>,
 }
 
 #[derive(Debug)]
 pub enum RenderGraphOutputPass {
-    Renderpass(RenderGraphOutputRenderPass),
-    Compute(RenderGraphOutputComputePass),
+    Render(RenderGraphOutputRenderPass),
+    Callback(RenderGraphOutputCallbackPass),
 }
 
 impl RenderGraphOutputPass {
     pub fn node(&self) -> RenderGraphNodeId {
         match self {
-            RenderGraphOutputPass::Renderpass(pass) => pass.node_id,
-            RenderGraphOutputPass::Compute(pass) => pass.node,
+            RenderGraphOutputPass::Render(pass) => pass.node_id,
+            RenderGraphOutputPass::Callback(pass) => pass.node,
         }
     }
 
     pub fn pre_pass_barrier(&self) -> Option<&PrepassBarrier> {
         match self {
-            RenderGraphOutputPass::Renderpass(pass) => pass.pre_pass_barrier.as_ref(),
-            RenderGraphOutputPass::Compute(pass) => pass.pre_pass_barrier.as_ref(),
+            RenderGraphOutputPass::Render(pass) => pass.pre_pass_barrier.as_ref(),
+            RenderGraphOutputPass::Callback(pass) => pass.pre_pass_barrier.as_ref(),
         }
     }
 
     pub fn post_pass_barrier(&self) -> Option<&PostpassBarrier> {
         match self {
-            RenderGraphOutputPass::Renderpass(pass) => pass.post_pass_barrier.as_ref(),
-            RenderGraphOutputPass::Compute(pass) => pass.post_pass_barrier.as_ref(),
+            RenderGraphOutputPass::Render(pass) => pass.post_pass_barrier.as_ref(),
+            RenderGraphOutputPass::Callback(pass) => pass.post_pass_barrier.as_ref(),
         }
     }
 
     pub fn debug_name(&self) -> Option<RenderGraphNodeName> {
         match self {
-            RenderGraphOutputPass::Renderpass(pass) => pass.debug_name,
-            RenderGraphOutputPass::Compute(pass) => pass.debug_name,
-        }
-    }
-
-    // TODO: Maybe this needs to return PhysicalImageViewIds?
-    pub fn image_clears(&self) -> &[PhysicalImageId] {
-        match self {
-            RenderGraphOutputPass::Renderpass(pass) => &pass.image_clears,
-            RenderGraphOutputPass::Compute(pass) => &pass.image_clears,
-        }
-    }
-
-    pub fn buffer_clears(&self) -> &[PhysicalBufferId] {
-        match self {
-            RenderGraphOutputPass::Renderpass(pass) => &pass.buffer_clears,
-            RenderGraphOutputPass::Compute(pass) => &pass.buffer_clears,
+            RenderGraphOutputPass::Render(pass) => pass.debug_name,
+            RenderGraphOutputPass::Callback(pass) => pass.debug_name,
         }
     }
 }

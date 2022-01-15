@@ -67,7 +67,7 @@ pub enum RenderGraphImageUser {
 pub enum RenderGraphImageExtents {
     MatchSurface,
     // (width, height, depth)
-    Custom(u32, u32, u32),
+    Custom(RafxExtents3D),
 }
 
 impl RenderGraphImageExtents {
@@ -81,11 +81,7 @@ impl RenderGraphImageExtents {
                 height: swapchain_surface_info.extents.height,
                 depth: 1,
             },
-            RenderGraphImageExtents::Custom(width, height, depth) => RafxExtents3D {
-                width,
-                height,
-                depth,
-            },
+            RenderGraphImageExtents::Custom(extents) => extents,
         }
     }
 }
@@ -139,7 +135,7 @@ pub struct RenderGraphImageSpecification {
     pub samples: RafxSampleCount,
     pub format: RafxFormat,
     pub resource_type: RafxResourceType,
-    pub extents: RenderGraphImageExtents,
+    pub extents: RafxExtents3D,
     pub layer_count: u32,
     pub mip_count: u32,
     // image type - always 2D
@@ -207,13 +203,16 @@ impl From<RenderGraphImageSpecification> for RenderGraphImageConstraint {
             resource_type: specification.resource_type,
             layer_count: Some(specification.layer_count),
             mip_count: Some(specification.mip_count),
-            extents: Some(specification.extents),
+            extents: Some(RenderGraphImageExtents::Custom(specification.extents)),
         }
     }
 }
 
 impl RenderGraphImageConstraint {
-    pub fn try_convert_to_specification(self) -> Option<RenderGraphImageSpecification> {
+    pub fn try_convert_to_specification(
+        self,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> Option<RenderGraphImageSpecification> {
         // Format is the only thing we can't default sensibly
         if self.format.is_none() {
             None
@@ -225,7 +224,8 @@ impl RenderGraphImageConstraint {
                 mip_count: self.mip_count.unwrap_or(1),
                 extents: self
                     .extents
-                    .unwrap_or(RenderGraphImageExtents::MatchSurface),
+                    .unwrap_or(RenderGraphImageExtents::MatchSurface)
+                    .into_rafx_extents(swapchain_surface_info),
                 resource_type: self.resource_type,
             })
         }

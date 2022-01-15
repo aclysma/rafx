@@ -210,10 +210,7 @@ impl RenderGraphCacheInner {
                 image_resources.insert(id, cached_image.image.clone());
             } else {
                 // No unused image available, create one
-                let extents = key
-                    .specification
-                    .extents
-                    .into_rafx_extents(&key.swapchain_surface_info);
+                let extents = key.specification.extents;
 
                 let image = device_context.create_texture(&RafxTextureDef {
                     extents,

@@ -44,12 +44,12 @@ use rafx_api::RafxResult;
 pub type RenderGraphResourceName = &'static str;
 
 enum RenderGraphNodeVisitNodeCallback {
-    Renderpass(Box<RenderGraphNodeVisitRenderpassNodeCallback>),
-    Compute(Box<RenderGraphNodeVisitComputeNodeCallback>),
+    Render(Box<RenderGraphNodeVisitRenderNodeCallback>),
+    Callback(Box<RenderGraphNodeVisitCallbackNodeCallback>),
 }
 
-type RenderGraphNodeVisitRenderpassNodeCallback =
+type RenderGraphNodeVisitRenderNodeCallback =
     dyn Fn(VisitRenderpassNodeArgs) -> RafxResult<()> + Send;
 
-type RenderGraphNodeVisitComputeNodeCallback =
+type RenderGraphNodeVisitCallbackNodeCallback =
     dyn Fn(VisitComputeNodeArgs) -> RafxResult<()> + Send;

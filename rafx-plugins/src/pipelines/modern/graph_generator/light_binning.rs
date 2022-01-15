@@ -90,7 +90,7 @@ pub(super) fn lights_bin_pass(context: &mut RenderGraphContext) -> LightBinPass 
         RafxLoadOp::Clear,
     );
 
-    context.graph.set_compute_callback(node, move |args| {
+    context.graph.set_callback(node, move |args| {
         let clusters_buffer = args.graph_context.buffer(clusters_buffer).unwrap();
         let lights_buffer = args.graph_context.buffer(lights_buffer).unwrap();
         let bitfield_buffer = args
@@ -188,7 +188,7 @@ pub(super) fn lights_build_lists_pass(
         RafxLoadOp::Clear,
     );
 
-    context.graph.set_compute_callback(node, move |args| {
+    context.graph.set_callback(node, move |args| {
         let input_buffer = args.graph_context.buffer(input_buffer).unwrap();
         let output_buffer = args.graph_context.buffer(output_buffer).unwrap();
 

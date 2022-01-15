@@ -2,7 +2,7 @@ use super::RenderGraphContext;
 use crate::features::mesh_basic::MeshBasicShadowMapRenderView;
 use crate::features::mesh_basic::MeshBasicShadowMapResource;
 use crate::phases::ShadowMapRenderPhase;
-use rafx::api::{RafxDepthStencilClearValue, RafxResourceType};
+use rafx::api::{RafxDepthStencilClearValue, RafxExtents3D, RafxResourceType};
 use rafx::graph::*;
 use rafx::render_features::{RenderJobCommandBufferContext, RenderView};
 
@@ -34,11 +34,11 @@ pub(super) fn shadow_map_passes(context: &mut RenderGraphContext) -> Vec<ShadowM
                     shadow_map_node,
                     RenderGraphImageConstraint {
                         format: Some(context.graph_config.depth_format),
-                        extents: Some(RenderGraphImageExtents::Custom(
-                            render_view.extents_width(),
-                            render_view.extents_height(),
-                            1,
-                        )),
+                        extents: Some(RenderGraphImageExtents::Custom(RafxExtents3D {
+                            width: render_view.extents_width(),
+                            height: render_view.extents_height(),
+                            depth: 1,
+                        })),
                         ..Default::default()
                     },
                     Default::default(),
@@ -59,11 +59,11 @@ pub(super) fn shadow_map_passes(context: &mut RenderGraphContext) -> Vec<ShadowM
                     RenderGraphImageConstraint {
                         format: Some(context.graph_config.depth_format),
                         layer_count: Some(6),
-                        extents: Some(RenderGraphImageExtents::Custom(
-                            cube_map_xy_size,
-                            cube_map_xy_size,
-                            1,
-                        )),
+                        extents: Some(RenderGraphImageExtents::Custom(RafxExtents3D {
+                            width: cube_map_xy_size,
+                            height: cube_map_xy_size,
+                            depth: 1,
+                        })),
                         resource_type: RafxResourceType::TEXTURE_CUBE
                             | RafxResourceType::RENDER_TARGET_ARRAY_SLICES,
                         ..Default::default()

@@ -19,8 +19,8 @@ use fnv::FnvHashMap;
 use rafx_api::{
     RafxBarrierQueueTransition, RafxBufferBarrier, RafxColorRenderTargetBinding, RafxCommandBuffer,
     RafxCommandBufferDef, RafxCommandPoolDef, RafxDepthStencilRenderTargetBinding,
-    RafxDeviceContext, RafxExtents2D, RafxFormat, RafxQueue, RafxResourceState, RafxResult,
-    RafxSwapchainColorSpace, RafxTextureBarrier,
+    RafxDeviceContext, RafxExtents2D, RafxFormat, RafxQueue, RafxResult, RafxSwapchainColorSpace,
+    RafxTextureBarrier,
 };
 use std::hash::Hash;
 
@@ -127,7 +127,7 @@ impl PreparedRenderGraph {
         graph: RenderGraphBuilder,
         swapchain_surface_info: &SwapchainSurfaceInfo,
     ) -> RafxResult<Self> {
-        let graph_plan = graph.build_plan();
+        let graph_plan = graph.build_plan(swapchain_surface_info);
         let mut cache_guard = resource_context.render_graph_cache().inner.lock().unwrap();
         let cache = &mut *cache_guard;
 
@@ -245,20 +245,20 @@ impl PreparedRenderGraph {
         command_buffer.cmd_resource_barrier(&buffer_barriers, &image_barriers)
     }
 
-    fn visit_renderpass_node(
+    fn visit_render_node(
         &self,
         node_id: RenderGraphNodeId,
         args: VisitRenderpassNodeArgs,
     ) -> RafxResult<()> {
         if let Some(callback) = self.graph_plan.visit_node_callbacks.get(&node_id) {
-            if let RenderGraphNodeVisitNodeCallback::Renderpass(render_callback) = callback {
+            if let RenderGraphNodeVisitNodeCallback::Render(render_callback) = callback {
                 (render_callback)(args)?
             } else {
                 let debug_name = args
                     .graph_context
                     .prepared_render_graph
                     .node_debug_name(node_id);
-                log::error!("Tried to call a render node callback but a compute callback was registered for node {:?} ({:?})", node_id, debug_name);
+                log::error!("Tried to call a render node callback but a simple callback was registered for node {:?} ({:?})", node_id, debug_name);
             }
         } else {
             //let debug_name = args.graph_context.prepared_render_graph.node_debug_name(node_id);
@@ -268,20 +268,20 @@ impl PreparedRenderGraph {
         Ok(())
     }
 
-    fn visit_compute_node(
+    fn visit_callback_node(
         &self,
         node_id: RenderGraphNodeId,
         args: VisitComputeNodeArgs,
     ) -> RafxResult<()> {
         if let Some(callback) = self.graph_plan.visit_node_callbacks.get(&node_id) {
-            if let RenderGraphNodeVisitNodeCallback::Compute(compute_callback) = callback {
-                (compute_callback)(args)?
+            if let RenderGraphNodeVisitNodeCallback::Callback(callback) = callback {
+                (callback)(args)?
             } else {
                 let debug_name = args
                     .graph_context
                     .prepared_render_graph
                     .node_debug_name(node_id);
-                log::error!("Tried to call a compute node callback but a render node callback was registered for node {:?} ({:?})", node_id, debug_name);
+                log::error!("Tried to call a simple callback node callback but a render node callback was registered for node {:?} ({:?})", node_id, debug_name);
             }
         } else {
             //let debug_name = args.graph_context.prepared_render_graph.node_debug_name(node_id);
@@ -354,12 +354,8 @@ impl PreparedRenderGraph {
                 )?;
             }
 
-            //TODO: Do we really need barriers here? We only do prepass clears when creating/modifying
-            // storage buffers/storage images
-            self.handle_resource_clears(&command_buffer, render_graph_context, pass)?;
-
             match pass {
-                RenderGraphOutputPass::Renderpass(pass) => {
+                RenderGraphOutputPass::Render(pass) => {
                     let color_images: Vec<_> = pass
                         .color_render_targets
                         .iter()
@@ -424,17 +420,17 @@ impl PreparedRenderGraph {
                         command_buffer: command_buffer.clone(),
                     };
 
-                    self.visit_renderpass_node(node_id, args)?;
+                    self.visit_render_node(node_id, args)?;
 
                     command_buffer.cmd_end_render_pass()?;
                 }
-                RenderGraphOutputPass::Compute(_pass) => {
+                RenderGraphOutputPass::Callback(_pass) => {
                     let args = VisitComputeNodeArgs {
                         graph_context: render_graph_context,
                         command_buffer: command_buffer.clone(),
                     };
 
-                    self.visit_compute_node(node_id, args)?;
+                    self.visit_callback_node(node_id, args)?;
                 }
             }
 
@@ -455,66 +451,5 @@ impl PreparedRenderGraph {
         command_buffer.end()?;
 
         Ok(vec![command_buffer])
-    }
-
-    fn handle_resource_clears(
-        &self,
-        command_buffer: &DynCommandBuffer,
-        render_graph_context: RenderGraphContext,
-        pass: &RenderGraphOutputPass,
-    ) -> RafxResult<()> {
-        if !pass.image_clears().is_empty() {
-            unimplemented!("Image clears for storage buffers not yet implemented");
-        }
-
-        // Dispatch compute shader to clear buffers as needed
-        if !pass.buffer_clears().is_empty() {
-            let mut descriptor_set_allocator = render_graph_context
-                .resource_context()
-                .create_descriptor_set_allocator();
-
-            let util_fill_buffer_pipeline = &self
-                .resource_context
-                .builtin_pipelines()
-                .util_fill_buffer_pipeline;
-
-            command_buffer.cmd_bind_pipeline(&*util_fill_buffer_pipeline.get_raw().pipeline)?;
-
-            // Do the clear, there should be a barrier included in the pre_pass barrier to avoid
-            // write after read hazards and other similar hazards
-            for buffer_clear in pass.buffer_clears() {
-                let buffer = &self.buffer_resources[buffer_clear];
-                self.resource_context
-                    .builtin_pipelines()
-                    .do_fill_buffer_compute_pass(
-                        &command_buffer,
-                        &mut descriptor_set_allocator,
-                        buffer,
-                        0,
-                    )?;
-            }
-
-            // We need a local list of buffers so we can make a list of barriers that reference them
-            let buffers_to_clear: Vec<_> = pass
-                .buffer_clears()
-                .iter()
-                .map(|buffer_id| self.buffer_resources[buffer_id].get_raw().buffer.clone())
-                .collect();
-
-            // Create the list of barriers
-            let clear_barriers: Vec<_> = buffers_to_clear
-                .iter()
-                .map(|buffer| RafxBufferBarrier {
-                    buffer,
-                    src_state: RafxResourceState::UNORDERED_ACCESS,
-                    dst_state: RafxResourceState::UNORDERED_ACCESS,
-                    queue_transition: RafxBarrierQueueTransition::None,
-                })
-                .collect();
-
-            command_buffer.cmd_resource_barrier(&clear_barriers, &[])?;
-        }
-
-        Ok(())
     }
 }

@@ -2,5 +2,5 @@
 
 #![allow(dead_code)]
 
-pub mod util_blit_image;
-pub mod util_fill_buffer_comp;
+pub mod util_blit_image_frag;
+pub mod util_blit_image_vert;

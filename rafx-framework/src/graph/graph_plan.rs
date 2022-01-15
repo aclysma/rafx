@@ -74,18 +74,6 @@ fn visit_node(
         );
     }
 
-    for sampled_image in &node.sampled_images {
-        let upstream_node = graph.image_version_info(*sampled_image).creator_node;
-        visit_node(
-            graph,
-            upstream_node,
-            visited,
-            visiting,
-            visiting_stack,
-            ordered_list,
-        );
-    }
-
     for read in &node.buffer_reads {
         let upstream_node = graph.buffer_version_info(read.buffer).creator_node;
         visit_node(
@@ -183,6 +171,19 @@ fn determine_node_order(graph: &RenderGraphBuilder) -> Vec<RenderGraphNodeId> {
         }
     }
 
+    for node in &graph.nodes {
+        if !node.can_be_culled {
+            visit_node(
+                graph,
+                node.id(),
+                &mut visited,
+                &mut visiting,
+                &mut visiting_stack,
+                &mut ordered_list,
+            );
+        }
+    }
+
     ordered_list
 }
 
@@ -221,6 +222,7 @@ impl DetermineConstraintsResult {
 fn determine_constraints(
     graph: &RenderGraphBuilder,
     node_execution_order: &[RenderGraphNodeId],
+    swapchain_surface_info: &SwapchainSurfaceInfo,
 ) -> DetermineConstraintsResult {
     let mut image_version_states: FnvHashMap<RenderGraphImageUsageId, RenderGraphImageConstraint> =
         Default::default();
@@ -364,30 +366,38 @@ fn determine_constraints(
 
         // We don't need to propagate anything forward on reads
 
-        //
-        // Propagate constraints forward for images being modified.
-        //
-        for image_modify in &node.image_modifies {
+        fn propagate_image_constraints_forward(
+            graph: &RenderGraphBuilder,
+            image_version_states: &mut FnvHashMap<
+                RenderGraphImageUsageId,
+                RenderGraphImageConstraint,
+            >,
+            input: RenderGraphImageUsageId,
+            output: RenderGraphImageUsageId,
+            constraint: &RenderGraphImageConstraint,
+            operation_name: &str,
+        ) {
             log::trace!(
-                "      Modify image {:?} {:?} -> {:?} {:?}",
-                image_modify.input,
-                graph.image_resource(image_modify.input).name,
-                image_modify.output,
-                graph.image_resource(image_modify.output).name
+                "      {} image {:?} {:?} -> {:?} {:?}",
+                operation_name,
+                input,
+                graph.image_resource(input).name,
+                output,
+                graph.image_resource(output).name
             );
 
-            //let image = graph.image_version_info(image_modify.input);
-            //log::trace!("  Modify image {:?} {:?}", image_modify.input, graph.image_resource(image_modify.input).name);
+            //let image = graph.image_version_info(input);
+            //log::trace!("  Modify image {:?} {:?}", input, graph.image_resource(input).name);
             let input_state = image_version_states
-                .entry(graph.image_version_create_usage(image_modify.input))
+                .entry(graph.image_version_create_usage(input))
                 .or_default();
-            let mut image_modify_constraint = image_modify.constraint.clone();
+            let mut image_modify_constraint = constraint.clone();
 
             // Merge the input image constraints with this node's constraints
             image_modify_constraint.partial_merge(&input_state);
 
             let output_state = image_version_states
-                .entry(graph.image_version_create_usage(image_modify.output))
+                .entry(graph.image_version_create_usage(output))
                 .or_default();
 
             // Now propagate forward to the image version we write
@@ -396,36 +406,94 @@ fn determine_constraints(
             log::trace!("        Forward propagate constraints {:?}", output_state);
         }
 
-        //
-        // Propagate constraints forward for buffers being modified.
-        //
-        for buffer_modify in &node.buffer_modifies {
+        fn propagate_buffer_constraints_forward(
+            graph: &RenderGraphBuilder,
+            buffer_version_states: &mut FnvHashMap<
+                RenderGraphBufferUsageId,
+                RenderGraphBufferConstraint,
+            >,
+            input: RenderGraphBufferUsageId,
+            output: RenderGraphBufferUsageId,
+            constraint: &RenderGraphBufferConstraint,
+            operation_name: &str,
+        ) {
             log::trace!(
-                "      Modify buffer {:?} {:?} -> {:?} {:?}",
-                buffer_modify.input,
-                graph.buffer_resource(buffer_modify.input).name,
-                buffer_modify.output,
-                graph.buffer_resource(buffer_modify.output).name
+                "      {} buffer {:?} {:?} -> {:?} {:?}",
+                operation_name,
+                input,
+                graph.buffer_resource(input).name,
+                output,
+                graph.buffer_resource(output).name
             );
 
-            //let buffer = graph.buffer_version_info(buffer_modify.input);
-            //log::trace!("  Modify buffer {:?} {:?}", buffer_modify.input, graph.buffer_resource(buffer_modify.input).name);
+            //let buffer = graph.buffer_version_info(input);
+            //log::trace!("  Modify buffer {:?} {:?}", input, graph.buffer_resource(input).name);
             let input_state = buffer_version_states
-                .entry(graph.buffer_version_create_usage(buffer_modify.input))
+                .entry(graph.buffer_version_create_usage(input))
                 .or_default();
-            let mut buffer_modify_constraint = buffer_modify.constraint.clone();
+            let mut buffer_modify_constraint = constraint.clone();
 
             // Merge the input buffer constraints with this node's constraints
             buffer_modify_constraint.partial_merge(&input_state);
 
             let output_state = buffer_version_states
-                .entry(graph.buffer_version_create_usage(buffer_modify.output))
+                .entry(graph.buffer_version_create_usage(output))
                 .or_default();
 
             // Now propagate forward to the buffer version we write
             output_state.partial_merge(&buffer_modify_constraint);
 
             log::trace!("        Forward propagate constraints {:?}", output_state);
+        }
+
+        //
+        // Propagate constraints forward for images being modified.
+        //
+        for image_modify in &node.image_modifies {
+            propagate_image_constraints_forward(
+                graph,
+                &mut image_version_states,
+                image_modify.input,
+                image_modify.output,
+                &image_modify.constraint,
+                "Modify",
+            );
+        }
+
+        for image_modify in &node.image_copies {
+            propagate_image_constraints_forward(
+                graph,
+                &mut image_version_states,
+                image_modify.input,
+                image_modify.output,
+                &image_modify.constraint,
+                "Modify",
+            );
+        }
+
+        //
+        // Propagate constraints forward for buffers being modified.
+        //
+        for buffer_modify in &node.buffer_modifies {
+            propagate_buffer_constraints_forward(
+                graph,
+                &mut buffer_version_states,
+                buffer_modify.input,
+                buffer_modify.output,
+                &buffer_modify.constraint,
+                "Modify",
+            );
+        }
+
+        for buffer_modify in &node.buffer_copies {
+            propagate_buffer_constraints_forward(
+                graph,
+                &mut buffer_version_states,
+                buffer_modify.input,
+                buffer_modify.output,
+                &buffer_modify.constraint,
+                "Modify",
+            );
         }
     }
 
@@ -510,7 +578,9 @@ fn determine_constraints(
                 "        Read constraints will be {:?}",
                 image_read_constraint
             );
-            if let Some(spec) = image_read_constraint.try_convert_to_specification() {
+            if let Some(spec) =
+                image_read_constraint.try_convert_to_specification(swapchain_surface_info)
+            {
                 image_version_states.insert(image_read.image, spec.into());
             } else {
                 panic!(
@@ -564,60 +634,121 @@ fn determine_constraints(
             }
         }
 
-        //
-        // Propagate backwards from modifies
-        //
-        for image_modify in &node.image_modifies {
+        fn propagate_image_constraints_backward(
+            graph: &RenderGraphBuilder,
+            image_version_states: &mut FnvHashMap<
+                RenderGraphImageUsageId,
+                RenderGraphImageConstraint,
+            >,
+            input: RenderGraphImageUsageId,
+            output: RenderGraphImageUsageId,
+            operation_name: &str,
+        ) {
             log::trace!(
-                "      Modify image {:?} {:?} <- {:?} {:?}",
-                image_modify.input,
-                graph.image_resource(image_modify.input).name,
-                image_modify.output,
-                graph.image_resource(image_modify.output).name
+                "      {} image {:?} {:?} <- {:?} {:?}",
+                operation_name,
+                input,
+                graph.image_resource(input).name,
+                output,
+                graph.image_resource(output).name
             );
-            // The output image constraint already takes image_modify.constraint into account from
+            // The output image constraint already takes constraint into account from
             // when we propagated image constraints forward
             let output_image_constraint = image_version_states
-                .entry(graph.image_version_create_usage(image_modify.output))
+                .entry(graph.image_version_create_usage(output))
                 .or_default()
                 .clone();
             let input_state = image_version_states
-                .entry(graph.image_version_create_usage(image_modify.input))
+                .entry(graph.image_version_create_usage(input))
                 .or_default();
             input_state.partial_merge(&output_image_constraint);
 
-            image_version_states.insert(image_modify.input, output_image_constraint.clone());
+            image_version_states.insert(input, output_image_constraint.clone());
+        }
+
+        fn propagate_buffer_constraints_backward(
+            graph: &RenderGraphBuilder,
+            buffer_version_states: &mut FnvHashMap<
+                RenderGraphBufferUsageId,
+                RenderGraphBufferConstraint,
+            >,
+            input: RenderGraphBufferUsageId,
+            output: RenderGraphBufferUsageId,
+            operation_name: &str,
+        ) {
+            log::trace!(
+                "      {} buffer {:?} {:?} <- {:?} {:?}",
+                operation_name,
+                input,
+                graph.buffer_resource(input).name,
+                output,
+                graph.buffer_resource(output).name
+            );
+            // The output buffer constraint already takes constraint into account from
+            // when we propagated buffer constraints forward
+            let output_buffer_constraint = buffer_version_states
+                .entry(graph.buffer_version_create_usage(output))
+                .or_default()
+                .clone();
+            let input_state = buffer_version_states
+                .entry(graph.buffer_version_create_usage(input))
+                .or_default();
+            input_state.partial_merge(&output_buffer_constraint);
+
+            buffer_version_states.insert(input, output_buffer_constraint.clone());
         }
 
         //
         // Propagate backwards from modifies
         //
-        for buffer_modify in &node.buffer_modifies {
-            log::trace!(
-                "      Modify buffer {:?} {:?} <- {:?} {:?}",
-                buffer_modify.input,
-                graph.buffer_resource(buffer_modify.input).name,
-                buffer_modify.output,
-                graph.buffer_resource(buffer_modify.output).name
+        for image_modify in &node.image_modifies {
+            propagate_image_constraints_backward(
+                graph,
+                &mut image_version_states,
+                image_modify.input,
+                image_modify.output,
+                "Modify",
             );
-            // The output buffer constraint already takes buffer_modify.constraint into account from
-            // when we propagated buffer constraints forward
-            let output_buffer_constraint = buffer_version_states
-                .entry(graph.buffer_version_create_usage(buffer_modify.output))
-                .or_default()
-                .clone();
-            let input_state = buffer_version_states
-                .entry(graph.buffer_version_create_usage(buffer_modify.input))
-                .or_default();
-            input_state.partial_merge(&output_buffer_constraint);
+        }
 
-            buffer_version_states.insert(buffer_modify.input, output_buffer_constraint.clone());
+        for image_copy in &node.image_copies {
+            propagate_image_constraints_backward(
+                graph,
+                &mut image_version_states,
+                image_copy.input,
+                image_copy.output,
+                "Copy",
+            );
+        }
+
+        for buffer_modify in &node.buffer_modifies {
+            propagate_buffer_constraints_backward(
+                graph,
+                &mut buffer_version_states,
+                buffer_modify.input,
+                buffer_modify.output,
+                "Modify",
+            );
+        }
+
+        for buffer_copy in &node.buffer_copies {
+            propagate_buffer_constraints_backward(
+                graph,
+                &mut buffer_version_states,
+                buffer_copy.input,
+                buffer_copy.output,
+                "Copy",
+            );
         }
     }
 
     let mut image_specs = FnvHashMap::default();
     for (k, v) in image_version_states {
-        image_specs.insert(k, v.try_convert_to_specification().unwrap());
+        image_specs.insert(
+            k,
+            v.try_convert_to_specification(swapchain_surface_info)
+                .unwrap(),
+        );
     }
 
     let mut buffer_specs = FnvHashMap::default();
@@ -1063,21 +1194,35 @@ fn propagate_virtual_image_id(
 
             //TODO: One issue (aside from not doing any blits right now) is that images created in this way
             // aren't included in the assign_physical_images logic
-            if !specifications_match {
-                log::info!("      written: {:?}", written_spec);
-                log::info!("      usage  : {:?}", usage_spec);
-            }
+
             log::info!(
-                "      Creator: {}",
+                "      writer     : {}",
                 graph.debug_user_name_of_image_usage(written_image)
+            );
+            log::info!(
+                "      reader     : {}",
+                graph.debug_user_name_of_image_usage(*usage_resource_id)
+            );
+
+            if !specifications_match {
+                log::info!("      writer spec: {:?}", written_spec);
+                log::info!("      reader spec: {:?}", usage_spec);
+            }
+            log::info!("      --- All Usages ---");
+            log::info!(
+                "      Creator: {} spec: {:?}",
+                graph.debug_user_name_of_image_usage(written_image),
+                constraint_results.image_specification(written_image)
             );
             for &read_usage in &written_image_version_info.read_usages {
                 log::info!(
-                    "        Reader: {}",
-                    graph.debug_user_name_of_image_usage(read_usage)
+                    "        Reader: {} spec: {:?}",
+                    graph.debug_user_name_of_image_usage(read_usage),
+                    constraint_results.image_specification(read_usage)
                 );
             }
-            panic!("Render graph does not currently support blit from one image to another to fix image compatibility");
+
+            panic!("The render graph contains an image conflict that cannot be automatically resolved.");
         }
     }
 }
@@ -1169,22 +1314,35 @@ fn propagate_virtual_buffer_id(
 
             //TODO: One issue (aside from not doing any copies right now) is that buffers created in this way
             // aren't included in the assign_physical_buffers logic
-            if !specifications_match {
-                log::info!("      written: {:?}", written_spec);
-                log::info!("      usage  : {:?}", usage_spec);
-            }
+
             log::info!(
-                "      Creator: {}",
+                "      writer     : {}",
                 graph.debug_user_name_of_buffer_usage(written_buffer)
+            );
+            log::info!(
+                "      reader     : {}",
+                graph.debug_user_name_of_buffer_usage(*usage_resource_id)
+            );
+
+            if !specifications_match {
+                log::info!("      writer spec: {:?}", written_spec);
+                log::info!("      reader spec: {:?}", usage_spec);
+            }
+            log::info!("      --- All Usages ---");
+            log::info!(
+                "      Creator: {} spec {:?}",
+                graph.debug_user_name_of_buffer_usage(written_buffer),
+                constraint_results.buffer_specification(written_buffer)
             );
             for &read_usage in &written_buffer_version_info.read_usages {
                 log::info!(
-                    "        Reader: {}",
-                    graph.debug_user_name_of_buffer_usage(read_usage)
+                    "        Reader: {} spec {:?}",
+                    graph.debug_user_name_of_buffer_usage(read_usage),
+                    constraint_results.buffer_specification(read_usage)
                 );
             }
 
-            panic!("Render graph does not currently support blit from one buffer to another to fix buffer compatibility");
+            panic!("The render graph contains a buffer conflict that cannot be automatically resolved.");
         }
     }
 }
@@ -1204,25 +1362,19 @@ fn build_physical_passes(
     #[derive(Debug)]
     enum PassNode {
         RenderNode(RenderGraphNodeId),
-        ComputeNode(RenderGraphNodeId),
+        CallbackNode(RenderGraphNodeId),
     }
 
     // All passes
     let mut pass_nodes = Vec::default();
 
     for node_id in node_execution_order {
-        let node = graph.node(*node_id);
-
-        // If it has no attachments, it's a compute node
-        let is_compute = node.color_attachments.is_empty() && node.depth_attachment.is_none();
-        debug_assert_eq!(is_compute && !node.resolve_attachments.is_empty(), false);
-
-        // If this is a compute node, store it as a compute pass, otherwise buffer it for later
-        if is_compute {
-            pass_nodes.push(PassNode::ComputeNode(*node_id));
-        } else {
-            pass_nodes.push(PassNode::RenderNode(*node_id));
-        }
+        let pass_node = match graph.visit_node_callbacks.get(node_id) {
+            Some(RenderGraphNodeVisitNodeCallback::Render(_)) => PassNode::RenderNode(*node_id),
+            // If no callback is registered just take the callback path but don't do a callback
+            _ => PassNode::CallbackNode(*node_id),
+        };
+        pass_nodes.push(pass_node);
     }
 
     log::trace!("gather pass info");
@@ -1266,8 +1418,8 @@ fn build_physical_passes(
         }
 
         match pass_node {
-            PassNode::ComputeNode(compute_node) => {
-                passes.push(RenderGraphPass::Compute(RenderGraphComputePass {
+            PassNode::CallbackNode(compute_node) => {
+                passes.push(RenderGraphPass::Callback(RenderGraphCallbackPass {
                     node: compute_node,
                     pre_pass_barrier: Default::default(),
                 }));
@@ -1454,7 +1606,7 @@ fn build_physical_passes(
                     }
                 }
 
-                passes.push(RenderGraphPass::Renderpass(RenderGraphRenderPass {
+                passes.push(RenderGraphPass::Render(RenderGraphRenderPass {
                     node_id: renderpass_node,
                     attachments: renderpass_attachments,
                     color_attachments: pass_color_attachments,
@@ -2005,7 +2157,7 @@ fn assign_physical_resources(
     }
 
     for pass in passes {
-        if let RenderGraphPass::Renderpass(renderpass) = pass {
+        if let RenderGraphPass::Render(renderpass) = pass {
             for attachment in &mut renderpass.attachments {
                 let physical_image = image_virtual_to_physical[&attachment.virtual_image];
                 let image_view_id = image_usage_to_image_view[&attachment.usage];
@@ -2181,6 +2333,24 @@ fn build_node_barriers(
             );
         }
 
+        for &image in &node.copy_src_image_reads {
+            add_image_barrier_for_node(
+                physical_resources,
+                &mut image_node_barriers,
+                image,
+                RafxResourceState::COPY_SRC,
+            );
+        }
+
+        for &image in &node.copy_dst_image_writes {
+            add_image_barrier_for_node(
+                physical_resources,
+                &mut image_node_barriers,
+                image,
+                RafxResourceState::COPY_DST,
+            );
+        }
+
         //
         // Shader buffer resources
         //
@@ -2244,6 +2414,24 @@ fn build_node_barriers(
                 &mut buffer_node_barriers,
                 buffer,
                 RafxResourceState::UNORDERED_ACCESS,
+            );
+        }
+
+        for &buffer in &node.copy_src_buffer_reads {
+            add_buffer_barrier_for_node(
+                physical_resources,
+                &mut buffer_node_barriers,
+                buffer,
+                RafxResourceState::COPY_SRC,
+            );
+        }
+
+        for &buffer in &node.copy_dst_buffer_writes {
+            add_buffer_barrier_for_node(
+                physical_resources,
+                &mut buffer_node_barriers,
+                buffer,
+                RafxResourceState::COPY_DST,
             );
         }
 
@@ -2339,7 +2527,7 @@ fn build_pass_barriers(
 
         // Initial layout for all attachments at the start of the renderpass
         let mut attachment_initial_state: Vec<Option<RafxResourceState>> = Default::default();
-        if let RenderGraphPass::Renderpass(pass) = pass {
+        if let RenderGraphPass::Render(pass) = pass {
             attachment_initial_state.resize_with(pass.attachments.len(), || None);
         }
 
@@ -2388,7 +2576,7 @@ fn build_pass_barriers(
             // Set the initial layout for the attachment, but only if it's the first time we've seen it
             //TODO: This is bad and does not properly handle an image being used in multiple ways requiring
             // multiple layouts
-            if let RenderGraphPass::Renderpass(pass) = pass {
+            if let RenderGraphPass::Render(pass) = pass {
                 for (attachment_index, attachment) in &mut pass.attachments.iter_mut().enumerate() {
                     //log::trace!("      attachment {:?}", attachment.image);
                     if attachment.image.unwrap() == *physical_image_id {
@@ -2485,7 +2673,7 @@ fn build_pass_barriers(
                         output_physical_image
                     );
 
-                    if let RenderGraphPass::Renderpass(pass) = pass {
+                    if let RenderGraphPass::Render(pass) = pass {
                         let mut image_barriers = vec![];
 
                         for (attachment_index, attachment) in
@@ -2524,7 +2712,6 @@ fn build_pass_barriers(
 fn create_output_passes(
     graph: &RenderGraphBuilder,
     passes: Vec<RenderGraphPass>,
-    physical_resources: &AssignPhysicalResourcesResult,
 ) -> Vec<RenderGraphOutputPass> {
     let mut renderpasses = Vec::with_capacity(passes.len());
 
@@ -2532,33 +2719,8 @@ fn create_output_passes(
         let render_node = graph.node(pass.node());
         let debug_name = render_node.name;
 
-        //
-        // If we create an image/buffer for a compute shader, we may want to clear it ahead of time.
-        // Create a list of those images/buffers that need to be explicitly cleared here
-        //
-        let mut image_clears = Vec::with_capacity(render_node.image_prepass_clears.len());
-        for image_to_clear in &render_node.image_prepass_clears {
-            //TODO: Check if it's an attachment and will be LOAD_CLEAR?
-            let physical_image = *physical_resources
-                .image_usage_to_physical
-                .get(image_to_clear)
-                .unwrap();
-            image_clears.push(physical_image);
-        }
-
-        let mut buffer_clears = Vec::with_capacity(render_node.buffer_prepass_clears.len());
-        for buffer_to_clear in &render_node.buffer_prepass_clears {
-            let physical_buffer = *physical_resources
-                .buffer_usage_to_physical
-                .get(buffer_to_clear)
-                .unwrap();
-            buffer_clears.push(physical_buffer);
-        }
-
         match pass {
-            RenderGraphPass::Renderpass(pass) => {
-                // renderpass_desc.attachments.reserve(pass.subpasses.len());
-
+            RenderGraphPass::Render(pass) => {
                 let attachment_images = pass
                     .attachments
                     .iter()
@@ -2676,23 +2838,19 @@ fn create_output_passes(
                     color_render_targets,
                     depth_stencil_render_target,
                     render_target_meta,
-                    image_clears,
-                    buffer_clears,
                 };
 
-                renderpasses.push(RenderGraphOutputPass::Renderpass(output_pass));
+                renderpasses.push(RenderGraphOutputPass::Render(output_pass));
             }
-            RenderGraphPass::Compute(pass) => {
-                let output_pass = RenderGraphOutputComputePass {
+            RenderGraphPass::Callback(pass) => {
+                let output_pass = RenderGraphOutputCallbackPass {
                     node: pass.node,
                     pre_pass_barrier: pass.pre_pass_barrier,
                     post_pass_barrier: None,
                     debug_name,
-                    image_clears,
-                    buffer_clears,
                 };
 
-                renderpasses.push(RenderGraphOutputPass::Compute(output_pass));
+                renderpasses.push(RenderGraphOutputPass::Callback(output_pass));
             }
         }
     }
@@ -2840,6 +2998,7 @@ fn verify_unculled_image_usages_specifications_exist(
 
 #[allow(dead_code)]
 fn print_final_images(
+    assign_physical_resources_result: &AssignPhysicalResourcesResult,
     external_images: &FnvHashMap<PhysicalImageViewId, RenderGraphPlanExternalImage>,
     intermediate_images: &FnvHashMap<PhysicalImageId, RenderGraphImageSpecification>,
 ) {
@@ -2851,8 +3010,13 @@ fn print_final_images(
             intermediate_image_spec
         );
     }
+
     for (physical_id, external_image) in external_images {
-        log::trace!("External Image: {:?} {:?}", physical_id, external_image);
+        log::trace!(
+            "External Image: {:?} {:?}",
+            assign_physical_resources_result.image_views[physical_id.0].physical_image,
+            external_image
+        );
     }
 }
 
@@ -3009,6 +3173,26 @@ fn print_final_resource_usages(
             );
         }
 
+        for &image in &node.copy_src_image_reads {
+            print_image_resource_usage(
+                graph,
+                assign_physical_resources_result,
+                constraint_results,
+                image,
+                "Copy Src Image",
+            );
+        }
+
+        for &image in &node.copy_dst_image_writes {
+            print_image_resource_usage(
+                graph,
+                assign_physical_resources_result,
+                constraint_results,
+                image,
+                "Copy Dst Image",
+            );
+        }
+
         for &buffer in &node.vertex_buffer_reads {
             print_buffer_resource_usage(
                 graph,
@@ -3076,6 +3260,26 @@ fn print_final_resource_usages(
                 constraint_results,
                 buffer,
                 "Storage Buffer (Modify)",
+            );
+        }
+
+        for &buffer in &node.copy_src_buffer_reads {
+            print_buffer_resource_usage(
+                graph,
+                assign_physical_resources_result,
+                constraint_results,
+                buffer,
+                "Copy Src Buffer",
+            );
+        }
+
+        for &buffer in &node.copy_dst_buffer_writes {
+            print_buffer_resource_usage(
+                graph,
+                assign_physical_resources_result,
+                constraint_results,
+                buffer,
+                "Copy Dst Buffer",
             );
         }
     }
@@ -3162,7 +3366,10 @@ pub struct RenderGraphPlan {
 
 impl RenderGraphPlan {
     #[profiling::function]
-    pub(super) fn new(mut graph: RenderGraphBuilder) -> RenderGraphPlan {
+    pub(super) fn new(
+        mut graph: RenderGraphBuilder,
+        swapchain_surface_info: &SwapchainSurfaceInfo,
+    ) -> RenderGraphPlan {
         log::trace!("-- Create render graph plan --");
 
         //
@@ -3189,7 +3396,8 @@ impl RenderGraphPlan {
         // If there is not enough information to infer then the render graph cannot be used and
         // building it will panic.
         //
-        let mut constraint_results = determine_constraints(&graph, &node_execution_order);
+        let mut constraint_results =
+            determine_constraints(&graph, &node_execution_order, swapchain_surface_info);
 
         // Look at all image versions and ensure a constraint exists for usages where the node was
         // not culled
@@ -3281,7 +3489,7 @@ impl RenderGraphPlan {
         // passed into the resource system to create the renderpass but also includes other metadata
         // required to push them through the command queue
         //
-        let output_passes = create_output_passes(&graph, passes, &assign_physical_resources_result);
+        let output_passes = create_output_passes(&graph, passes);
 
         //
         // Separate the output images from the intermediate images (the rendergraph will be
@@ -3383,7 +3591,11 @@ impl RenderGraphPlan {
             intermediate_buffers.insert(physical_buffer, specification.clone());
         }
 
-        print_final_images(&external_images, &intermediate_images);
+        print_final_images(
+            &assign_physical_resources_result,
+            &external_images,
+            &intermediate_images,
+        );
         print_final_buffers(&external_buffers, &intermediate_buffers);
 
         print_final_resource_usages(

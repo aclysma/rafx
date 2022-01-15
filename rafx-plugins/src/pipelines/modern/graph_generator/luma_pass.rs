@@ -52,7 +52,7 @@ pub(super) fn luma_build_histogram_pass(
 
     let swapchain_extents = swapchain_surface_info.extents;
 
-    context.graph.set_compute_callback(node, move |args| {
+    context.graph.set_callback(node, move |args| {
         let mut descriptor_set_allocator = args
             .graph_context
             .resource_context()
@@ -152,7 +152,7 @@ pub(super) fn luma_average_histogram_pass(
 
     let swapchain_extents = swapchain_surface_info.extents;
 
-    context.graph.set_compute_callback(node, move |args| {
+    context.graph.set_callback(node, move |args| {
         let mut descriptor_set_allocator = args
             .graph_context
             .resource_context()
