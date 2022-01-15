@@ -67,7 +67,7 @@ pub struct RafxTextureVulkanInner {
     uav_views: Vec<vk::ImageView>,
 
     // RT
-    is_undefined_layout: AtomicBool,
+    is_in_initial_undefined_layout: AtomicBool,
     texture_id: u32,
     render_target_view: Option<vk::ImageView>,
     render_target_view_slices: Vec<vk::ImageView>,
@@ -213,10 +213,16 @@ impl RafxTextureVulkan {
         self.inner.texture_id
     }
 
-    // Command buffers check this to see if an image needs to be transitioned from UNDEFINED
-    pub(crate) fn take_is_undefined_layout(&self) -> bool {
+    pub fn is_in_initial_undefined_layout(&self) -> bool {
         self.inner
-            .is_undefined_layout
+            .is_in_initial_undefined_layout
+            .load(Ordering::Relaxed)
+    }
+
+    // Command buffers check this to see if an image needs to be transitioned from UNDEFINED
+    pub fn take_initial_undefined_layout(&self) -> bool {
+        self.inner
+            .is_in_initial_undefined_layout
             .swap(false, Ordering::Relaxed)
     }
 
@@ -466,7 +472,6 @@ impl RafxTextureVulkan {
             };
 
             //SRV
-            let aspect_mask = super::util::image_format_to_aspect_mask(texture_def.format);
             let format_vk = texture_def.format.into();
             let subresource_range = vk::ImageSubresourceRange::builder()
                 .aspect_mask(aspect_mask)
@@ -532,7 +537,7 @@ impl RafxTextureVulkan {
             texture_id,
             render_target_view,
             render_target_view_slices,
-            is_undefined_layout: AtomicBool::new(true),
+            is_in_initial_undefined_layout: AtomicBool::new(true),
         };
 
         Ok(RafxTextureVulkan {

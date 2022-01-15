@@ -1,4 +1,5 @@
 use crate::atomic_once_cell_array::AtomicOnceCellArray;
+use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// A fixed-size stack with `capacity` determined at run-time. The elements of the stack are uninitialized.
@@ -90,6 +91,28 @@ impl<T> AtomicOnceCellStack<T> {
     ) -> &T {
         // SAFETY: `data` will catch index out of bounds or attempts to read uninitialized memory.
         self.data.get(index)
+    }
+
+    pub unsafe fn get_range_unchecked(
+        &self,
+        range: Range<usize>,
+    ) -> &[T] {
+        let len = self.len();
+        if range.end > len {
+            panic!("end of range {} must be < len {}", range.end, len);
+        }
+
+        &self.data.get_all_unchecked()[range]
+    }
+
+    pub unsafe fn get_all_unchecked(&self) -> &[T] {
+        let len = self.len();
+        let capacity = self.capacity();
+        if len < capacity {
+            panic!("length {} must be == capacity {}", len, capacity);
+        }
+
+        self.data.get_all_unchecked()
     }
 
     pub fn capacity(&self) -> usize {

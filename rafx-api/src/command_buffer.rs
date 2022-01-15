@@ -17,10 +17,11 @@ use crate::metal::RafxCommandBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxCommandBufferVulkan;
 use crate::{
-    RafxBuffer, RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
-    RafxDepthStencilRenderTargetBinding, RafxDescriptorSetArray, RafxDescriptorSetHandle,
-    RafxIndexBufferBinding, RafxPipeline, RafxResult, RafxRootSignature, RafxTexture,
-    RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxBuffer, RafxBufferBarrier, RafxCmdCopyBufferToBufferParams,
+    RafxCmdCopyBufferToTextureParams, RafxCmdCopyTextureToTextureParams,
+    RafxColorRenderTargetBinding, RafxDepthStencilRenderTargetBinding, RafxDescriptorSetArray,
+    RafxDescriptorSetHandle, RafxIndexBufferBinding, RafxPipeline, RafxResult, RafxRootSignature,
+    RafxTexture, RafxTextureBarrier, RafxVertexBufferBinding,
 };
 
 /// A list of commands recorded by the CPU and submitted to the GPU.
@@ -780,42 +781,32 @@ impl RafxCommandBuffer {
         &self,
         src_buffer: &RafxBuffer,
         dst_buffer: &RafxBuffer,
-        src_offset: u64,
-        dst_offset: u64,
-        size: u64,
+        params: &RafxCmdCopyBufferToBufferParams,
     ) -> RafxResult<()> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_copy_buffer_to_buffer(
                 src_buffer.vk_buffer().unwrap(),
                 dst_buffer.vk_buffer().unwrap(),
-                src_offset,
-                dst_offset,
-                size,
+                params,
             ),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_copy_buffer_to_buffer(
                 src_buffer.metal_buffer().unwrap(),
                 dst_buffer.metal_buffer().unwrap(),
-                src_offset,
-                dst_offset,
-                size,
+                params,
             ),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => inner.cmd_copy_buffer_to_buffer(
                 src_buffer.gles2_buffer().unwrap(),
                 dst_buffer.gles2_buffer().unwrap(),
-                src_offset,
-                dst_offset,
-                size,
+                params,
             ),
             #[cfg(feature = "rafx-gles3")]
             RafxCommandBuffer::Gles3(inner) => inner.cmd_copy_buffer_to_buffer(
                 src_buffer.gles3_buffer().unwrap(),
                 dst_buffer.gles3_buffer().unwrap(),
-                src_offset,
-                dst_offset,
-                size,
+                params,
             ),
             #[cfg(any(
                 feature = "rafx-empty",
@@ -829,9 +820,7 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Empty(inner) => inner.cmd_copy_buffer_to_buffer(
                 src_buffer.empty_buffer().unwrap(),
                 dst_buffer.empty_buffer().unwrap(),
-                src_offset,
-                dst_offset,
-                size,
+                params,
             ),
         }
     }
@@ -880,6 +869,56 @@ impl RafxCommandBuffer {
             ))]
             RafxCommandBuffer::Empty(inner) => inner.cmd_copy_buffer_to_texture(
                 src_buffer.empty_buffer().unwrap(),
+                dst_texture.empty_texture().unwrap(),
+                params,
+            ),
+        }
+    }
+
+    /// Copy the contents of a buffer into a texture. This occurs on the GPU and allows modifying
+    /// resources that are not accessible to the CPU.
+    pub fn cmd_copy_texture_to_texture(
+        &self,
+        src_texture: &RafxTexture,
+        dst_texture: &RafxTexture,
+        params: &RafxCmdCopyTextureToTextureParams,
+    ) -> RafxResult<()> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_copy_texture_to_texture(
+                src_texture.vk_texture().unwrap(),
+                dst_texture.vk_texture().unwrap(),
+                params,
+            ),
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => inner.cmd_copy_texture_to_texture(
+                src_texture.metal_texture().unwrap(),
+                dst_texture.metal_texture().unwrap(),
+                params,
+            ),
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(inner) => inner.cmd_copy_texture_to_texture(
+                src_texture.gles2_texture().unwrap(),
+                dst_texture.gles2_texture().unwrap(),
+                params,
+            ),
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(inner) => inner.cmd_copy_texture_to_texture(
+                src_texture.gles3_texture().unwrap(),
+                dst_texture.gles3_texture().unwrap(),
+                params,
+            ),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(inner) => inner.cmd_copy_texture_to_texture(
+                src_texture.empty_texture().unwrap(),
                 dst_texture.empty_texture().unwrap(),
                 params,
             ),

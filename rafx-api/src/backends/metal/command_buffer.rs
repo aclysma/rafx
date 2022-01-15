@@ -4,10 +4,11 @@ use crate::metal::{
     RafxRootSignatureMetal, RafxTextureMetal,
 };
 use crate::{
-    RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorRenderTargetBinding,
-    RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D,
-    RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState,
-    RafxResult, RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxBufferBarrier, RafxCmdCopyBufferToBufferParams, RafxCmdCopyBufferToTextureParams,
+    RafxCmdCopyTextureToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef,
+    RafxDepthStencilRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType,
+    RafxLoadOp, RafxPipelineType, RafxResourceState, RafxResult, RafxTextureBarrier,
+    RafxVertexBufferBinding,
 };
 use fnv::FnvHashSet;
 use metal_rs::{
@@ -594,6 +595,8 @@ impl RafxCommandBufferMetal {
     ) -> RafxResult<()> {
         match root_signature.pipeline_type() {
             RafxPipelineType::Graphics => {
+                //NOTE: Another reason for hitting this might be doing something that flushes the
+                // render encoder (like binding a compute pipeline)
                 let render_encoder = inner
                     .render_encoder
                     .as_ref()
@@ -841,9 +844,7 @@ impl RafxCommandBufferMetal {
         &self,
         src_buffer: &RafxBufferMetal,
         dst_buffer: &RafxBufferMetal,
-        src_offset: u64,
-        dst_offset: u64,
-        size: u64,
+        params: &RafxCmdCopyBufferToBufferParams,
     ) -> RafxResult<()> {
         let mut inner = self.inner.borrow_mut();
         let blit_encoder = inner.blit_encoder.as_ref();
@@ -867,10 +868,10 @@ impl RafxCommandBufferMetal {
 
         blit_encoder.copy_from_buffer(
             src_buffer.metal_buffer(),
-            src_offset as _,
+            params.src_byte_offset as _,
             dst_buffer.metal_buffer(),
-            dst_offset as _,
-            size as _,
+            params.dst_byte_offset as _,
+            params.size as _,
         );
         Ok(())
     }
@@ -945,6 +946,85 @@ impl RafxCommandBufferMetal {
             MTLOrigin { x: 0, y: 0, z: 0 },
             MTLBlitOption::empty(),
         );
+        Ok(())
+    }
+
+    pub fn cmd_copy_texture_to_texture(
+        &self,
+        src_texture: &RafxTextureMetal,
+        dst_texture: &RafxTextureMetal,
+        params: &RafxCmdCopyTextureToTextureParams,
+    ) -> RafxResult<()> {
+        let mut inner = self.inner.borrow_mut();
+        let blit_encoder = inner.blit_encoder.as_ref();
+        let blit_encoder = match blit_encoder {
+            Some(x) => x,
+            None => {
+                let result: RafxResult<&metal_rs::BlitCommandEncoderRef> =
+                    objc::rc::autoreleasepool(|| {
+                        Self::do_end_current_encoders(&self.queue, &mut *inner, false)?;
+                        let encoder = inner
+                            .command_buffer
+                            .as_ref()
+                            .unwrap()
+                            .new_blit_command_encoder();
+                        inner.blit_encoder = Some(encoder.to_owned());
+                        Ok(inner.blit_encoder.as_ref().unwrap().as_ref())
+                    });
+                result?
+            }
+        };
+
+        let src_origin = MTLOrigin {
+            x: params.src_offset.width as _,
+            y: params.src_offset.height as _,
+            z: params.src_offset.depth as _,
+        };
+
+        let dst_origin = MTLOrigin {
+            x: params.dst_offset.width as _,
+            y: params.dst_offset.height as _,
+            z: params.dst_offset.depth as _,
+        };
+
+        let size = MTLSize {
+            width: params.extents.width as _,
+            height: params.extents.height as _,
+            depth: params.extents.depth as _,
+        };
+
+        if let Some(array_slices) = params.array_slices {
+            let src_slice = array_slices[0];
+            let dst_slice = array_slices[1];
+            blit_encoder.copy_from_texture(
+                src_texture.metal_texture(),
+                src_slice as _,
+                params.src_mip_level as _,
+                src_origin,
+                size,
+                dst_texture.metal_texture(),
+                dst_slice as _,
+                params.dst_mip_level as _,
+                dst_origin,
+            );
+        } else {
+            let array_length = src_texture.texture_def().array_length;
+            assert_eq!(dst_texture.texture_def().array_length, array_length);
+            for slice_index in 0..array_length {
+                blit_encoder.copy_from_texture(
+                    src_texture.metal_texture(),
+                    slice_index as _,
+                    params.src_mip_level as _,
+                    src_origin,
+                    size,
+                    dst_texture.metal_texture(),
+                    slice_index as _,
+                    params.dst_mip_level as _,
+                    dst_origin,
+                );
+            }
+        }
+
         Ok(())
     }
 }

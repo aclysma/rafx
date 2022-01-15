@@ -1,7 +1,8 @@
 use rafx_api::extra::upload::{RafxTransferUpload, RafxUploadError};
 use rafx_api::{
-    RafxBarrierQueueTransition, RafxBuffer, RafxBufferBarrier, RafxBufferDef, RafxDeviceContext,
-    RafxMemoryUsage, RafxResourceState, RafxResourceType,
+    RafxBarrierQueueTransition, RafxBuffer, RafxBufferBarrier, RafxBufferDef,
+    RafxCmdCopyBufferToBufferParams, RafxDeviceContext, RafxMemoryUsage, RafxResourceState,
+    RafxResourceType,
 };
 
 pub fn enqueue_load_buffer(
@@ -31,9 +32,11 @@ pub fn enqueue_load_buffer(
     upload.transfer_command_buffer().cmd_copy_buffer_to_buffer(
         &upload.staging_buffer(),
         &dst_buffer,
-        offset,
-        0,
-        size,
+        &RafxCmdCopyBufferToBufferParams {
+            src_byte_offset: offset,
+            dst_byte_offset: 0,
+            size,
+        },
     )?;
 
     upload.transfer_command_buffer().cmd_resource_barrier(

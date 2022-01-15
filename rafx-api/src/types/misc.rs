@@ -1,7 +1,7 @@
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
-use crate::{RafxBuffer, RafxSampler, RafxTexture};
+use crate::{RafxBuffer, RafxBufferDef, RafxSampler, RafxTexture};
 use rafx_base::DecimalF32;
 use std::hash::{Hash, Hasher};
 
@@ -799,14 +799,48 @@ pub struct RafxIndexBufferBinding<'a> {
 }
 
 /// Parameters for copying a buffer to a texture
-#[derive(Default)]
+#[derive(Default, Clone)]
+pub struct RafxCmdCopyBufferToBufferParams {
+    pub src_byte_offset: u64,
+    pub dst_byte_offset: u64,
+    pub size: u64,
+}
+
+impl RafxCmdCopyBufferToBufferParams {
+    pub fn full_copy(
+        src_def: &RafxBufferDef,
+        dst_def: &RafxBufferDef,
+    ) -> Self {
+        assert_eq!(src_def.size, dst_def.size);
+        RafxCmdCopyBufferToBufferParams {
+            src_byte_offset: 0,
+            dst_byte_offset: 0,
+            size: src_def.size,
+        }
+    }
+}
+
+/// Parameters for copying a buffer to a texture
+#[derive(Default, Clone)]
 pub struct RafxCmdCopyBufferToTextureParams {
     pub buffer_offset: u64,
     pub array_layer: u16,
     pub mip_level: u8,
 }
 
+#[derive(Default, Clone)]
+pub struct RafxCmdCopyTextureToTextureParams {
+    pub src_offset: RafxExtents3D,
+    pub dst_offset: RafxExtents3D,
+    pub extents: RafxExtents3D,
+    pub src_mip_level: u8,
+    pub dst_mip_level: u8,
+    // If none, operate on all image slices (we assume images have same number of slices)
+    pub array_slices: Option<[u16; 2]>,
+}
+
 /// Parameters for blitting one image to another (vulkan backend only)
+#[derive(Clone)]
 pub struct RafxCmdBlitParams {
     pub src_state: RafxResourceState,
     pub dst_state: RafxResourceState,

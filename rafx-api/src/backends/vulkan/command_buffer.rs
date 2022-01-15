@@ -145,7 +145,7 @@ impl RafxCommandBufferVulkan {
                     .texture
                     .vk_texture()
                     .unwrap()
-                    .take_is_undefined_layout()
+                    .take_initial_undefined_layout()
                 {
                     log::trace!(
                         "Transition RT {:?} from {:?} to {:?}",
@@ -166,7 +166,7 @@ impl RafxCommandBufferVulkan {
                     .texture
                     .vk_texture()
                     .unwrap()
-                    .take_is_undefined_layout()
+                    .take_initial_undefined_layout()
                 {
                     log::trace!(
                         "Transition RT {:?} from {:?} to {:?}",
@@ -645,7 +645,7 @@ impl RafxCommandBufferVulkan {
                 .texture
                 .vk_texture()
                 .unwrap()
-                .take_is_undefined_layout()
+                .take_initial_undefined_layout()
             {
                 vk::ImageLayout::UNDEFINED
             } else {
@@ -715,9 +715,7 @@ impl RafxCommandBufferVulkan {
         &self,
         src_buffer: &RafxBufferVulkan,
         dst_buffer: &RafxBufferVulkan,
-        src_offset: u64,
-        dst_offset: u64,
-        size: u64,
+        params: &RafxCmdCopyBufferToBufferParams,
     ) -> RafxResult<()> {
         unsafe {
             self.device_context.device().cmd_copy_buffer(
@@ -725,9 +723,9 @@ impl RafxCommandBufferVulkan {
                 src_buffer.vk_buffer(),
                 dst_buffer.vk_buffer(),
                 &[vk::BufferCopy {
-                    size,
-                    src_offset,
-                    dst_offset,
+                    size: params.size,
+                    src_offset: params.src_byte_offset,
+                    dst_offset: params.dst_byte_offset,
                 }],
             );
         }
@@ -776,16 +774,85 @@ impl RafxCommandBufferVulkan {
         Ok(())
     }
 
+    pub fn cmd_copy_texture_to_texture(
+        &self,
+        src_texture: &RafxTextureVulkan,
+        dst_texture: &RafxTextureVulkan,
+        params: &RafxCmdCopyTextureToTextureParams,
+    ) -> RafxResult<()> {
+        let src_aspect_mask = src_texture.vk_aspect_mask();
+        let dst_aspect_mask = dst_texture.vk_aspect_mask();
+
+        let mut src_subresource = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(src_aspect_mask)
+            .mip_level(params.src_mip_level as u32)
+            .build();
+        let mut dst_subresource = vk::ImageSubresourceLayers::builder()
+            .aspect_mask(dst_aspect_mask)
+            .mip_level(params.dst_mip_level as u32)
+            .build();
+
+        if let Some(array_slices) = params.array_slices {
+            src_subresource.base_array_layer = array_slices[0] as u32;
+            dst_subresource.base_array_layer = array_slices[1] as u32;
+            src_subresource.layer_count = 1;
+            dst_subresource.layer_count = 1;
+        } else {
+            let src_array_length = src_texture.texture_def().array_length;
+            let dst_array_length = dst_texture.texture_def().array_length;
+            assert_eq!(src_array_length, dst_array_length);
+            src_subresource.base_array_layer = 0;
+            dst_subresource.base_array_layer = 0;
+            src_subresource.layer_count = src_array_length;
+            dst_subresource.layer_count = dst_array_length;
+        }
+
+        let src_offset = vk::Offset3D {
+            x: params.src_offset.width as i32,
+            y: params.src_offset.height as i32,
+            z: params.src_offset.depth as i32,
+        };
+
+        let dst_offset = vk::Offset3D {
+            x: params.dst_offset.width as i32,
+            y: params.dst_offset.height as i32,
+            z: params.dst_offset.depth as i32,
+        };
+
+        let extent = vk::Extent3D {
+            width: params.extents.width,
+            height: params.extents.height,
+            depth: params.extents.depth,
+        };
+
+        unsafe {
+            self.device_context.device().cmd_copy_image(
+                self.vk_command_buffer,
+                src_texture.vk_image(),
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                dst_texture.vk_image(),
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[vk::ImageCopy {
+                    src_subresource,
+                    src_offset,
+                    dst_subresource,
+                    dst_offset,
+                    extent,
+                }],
+            );
+        }
+
+        Ok(())
+    }
+
     pub fn cmd_blit_image(
         &self,
         src_texture: &RafxTextureVulkan,
         dst_texture: &RafxTextureVulkan,
         params: &RafxCmdBlitParams,
     ) -> RafxResult<()> {
-        let src_aspect_mask =
-            super::util::image_format_to_aspect_mask(src_texture.texture_def().format);
-        let dst_aspect_mask =
-            super::util::image_format_to_aspect_mask(dst_texture.texture_def().format);
+        let src_aspect_mask = src_texture.vk_aspect_mask();
+        let dst_aspect_mask = dst_texture.vk_aspect_mask();
 
         let mut src_subresource = vk::ImageSubresourceLayers::builder()
             .aspect_mask(src_aspect_mask)

@@ -155,8 +155,9 @@ impl RafxCommandBufferEmpty {
     pub fn cmd_dispatch(&self, group_count_x: u32,  group_count_y: u32, group_count_z: u32) -> RafxResult<()> { unimplemented!() }
 
     pub fn cmd_resource_barrier(&self, buffer_barriers: &[RafxBufferBarrier], texture_barriers: &[RafxTextureBarrier]) -> RafxResult<()> { unimplemented!() }
-    pub fn cmd_copy_buffer_to_buffer(&self, src_buffer: &RafxBufferEmpty, dst_buffer: &RafxBufferEmpty, src_offset: u64, dst_offset: u64, size: u64) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_copy_buffer_to_buffer(&self, src_buffer: &RafxBufferEmpty, dst_buffer: &RafxBufferEmpty, params: &RafxCmdCopyBufferToBufferParams) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_copy_buffer_to_texture(&self, src_buffer: &RafxBufferEmpty, dst_texture: &RafxTextureEmpty, params: &RafxCmdCopyBufferToTextureParams) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_copy_texture_to_texture(&self, src_texture: &RafxTextureEmpty, dst_texture: &RafxTextureEmpty, params: &RafxCmdCopyTextureToTextureParams) -> RafxResult<()> { unimplemented!() }
 }
 
 //

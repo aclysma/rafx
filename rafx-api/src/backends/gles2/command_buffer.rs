@@ -6,9 +6,10 @@ use crate::gles2::{
     RafxTextureGles2, NONE_BUFFER, NONE_FRAMEBUFFER, NONE_PROGRAM, NONE_TEXTURE,
 };
 use crate::{
-    RafxBufferBarrier, RafxCmdCopyBufferToTextureParams, RafxColorFlags,
-    RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding,
-    RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxResourceType, RafxResult,
+    RafxBufferBarrier, RafxCmdCopyBufferToBufferParams, RafxCmdCopyBufferToTextureParams,
+    RafxCmdCopyTextureToTextureParams, RafxColorFlags, RafxColorRenderTargetBinding,
+    RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxExtents3D,
+    RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxResourceType, RafxResult,
     RafxTextureBarrier, RafxVertexBufferBinding, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
@@ -1072,9 +1073,7 @@ impl RafxCommandBufferGles2 {
         &self,
         src_buffer: &RafxBufferGles2,
         dst_buffer: &RafxBufferGles2,
-        src_offset: u64,
-        dst_offset: u64,
-        size: u64,
+        params: &RafxCmdCopyBufferToBufferParams,
     ) -> RafxResult<()> {
         let state = self.command_pool_state.borrow();
         assert!(state.is_started);
@@ -1088,9 +1087,14 @@ impl RafxCommandBufferGles2 {
                 .buffer_contents()
                 .try_as_ptr()
                 .expect("src buffer must be CPU-visible in cmd_copy_buffer_to_buffer")
-                .add(src_offset as usize)
+                .add(params.src_byte_offset as usize)
         };
-        gl_context.gl_buffer_sub_data(gl_target, dst_offset as _, size, src_data)?;
+        gl_context.gl_buffer_sub_data(
+            gl_target,
+            params.dst_byte_offset as _,
+            params.size,
+            src_data,
+        )?;
         gl_context.gl_bind_buffer(gl_target, NONE_BUFFER)
     }
 
@@ -1141,5 +1145,15 @@ impl RafxCommandBufferGles2 {
             Some(&buffer_ptr),
         )?;
         gl_context.gl_bind_texture(dst_texture.gl_target(), NONE_TEXTURE)
+    }
+
+    pub fn cmd_copy_texture_to_texture(
+        &self,
+        _src_texture: &RafxTextureGles2,
+        _dst_texture: &RafxTextureGles2,
+        _params: &RafxCmdCopyTextureToTextureParams,
+    ) -> RafxResult<()> {
+        // This can probably be supported but it's not currently implemented
+        unimplemented!();
     }
 }

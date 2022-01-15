@@ -243,6 +243,10 @@ impl<T> AtomicOnceCellArray<T> {
         val
     }
 
+    pub unsafe fn get_all_unchecked(&self) -> &[T] {
+        std::mem::transmute::<&[MaybeUninit<UnsafeCell<T>>], &[T]>(&self.data[..])
+    }
+
     pub fn capacity(&self) -> usize {
         self.data.len()
     }
