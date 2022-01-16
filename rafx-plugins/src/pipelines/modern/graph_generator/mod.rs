@@ -20,7 +20,6 @@ use super::ModernPipelineStaticResources;
 use crate::features::debug_pip::DebugPipRenderResource;
 use crate::features::mesh_adv::{MeshAdvRenderPipelineState, ShadowMapAtlas};
 use crate::pipelines::modern::{AntiAliasMethodAdv, ModernPipelineTonemapDebugData};
-use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;
 use rafx::renderer::SwapchainRenderResource;
 use rafx::renderer::TimeRenderResource;
@@ -39,6 +38,8 @@ mod ui_pass;
 
 mod taa_pass;
 
+mod cas_pass;
+
 lazy_static::lazy_static! {
     pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
         VertexDataSetLayout::new(vec![], RafxPrimitiveTopology::TriangleList)
@@ -56,6 +57,7 @@ pub struct ModernPipelineRenderGraphConfig {
     pub show_surfaces: bool,
     pub blur_pass_count: usize,
     pub jitter_amount: glam::Vec2,
+    pub sharpening_amount: f32,
 }
 
 // This just wraps a bunch of values so they don't have to be passed individually to all the passes
@@ -148,6 +150,7 @@ pub(super) fn generate_render_graph(
             show_surfaces: render_options.show_surfaces,
             blur_pass_count: render_options.blur_pass_count,
             jitter_amount,
+            sharpening_amount: render_options.sharpening_amount,
         }
     };
 
@@ -328,10 +331,23 @@ pub(super) fn generate_render_graph(
             .compute_pipeline
             .clone();
 
+        let cas_pipeline = asset_manager
+            .committed_asset(&static_resources.cas_pipeline)
+            .unwrap()
+            .compute_pipeline
+            .clone();
+
         let bloom_extract_pass = bloom_extract_pass::bloom_extract_pass(
             &mut graph_context,
             bloom_extract_material_pass,
             color_rt,
+        );
+
+        let cas_pass = cas_pass::cas_pass(
+            &mut graph_context,
+            &cas_pipeline,
+            bloom_extract_pass.sdr_image,
+            &swapchain_info.swapchain_surface_info,
         );
 
         let luma_build_histogram_pass = luma_pass::luma_build_histogram_pass(
@@ -356,17 +372,23 @@ pub(super) fn generate_render_graph(
             let bloom_blur_pass = bloom_blur_pass::bloom_blur_pass(
                 &mut graph_context,
                 bloom_blur_material_pass,
-                &bloom_extract_pass,
+                bloom_extract_pass.hdr_image,
             );
             bloom_blur_pass.color
         } else {
             bloom_extract_pass.hdr_image
         };
 
+        let sdr_image = if render_options.enable_sharpening {
+            cas_pass.color_rt
+        } else {
+            bloom_extract_pass.sdr_image
+        };
+
         let bloom_combine_pass = bloom_combine_pass::bloom_combine_pass(
             &mut graph_context,
             bloom_combine_material_pass,
-            &bloom_extract_pass,
+            sdr_image,
             blurred_color,
             &luma_average_histogram_pass,
             &*swapchain_render_resource,

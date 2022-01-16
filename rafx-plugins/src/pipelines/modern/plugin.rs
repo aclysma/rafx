@@ -74,6 +74,7 @@ pub struct ModernPipelineStaticResources {
     pub taa_material: Handle<MaterialAsset>,
     pub luma_build_histogram: Handle<ComputePipelineAsset>,
     pub luma_average_histogram: Handle<ComputePipelineAsset>,
+    pub cas_pipeline: Handle<ComputePipelineAsset>,
     pub tonemap_histogram_result: ResourceArc<BufferResource>,
     pub tonemap_debug_output: Vec<ResourceArc<BufferResource>>,
     pub taa_history_rt: Option<ResourceArc<ImageViewResource>>,
@@ -138,6 +139,10 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             "rafx-plugins/compute_pipelines/luma_average_histogram.compute",
         );
 
+        let cas_pipeline = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
+            "rafx-plugins/compute_pipelines/cas.compute",
+        );
+
         asset_manager.wait_for_asset_to_load(
             &bloom_extract_material,
             asset_resource,
@@ -169,6 +174,8 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             asset_resource,
             "luma_average_histogram",
         )?;
+
+        asset_manager.wait_for_asset_to_load(&cas_pipeline, asset_resource, "cas_pipeline")?;
 
         let tonemap_histogram_result =
             asset_manager
@@ -223,6 +230,7 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             taa_material,
             luma_build_histogram,
             luma_average_histogram,
+            cas_pipeline,
             tonemap_histogram_result,
             tonemap_debug_output,
             taa_history_rt,

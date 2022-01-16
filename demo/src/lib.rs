@@ -327,6 +327,8 @@ impl DemoApp {
             #[cfg(not(feature = "basic-pipeline"))]
             {
                 pipeline_render_options.taa_options = render_options.taa_options.clone();
+                pipeline_render_options.enable_sharpening = render_options.enable_sharpening;
+                pipeline_render_options.sharpening_amount = render_options.sharpening_amount;
             }
 
             let mut render_config_resource =

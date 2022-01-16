@@ -21,9 +21,9 @@ pub(super) struct BloomBlurPass {
 pub(super) fn bloom_blur_pass(
     context: &mut ModernPipelineContext,
     bloom_blur_material_pass: ResourceArc<MaterialPassResource>,
-    bloom_extract_pass: &super::BloomExtractPass,
+    bloom_extract_hdr_image: RenderGraphImageUsageId,
 ) -> BloomBlurPass {
-    let mut blur_src = bloom_extract_pass.hdr_image;
+    let mut blur_src = bloom_extract_hdr_image;
 
     for _ in 0..context.graph_config.blur_pass_count {
         blur_src = bloom_blur_internal_pass(

@@ -44,6 +44,10 @@ pub struct RenderOptions {
     pub ndf_filter_amount: f32,
     #[cfg(not(feature = "basic-pipeline"))]
     pub taa_options: TemporalAAOptions,
+    #[cfg(not(feature = "basic-pipeline"))]
+    pub enable_sharpening: bool,
+    #[cfg(not(feature = "basic-pipeline"))]
+    pub sharpening_amount: f32,
 }
 
 impl RenderOptions {
@@ -70,6 +74,10 @@ impl RenderOptions {
             ndf_filter_amount: 1.0,
             #[cfg(not(feature = "basic-pipeline"))]
             taa_options: Default::default(),
+            #[cfg(not(feature = "basic-pipeline"))]
+            enable_sharpening: false,
+            #[cfg(not(feature = "basic-pipeline"))]
+            sharpening_amount: 0.0,
         }
     }
 
@@ -96,6 +104,10 @@ impl RenderOptions {
             ndf_filter_amount: 1.0,
             #[cfg(not(feature = "basic-pipeline"))]
             taa_options: Default::default(),
+            #[cfg(not(feature = "basic-pipeline"))]
+            enable_sharpening: true,
+            #[cfg(not(feature = "basic-pipeline"))]
+            sharpening_amount: 1.0,
         }
     }
 }
@@ -188,6 +200,11 @@ impl RenderOptions {
 
         #[cfg(not(feature = "basic-pipeline"))]
         ui.add(egui::Slider::new(&mut self.ndf_filter_amount, 0.0..=4.0).text("ndf_filter_amount"));
+
+        #[cfg(not(feature = "basic-pipeline"))]
+        ui.checkbox(&mut self.enable_sharpening, "enable_sharpening");
+        #[cfg(not(feature = "basic-pipeline"))]
+        ui.add(egui::Slider::new(&mut self.sharpening_amount, 0.0..=1.0).text("sharpening_amount"));
     }
 }
 

@@ -120,7 +120,7 @@ impl Default for TemporalAAOptions {
             jitter_multiplier: 0.3,
             history_weight: 0.01,
             history_weight_velocity_adjust_multiplier: 50.0,
-            history_weight_velocity_adjust_max: 0.1,
+            history_weight_velocity_adjust_max: 0.10,
             forward_pass_mip_bias: -0.5,
         }
     }
@@ -175,6 +175,8 @@ pub struct ModernPipelineRenderOptions {
     pub blur_pass_count: usize,
     pub tonemapper_type: TonemapperTypeAdv,
     pub enable_visibility_update: bool,
+    pub enable_sharpening: bool,
+    pub sharpening_amount: f32,
 }
 
 impl Default for ModernPipelineRenderOptions {
@@ -194,6 +196,8 @@ impl Default for ModernPipelineRenderOptions {
             blur_pass_count: 5,
             tonemapper_type: TonemapperTypeAdv::LogDerivative,
             enable_visibility_update: true,
+            enable_sharpening: true,
+            sharpening_amount: 1.0,
         }
     }
 }

@@ -2,6 +2,7 @@
 
 #![allow(dead_code)]
 
+pub mod cas;
 pub mod debug3d;
 pub mod debug_pip;
 pub mod depth;

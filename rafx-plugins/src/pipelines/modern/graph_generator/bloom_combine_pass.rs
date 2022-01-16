@@ -8,7 +8,6 @@ use rafx::graph::*;
 use rafx::render_features::RenderPhase;
 use rafx::renderer::SwapchainRenderResource;
 
-use super::BloomExtractPass;
 use super::ModernPipelineContext;
 use super::EMPTY_VERTEX_LAYOUT;
 use crate::shaders::post_adv::bloom_combine_adv_frag;
@@ -22,7 +21,7 @@ pub(super) struct BloomCombinePass {
 pub(super) fn bloom_combine_pass(
     context: &mut ModernPipelineContext,
     bloom_combine_material_pass: ResourceArc<MaterialPassResource>,
-    bloom_extract_pass: &BloomExtractPass,
+    sdr_image: RenderGraphImageUsageId,
     blurred_color: RenderGraphImageUsageId,
     luma_average_histogram_pass: &LumaAverageHistogramPass,
     swapchain_render_resource: &SwapchainRenderResource,
@@ -47,12 +46,10 @@ pub(super) fn bloom_combine_pass(
     );
     context.graph.set_image_name(color, "color");
 
-    let sdr_image = context.graph.sample_image(
-        node,
-        bloom_extract_pass.sdr_image,
-        Default::default(),
-        Default::default(),
-    );
+    let sdr_image =
+        context
+            .graph
+            .sample_image(node, sdr_image, Default::default(), Default::default());
     context.graph.set_image_name(sdr_image, "sdr");
 
     let hdr_image =

@@ -124,7 +124,7 @@ is highly recommeneded. Asset processing is extremely slow in debug mode.** (i.e
 * Sprites
 * Debug Draw
 * imgui/egui
-* HDR Pipeline with Bloom/Auto-exposure
+* HDR Pipeline with Bloom/Auto-exposure/TAA/FidelityFX CAS
 * HDR display support (only tested on macOS, might work with vulkan)
 * Point, Spot, and Directional Lights
 * Multiple Spot/Directional/Point light soft shadows
