@@ -123,7 +123,7 @@ pub(super) fn generate_render_graph(
         };
 
         let color_format = if render_options.enable_hdr {
-            swapchain_info.default_color_format_hdr
+            RafxFormat::R16G16B16A16_SFLOAT
         } else {
             swapchain_info.default_color_format_sdr
         };

@@ -2387,8 +2387,9 @@ pub mod recommended_formats {
         RafxFormat::R8G8B8A8_SNORM, // vulkan: 100% coverage with optimal
     ];
 
-    pub const COLOR_FORMATS_HDR: [RafxFormat; 1] = [
-        RafxFormat::R32G32B32A32_SFLOAT, // vulkan: 100% coverage with optimal
+    pub const COLOR_FORMATS_HDR: [RafxFormat; 2] = [
+        RafxFormat::R16G16B16A16_SFLOAT, // vulkan: near 100% coverage with optimal
+        RafxFormat::R32G32B32A32_SFLOAT, // vulkan: near 100% coverage with optimal
     ];
 
     pub const DEPTH_FORMATS: [RafxFormat; 4] = [
