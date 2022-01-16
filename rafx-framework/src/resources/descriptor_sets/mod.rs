@@ -107,6 +107,9 @@ pub fn what_to_bind(element_write: &DescriptorSetElementWrite) -> WhatToBind {
         RafxResourceType::TEXTURE => {
             what.bind_images = true;
         }
+        RafxResourceType::TEXTURE_READ_WRITE => {
+            what.bind_images = true;
+        }
         RafxResourceType::UNIFORM_BUFFER => {
             what.bind_buffers = true;
         }
@@ -116,7 +119,12 @@ pub fn what_to_bind(element_write: &DescriptorSetElementWrite) -> WhatToBind {
         RafxResourceType::BUFFER_READ_WRITE => {
             what.bind_buffers = true;
         }
-        _ => unimplemented!(),
+        _ => {
+            unimplemented!(
+                "what_to_bind not implemented for descriptor type {:?}",
+                element_write.descriptor_type
+            );
+        }
     }
 
     what
