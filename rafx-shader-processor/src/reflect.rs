@@ -411,7 +411,7 @@ pub(crate) fn msl_assign_argument_buffer_ids(
             .intersects(RafxShaderStageFlags::COMPUTE)
         {
             let mut location = location.clone();
-            location.stage = ExecutionModel::Kernel;
+            location.stage = ExecutionModel::GlCompute;
             argument_buffer_assignments.insert(location, new_binding.clone());
         }
 

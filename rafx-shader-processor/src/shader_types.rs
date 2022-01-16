@@ -164,6 +164,7 @@ pub(crate) fn create_builtin_type_lookup() -> FnvHashMap<String, TypeAlignmentIn
     add_type_alignment_info::<[f32; 3]>(&mut builtin_types, "vec3", "[f32; 3]");
     add_type_alignment_info::<[f32; 4]>(&mut builtin_types, "vec4", "[f32; 4]");
     add_type_alignment_info::<[[f32; 4]; 4]>(&mut builtin_types, "mat4", "[[f32; 4]; 4]");
+    add_type_alignment_info::<[u32; 4]>(&mut builtin_types, "uvec4", "[u32; 4]");
     builtin_types
 }
 
