@@ -58,6 +58,7 @@ default = [
     "modern-pipeline",
 
     "use-egui",
+    "rafx-plugins/meshopt",
 
     # Profiling options
     "profile-with-puffin",

@@ -3,6 +3,7 @@ use super::MeshBasicRenderOptions;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
+use crate::features::mesh_basic::internal::{MAX_SHADOW_MAPS_2D, MAX_SHADOW_MAPS_CUBE};
 use crate::phases::ShadowMapRenderPhase;
 use fnv::FnvHashMap;
 use legion::*;
@@ -17,7 +18,6 @@ use rafx::render_features::{
     RenderPhaseMaskBuilder, RenderView, RenderViewDepthRange, RenderViewSet,
 };
 use rafx::visibility::{ObjectId, ViewFrustumArc};
-use crate::features::mesh_basic::internal::{MAX_SHADOW_MAPS_2D, MAX_SHADOW_MAPS_CUBE};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum MeshBasicLightId {

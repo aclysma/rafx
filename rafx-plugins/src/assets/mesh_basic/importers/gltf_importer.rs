@@ -2,7 +2,6 @@ use crate::assets::mesh_basic::{
     MeshBasicAssetData, MeshBasicMaterialData, MeshBasicMaterialDataShaderParam,
     MeshBasicPartAssetData,
 };
-use crate::features::mesh_basic::{MeshVertexFull, MeshVertexPosition};
 use distill::core::AssetUuid;
 use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
 use distill::loader::handle::Handle;
@@ -12,7 +11,7 @@ use glam::Vec3;
 use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
 use itertools::Itertools;
-use rafx::api::{RafxIndexType, RafxResourceType};
+use rafx::api::RafxResourceType;
 use rafx::assets::push_buffer::PushBuffer;
 use rafx::assets::BufferAssetData;
 use rafx::assets::ImageAsset;
@@ -21,7 +20,6 @@ use rafx::assets::{ImageAssetColorSpaceConfig, ImageAssetData};
 use rafx::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use std::io::Read;
 use type_uuid::*;
 
@@ -750,16 +748,6 @@ fn extract_materials_to_import(
     materials_to_import
 }
 
-fn try_convert_to_u16(indices_u32: &[u32]) -> Option<Vec<u16>> {
-    for &index in indices_u32 {
-        if index > 0xFFFF {
-            return None;
-        }
-    }
-
-    Some(indices_u32.iter().map(|&x| x.try_into().unwrap()).collect())
-}
-
 fn extract_meshes_to_import(
     op: &mut ImportOp,
     state: &mut MeshBasicGltfImporterStateUnstable,
@@ -791,104 +779,42 @@ fn extract_meshes_to_import(
 
                 let positions = reader.read_positions();
                 let normals = reader.read_normals();
-                //let colors = reader.read_colors();
                 let tex_coords = reader.read_tex_coords(0);
                 let indices = reader.read_indices();
 
                 if let (Some(indices), Some(positions), Some(normals), Some(tex_coords)) =
                     (indices, positions, normals, tex_coords)
                 {
-                    let indices_u32: Vec<u32> = indices.into_u32().collect();
-                    let indices_u16 = try_convert_to_u16(&indices_u32);
+                    let part_indices: Vec<u32> = indices.into_u32().collect();
 
-                    //TODO: Consider computing binormal (bitangent) here
                     let positions: Vec<_> = positions.collect();
                     let normals: Vec<_> = normals.collect();
                     let tex_coords: Vec<_> = tex_coords.into_f32().collect();
 
-                    let mut tangents = Vec::<glam::Vec3>::new();
-                    tangents.resize(positions.len(), glam::Vec3::default());
+                    let part_data = super::util::process_mesh_part(
+                        &part_indices,
+                        &positions,
+                        &normals,
+                        &tex_coords,
+                        &mut all_vertices_full,
+                        &mut all_vertices_position,
+                        &mut all_indices,
+                    );
 
-                    let mut binormals = Vec::<glam::Vec3>::new();
-                    binormals.resize(positions.len(), glam::Vec3::default());
-
-                    assert_eq!(indices_u32.len() % 3, 0);
-                    for i in 0..(indices_u32.len() / 3) {
-                        let i0 = indices_u32[i * 3] as usize;
-                        let i1 = indices_u32[i * 3 + 1] as usize;
-                        let i2 = indices_u32[i * 3 + 2] as usize;
-
-                        let p0 = glam::Vec3::from(positions[i0]);
-                        let p1 = glam::Vec3::from(positions[i1]);
-                        let p2 = glam::Vec3::from(positions[i2]);
-
-                        let uv0 = glam::Vec2::from(tex_coords[i0]);
-                        let uv1 = glam::Vec2::from(tex_coords[i1]);
-                        let uv2 = glam::Vec2::from(tex_coords[i2]);
-
-                        let (t, b) = super::calculate_tangent_binormal(p0, p1, p2, uv0, uv1, uv2);
-
-                        tangents[i0] += t;
-                        tangents[i1] += t;
-                        tangents[i2] += t;
-                        binormals[i0] += b;
-                        binormals[i1] += b;
-                        binormals[i2] += b;
+                    //
+                    // Positions and indices for the visibility system
+                    //
+                    for index in part_indices {
+                        all_position_indices.push(index as u32);
                     }
 
-                    let vertex_full_offset =
-                        all_vertices_full.pad_to_alignment(std::mem::size_of::<MeshVertexFull>());
-                    let vertex_position_offset = all_vertices_position
-                        .pad_to_alignment(std::mem::size_of::<MeshVertexPosition>());
                     for i in 0..positions.len() {
-                        let (t, b) = super::fix_tangent_binormal(
-                            glam::Vec3::from(normals[i]),
-                            tangents[i],
-                            binormals[i],
-                        );
                         all_positions.push(Vec3::new(
                             positions[i][0],
                             positions[i][1],
                             positions[i][2],
                         ));
-                        all_vertices_full
-                            .push(
-                                &[MeshVertexFull {
-                                    position: positions[i],
-                                    normal: normals[i],
-                                    tangent: t.into(),
-                                    binormal: b.into(),
-                                    tex_coord: tex_coords[i],
-                                }],
-                                1,
-                            )
-                            .offset();
-                        all_vertices_position
-                            .push(
-                                &[MeshVertexPosition {
-                                    position: positions[i],
-                                }],
-                                1,
-                            )
-                            .offset();
                     }
-
-                    let indices_offset;
-                    if let Some(indices_u16) = &indices_u16 {
-                        indices_offset = all_indices
-                            .push(indices_u16, std::mem::size_of::<u16>())
-                            .offset()
-                    } else {
-                        indices_offset = all_indices
-                            .push(&indices_u32, std::mem::size_of::<u32>())
-                            .offset()
-                    }
-
-                    all_position_indices.extend_from_slice(&indices_u32);
-
-                    let vertex_full_size = all_vertices_full.len() - vertex_full_offset;
-                    let vertex_position_size = all_vertices_position.len() - vertex_position_offset;
-                    let indices_size = all_indices.len() - indices_offset;
 
                     let material_instance =
                         if let Some(material_index) = primitive.material().index() {
@@ -901,13 +827,17 @@ fn extract_meshes_to_import(
 
                     Some(MeshBasicPartAssetData {
                         material_instance,
-                        vertex_full_buffer_offset_in_bytes: vertex_full_offset as u32,
-                        vertex_full_buffer_size_in_bytes: vertex_full_size as u32,
-                        vertex_position_buffer_offset_in_bytes: vertex_position_offset as u32,
-                        vertex_position_buffer_size_in_bytes: vertex_position_size as u32,
-                        index_buffer_offset_in_bytes: indices_offset as u32,
-                        index_buffer_size_in_bytes: indices_size as u32,
-                        index_type: RafxIndexType::Uint16,
+                        vertex_full_buffer_offset_in_bytes: part_data
+                            .vertex_full_buffer_offset_in_bytes,
+                        vertex_full_buffer_size_in_bytes: part_data
+                            .vertex_full_buffer_size_in_bytes,
+                        vertex_position_buffer_offset_in_bytes: part_data
+                            .vertex_position_buffer_offset_in_bytes,
+                        vertex_position_buffer_size_in_bytes: part_data
+                            .vertex_position_buffer_size_in_bytes,
+                        index_buffer_offset_in_bytes: part_data.index_buffer_offset_in_bytes,
+                        index_buffer_size_in_bytes: part_data.index_buffer_size_in_bytes,
+                        index_type: part_data.index_type,
                     })
                 } else {
                     log::error!(

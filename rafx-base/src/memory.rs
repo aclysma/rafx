@@ -30,6 +30,15 @@ pub fn any_as_bytes<T: Copy>(data: &T) -> &[u8] {
     slice
 }
 
+pub fn any_slice_as_bytes<T: Copy>(data: &[T]) -> &[u8] {
+    let ptr: *const T = data.as_ptr();
+    let ptr = ptr as *const u8;
+    let slice: &[u8] =
+        unsafe { std::slice::from_raw_parts(ptr, data.len() * std::mem::size_of::<T>()) };
+
+    slice
+}
+
 pub fn slice_size_in_bytes<T>(slice: &[T]) -> usize {
     let range = slice.as_ptr_range();
     (range.end as *const u8 as usize) - (range.start as *const u8 as usize)

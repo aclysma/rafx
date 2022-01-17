@@ -38,6 +38,8 @@ itertools = "0.8"
 gltf = "0.16"
 image = "0.23.12"
 
+meshopt = { version = "0.1.9", optional = true }
+
 glam = { version = "0.13.1", features = [ "serde" ] }
 log = "0.4"
 fnv = "1.0"
