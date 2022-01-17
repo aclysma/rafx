@@ -107,8 +107,10 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
             light: l.clone(),
         }) {
             let next_index = per_view.num_directional_lights;
-            per_view.directional_lights[next_index as usize] = Some(light);
-            per_view.num_directional_lights += 1;
+            if per_view.directional_lights.len() > next_index as usize {
+                per_view.directional_lights[next_index as usize] = Some(light);
+                per_view.num_directional_lights += 1;
+            }
         }
 
         let mut query = <(Entity, Read<TransformComponent>, Read<PointLightComponent>)>::query();
@@ -118,8 +120,10 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
             transform: p.clone(),
         }) {
             let next_index = per_view.num_point_lights;
-            per_view.point_lights[next_index as usize] = Some(light);
-            per_view.num_point_lights += 1;
+            if per_view.point_lights.len() > next_index as usize {
+                per_view.point_lights[next_index as usize] = Some(light);
+                per_view.num_point_lights += 1;
+            }
         }
 
         let mut query = <(Entity, Read<TransformComponent>, Read<SpotLightComponent>)>::query();
@@ -129,8 +133,10 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
             transform: p.clone(),
         }) {
             let next_index = per_view.num_spot_lights;
-            per_view.spot_lights[next_index as usize] = Some(light);
-            per_view.num_spot_lights += 1;
+            if per_view.spot_lights.len() > next_index as usize {
+                per_view.spot_lights[next_index as usize] = Some(light);
+                per_view.num_spot_lights += 1;
+            }
         }
 
         if let Some(mesh_render_options) = &self.mesh_render_options {

@@ -17,6 +17,7 @@ use rafx::render_features::{
     RenderPhaseMaskBuilder, RenderView, RenderViewDepthRange, RenderViewSet,
 };
 use rafx::visibility::{ObjectId, ViewFrustumArc};
+use crate::features::mesh_basic::internal::{MAX_SHADOW_MAPS_2D, MAX_SHADOW_MAPS_CUBE};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum MeshBasicLightId {
@@ -176,6 +177,10 @@ fn calculate_shadow_map_views(
 
     let mut query = <(Entity, Read<SpotLightComponent>, Read<TransformComponent>)>::query();
     for (entity, light, transform) in query.iter(world) {
+        if shadow_map_render_views.len() > MAX_SHADOW_MAPS_2D + MAX_SHADOW_MAPS_CUBE {
+            break;
+        }
+
         if light.shadow_view_frustum.is_none() {
             continue;
         }
@@ -225,6 +230,10 @@ fn calculate_shadow_map_views(
 
     let mut query = <(Entity, Read<DirectionalLightComponent>)>::query();
     for (entity, light) in query.iter(world) {
+        if shadow_map_render_views.len() > MAX_SHADOW_MAPS_2D + MAX_SHADOW_MAPS_CUBE {
+            break;
+        }
+
         if light.shadow_view_frustum.is_none() {
             continue;
         }
@@ -291,6 +300,10 @@ fn calculate_shadow_map_views(
 
     let mut query = <(Entity, Read<PointLightComponent>, Read<TransformComponent>)>::query();
     for (entity, light, transform) in query.iter(world) {
+        if shadow_map_render_views.len() > MAX_SHADOW_MAPS_2D + MAX_SHADOW_MAPS_CUBE {
+            break;
+        }
+
         fn cube_map_face(
             phase_mask: RenderPhaseMask,
             feature_mask: RenderFeatureMask,

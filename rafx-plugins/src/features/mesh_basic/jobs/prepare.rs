@@ -126,6 +126,10 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
             for (index, shadow_map_render_view) in
                 shadow_map_data.shadow_map_render_views.iter().enumerate()
             {
+                if index >= MAX_SHADOW_MAPS_CUBE + MAX_SHADOW_MAPS_2D {
+                    log::warn!("More total shadow maps than the mesh shader can support");
+                    break;
+                }
                 match shadow_map_render_view {
                     MeshBasicShadowMapRenderView::Single(shadow_view) => {
                         let num_shadow_map_2d = per_frame_submit_data.num_shadow_map_2d;
