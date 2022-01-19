@@ -13,6 +13,8 @@
         0.0
     ],
     "normal_texture_scale": 1.0,
-    "occlusion_texture_strength": 1.0,
-    "alpha_cutoff": 0.5
+    "shadow_method": "OPAQUE",
+    "blend_method": "OPAQUE",
+    "alpha_threshold": 0.5,
+    "backface_culling": false
 }

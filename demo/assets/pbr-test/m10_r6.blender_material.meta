@@ -1,5 +1,8 @@
 (
     version: 2,
     importer_options: (),
-    importer_state: (Some("b8f5f38c-68da-4701-a410-c5b489b57d4c")),
+    importer_state: (
+        mesh_material_id: Some("019e8598-cc47-40cd-a188-1fdff730c6f4"),
+        material_instance_id: Some("cbe47359-5891-44fd-b9a3-ec8e3348bed0"),
+    ),
 )

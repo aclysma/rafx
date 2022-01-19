@@ -3,23 +3,24 @@
     importer_options: (),
     importer_state: (
         buffer_asset_uuids: [
-            (Index(0), "ff4306c9-4842-4ad1-bd95-743440f36d3c"),
-            (Index(1), "5bda5810-2a45-4d1a-9f3e-c8b9c37e435c"),
-            (Index(2), "a576d069-a0e4-4f81-9edd-042e081a9aed"),
+            (Index(0), "6dc7975f-3643-4dce-8ce4-e0f8e195c2de"),
+            (Index(1), "ff5c0f7a-c3fe-4900-a6e3-9d30bb097670"),
+            (Index(2), "446e2517-f772-4c09-bccc-ecb95581cffc"),
         ],
         image_asset_uuids: [
-            (Name("patchy_cement1_Base_Color"), "15878e86-5fe1-4f06-826f-fd9de19afc3a"),
-            (Name("patchy_cement1_Metallic-patchy_cement1_Roughness"), "75c98a82-80d4-49e9-bd47-f41f92675791"),
-            (Name("patchy_cement1_Normal"), "e29be0c5-cf1c-4f02-9137-491bf061a144"),
+            (Name("patchy_cement1_Base_Color"), "9d749197-f40c-4a71-a9a0-6dcba148b5ae"),
+            (Name("patchy_cement1_Metallic-patchy_cement1_Roughness"), "b31d1e02-6f6e-4a67-b23a-d6c10cd1cfdb"),
+            (Name("patchy_cement1_Normal"), "71517023-99e7-4582-bd83-739f8d2ea9e9"),
         ],
-        material_asset_uuids: [
-            (Name("Cement"), "0bcf4ab9-ac89-482c-8310-3d1d3d1f276c"),
-        ],
+        material_asset_uuids: [],
         material_instance_asset_uuids: [
-            (Name("Cement"), "14d466e2-6e8f-493e-a0dc-480cc5d7a47e"),
+            (Name("Cement"), "000d9406-542f-46b0-81c6-27a69bda0f9e"),
+        ],
+        mesh_material_asset_uuids: [
+            (Name("Cement"), "2b85723e-743b-4712-87a5-5abfd00c0f3f"),
         ],
         mesh_asset_uuids: [
-            (Name("Cube"), "ca8f69cc-4ca5-4ea0-a8e0-4d52e50d6a86"),
+            (Name("Cube"), "486309f2-713d-4835-a714-d6481c0caec8"),
         ],
     ),
 )

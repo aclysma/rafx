@@ -3,23 +3,24 @@
     importer_options: (),
     importer_state: (
         buffer_asset_uuids: [
-            (Index(0), "873ee9cd-9c1c-4ce1-9f41-806adae6a4c6"),
-            (Index(1), "09d6e7ed-d9f5-4c62-ba50-ee1f415341e7"),
-            (Index(2), "32fe8399-8e94-45f4-bc94-7b3aba5b03b9"),
+            (Index(0), "3882ef5e-9999-4a9a-a000-1c65971b286a"),
+            (Index(1), "90d8992d-6647-49ab-a6f6-7bc8101ed3ee"),
+            (Index(2), "31fdf618-e8b0-4e7b-8d92-2f28dafbac26"),
         ],
         image_asset_uuids: [
-            (Name("storage-container2-albedo"), "1b711326-fe38-438f-b75e-dca2e31498f0"),
-            (Name("storage-container2-metallic-storage-container2-roughness"), "23bfbbfe-5f97-47a5-9776-4ff5cd3c35ee"),
-            (Name("storage-container2-normal-ogl"), "2df08b1d-7043-4dc8-8a2d-6a1df665ec67"),
+            (Name("storage-container2-albedo"), "2d87392a-7ed8-43b6-a558-fcac49bd2570"),
+            (Name("storage-container2-metallic-storage-container2-roughness"), "ab448401-6223-43a9-8be1-86ef09c6a03d"),
+            (Name("storage-container2-normal-ogl"), "b0d30d2f-0d23-4a19-bcf3-2c97164c5171"),
         ],
-        material_asset_uuids: [
-            (Name("Material"), "041336bd-ad9e-45db-8d58-6c7ce2cb2520"),
-        ],
+        material_asset_uuids: [],
         material_instance_asset_uuids: [
-            (Name("Material"), "99381d91-b4eb-42cf-98d5-f39c9d2ba48c"),
+            (Name("Material"), "c81d680d-9dc9-4e30-b5df-41d7071f4696"),
+        ],
+        mesh_material_asset_uuids: [
+            (Name("Material"), "756f6707-39de-441b-a0bc-dbb6b992f630"),
         ],
         mesh_asset_uuids: [
-            (Name("Cube"), "04ea64c6-d4da-4ace-83e7-56f4d60524c1"),
+            (Name("Cube"), "1bdb3eb9-ef04-4fc7-8fe8-33d1d2605c92"),
         ],
     ),
 )

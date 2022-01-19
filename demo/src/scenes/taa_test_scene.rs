@@ -34,7 +34,7 @@ impl TaaTestScene {
             SpawnableMesh::blocking_load_from_path(resources, "blender/storage_container2.glb");
         let blue_icosphere = SpawnableMesh::blocking_load_from_uuid(
             resources,
-            "d5aed900-1e31-4f47-94ba-e356b0b0b8b0".into(),
+            "1af1ca58-49a6-4ef7-ac8f-20be3b75b48b".into(),
         );
         //
         // Add some meshes
