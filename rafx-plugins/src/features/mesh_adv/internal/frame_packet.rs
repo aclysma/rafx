@@ -1,10 +1,11 @@
 use super::*;
-use crate::assets::mesh_adv::MeshAdvAsset;
+use crate::assets::mesh_adv::{MeshAdvAsset, MeshAdvShaderPassIndices};
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
 use crate::shaders::mesh_adv::mesh_adv_textured_frag;
 use fnv::FnvHashMap;
+use rafx::assets::MaterialAsset;
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{
     BufferResource, DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc,
@@ -22,6 +23,8 @@ pub const MAX_SHADOW_MAPS_CUBE: usize = 32;
 //---------
 
 pub struct MeshAdvPerFrameData {
+    pub default_pbr_material: MaterialAsset,
+    pub default_pbr_material_pass_indices: MeshAdvShaderPassIndices,
     pub depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     pub shadow_map_atlas_depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     pub shadow_map_atlas: ResourceArc<ImageViewResource>,
@@ -116,6 +119,7 @@ pub type MeshSubmitPacket = SubmitPacket<MeshAdvRenderFeatureTypes>;
 pub struct MeshAdvPerViewSubmitData {
     pub opaque_descriptor_set: Option<DescriptorSetArc>,
     pub depth_descriptor_set: Option<DescriptorSetArc>,
+    pub wireframe_desriptor_set: Option<DescriptorSetArc>,
     pub shadow_map_atlas_depth_descriptor_set: Option<DescriptorSetArc>,
 }
 

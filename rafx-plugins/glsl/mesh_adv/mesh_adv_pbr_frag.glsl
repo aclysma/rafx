@@ -1106,12 +1106,19 @@ vec4 pbr_path(
     //
     vec3 ambient = per_view_data.ambient_light.rgb * base_color.rgb; //TODO: Multiply ao in here
 
+    float alpha = 1.0;
+    if (per_material_data.data.enable_alpha_blend) {
+        alpha = base_color.a;
+    } else if (per_material_data.data.enable_alpha_clip && base_color.a < per_material_data.data.alpha_threshold) {
+        alpha = 0.0;
+    }
+
 #ifdef DEBUG_RENDER_PERCENT_LIT
     vec3 color = total_light;
 #else
     vec3 color = ambient + total_light + emissive_color.rgb;
 #endif
-    return vec4(color, base_color.a);
+    return vec4(color, alpha);
 }
 
 uint get_light_cluster_index() {
@@ -1153,7 +1160,12 @@ vec4 pbr_main() {
 
 #ifdef PBR_TEXTURES
     if (per_material_data.data.has_base_color_texture) {
-        base_color *= texture(sampler2D(base_color_texture, smp), in_uv, per_view_data.mip_bias);
+        vec4 sampled_color = texture(sampler2D(base_color_texture, smp), in_uv, per_view_data.mip_bias);
+        if (per_material_data.data.base_color_texture_has_alpha_channel) {
+            base_color *= sampled_color;
+        } else {
+            base_color = vec4(base_color.rgb * sampled_color.rgb, base_color.a);
+        }
     }
 #endif
 
@@ -1235,6 +1247,7 @@ vec4 pbr_main() {
     //out_color = vec4(in_binormal_vs, 1.0);
     //out_color = vec4(normal_vs, 1.0);
     //out_color = vec4(in_uv.x, in_uv.y, 0.0, 1.0);
+
 
     return out_color;
 }

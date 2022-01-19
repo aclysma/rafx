@@ -1,5 +1,5 @@
 (
-    material: "mesh.material",
+    material: "mesh_basic.material",
     slot_assignments: [
         
     ]

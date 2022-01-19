@@ -22,7 +22,7 @@ struct MaterialJsonFileFormat {
     #[serde(default)]
     color_texture: Option<Handle<ImageAsset>>,
     #[serde(default)]
-    pub pbr_texture: Option<Handle<ImageAsset>>,
+    pub metallic_roughness_texture: Option<Handle<ImageAsset>>,
     #[serde(default)]
     pub normal_texture: Option<Handle<ImageAsset>>,
     #[serde(default)]
@@ -82,7 +82,7 @@ impl Importer for MeshBasicBlenderMaterialImporter {
             occlusion_texture_strength: json_format.occlusion_texture_strength,
             alpha_cutoff: json_format.alpha_cutoff,
             has_base_color_texture: json_format.color_texture.is_some(),
-            has_metallic_roughness_texture: json_format.pbr_texture.is_some(),
+            has_metallic_roughness_texture: json_format.metallic_roughness_texture.is_some(),
             has_normal_texture: json_format.normal_texture.is_some(),
             has_occlusion_texture: false,
             has_emissive_texture: json_format.emissive_texture.is_some(),
@@ -131,7 +131,7 @@ impl Importer for MeshBasicBlenderMaterialImporter {
             "metallic_roughness_texture",
             &mut slot_assignments,
             material_data.has_metallic_roughness_texture,
-            &json_format.pbr_texture,
+            &json_format.matallic_roughness_texture,
             &null_image_handle,
         );
         push_image_slot_assignment(
@@ -145,7 +145,7 @@ impl Importer for MeshBasicBlenderMaterialImporter {
             "occlusion_texture",
             &mut slot_assignments,
             material_data.has_occlusion_texture,
-            &json_format.pbr_texture,
+            &json_format.matallic_roughness_texture,
             &null_image_handle,
         );
         push_image_slot_assignment(

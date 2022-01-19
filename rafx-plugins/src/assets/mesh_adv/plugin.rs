@@ -1,4 +1,6 @@
-use crate::assets::mesh_adv::{MeshAdvAssetType, ModelAdvAssetType, PrefabAdvAssetType};
+use crate::assets::mesh_adv::{
+    MeshAdvAssetType, MeshMaterialAdvAssetType, ModelAdvAssetType, PrefabAdvAssetType,
+};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;
@@ -25,6 +27,7 @@ impl RendererAssetPlugin for MeshAdvAssetTypeRendererPlugin {
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
     ) {
+        asset_manager.register_asset_type::<MeshMaterialAdvAssetType>(asset_resource);
         asset_manager.register_asset_type::<MeshAdvAssetType>(asset_resource);
         asset_manager.register_asset_type::<ModelAdvAssetType>(asset_resource);
         asset_manager.register_asset_type::<PrefabAdvAssetType>(asset_resource);

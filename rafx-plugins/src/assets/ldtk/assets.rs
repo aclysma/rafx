@@ -1,4 +1,3 @@
-use crate::phases::OpaqueRenderPhase;
 use crate::shaders::tile_layer::tile_layer_frag;
 use fnv::FnvHashMap;
 use glam::Vec3;
@@ -100,13 +99,14 @@ impl DefaultAssetTypeLoadHandler<LdtkAssetData, LdtkProjectAsset> for LdtkLoadHa
                 let material_instance = asset_manager
                     .latest_asset(&layer_data.material_instance)
                     .unwrap();
-                let opaque_phase_pass_index = material_instance
+                let _material_pass = material_instance
                     .material
-                    .find_pass_by_phase::<OpaqueRenderPhase>()
-                    .expect("tileset material must have pass for opaque phase");
+                    .get_single_material_pass()
+                    .expect("tileset material must have a single pass for opaque phase");
+                let material_pass_index = 0;
                 let tileset_image_set_index = tile_layer_frag::TEX_DESCRIPTOR_SET_INDEX;
                 let descriptor_set = material_instance.material_descriptor_sets
-                    [opaque_phase_pass_index][tileset_image_set_index]
+                    [material_pass_index][tileset_image_set_index]
                     .clone()
                     .unwrap();
 

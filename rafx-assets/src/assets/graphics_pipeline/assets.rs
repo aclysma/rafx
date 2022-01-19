@@ -10,7 +10,6 @@ use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
     RafxError, RafxFillMode, RafxFrontFace, RafxRasterizerState, RafxResult, RafxSamplerDef,
 };
-use rafx_framework::render_features::{RenderPhase, RenderPhaseIndex};
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{
@@ -294,7 +293,6 @@ pub struct MaterialAssetInner {
     //TODO: Could consider decoupling render cache from phases
     pub passes: Vec<MaterialPass>,
     pub pass_name_to_index: FnvHashMap<String, usize>,
-    pub pass_phase_to_index: FnvHashMap<RenderPhaseIndex, usize>,
 }
 
 #[derive(TypeUuid, Clone)]
@@ -307,12 +305,10 @@ impl MaterialAsset {
     pub fn new(
         passes: Vec<MaterialPass>,
         pass_name_to_index: FnvHashMap<String, usize>,
-        pass_phase_to_index: FnvHashMap<RenderPhaseIndex, usize>,
     ) -> Self {
         let inner = MaterialAssetInner {
             passes,
             pass_name_to_index,
-            pass_phase_to_index,
         };
 
         MaterialAsset {
@@ -320,25 +316,11 @@ impl MaterialAsset {
         }
     }
 
-    pub fn find_pass_by_name(
+    pub fn find_pass_index_by_name(
         &self,
         name: &str,
     ) -> Option<usize> {
         self.inner.pass_name_to_index.get(name).copied()
-    }
-
-    pub fn find_pass_by_phase<T: RenderPhase>(&self) -> Option<usize> {
-        self.inner
-            .pass_phase_to_index
-            .get(&T::render_phase_index())
-            .copied()
-    }
-
-    pub fn find_pass_by_phase_index(
-        &self,
-        index: RenderPhaseIndex,
-    ) -> Option<usize> {
-        self.inner.pass_phase_to_index.get(&index).copied()
     }
 
     pub fn get_single_material_pass(
@@ -367,16 +349,7 @@ impl MaterialAsset {
     ) -> Option<ResourceArc<MaterialPassResource>> {
         self.inner
             .passes
-            .get(self.find_pass_by_name(name)? as usize)
-            .map(|x| x.material_pass_resource.clone())
-    }
-
-    pub fn get_material_pass_by_phase<T: RenderPhase>(
-        &self
-    ) -> Option<ResourceArc<MaterialPassResource>> {
-        self.inner
-            .passes
-            .get(self.find_pass_by_phase::<T>()? as usize)
+            .get(self.find_pass_index_by_name(name)? as usize)
             .map(|x| x.material_pass_resource.clone())
     }
 }
@@ -465,7 +438,6 @@ impl DefaultAssetTypeLoadHandler<MaterialAssetData, MaterialAsset> for MaterialL
     ) -> RafxResult<MaterialAsset> {
         let mut passes = Vec::with_capacity(asset_data.passes.len());
         let mut pass_name_to_index = FnvHashMap::default();
-        let mut pass_phase_to_index = FnvHashMap::default();
 
         for pass_data in &asset_data.passes {
             let pass = pass_data.create_material_pass(asset_manager)?;
@@ -477,31 +449,9 @@ impl DefaultAssetTypeLoadHandler<MaterialAssetData, MaterialAsset> for MaterialL
                 let old = pass_name_to_index.insert(name.clone(), pass_index);
                 assert!(old.is_none());
             }
-
-            if let Some(phase_name) = &pass_data.phase {
-                if let Some(phase_index) = asset_manager
-                    .resource_manager()
-                    .render_registry()
-                    .render_phase_index_from_name(phase_name)
-                {
-                    let old = pass_phase_to_index.insert(phase_index, pass_index);
-                    assert!(old.is_none());
-                } else {
-                    let error = format!(
-                        "Load Material Failed - Pass refers to phase name {}, but this phase name was not registered",
-                        phase_name
-                    );
-                    log::error!("{}", error);
-                    return Err(error)?;
-                }
-            }
         }
 
-        Ok(MaterialAsset::new(
-            passes,
-            pass_name_to_index,
-            pass_phase_to_index,
-        ))
+        Ok(MaterialAsset::new(passes, pass_name_to_index))
     }
 }
 

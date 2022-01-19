@@ -2,7 +2,8 @@ use rafx::render_feature_write_job_prelude::*;
 
 use super::*;
 use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, WireframeRenderPhase,
+    DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
+    WireframeRenderPhase,
 };
 use rafx::api::{RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding};
 use rafx::api::{RafxIndexType, RafxPrimitiveTopology};
@@ -214,7 +215,9 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
             vertex_buffer_offset_in_bytes,
             instance_buffer,
             instance_buffer_offset_in_bytes,
-        ) = if render_phase_index == OpaqueRenderPhase::render_phase_index() {
+        ) = if render_phase_index == OpaqueRenderPhase::render_phase_index()
+            || render_phase_index == TransparentRenderPhase::render_phase_index()
+        {
             (
                 &*MESH_VERTEX_PBR_LAYOUT,
                 &mesh_asset.inner.vertex_full_buffer,
@@ -255,7 +258,7 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
 
         let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
 
-        if is_depth_prepass_render_phase || is_wireframe_render_phase {
+        if is_depth_prepass_render_phase {
             per_view_submit_data
                 .depth_descriptor_set
                 .as_ref()
@@ -264,6 +267,12 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
         } else if is_shadow_map_render_phase {
             per_view_submit_data
                 .shadow_map_atlas_depth_descriptor_set
+                .as_ref()
+                .unwrap()
+                .bind(command_buffer)?;
+        } else if is_wireframe_render_phase {
+            per_view_submit_data
+                .wireframe_desriptor_set
                 .as_ref()
                 .unwrap()
                 .bind(command_buffer)?;

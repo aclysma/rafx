@@ -1,6 +1,7 @@
 (
     passes: [
         (
+            name: Some("opaque"),
             phase: Some("Opaque"),
             fixed_function_state: (
                 depth_testing: EnabledReverseZ,

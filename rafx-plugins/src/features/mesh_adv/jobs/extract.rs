@@ -1,6 +1,7 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
+use crate::assets::mesh_adv::MeshAdvShaderPassIndices;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
@@ -15,6 +16,7 @@ pub struct MeshAdvExtractJob<'extract> {
     mesh_render_options: Option<ResourceRefBorrow<'extract, MeshAdvRenderOptions>>,
     shadow_map_atlas: ReadBorrow<'extract, ShadowMapAtlas>,
     asset_manager: AssetManagerExtractRef,
+    default_pbr_material: Handle<MaterialAsset>,
     depth_material: Handle<MaterialAsset>,
     shadow_map_atlas_depth_material: Handle<MaterialAsset>,
     render_objects: MeshAdvRenderObjectSet,
@@ -24,6 +26,7 @@ impl<'extract> MeshAdvExtractJob<'extract> {
     pub fn new(
         extract_context: &RenderJobExtractContext<'extract>,
         frame_packet: Box<MeshAdvFramePacket>,
+        default_pbr_material: Handle<MaterialAsset>,
         depth_material: Handle<MaterialAsset>,
         shadow_map_atlas_depth_material: Handle<MaterialAsset>,
         render_objects: MeshAdvRenderObjectSet,
@@ -39,6 +42,7 @@ impl<'extract> MeshAdvExtractJob<'extract> {
                     .fetch::<AssetManagerRenderResource>()
                     .extract_ref(),
                 shadow_map_atlas: extract_context.render_resources.fetch::<ShadowMapAtlas>(),
+                default_pbr_material,
                 depth_material,
                 shadow_map_atlas_depth_material,
                 render_objects,
@@ -53,10 +57,19 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshAdvExtractJob<'extract> {
         &self,
         context: &ExtractPerFrameContext<'extract, '_, Self>,
     ) {
+        let default_pbr_material = self
+            .asset_manager
+            .committed_asset(&self.default_pbr_material)
+            .unwrap()
+            .clone();
+        let default_pbr_material_pass_indices =
+            MeshAdvShaderPassIndices::new(&default_pbr_material);
         context
             .frame_packet()
             .per_frame_data()
             .set(MeshAdvPerFrameData {
+                default_pbr_material,
+                default_pbr_material_pass_indices,
                 depth_material_pass: self
                     .asset_manager
                     .committed_asset(&self.depth_material)

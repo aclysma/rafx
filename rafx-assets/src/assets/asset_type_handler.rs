@@ -34,7 +34,7 @@ pub trait AssetTypeHandler: Sync + Send {
 pub trait DefaultAssetTypeLoadHandler<AssetDataT, AssetT> {
     fn load(
         asset_manager: &mut AssetManager,
-        font_asset: AssetDataT,
+        asset_data: AssetDataT,
     ) -> RafxResult<AssetT>;
 }
 
@@ -81,10 +81,10 @@ where
         asset_manager: &mut AssetManager,
     ) -> RafxResult<()> {
         for request in self.load_queues.take_load_requests() {
-            log::trace!(
+            log::info!(
                 "Create asset type {} {:?}",
                 std::any::type_name::<AssetT>(),
-                request.load_handle
+                request.load_handle,
             );
             let loaded_asset = LoadHandlerT::load(asset_manager, request.asset);
             handle_load_result(
@@ -120,9 +120,9 @@ impl<AssetT> DefaultAssetTypeLoadHandler<AssetT, AssetT>
 {
     fn load(
         _asset_manager: &mut AssetManager,
-        font_asset: AssetT,
+        asset_data: AssetT,
     ) -> RafxResult<AssetT> {
-        Ok(font_asset)
+        Ok(asset_data)
     }
 }
 

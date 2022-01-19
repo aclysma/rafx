@@ -2,21 +2,24 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, WireframeRenderPhase,
+    DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
+    WireframeRenderPhase,
 };
 use rafx::base::resource_map::{ReadBorrow, WriteBorrow};
 use rafx::framework::{DescriptorSetBindings, MaterialPassResource, ResourceArc, ResourceContext};
 
-use crate::shaders::mesh_adv::mesh_adv_textured_frag;
+use crate::shaders::mesh_adv::{mesh_adv_textured_frag, mesh_adv_wireframe_vert};
 use glam::Mat4;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 
+use crate::assets::mesh_adv::{MeshAdvBlendMethod, MeshAdvShaderPassIndices};
 use crate::features::mesh_adv::light_binning::MeshAdvLightBinRenderResource;
 use crate::shaders::depth_velocity::depth_velocity_vert;
 use crate::shaders::mesh_adv::lights_bin_comp;
 use crate::shaders::mesh_adv::mesh_adv_textured_frag::LightInListStd430;
 use crate::shaders::mesh_adv::shadow_atlas_depth_vert;
 use mesh_adv_textured_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
+use rafx::assets::MaterialAsset;
 use rafx::renderer::MainViewRenderResource;
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
@@ -29,6 +32,8 @@ pub struct MeshAdvPrepareJob<'prepare> {
     requires_textured_descriptor_sets: bool,
     #[allow(dead_code)]
     requires_untextured_descriptor_sets: bool,
+    default_pbr_material: MaterialAsset,
+    default_pbr_material_pass_indices: MeshAdvShaderPassIndices,
     depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     shadow_map_atlas_depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     shadow_map_data: ReadBorrow<'prepare, MeshAdvShadowMapResource>,
@@ -80,6 +85,10 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
                         frame_packet.render_object_instances().len(),
                     ))
                 },
+                default_pbr_material: per_frame_data.default_pbr_material.clone(),
+                default_pbr_material_pass_indices: per_frame_data
+                    .default_pbr_material_pass_indices
+                    .clone(),
                 depth_material_pass: { per_frame_data.depth_material_pass.clone() },
                 shadow_map_atlas_depth_material_pass: {
                     per_frame_data.shadow_map_atlas_depth_material_pass.clone()
@@ -318,8 +327,13 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 }
 
                 let mesh_part = mesh_part.as_ref().unwrap();
+                let blend_method = mesh_part.mesh_material.data().material_data.blend_method;
 
-                if view.phase_is_relevant::<DepthPrepassRenderPhase>() {
+                if blend_method == MeshAdvBlendMethod::Opaque
+                    && view.phase_is_relevant::<DepthPrepassRenderPhase>()
+                {
+                    //TODO: need to use the correct pipeline depending on backface culling, if we want velocity, and if we want to include previous position available to the shader
+                    //TODO: We need to decide what to bind here and generate vertex buffers correctly
                     context.push_submit_node::<DepthPrepassRenderPhase>(
                         MeshAdvDrawCall {
                             render_object_instance_id,
@@ -338,14 +352,14 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 }
 
                 if view.phase_is_relevant::<ShadowMapRenderPhase>() {
+                    let material_pass = self.default_pbr_material.get_material_pass_by_index(
+                        self.default_pbr_material_pass_indices.shadow_map as usize,
+                    );
+
                     context.push_submit_node::<ShadowMapRenderPhase>(
                         MeshAdvDrawCall {
                             render_object_instance_id,
-                            material_pass_resource: self
-                                .shadow_map_atlas_depth_material_pass
-                                .as_ref()
-                                .unwrap()
-                                .clone(),
+                            material_pass_resource: material_pass.as_ref().unwrap().clone(),
                             per_material_descriptor_set: None,
                             mesh_part_index,
                             model_matrix_index: model_matrix_offset,
@@ -355,9 +369,18 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     );
                 }
 
-                if view.phase_is_relevant::<OpaqueRenderPhase>() {
+                //is transparent, push submit node in with transparents?
+                //do we do something different from material instances?
+                //if mesh_part.material_instance.material
+
+                let phase_index = if blend_method == MeshAdvBlendMethod::Opaque {
+                    OpaqueRenderPhase::render_phase_index()
+                } else {
+                    TransparentRenderPhase::render_phase_index()
+                };
+                if view.phase_index_is_relevant(phase_index) {
                     let material_pass_resource = mesh_part
-                        .get_material_pass_resource(view, OpaqueRenderPhase::render_phase_index())
+                        .get_material_pass_resource(view, phase_index)
                         .clone();
 
                     let per_material_descriptor_set = Some(
@@ -369,7 +392,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                             .clone(),
                     );
 
-                    context.push_submit_node::<OpaqueRenderPhase>(
+                    context.push_submit_node_into_render_phase(
+                        phase_index,
                         MeshAdvDrawCall {
                             render_object_instance_id,
                             material_pass_resource,
@@ -804,6 +828,37 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             None
         };
 
+        //
+        // If we are rendering a wireframe, make a scriptor set with uniform data for this view
+        //
+        let wireframe_desriptor_set = if view.phase_is_relevant::<WireframeRenderPhase>() {
+            let mut per_view_data = mesh_adv_wireframe_vert::PerViewDataUniform::default();
+
+            per_view_data.view = view.view_matrix().to_cols_array_2d();
+            per_view_data.view_proj = view.view_proj().to_cols_array_2d();
+
+            let per_instance_descriptor_set_layout = &self
+                .default_pbr_material
+                .get_material_pass_by_index(
+                    self.default_pbr_material_pass_indices.wireframe as usize,
+                )
+                .as_ref()
+                .unwrap()
+                .get_raw()
+                .descriptor_set_layouts[PER_VIEW_DESCRIPTOR_SET_INDEX as usize];
+
+            descriptor_set_allocator
+                .create_descriptor_set(
+                    per_instance_descriptor_set_layout,
+                    mesh_adv_wireframe_vert::DescriptorSet0Args {
+                        per_view_data: &per_view_data,
+                    },
+                )
+                .ok()
+        } else {
+            None
+        };
+
         context
             .view_submit_packet()
             .per_view_submit_data()
@@ -811,6 +866,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 opaque_descriptor_set,
                 depth_descriptor_set,
                 shadow_map_atlas_depth_descriptor_set,
+                wireframe_desriptor_set,
             });
     }
 

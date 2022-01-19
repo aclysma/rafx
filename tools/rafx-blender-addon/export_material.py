@@ -175,7 +175,7 @@ def setup_pbr_texture(bsdf_node: bpy.types.ShaderNodeBsdfPrincipled, attributes,
 
         # Add it to the material file
         relpath = rafx_blender_paths.make_cross_platform_relative_path(image_export_path, export_dir)
-        attributes["pbr_texture"] = relpath        
+        attributes["metallic_roughness_texture"] = relpath
 
     return None
 
@@ -215,35 +215,44 @@ def export(export_context: ExportContext, material: bpy.types.Material):
     attributes['metallic_factor'] = gltf_export.get_factor_from_socket(bsdf.inputs["Metallic"], 'VALUE', 1.0)
     attributes['emissive_factor'] = gltf_export.get_factor_from_socket(bsdf.inputs["Emission"], 'RGB', [0.0,0.0,0.0])
     attributes['normal_texture_scale'] = 1.0
-    attributes['occlusion_texture_strength'] = 1.0
-    attributes['alpha_cutoff'] = 0.5
+    #attributes['occlusion_texture_strength'] = 1.0
+    #attributes['alpha_cutoff'] = 0.5
+    #attributes['use_alpha'] = False
     #attributes['color_texture'] = ""
-    #attributes['pbr_texture'] = ""
+    #attributes['metallic_roughness_texture'] = ""
     #attributes['normal_texture'] = ""
     #attributes['emissive_texture'] = ""
 
+    attributes['shadow_method'] = material.shadow_method
+    attributes['blend_method'] = material.blend_method
+    attributes['alpha_threshold'] = material.alpha_threshold
+    attributes['backface_culling'] = material.use_backface_culling
 
-        
     base_color_node = gltf_export.previous_node_typed(bsdf.inputs["Base Color"], bpy.types.ShaderNodeTexImage)
-    #alpha_node = gltf_export.previous_node_typed(bsdf.inputs["Alpha"], bpy.types.ShaderNodeTexImage)
+    alpha_node = gltf_export.previous_node_typed(bsdf.inputs["Alpha"], bpy.types.ShaderNodeTexImage)
 
     if base_color_node:
-        #use_alpha = False
-        #if alpha_node:
-        #    use_alpha = True
-        
-        if base_color_node.image:
-            #base_color_info['use_alpha'] = use_alpha
-            image_path = rafx_blender_paths.find_export_path_for_blender_data_block(export_context.project_settings, base_color_node.image)
-            image_path = rafx_blender_paths.make_cross_platform_relative_path(image_path, export_dir)
+        if not base_color_node.image:
+            raise Exception("ERROR: Material " + str(material) + " has a ShaderNodeTexImage used as a color map but has no image selected")
 
+        image_path = rafx_blender_paths.find_export_path_for_blender_data_block(export_context.project_settings, base_color_node.image)
+        image_path = rafx_blender_paths.make_cross_platform_relative_path(image_path, export_dir)
 
-            #export_base_dir = rafx_blender_paths.find_base_export_path_for_data_block(export_context.project_settings, base_color_node.image)
-            #image_path = os.path.join(export_base_dir, "{}.{}".format(base_color_node.image.name, "png"))
+        attributes['color_texture'] = image_path
+        attributes['color_texture_has_alpha_channel'] = False
 
-            attributes['color_texture'] = image_path
-    #elif alpha_node:
-    #    raise Exception("ERROR: Material " + str(material) + " uses texture for alpha but not color")
+        if alpha_node:
+            if not alpha_node.image:
+                raise Exception("ERROR: Material " + str(material) + " has a ShaderNodeTexImage used as an alpha map but has no image selected")
+            elif alpha_node.image.filepath != base_color_node.image.filepath:
+                raise Exception("ERROR: Material " + str(material) + " alpha image is not the same as color image")
+            else:
+                attributes['color_texture_has_alpha_channel'] = True
+    elif alpha_node:
+        if alpha_node.image:
+            raise Exception("ERROR: Material " + str(material) + " has a ShaderNodeTexImage used as an alpha map but no color map is specified")
+        else:
+            raise Exception("ERROR: Material " + str(material) + " has a ShaderNodeTexImage used as an alpha map but has no image selected")
 
     # Support connecting a texture directly to the normal output (technically wrong) AND image -> normal map -> bsdf
     normal_map_node = gltf_export.previous_node_typed(bsdf.inputs["Normal"], bpy.types.ShaderNodeNormalMap)
@@ -260,7 +269,7 @@ def export(export_context: ExportContext, material: bpy.types.Material):
             image_path = rafx_blender_paths.make_cross_platform_relative_path(image_path, export_dir)
             attributes['normal_texture'] = image_path
         else:
-            raise rafx_errors.RafxUnsupportedMaterialGraphNode("ShaderNodeTexImage used as normal map has no image selected")
+            raise rafx_errors.RafxUnsupportedMaterialGraphNode("ERROR: Material " + str(material) + "has a ShaderNodeTexImage used as normal map has no image selected")
     
     setup_pbr_texture(bsdf, attributes, export_context.project_settings, export_dir)
      

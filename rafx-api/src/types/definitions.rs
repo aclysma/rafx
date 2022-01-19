@@ -578,8 +578,8 @@ impl RafxBlendStateRenderTarget {
         RafxBlendStateRenderTarget {
             src_factor: RafxBlendFactor::SrcAlpha,
             dst_factor: RafxBlendFactor::OneMinusSrcAlpha,
-            src_factor_alpha: RafxBlendFactor::One,
-            dst_factor_alpha: RafxBlendFactor::Zero,
+            src_factor_alpha: RafxBlendFactor::Zero,
+            dst_factor_alpha: RafxBlendFactor::One,
             blend_op: RafxBlendOp::Add,
             blend_op_alpha: RafxBlendOp::Add,
             masks: RafxColorFlags::ALL,

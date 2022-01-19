@@ -208,12 +208,12 @@ impl DefaultAssetTypeLoadHandler<MeshBasicAssetData, MeshBasicAsset> for MeshBas
 
                 let textured_pass_index = material_instance
                     .material
-                    .find_pass_by_name("mesh textured")
+                    .find_pass_index_by_name("mesh textured")
                     .expect("could not find `mesh textured` pass in mesh part material");
 
                 let textured_z_pass_index = material_instance
                     .material
-                    .find_pass_by_name("mesh textured z")
+                    .find_pass_index_by_name("mesh textured z")
                     .expect("could not find `mesh textured z` pass in mesh part material");
 
                 assert_eq!(
@@ -224,12 +224,12 @@ impl DefaultAssetTypeLoadHandler<MeshBasicAssetData, MeshBasicAsset> for MeshBas
 
                 let untextured_pass_index = material_instance
                     .material
-                    .find_pass_by_name("mesh untextured")
+                    .find_pass_index_by_name("mesh untextured")
                     .expect("could not find `mesh untextured` pass in mesh part material");
 
                 let untextured_z_pass_index = material_instance
                     .material
-                    .find_pass_by_name("mesh untextured z")
+                    .find_pass_index_by_name("mesh untextured z")
                     .expect("could not find `mesh untextured z` pass in mesh part material");
 
                 assert_eq!(
@@ -240,7 +240,7 @@ impl DefaultAssetTypeLoadHandler<MeshBasicAssetData, MeshBasicAsset> for MeshBas
 
                 let wireframe_pass_index = material_instance
                     .material
-                    .find_pass_by_name("mesh wireframe")
+                    .find_pass_index_by_name("mesh wireframe")
                     .expect("could not find `mesh wireframe` pass in mesh part material");
 
                 Some(MeshBasicAssetPart {

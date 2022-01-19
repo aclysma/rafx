@@ -1,11 +1,13 @@
 (
     material: "sprite.material",
     slot_assignments: [
+        /*
         (
             slot_name: "texture",
             array_index: 0,
             image: Some("../textures/texture.jpg")
         ),
+        */
         /*
         (
             slot_name: "scalar_value",
