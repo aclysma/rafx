@@ -1,4 +1,6 @@
-use crate::assets::mesh_basic::{MeshBasicAssetType, ModelBasicAssetType, PrefabBasicAssetType};
+use crate::assets::mesh_basic::{
+    MeshBasicAssetType, MeshMaterialBasicAssetType, ModelBasicAssetType, PrefabBasicAssetType,
+};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;
@@ -28,6 +30,7 @@ impl RendererAssetPlugin for MeshBasicAssetTypeRendererPlugin {
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
     ) {
+        asset_manager.register_asset_type::<MeshMaterialBasicAssetType>(asset_resource);
         asset_manager.register_asset_type::<MeshBasicAssetType>(asset_resource);
         asset_manager.register_asset_type::<ModelBasicAssetType>(asset_resource);
         asset_manager.register_asset_type::<PrefabBasicAssetType>(asset_resource);

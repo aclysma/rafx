@@ -161,7 +161,6 @@ struct MaterialData {
     bool enable_alpha_clip;
     bool has_base_color_texture;
     bool base_color_texture_has_alpha_channel;
-    // We assume if it has an alpha channel based on blend method
     bool has_metallic_roughness_texture;
     bool has_normal_texture;
     bool has_emissive_texture;

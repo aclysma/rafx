@@ -107,12 +107,13 @@ struct MaterialData {
     float metallic_factor;
     float roughness_factor;
     float normal_texture_scale;
-    float occlusion_texture_strength;
-    float alpha_cutoff;
+    float alpha_threshold;
+    bool enable_alpha_blend;
+    bool enable_alpha_clip;
     bool has_base_color_texture;
+    bool base_color_texture_has_alpha_channel;
     bool has_metallic_roughness_texture;
     bool has_normal_texture;
-    bool has_occlusion_texture;
     bool has_emissive_texture;
 };
 

@@ -2,19 +2,22 @@ use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
 use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, WireframeRenderPhase,
+    DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
+    WireframeRenderPhase,
 };
 use rafx::base::resource_map::ReadBorrow;
 use rafx::framework::{MaterialPassResource, ResourceArc, ResourceContext};
 
 use crate::shaders::depth::depth_vert::PerViewDataUniform as ShadowPerViewShaderParam;
-use crate::shaders::mesh_basic::mesh_basic_textured_frag;
+use crate::shaders::mesh_basic::{mesh_basic_textured_frag, mesh_basic_wireframe_vert};
 use glam::Mat4;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 use rafx::renderer::InvalidResources;
 
+use crate::assets::mesh_basic::{MeshBasicBlendMethod, MeshBasicShaderPassIndices};
 use crate::shaders::depth::depth_vert;
 use mesh_basic_textured_frag::PerViewDataUniform as MeshPerViewFragmentShaderParam;
+use rafx::assets::MaterialAsset;
 
 const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
     mesh_basic_textured_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
@@ -26,10 +29,12 @@ pub struct MeshBasicPrepareJob<'prepare> {
     requires_textured_descriptor_sets: bool,
     #[allow(dead_code)]
     requires_untextured_descriptor_sets: bool,
+    default_pbr_material: MaterialAsset,
+    default_pbr_material_pass_indices: MeshBasicShaderPassIndices,
     depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     shadow_map_data: ReadBorrow<'prepare, MeshBasicShadowMapResource>,
     invalid_resources: ReadBorrow<'prepare, InvalidResources>,
-    render_object_instance_transforms: Arc<AtomicOnceCellStack<[[f32; 4]; 4]>>,
+    render_object_instance_transforms: Arc<AtomicOnceCellStack<MeshModelMatrix>>,
     #[allow(dead_code)]
     render_objects: MeshBasicRenderObjectSet,
 }
@@ -55,6 +60,7 @@ impl<'prepare> MeshBasicPrepareJob<'prepare> {
             }
         }
 
+        let per_frame_data = frame_packet.per_frame_data().get();
         Arc::new(PrepareJob::new(
             Self {
                 resource_context: prepare_context.resource_context.clone(),
@@ -65,6 +71,10 @@ impl<'prepare> MeshBasicPrepareJob<'prepare> {
                         frame_packet.render_object_instances().len(),
                     ))
                 },
+                default_pbr_material: per_frame_data.default_pbr_material.clone(),
+                default_pbr_material_pass_indices: per_frame_data
+                    .default_pbr_material_pass_indices
+                    .clone(),
                 depth_material_pass: {
                     frame_packet
                         .per_frame_data()
@@ -210,13 +220,17 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
 
         let extracted_data = render_object_instance.as_ref().unwrap();
         let world_transform = Mat4::from_scale_rotation_translation(
-            extracted_data.scale,
-            extracted_data.rotation,
-            extracted_data.translation,
+            extracted_data.transform.scale,
+            extracted_data.transform.rotation,
+            extracted_data.transform.translation,
         );
 
         let model = world_transform.to_cols_array_2d();
-        let model_matrix_offset = self.render_object_instance_transforms.push(model);
+        let model_matrix_offset = self
+            .render_object_instance_transforms
+            .push(MeshModelMatrix {
+                model_matrix: model,
+            });
 
         context.set_render_object_instance_submit_data(MeshBasicRenderObjectInstanceSubmitData {
             model_matrix_offset,
@@ -231,7 +245,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
         let view = context.view();
 
         if let Some(extracted_data) = context.render_object_instance_data() {
-            let distance = (view.eye_position() - extracted_data.translation).length_squared();
+            let distance =
+                (view.eye_position() - extracted_data.transform.translation).length_squared();
             let render_object_instance_id = context.render_object_instance_id();
 
             let model_matrix_offset = context
@@ -250,17 +265,22 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                 }
 
                 let mesh_part = mesh_part.as_ref().unwrap();
+                let blend_method = mesh_part.mesh_material.data().material_data.blend_method;
 
-                let depth_material_pass = self.depth_material_pass.as_ref().unwrap();
-
-                if view.phase_is_relevant::<DepthPrepassRenderPhase>() {
+                if blend_method == MeshBasicBlendMethod::Opaque
+                    && view.phase_is_relevant::<DepthPrepassRenderPhase>()
+                {
                     context.push_submit_node::<DepthPrepassRenderPhase>(
                         MeshBasicDrawCall {
                             render_object_instance_id,
-                            material_pass_resource: depth_material_pass.clone(),
+                            material_pass_resource: self
+                                .depth_material_pass
+                                .as_ref()
+                                .unwrap()
+                                .clone(),
                             per_material_descriptor_set: None,
                             mesh_part_index,
-                            model_matrix_offset,
+                            model_matrix_index: model_matrix_offset,
                         },
                         0,
                         distance,
@@ -268,22 +288,31 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                 }
 
                 if view.phase_is_relevant::<ShadowMapRenderPhase>() {
+                    let material_pass = self.default_pbr_material.get_material_pass_by_index(
+                        self.default_pbr_material_pass_indices.shadow_map as usize,
+                    );
+
                     context.push_submit_node::<ShadowMapRenderPhase>(
                         MeshBasicDrawCall {
                             render_object_instance_id,
-                            material_pass_resource: depth_material_pass.clone(),
+                            material_pass_resource: material_pass.as_ref().unwrap().clone(),
                             per_material_descriptor_set: None,
                             mesh_part_index,
-                            model_matrix_offset,
+                            model_matrix_index: model_matrix_offset,
                         },
                         0,
                         distance,
                     );
                 }
 
-                if view.phase_is_relevant::<OpaqueRenderPhase>() {
+                let phase_index = if blend_method == MeshBasicBlendMethod::Opaque {
+                    OpaqueRenderPhase::render_phase_index()
+                } else {
+                    TransparentRenderPhase::render_phase_index()
+                };
+                if view.phase_index_is_relevant(phase_index) {
                     let material_pass_resource = mesh_part
-                        .get_material_pass_resource(view, OpaqueRenderPhase::render_phase_index())
+                        .get_material_pass_resource(view, phase_index)
                         .clone();
 
                     let per_material_descriptor_set = Some(
@@ -295,13 +324,14 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                             .clone(),
                     );
 
-                    context.push_submit_node::<OpaqueRenderPhase>(
+                    context.push_submit_node_into_render_phase(
+                        phase_index,
                         MeshBasicDrawCall {
                             render_object_instance_id,
                             material_pass_resource,
                             per_material_descriptor_set,
                             mesh_part_index,
-                            model_matrix_offset,
+                            model_matrix_index: model_matrix_offset,
                         },
                         0,
                         distance,
@@ -333,7 +363,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                             material_pass_resource,
                             per_material_descriptor_set,
                             mesh_part_index,
-                            model_matrix_offset,
+                            model_matrix_index: model_matrix_offset,
                         },
                         0,
                         distance,
@@ -566,7 +596,10 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
             None
         };
 
-        let depth_descriptor_set = {
+        //
+        // If we are rendering a depth prepass, make a scriptor set with uniform data for this view
+        //
+        let shadow_map_descriptor_set = if view.phase_is_relevant::<ShadowMapRenderPhase>() {
             let mut per_view_data = ShadowPerViewShaderParam::default();
 
             per_view_data.view = view.view_matrix().to_cols_array_2d();
@@ -587,6 +620,64 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
                     },
                 )
                 .ok()
+        } else {
+            None
+        };
+
+        let depth_descriptor_set = if view.phase_is_relevant::<DepthPrepassRenderPhase>() {
+            let mut per_view_data = ShadowPerViewShaderParam::default();
+
+            per_view_data.view = view.view_matrix().to_cols_array_2d();
+            per_view_data.view_proj = view.view_proj().to_cols_array_2d();
+
+            let per_instance_descriptor_set_layout = &self
+                .depth_material_pass
+                .as_ref()
+                .unwrap()
+                .get_raw()
+                .descriptor_set_layouts[PER_VIEW_DESCRIPTOR_SET_INDEX as usize];
+
+            descriptor_set_allocator
+                .create_descriptor_set(
+                    per_instance_descriptor_set_layout,
+                    depth_vert::DescriptorSet0Args {
+                        per_view_data: &per_view_data,
+                    },
+                )
+                .ok()
+        } else {
+            None
+        };
+
+        //
+        // If we are rendering a wireframe, make a scriptor set with uniform data for this view
+        //
+        let wireframe_desriptor_set = if view.phase_is_relevant::<WireframeRenderPhase>() {
+            let mut per_view_data = mesh_basic_wireframe_vert::PerViewDataUniform::default();
+
+            per_view_data.view = view.view_matrix().to_cols_array_2d();
+            per_view_data.view_proj = view.view_proj().to_cols_array_2d();
+
+            let per_instance_descriptor_set_layout = &self
+                .default_pbr_material
+                .get_material_pass_by_index(
+                    self.default_pbr_material_pass_indices.wireframe as usize,
+                )
+                .as_ref()
+                .unwrap()
+                .get_raw()
+                .descriptor_set_layouts[PER_VIEW_DESCRIPTOR_SET_INDEX as usize];
+
+            descriptor_set_allocator
+                .create_descriptor_set(
+                    per_instance_descriptor_set_layout,
+                    mesh_basic_wireframe_vert::DescriptorSet0Args {
+                        per_view_data: &per_view_data,
+                    },
+                )
+                .ok()
+        } else {
+            None
         };
 
         context
@@ -595,6 +686,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
             .set(MeshBasicPerViewSubmitData {
                 opaque_descriptor_set,
                 depth_descriptor_set,
+                wireframe_desriptor_set,
+                shadow_map_descriptor_set,
             });
     }
 

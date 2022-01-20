@@ -33,19 +33,20 @@ pub type ShadowMap2DDataUniform = ShadowMap2DDataStd140;
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct MaterialDataStd140 {
-    pub base_color_factor: [f32; 4],         // +0 (size: 16)
-    pub emissive_factor: [f32; 3],           // +16 (size: 12)
-    pub metallic_factor: f32,                // +28 (size: 4)
-    pub roughness_factor: f32,               // +32 (size: 4)
-    pub normal_texture_scale: f32,           // +36 (size: 4)
-    pub occlusion_texture_strength: f32,     // +40 (size: 4)
-    pub alpha_cutoff: f32,                   // +44 (size: 4)
-    pub has_base_color_texture: u32,         // +48 (size: 4)
-    pub has_metallic_roughness_texture: u32, // +52 (size: 4)
-    pub has_normal_texture: u32,             // +56 (size: 4)
-    pub has_occlusion_texture: u32,          // +60 (size: 4)
-    pub has_emissive_texture: u32,           // +64 (size: 4)
-    pub _padding0: [u8; 12],                 // +68 (size: 12)
+    pub base_color_factor: [f32; 4],               // +0 (size: 16)
+    pub emissive_factor: [f32; 3],                 // +16 (size: 12)
+    pub metallic_factor: f32,                      // +28 (size: 4)
+    pub roughness_factor: f32,                     // +32 (size: 4)
+    pub normal_texture_scale: f32,                 // +36 (size: 4)
+    pub alpha_threshold: f32,                      // +40 (size: 4)
+    pub enable_alpha_blend: u32,                   // +44 (size: 4)
+    pub enable_alpha_clip: u32,                    // +48 (size: 4)
+    pub has_base_color_texture: u32,               // +52 (size: 4)
+    pub base_color_texture_has_alpha_channel: u32, // +56 (size: 4)
+    pub has_metallic_roughness_texture: u32,       // +60 (size: 4)
+    pub has_normal_texture: u32,                   // +64 (size: 4)
+    pub has_emissive_texture: u32,                 // +68 (size: 4)
+    pub _padding0: [u8; 8],                        // +72 (size: 8)
 } // 80 bytes
 
 impl Default for MaterialDataStd140 {
@@ -56,14 +57,15 @@ impl Default for MaterialDataStd140 {
             metallic_factor: <f32>::default(),
             roughness_factor: <f32>::default(),
             normal_texture_scale: <f32>::default(),
-            occlusion_texture_strength: <f32>::default(),
-            alpha_cutoff: <f32>::default(),
+            alpha_threshold: <f32>::default(),
+            enable_alpha_blend: <u32>::default(),
+            enable_alpha_clip: <u32>::default(),
             has_base_color_texture: <u32>::default(),
+            base_color_texture_has_alpha_channel: <u32>::default(),
             has_metallic_roughness_texture: <u32>::default(),
             has_normal_texture: <u32>::default(),
-            has_occlusion_texture: <u32>::default(),
             has_emissive_texture: <u32>::default(),
-            _padding0: [u8::default(); 12],
+            _padding0: [u8::default(); 8],
         }
     }
 }
@@ -517,45 +519,54 @@ mod test {
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, occlusion_texture_strength),
+            memoffset::offset_of!(MaterialDataStd140, alpha_threshold),
             40
         );
-        assert_eq!(std::mem::size_of::<f32>(), 4);
-        assert_eq!(std::mem::align_of::<f32>(), 4);
-        assert_eq!(memoffset::offset_of!(MaterialDataStd140, alpha_cutoff), 44);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_base_color_texture),
+            memoffset::offset_of!(MaterialDataStd140, enable_alpha_blend),
+            44
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDataStd140, enable_alpha_clip),
             48
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_metallic_roughness_texture),
+            memoffset::offset_of!(MaterialDataStd140, has_base_color_texture),
             52
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_normal_texture),
+            memoffset::offset_of!(MaterialDataStd140, base_color_texture_has_alpha_channel),
             56
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_occlusion_texture),
+            memoffset::offset_of!(MaterialDataStd140, has_metallic_roughness_texture),
             60
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_emissive_texture),
+            memoffset::offset_of!(MaterialDataStd140, has_normal_texture),
             64
         );
-        assert_eq!(std::mem::size_of::<[u8; 12]>(), 12);
-        assert_eq!(std::mem::align_of::<[u8; 12]>(), 1);
-        assert_eq!(memoffset::offset_of!(MaterialDataStd140, _padding0), 68);
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDataStd140, has_emissive_texture),
+            68
+        );
+        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
+        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
+        assert_eq!(memoffset::offset_of!(MaterialDataStd140, _padding0), 72);
     }
 
     #[test]

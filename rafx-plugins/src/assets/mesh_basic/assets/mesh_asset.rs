@@ -1,11 +1,11 @@
+use crate::assets::mesh_basic::MeshMaterialBasicAsset;
 use crate::features::mesh_basic::MeshBasicUntexturedRenderFeatureFlag;
-use crate::phases::{DepthPrepassRenderPhase, OpaqueRenderPhase, WireframeRenderPhase};
+use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
 use crate::shaders::mesh_basic::mesh_basic_textured_frag;
-use distill::loader::handle::Handle;
+use distill::loader::handle::{AssetHandle, Handle};
 use rafx::api::{RafxIndexType, RafxResult};
-use rafx::assets::MaterialInstanceAsset;
 use rafx::assets::{
-    AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler,
+    AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, MaterialAsset,
 };
 use rafx::framework::render_features::{RenderPhase, RenderPhaseIndex, RenderView};
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
@@ -14,25 +14,44 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MeshBasicShadowMethod {
+    None,
+    Opaque,
+    //AlphaClip,
+    //AlphaStochastic,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MeshBasicBlendMethod {
+    Opaque,
+    AlphaClip,
+    //AlphaStochastic,
+    AlphaBlend,
+}
+
 // This is non-texture data associated with the material. Must convert to
 // MeshMaterialDataShaderParam to bind to a shader uniform
 #[derive(Serialize, Deserialize, Clone)]
 #[repr(C)]
 pub struct MeshBasicMaterialData {
     // Using f32 arrays for serde support
-    pub base_color_factor: [f32; 4],     // default: 1,1,1,1
-    pub emissive_factor: [f32; 3],       // default: 0,0,0
-    pub metallic_factor: f32,            //default: 1,
-    pub roughness_factor: f32,           // default: 1,
-    pub normal_texture_scale: f32,       // default: 1
-    pub occlusion_texture_strength: f32, // default 1
-    pub alpha_cutoff: f32,               // default 0.5
+    pub base_color_factor: [f32; 4], // default: 1,1,1,1
+    pub emissive_factor: [f32; 3],   // default: 0,0,0
+    pub metallic_factor: f32,        //default: 1,
+    pub roughness_factor: f32,       // default: 1,
+    pub normal_texture_scale: f32,   // default: 1
 
     pub has_base_color_texture: bool,
+    pub base_color_texture_has_alpha_channel: bool,
     pub has_metallic_roughness_texture: bool,
     pub has_normal_texture: bool,
-    pub has_occlusion_texture: bool,
     pub has_emissive_texture: bool,
+
+    pub shadow_method: MeshBasicShadowMethod,
+    pub blend_method: MeshBasicBlendMethod,
+    pub alpha_threshold: f32,
+    pub backface_culling: bool,
 }
 
 impl Default for MeshBasicMaterialData {
@@ -43,13 +62,15 @@ impl Default for MeshBasicMaterialData {
             metallic_factor: 1.0,
             roughness_factor: 1.0,
             normal_texture_scale: 1.0,
-            occlusion_texture_strength: 1.0,
-            alpha_cutoff: 0.5,
             has_base_color_texture: false,
+            base_color_texture_has_alpha_channel: false,
             has_metallic_roughness_texture: false,
             has_normal_texture: false,
-            has_occlusion_texture: false,
             has_emissive_texture: false,
+            shadow_method: MeshBasicShadowMethod::Opaque,
+            blend_method: MeshBasicBlendMethod::Opaque,
+            alpha_threshold: 0.5,
+            backface_culling: true,
         }
     }
 }
@@ -64,14 +85,15 @@ impl Into<MeshBasicMaterialDataShaderParam> for MeshBasicMaterialData {
             metallic_factor: self.metallic_factor,
             roughness_factor: self.roughness_factor,
             normal_texture_scale: self.normal_texture_scale,
-            occlusion_texture_strength: self.occlusion_texture_strength,
-            alpha_cutoff: self.alpha_cutoff,
+            alpha_threshold: self.alpha_threshold,
+            enable_alpha_blend: (self.blend_method == MeshBasicBlendMethod::AlphaBlend) as u32,
+            enable_alpha_clip: (self.blend_method == MeshBasicBlendMethod::AlphaClip) as u32,
             has_base_color_texture: self.has_base_color_texture as u32,
+            base_color_texture_has_alpha_channel: self.base_color_texture_has_alpha_channel as u32,
             has_metallic_roughness_texture: self.has_metallic_roughness_texture as u32,
             has_normal_texture: self.has_normal_texture as u32,
-            has_occlusion_texture: self.has_occlusion_texture as u32,
             has_emissive_texture: self.has_emissive_texture as u32,
-            ..Default::default()
+            _padding0: Default::default(),
         }
     }
 }
@@ -84,7 +106,7 @@ pub struct MeshBasicPartAssetData {
     pub vertex_position_buffer_size_in_bytes: u32,
     pub index_buffer_offset_in_bytes: u32,
     pub index_buffer_size_in_bytes: u32,
-    pub material_instance: Handle<MaterialInstanceAsset>,
+    pub mesh_material: Handle<MeshMaterialBasicAsset>,
     pub index_type: RafxIndexType,
 }
 
@@ -98,11 +120,136 @@ pub struct MeshBasicAssetData {
     pub visible_bounds: VisibleBounds,
 }
 
+#[derive(Clone)]
+pub struct MeshBasicShaderPassIndices {
+    //pub depth_prepass: u8,
+    ////pub depth_prepass_backface: u8,
+    ////pub depth_prepass_velocity: u8,
+    ////pub depth_prepass_velocity_backface: u8,
+    //pub depth_prepass_velocity_moved: u8,
+    ////pub depth_prepass_velocity_backface_moved: u8,
+    //
+
+    // For shadow maps we don't do any face culling
+    pub shadow_map: u8,
+    //pub shadow_map_backface: u8,
+    pub opaque: u8,
+    pub opaque_backface: u8,
+    //pub opaque_alphaclip: u8,
+    //pub opaque_alphaclip_backface: u8,
+    pub opaque_untextured: u8,
+    pub opaque_backface_untextured: u8,
+    //pub opaque_alphaclip_untextured: u8,
+    //pub opaque_alphaclip_backface_untextured: u8,
+    pub transparent: u8,
+    pub transparent_backface: u8,
+    pub transparent_untextured: u8,
+    pub transparent_backface_untextured: u8,
+
+    pub wireframe: u8,
+}
+
+impl MeshBasicShaderPassIndices {
+    #[rustfmt::skip]
+    pub fn new(material: &MaterialAsset) -> MeshBasicShaderPassIndices {
+        //let depth_prepass = material.find_pass_index_by_name("depth_prepass").expect("Mesh shader must have pass named 'depth_prepass'") as u8;
+        ////let depth_prepass_backface = material.find_pass_index_by_name("depth_prepass_backface").expect("Mesh shader must have pass named 'depth_prepass_backface'") as u8;
+        ////let depth_prepass_velocity = material.find_pass_index_by_name("depth_prepass_velocity").expect("Mesh shader must have pass named 'depth_prepass_velocity'") as u8;
+        ////let depth_prepass_velocity_backface = material.find_pass_index_by_name("depth_prepass_velocity_backface").expect("Mesh shader must have pass named 'depth_prepass_velocity_backface'") as u8;
+        //let depth_prepass_velocity_moved = material.find_pass_index_by_name("depth_prepass_velocity_moved").expect("Mesh shader must have pass named 'depth_prepass_velocity_moved'") as u8;
+        ////let depth_prepass_velocity_backface_moved = material.find_pass_index_by_name("depth_prepass_velocity_backface_moved").expect("Mesh shader must have pass named 'depth_prepass_velocity_backface_moved'") as u8;
+        let shadow_map = material.find_pass_index_by_name("shadow_map").expect("Mesh shader must have pass named 'shadow_map'") as u8;
+        //let shadow_map_backface = material.find_pass_index_by_name("shadow_map_backface").expect("Mesh shader must have pass named 'shadow_map_backface'") as u8;
+        let opaque = material.find_pass_index_by_name("opaque").expect("Mesh shader must have pass named 'opaque'") as u8;
+        let opaque_backface = material.find_pass_index_by_name("opaque_backface").expect("Mesh shader must have pass named 'opaque_backface'") as u8;
+        //let opaque_alphaclip = material.find_pass_index_by_name("opaque_alphaclip").expect("Mesh shader must have pass named 'opaque_alphaclip'") as u8;
+        //let opaque_alphaclip_backface = material.find_pass_index_by_name("opaque_alphaclip_backface").expect("Mesh shader must have pass named 'opaque_alphaclip_backface'") as u8;
+        let opaque_untextured = material.find_pass_index_by_name("opaque_untextured").expect("Mesh shader must have pass named 'opaque'") as u8;
+        let opaque_backface_untextured = material.find_pass_index_by_name("opaque_backface_untextured").expect("Mesh shader must have pass named 'opaque_backface'") as u8;
+        //let opaque_alphaclip_untextured = material.find_pass_index_by_name("opaque_alphaclip").expect("Mesh shader must have pass named 'opaque_alphaclip'") as u8;
+        //let opaque_alphaclip_backface_untextured = material.find_pass_index_by_name("opaque_alphaclip_backface").expect("Mesh shader must have pass named 'opaque_alphaclip_backface'") as u8;
+        let transparent = material.find_pass_index_by_name("transparent").expect("Mesh shader must have pass named 'transparent'") as u8;
+        let transparent_backface = material.find_pass_index_by_name("transparent_backface").expect("Mesh shader must have pass named 'transparent_backface'") as u8;
+        let transparent_untextured = material.find_pass_index_by_name("transparent_untextured").expect("Mesh shader must have pass named 'transparent'") as u8;
+        let transparent_backface_untextured = material.find_pass_index_by_name("transparent_backface_untextured").expect("Mesh shader must have pass named 'transparent_backface'") as u8;
+        let wireframe = material.find_pass_index_by_name("wireframe").expect("Mesh shader must have pass named 'wireframe'") as u8;
+
+        MeshBasicShaderPassIndices {
+            //depth_prepass,
+            ////depth_prepass_backface,
+            ////depth_prepass_velocity,
+            ////depth_prepass_velocity_backface,
+            //depth_prepass_velocity_moved,
+            ////depth_prepass_velocity_backface_moved,
+            shadow_map,
+            //shadow_map_backface,
+            opaque,
+            opaque_backface,
+            //opaque_alphaclip,
+            //opaque_alphaclip_backface,
+            opaque_untextured,
+            opaque_backface_untextured,
+            //opaque_alphaclip_untextured,
+            //opaque_alphaclip_backface_untextured,
+            transparent,
+            transparent_backface,
+            transparent_untextured,
+            transparent_backface_untextured,
+            wireframe
+        }
+    }
+
+    pub fn get_material_pass_index(
+        &self,
+        material_data: &MeshBasicMaterialData,
+        view: &RenderView,
+        render_phase_index: RenderPhaseIndex,
+    ) -> usize {
+        let untextured = view.feature_flag_is_relevant::<MeshBasicUntexturedRenderFeatureFlag>();
+        let pass_index = if render_phase_index == OpaqueRenderPhase::render_phase_index() {
+            if material_data.backface_culling {
+                if untextured {
+                    self.opaque_untextured
+                } else {
+                    self.opaque
+                }
+            } else {
+                if untextured {
+                    self.opaque_backface_untextured
+                } else {
+                    self.opaque_backface
+                }
+            }
+        } else if render_phase_index == TransparentRenderPhase::render_phase_index() {
+            if material_data.backface_culling {
+                if untextured {
+                    self.transparent_untextured
+                } else {
+                    self.transparent
+                }
+            } else {
+                if untextured {
+                    self.transparent_backface_untextured
+                } else {
+                    self.transparent_backface
+                }
+            }
+        } else if render_phase_index == WireframeRenderPhase::render_phase_index() {
+            self.wireframe
+        } else {
+            panic!(
+                "mesh does not support render phase index {}",
+                render_phase_index
+            )
+        };
+
+        pass_index as usize
+    }
+}
+
 pub struct MeshBasicAssetPart {
-    pub material_instance: MaterialInstanceAsset,
-    pub textured_pass_index: usize,
-    pub untextured_pass_index: usize,
-    pub wireframe_pass_index: usize,
+    pub mesh_material: MeshMaterialBasicAsset,
+    pub pass_indices: MeshBasicShaderPassIndices,
     pub vertex_full_buffer_offset_in_bytes: u32,
     pub vertex_full_buffer_size_in_bytes: u32,
     pub vertex_position_buffer_offset_in_bytes: u32,
@@ -115,35 +262,18 @@ pub struct MeshBasicAssetPart {
 pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
 
 impl MeshBasicAssetPart {
-    pub fn get_material_pass_index(
-        &self,
-        view: &RenderView,
-        render_phase_index: RenderPhaseIndex,
-    ) -> usize {
-        if render_phase_index == OpaqueRenderPhase::render_phase_index() {
-            let offset = !view.phase_is_relevant::<DepthPrepassRenderPhase>() as usize;
-            return if view.feature_flag_is_relevant::<MeshBasicUntexturedRenderFeatureFlag>() {
-                self.untextured_pass_index + offset
-            } else {
-                self.textured_pass_index + offset
-            };
-        } else if render_phase_index == WireframeRenderPhase::render_phase_index() {
-            self.wireframe_pass_index
-        } else {
-            panic!(
-                "mesh does not support render phase index {}",
-                render_phase_index
-            )
-        }
-    }
-
     pub fn get_material_pass_resource(
         &self,
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> &ResourceArc<MaterialPassResource> {
-        &self.material_instance.material.passes
-            [self.get_material_pass_index(view, render_phase_index)]
+        &self.mesh_material.material_instance().material.passes[self
+            .pass_indices
+            .get_material_pass_index(
+                &self.mesh_material.data().material_data,
+                view,
+                render_phase_index,
+            )]
         .material_pass_resource
     }
 
@@ -152,9 +282,14 @@ impl MeshBasicAssetPart {
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> &DescriptorSetArc {
-        return &self.material_instance.material_descriptor_sets
-            [self.get_material_pass_index(view, render_phase_index)]
-            [PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
+        return &self
+            .mesh_material
+            .material_instance()
+            .material_descriptor_sets[self.pass_indices.get_material_pass_index(
+            &self.mesh_material.data().material_data,
+            view,
+            render_phase_index,
+        )][PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
             .as_ref()
             .unwrap();
     }
@@ -202,52 +337,21 @@ impl DefaultAssetTypeLoadHandler<MeshBasicAssetData, MeshBasicAsset> for MeshBas
             .mesh_parts
             .iter()
             .map(|mesh_part| {
-                let material_instance = asset_manager
-                    .committed_asset(&mesh_part.material_instance)
+                println!(
+                    "load asset {:?} {:?}",
+                    mesh_part.mesh_material,
+                    mesh_part.mesh_material.load_handle()
+                );
+                let mesh_material = asset_manager
+                    .latest_asset(&mesh_part.mesh_material)
                     .unwrap();
 
-                let textured_pass_index = material_instance
-                    .material
-                    .find_pass_index_by_name("mesh textured")
-                    .expect("could not find `mesh textured` pass in mesh part material");
-
-                let textured_z_pass_index = material_instance
-                    .material
-                    .find_pass_index_by_name("mesh textured z")
-                    .expect("could not find `mesh textured z` pass in mesh part material");
-
-                assert_eq!(
-                    textured_z_pass_index,
-                    textured_pass_index + 1,
-                    "expected `mesh textured z` to occur after `mesh textured`"
-                );
-
-                let untextured_pass_index = material_instance
-                    .material
-                    .find_pass_index_by_name("mesh untextured")
-                    .expect("could not find `mesh untextured` pass in mesh part material");
-
-                let untextured_z_pass_index = material_instance
-                    .material
-                    .find_pass_index_by_name("mesh untextured z")
-                    .expect("could not find `mesh untextured z` pass in mesh part material");
-
-                assert_eq!(
-                    untextured_z_pass_index,
-                    untextured_pass_index + 1,
-                    "expected `mesh untextured z` to occur after `mesh untextured`"
-                );
-
-                let wireframe_pass_index = material_instance
-                    .material
-                    .find_pass_index_by_name("mesh wireframe")
-                    .expect("could not find `mesh wireframe` pass in mesh part material");
+                let material_instance = mesh_material.material_instance();
+                let pass_indices = MeshBasicShaderPassIndices::new(&material_instance.material);
 
                 Some(MeshBasicAssetPart {
-                    material_instance: material_instance.clone(),
-                    textured_pass_index,
-                    untextured_pass_index,
-                    wireframe_pass_index,
+                    mesh_material: mesh_material.clone(),
+                    pass_indices,
                     vertex_full_buffer_offset_in_bytes: mesh_part
                         .vertex_full_buffer_offset_in_bytes,
                     vertex_full_buffer_size_in_bytes: mesh_part.vertex_full_buffer_size_in_bytes,

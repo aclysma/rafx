@@ -2,7 +2,8 @@ use rafx::render_feature_write_job_prelude::*;
 
 use super::*;
 use crate::phases::{
-    DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, WireframeRenderPhase,
+    DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
+    WireframeRenderPhase,
 };
 use rafx::api::{RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding};
 use rafx::api::{RafxIndexType, RafxPrimitiveTopology};
@@ -34,7 +35,7 @@ pub struct MeshModelMatrix {
 }
 
 lazy_static::lazy_static! {
-    pub static ref MESH_VERTEX_FULL_LAYOUT : VertexDataSetLayout = {
+    pub static ref MESH_VERTEX_PBR_LAYOUT : VertexDataSetLayout = {
         use rafx::api::RafxFormat;
 
         let per_vertex = VertexDataLayout::build_vertex_layout(&MeshVertexFull::default(), RafxVertexAttributeRate::Vertex, |builder, vertex| {
@@ -122,9 +123,9 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
 
         // Bailing here about 118 fps
 
-        let is_wireframe = render_phase_index == self.wireframe_index;
-        let is_depth_render_phase = render_phase_index == self.depth_prepass_index
-            || render_phase_index == self.shadow_map_index;
+        let is_wireframe_render_phase = render_phase_index == self.wireframe_index;
+        let is_depth_prepass_render_phase = render_phase_index == self.depth_prepass_index;
+        let is_shadow_map_render_phase = render_phase_index == self.shadow_map_index;
 
         let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
 
@@ -157,20 +158,39 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
             .unwrap();
 
         // Bind the correct pipeline.
-        let (mesh_vertex_layout, vertex_buffer, vertex_buffer_offset_in_bytes) =
-            if render_phase_index == OpaqueRenderPhase::render_phase_index() {
-                (
-                    &*MESH_VERTEX_FULL_LAYOUT,
-                    &mesh_asset.inner.vertex_full_buffer,
-                    mesh_part.vertex_full_buffer_offset_in_bytes,
-                )
-            } else {
-                (
-                    &*MESH_VERTEX_POSITION_LAYOUT,
-                    &mesh_asset.inner.vertex_position_buffer,
-                    mesh_part.vertex_position_buffer_offset_in_bytes,
-                )
-            };
+        let (
+            mesh_vertex_layout,
+            vertex_buffer,
+            vertex_buffer_offset_in_bytes,
+            instance_buffer,
+            instance_buffer_offset_in_bytes,
+        ) = if render_phase_index == OpaqueRenderPhase::render_phase_index()
+            || render_phase_index == TransparentRenderPhase::render_phase_index()
+        {
+            (
+                &*MESH_VERTEX_PBR_LAYOUT,
+                &mesh_asset.inner.vertex_full_buffer,
+                mesh_part.vertex_full_buffer_offset_in_bytes,
+                model_matrix_buffer,
+                std::mem::size_of::<MeshModelMatrix>() * submit_node_data.model_matrix_index,
+            )
+        } else if render_phase_index == DepthPrepassRenderPhase::render_phase_index() {
+            (
+                &*MESH_VERTEX_POSITION_LAYOUT,
+                &mesh_asset.inner.vertex_position_buffer,
+                mesh_part.vertex_position_buffer_offset_in_bytes,
+                model_matrix_buffer,
+                std::mem::size_of::<MeshModelMatrix>() * submit_node_data.model_matrix_index,
+            )
+        } else {
+            (
+                &*MESH_VERTEX_POSITION_LAYOUT,
+                &mesh_asset.inner.vertex_position_buffer,
+                mesh_part.vertex_position_buffer_offset_in_bytes,
+                model_matrix_buffer,
+                std::mem::size_of::<MeshModelMatrix>() * submit_node_data.model_matrix_index,
+            )
+        };
 
         let pipeline = write_context
             .resource_context
@@ -186,9 +206,21 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
 
         let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
 
-        if is_depth_render_phase || is_wireframe {
+        if is_depth_prepass_render_phase {
             per_view_submit_data
                 .depth_descriptor_set
+                .as_ref()
+                .unwrap()
+                .bind(command_buffer)?;
+        } else if is_shadow_map_render_phase {
+            per_view_submit_data
+                .shadow_map_descriptor_set
+                .as_ref()
+                .unwrap()
+                .bind(command_buffer)?;
+        } else if is_wireframe_render_phase {
+            per_view_submit_data
+                .wireframe_desriptor_set
                 .as_ref()
                 .unwrap()
                 .bind(command_buffer)?;
@@ -218,10 +250,8 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
                 // well supported on rafx backends. A third option would be some type of dynamic
                 // uniform buffer, but we'd still need to pass in an index to the shader for each instance.
                 RafxVertexBufferBinding {
-                    buffer: &model_matrix_buffer.as_ref().unwrap().get_raw().buffer,
-                    byte_offset: (std::mem::size_of::<MeshModelMatrix>()
-                        * submit_node_data.model_matrix_offset)
-                        as u64,
+                    buffer: &instance_buffer.as_ref().unwrap().get_raw().buffer,
+                    byte_offset: instance_buffer_offset_in_bytes as u64,
                 },
             ],
         )?;
@@ -238,7 +268,6 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
         } as u32;
 
         command_buffer.cmd_draw_indexed(mesh_part.index_buffer_size_in_bytes / index_size, 0, 0)?;
-
         Ok(())
     }
 

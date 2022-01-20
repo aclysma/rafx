@@ -1,6 +1,6 @@
 use crate::assets::mesh_basic::{
     MeshBasicAssetData, MeshBasicMaterialData, MeshBasicMaterialDataShaderParam,
-    MeshBasicPartAssetData,
+    MeshBasicPartAssetData, MeshMaterialBasicAsset, MeshMaterialBasicAssetData,
 };
 use distill::core::AssetUuid;
 use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
@@ -15,7 +15,6 @@ use rafx::api::RafxResourceType;
 use rafx::assets::push_buffer::PushBuffer;
 use rafx::assets::BufferAssetData;
 use rafx::assets::ImageAsset;
-use rafx::assets::MaterialInstanceAsset;
 use rafx::assets::{ImageAssetColorSpaceConfig, ImageAssetData};
 use rafx::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
@@ -103,13 +102,6 @@ struct BufferToImport {
     asset: BufferAssetData,
 }
 
-// fn get_or_create_uuid(option_uuid: &mut Option<AssetUuid>) -> AssetUuid {
-//     let uuid = option_uuid.unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-//
-//     *option_uuid = Some(uuid);
-//     uuid
-// }
-
 // The asset state is stored in this format using Vecs
 #[derive(TypeUuid, Serialize, Deserialize, Default, Clone)]
 #[uuid = "807c83b3-c24c-4123-9580-5f9c426260b4"]
@@ -120,6 +112,7 @@ pub struct MeshBasicGltfImporterStateStable {
     image_asset_uuids: Vec<(GltfObjectId, AssetUuid)>,
     material_asset_uuids: Vec<(GltfObjectId, AssetUuid)>,
     material_instance_asset_uuids: Vec<(GltfObjectId, AssetUuid)>,
+    mesh_material_asset_uuids: Vec<(GltfObjectId, AssetUuid)>,
     mesh_asset_uuids: Vec<(GltfObjectId, AssetUuid)>,
 }
 
@@ -146,6 +139,11 @@ impl From<MeshBasicGltfImporterStateUnstable> for MeshBasicGltfImporterStateStab
             .into_iter()
             .sorted_by_key(|(id, _uuid)| id.clone())
             .collect();
+        stable.mesh_material_asset_uuids = other
+            .mesh_material_asset_uuids
+            .into_iter()
+            .sorted_by_key(|(id, _uuid)| id.clone())
+            .collect();
         stable.mesh_asset_uuids = other
             .mesh_asset_uuids
             .into_iter()
@@ -164,6 +162,7 @@ pub struct MeshBasicGltfImporterStateUnstable {
     image_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
     material_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
     material_instance_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
+    mesh_material_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
     mesh_asset_uuids: FnvHashMap<GltfObjectId, AssetUuid>,
 }
 
@@ -175,6 +174,7 @@ impl From<MeshBasicGltfImporterStateStable> for MeshBasicGltfImporterStateUnstab
         unstable.material_asset_uuids = other.material_asset_uuids.into_iter().collect();
         unstable.material_instance_asset_uuids =
             other.material_instance_asset_uuids.into_iter().collect();
+        unstable.mesh_material_asset_uuids = other.mesh_material_asset_uuids.into_iter().collect();
         unstable.mesh_asset_uuids = other.mesh_asset_uuids.into_iter().collect();
         unstable
     }
@@ -276,8 +276,11 @@ impl Importer for MeshBasicGltfImporter {
         //
         // Material instance
         //
-        let mut material_instance_index_to_handle = vec![];
+        let mut mesh_material_index_to_handle = vec![];
         for material_to_import in &materials_to_import {
+            //
+            // Push the material instance UUID into the list so that we have an O(1) lookup material index to UUID
+            //
             let material_instance_uuid = *unstable_state
                 .material_instance_asset_uuids
                 .entry(material_to_import.id.clone())
@@ -285,14 +288,14 @@ impl Importer for MeshBasicGltfImporter {
 
             let material_instance_handle = make_handle(material_instance_uuid);
 
-            // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
-            material_instance_index_to_handle.push(material_instance_handle);
-
             let mut search_tags: Vec<(String, Option<String>)> = vec![];
             if let GltfObjectId::Name(name) = &material_to_import.id {
                 search_tags.push(("name".to_string(), Some(name.clone())));
             }
 
+            //
+            // Create the material instance
+            //
             let mut slot_assignments = vec![];
 
             let material_data = &material_to_import.asset.material_data;
@@ -308,6 +311,18 @@ impl Importer for MeshBasicGltfImporter {
                 ),
             });
 
+            fn choose_image_handle(
+                should_include: bool,
+                image: &Option<Handle<ImageAsset>>,
+                default_image: &Handle<ImageAsset>,
+            ) -> Option<Handle<ImageAsset>> {
+                if should_include {
+                    Some(image.as_ref().map_or(default_image, |x| x).clone())
+                } else {
+                    Some(default_image.clone())
+                }
+            }
+
             fn push_image_slot_assignment(
                 slot_name: &str,
                 slot_assignments: &mut Vec<MaterialInstanceSlotAssignment>,
@@ -318,11 +333,7 @@ impl Importer for MeshBasicGltfImporter {
                 slot_assignments.push(MaterialInstanceSlotAssignment {
                     slot_name: slot_name.to_string(),
                     array_index: 0,
-                    image: if should_include {
-                        Some(image.as_ref().map_or(default_image, |x| x).clone())
-                    } else {
-                        Some(default_image.clone())
-                    },
+                    image: choose_image_handle(should_include, image, default_image),
                     sampler: None,
                     buffer_data: None,
                 });
@@ -347,13 +358,6 @@ impl Importer for MeshBasicGltfImporter {
                 &mut slot_assignments,
                 material_data.has_normal_texture,
                 &material_to_import.asset.normal_texture,
-                &null_image_handle,
-            );
-            push_image_slot_assignment(
-                "occlusion_texture",
-                &mut slot_assignments,
-                material_data.has_occlusion_texture,
-                &material_to_import.asset.occlusion_texture,
                 &null_image_handle,
             );
             push_image_slot_assignment(
@@ -383,6 +387,61 @@ impl Importer for MeshBasicGltfImporter {
                 build_pipeline: None,
                 asset_data: Box::new(material_instance_asset),
             });
+
+            //
+            // Create the mesh material
+            //
+
+            //
+            // Push the mesh material UUID into the list so that we have an O(1) lookup material index to UUID
+            //
+            let mesh_material_uuid = *unstable_state
+                .mesh_material_asset_uuids
+                .entry(material_to_import.id.clone())
+                .or_insert_with(|| op.new_asset_uuid());
+
+            let mesh_material_handle = make_handle(mesh_material_uuid);
+
+            mesh_material_index_to_handle.push(mesh_material_handle);
+
+            let mut search_tags: Vec<(String, Option<String>)> = vec![];
+            if let GltfObjectId::Name(name) = &material_to_import.id {
+                search_tags.push(("name".to_string(), Some(name.clone())));
+            }
+
+            let mesh_material_asset = MeshMaterialBasicAssetData {
+                material_data: material_data.clone(),
+                material_instance: material_instance_handle,
+                color_texture: choose_image_handle(
+                    material_data.has_base_color_texture,
+                    &material_to_import.asset.base_color_texture,
+                    &null_image_handle,
+                ),
+                metallic_roughness_texture: choose_image_handle(
+                    material_data.has_metallic_roughness_texture,
+                    &material_to_import.asset.metallic_roughness_texture,
+                    &null_image_handle,
+                ),
+                normal_texture: choose_image_handle(
+                    material_data.has_normal_texture,
+                    &material_to_import.asset.normal_texture,
+                    &null_image_handle,
+                ),
+                emissive_texture: choose_image_handle(
+                    material_data.has_emissive_texture,
+                    &material_to_import.asset.emissive_texture,
+                    &null_image_handle,
+                ),
+            };
+
+            imported_assets.push(ImportedAsset {
+                id: mesh_material_uuid,
+                search_tags,
+                build_deps: vec![],
+                load_deps: vec![],
+                build_pipeline: None,
+                asset_data: Box::new(mesh_material_asset),
+            });
         }
 
         //
@@ -393,7 +452,7 @@ impl Importer for MeshBasicGltfImporter {
             &mut unstable_state,
             &doc,
             &buffers,
-            &material_instance_index_to_handle,
+            &mesh_material_index_to_handle,
         )?;
 
         let mut buffer_index_to_handle = vec![];
@@ -686,10 +745,8 @@ fn extract_materials_to_import(
         material_asset.material_data.roughness_factor = pbr_metallic_roughness.roughness_factor();
         material_asset.material_data.normal_texture_scale =
             material.normal_texture().map_or(1.0, |x| x.scale());
-        material_asset.material_data.occlusion_texture_strength =
-            material.occlusion_texture().map_or(1.0, |x| x.strength());
         // Default is 0.5 per GLTF specification
-        material_asset.material_data.alpha_cutoff = material.alpha_cutoff().unwrap_or(0.5);
+        material_asset.material_data.alpha_threshold = material.alpha_cutoff().unwrap_or(0.5);
 
         material_asset.base_color_texture = pbr_metallic_roughness
             .base_color_texture()
@@ -712,8 +769,6 @@ fn extract_materials_to_import(
         material_asset.material_data.has_metallic_roughness_texture =
             material_asset.metallic_roughness_texture.is_some();
         material_asset.material_data.has_normal_texture = material_asset.normal_texture.is_some();
-        material_asset.material_data.has_occlusion_texture =
-            material_asset.occlusion_texture.is_some();
         material_asset.material_data.has_emissive_texture =
             material_asset.emissive_texture.is_some();
 
@@ -753,7 +808,7 @@ fn extract_meshes_to_import(
     state: &mut MeshBasicGltfImporterStateUnstable,
     doc: &gltf::Document,
     buffers: &[GltfBufferData],
-    material_instance_index_to_handle: &[Handle<MaterialInstanceAsset>],
+    mesh_material_index_to_handle: &[Handle<MeshMaterialBasicAsset>],
 ) -> distill::importer::Result<(Vec<MeshToImport>, Vec<BufferToImport>)> {
     let mut meshes_to_import = Vec::with_capacity(doc.meshes().len());
     let mut buffers_to_import = Vec::with_capacity(doc.meshes().len() * 2);
@@ -816,17 +871,16 @@ fn extract_meshes_to_import(
                         ));
                     }
 
-                    let material_instance =
-                        if let Some(material_index) = primitive.material().index() {
-                            material_instance_index_to_handle[material_index].clone()
-                        } else {
-                            return Err(distill::importer::Error::Boxed(Box::new(
-                                GltfImportError::new("A mesh primitive did not have a material"),
-                            )));
-                        };
+                    let mesh_material = if let Some(material_index) = primitive.material().index() {
+                        mesh_material_index_to_handle[material_index].clone()
+                    } else {
+                        return Err(distill::importer::Error::Boxed(Box::new(
+                            GltfImportError::new("A mesh primitive did not have a material"),
+                        )));
+                    };
 
                     Some(MeshBasicPartAssetData {
-                        material_instance,
+                        mesh_material,
                         vertex_full_buffer_offset_in_bytes: part_data
                             .vertex_full_buffer_offset_in_bytes,
                         vertex_full_buffer_size_in_bytes: part_data

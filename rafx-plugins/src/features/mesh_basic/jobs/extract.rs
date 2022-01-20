@@ -1,10 +1,11 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
+use crate::assets::mesh_basic::MeshBasicShaderPassIndices;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
-use legion::{Entity, EntityStore, IntoQuery, Read, World};
+use legion::{Entity, IntoQuery, Read, World};
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrow;
 use rafx::distill::loader::handle::Handle;
@@ -13,6 +14,7 @@ pub struct MeshBasicExtractJob<'extract> {
     world: ResourceRefBorrow<'extract, World>,
     mesh_render_options: Option<ResourceRefBorrow<'extract, MeshBasicRenderOptions>>,
     asset_manager: AssetManagerExtractRef,
+    default_pbr_material: Handle<MaterialAsset>,
     depth_material: Handle<MaterialAsset>,
     render_objects: MeshBasicRenderObjectSet,
 }
@@ -21,6 +23,7 @@ impl<'extract> MeshBasicExtractJob<'extract> {
     pub fn new(
         extract_context: &RenderJobExtractContext<'extract>,
         frame_packet: Box<MeshBasicFramePacket>,
+        default_pbr_material: Handle<MaterialAsset>,
         depth_material: Handle<MaterialAsset>,
         render_objects: MeshBasicRenderObjectSet,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
@@ -34,6 +37,7 @@ impl<'extract> MeshBasicExtractJob<'extract> {
                     .render_resources
                     .fetch::<AssetManagerRenderResource>()
                     .extract_ref(),
+                default_pbr_material,
                 depth_material,
                 render_objects,
             },
@@ -47,10 +51,19 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
         &self,
         context: &ExtractPerFrameContext<'extract, '_, Self>,
     ) {
+        let default_pbr_material = self
+            .asset_manager
+            .committed_asset(&self.default_pbr_material)
+            .unwrap()
+            .clone();
+        let default_pbr_material_pass_indices =
+            MeshBasicShaderPassIndices::new(&default_pbr_material);
         context
             .frame_packet()
             .per_frame_data()
             .set(MeshBasicPerFrameData {
+                default_pbr_material,
+                default_pbr_material_pass_indices,
                 depth_material_pass: self
                     .asset_manager
                     .committed_asset(&self.depth_material)
@@ -73,14 +86,13 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshBasicExtractJob<'extract>
             .asset_manager
             .committed_asset(&render_object_static_data.mesh);
 
+        let visibility_info = context.visibility_object_info();
+        let transform = visibility_info.transform();
+
         context.set_render_object_instance_data(mesh_asset.and_then(|mesh_asset| {
-            let entry = self.world.entry_ref(context.object_id().into()).unwrap();
-            let transform_component = entry.get_component::<TransformComponent>().unwrap();
             Some(MeshBasicRenderObjectInstanceData {
                 mesh_asset: mesh_asset.clone(),
-                translation: transform_component.translation,
-                rotation: transform_component.rotation,
-                scale: transform_component.scale,
+                transform,
             })
         }));
     }

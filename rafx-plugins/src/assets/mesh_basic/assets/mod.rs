@@ -1,3 +1,6 @@
+pub mod mesh_material_asset;
+pub use mesh_material_asset::*;
+
 pub mod mesh_asset;
 pub use mesh_asset::*;
 

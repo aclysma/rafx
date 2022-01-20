@@ -1,14 +1,15 @@
 use super::*;
-use crate::assets::mesh_basic::MeshBasicAsset;
+use crate::assets::mesh_basic::{MeshBasicAsset, MeshBasicShaderPassIndices};
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
 use crate::shaders::mesh_basic::mesh_basic_textured_frag;
-use glam::{Quat, Vec3};
+use rafx::assets::MaterialAsset;
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{
     BufferResource, DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc,
 };
+use rafx::rafx_visibility::geometry::Transform;
 
 pub struct MeshBasicRenderFeatureTypes;
 
@@ -24,14 +25,14 @@ pub const MAX_SPOT_LIGHTS: usize = 16;
 //---------
 
 pub struct MeshBasicPerFrameData {
+    pub default_pbr_material: MaterialAsset,
+    pub default_pbr_material_pass_indices: MeshBasicShaderPassIndices,
     pub depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
 }
 
 pub struct MeshBasicRenderObjectInstanceData {
     pub mesh_asset: MeshBasicAsset,
-    pub translation: Vec3,
-    pub rotation: Quat,
-    pub scale: Vec3,
+    pub transform: Transform,
 }
 
 #[derive(Default)]
@@ -116,6 +117,8 @@ pub type MeshSubmitPacket = SubmitPacket<MeshBasicRenderFeatureTypes>;
 pub struct MeshBasicPerViewSubmitData {
     pub opaque_descriptor_set: Option<DescriptorSetArc>,
     pub depth_descriptor_set: Option<DescriptorSetArc>,
+    pub wireframe_desriptor_set: Option<DescriptorSetArc>,
+    pub shadow_map_descriptor_set: Option<DescriptorSetArc>,
 }
 
 pub struct MeshBasicDrawCall {
@@ -123,5 +126,5 @@ pub struct MeshBasicDrawCall {
     pub material_pass_resource: ResourceArc<MaterialPassResource>,
     pub per_material_descriptor_set: Option<DescriptorSetArc>,
     pub mesh_part_index: usize,
-    pub model_matrix_offset: usize,
+    pub model_matrix_index: usize,
 }

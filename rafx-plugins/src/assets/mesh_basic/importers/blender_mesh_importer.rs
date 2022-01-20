@@ -1,10 +1,12 @@
-use crate::assets::mesh_basic::{MeshBasicAssetData, MeshBasicPartAssetData};
+use crate::assets::mesh_basic::{
+    MeshBasicAssetData, MeshBasicPartAssetData, MeshMaterialBasicAsset,
+};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use glam::Vec3;
 use rafx::api::RafxResourceType;
 use rafx::assets::push_buffer::PushBuffer;
-use rafx::assets::{BufferAssetData, MaterialInstanceAsset};
+use rafx::assets::BufferAssetData;
 use rafx::distill::loader::handle::Handle;
 use rafx::distill::make_handle;
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
@@ -30,7 +32,7 @@ struct MeshPartJson {
     pub uv: Vec<u32>,
     pub indices: u32,
     pub index_type: MeshPartJsonIndexType,
-    pub material: Handle<MaterialInstanceAsset>,
+    pub material: Handle<MeshMaterialBasicAsset>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -191,10 +193,10 @@ impl Importer for MeshBasicBlenderImporter {
                 all_positions.push(Vec3::new(positions[i][0], positions[i][1], positions[i][2]));
             }
 
-            let material_instance = mesh_part.material.clone();
+            let mesh_material = mesh_part.material.clone();
 
             mesh_parts.push(MeshBasicPartAssetData {
-                material_instance,
+                mesh_material,
                 vertex_full_buffer_offset_in_bytes: part_data.vertex_full_buffer_offset_in_bytes,
                 vertex_full_buffer_size_in_bytes: part_data.vertex_full_buffer_size_in_bytes,
                 vertex_position_buffer_offset_in_bytes: part_data

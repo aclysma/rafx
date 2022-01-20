@@ -332,8 +332,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 if blend_method == MeshAdvBlendMethod::Opaque
                     && view.phase_is_relevant::<DepthPrepassRenderPhase>()
                 {
-                    //TODO: need to use the correct pipeline depending on backface culling, if we want velocity, and if we want to include previous position available to the shader
-                    //TODO: We need to decide what to bind here and generate vertex buffers correctly
                     context.push_submit_node::<DepthPrepassRenderPhase>(
                         MeshAdvDrawCall {
                             render_object_instance_id,
@@ -368,10 +366,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         distance,
                     );
                 }
-
-                //is transparent, push submit node in with transparents?
-                //do we do something different from material instances?
-                //if mesh_part.material_instance.material
 
                 let phase_index = if blend_method == MeshAdvBlendMethod::Opaque {
                     OpaqueRenderPhase::render_phase_index()

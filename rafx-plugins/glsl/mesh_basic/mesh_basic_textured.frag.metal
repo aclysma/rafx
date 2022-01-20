@@ -105,12 +105,13 @@ struct MaterialData
     float metallic_factor;
     float roughness_factor;
     float normal_texture_scale;
-    float occlusion_texture_strength;
-    float alpha_cutoff;
+    float alpha_threshold;
+    uint enable_alpha_blend;
+    uint enable_alpha_clip;
     uint has_base_color_texture;
+    uint base_color_texture_has_alpha_channel;
     uint has_metallic_roughness_texture;
     uint has_normal_texture;
-    uint has_occlusion_texture;
     uint has_emissive_texture;
 };
 
@@ -132,8 +133,7 @@ struct spvDescriptorSetBuffer1
     texture2d<float> base_color_texture [[id(1)]];
     texture2d<float> metallic_roughness_texture [[id(2)]];
     texture2d<float> normal_texture [[id(3)]];
-    texture2d<float> occlusion_texture [[id(4)]];
-    texture2d<float> emissive_texture [[id(5)]];
+    texture2d<float> emissive_texture [[id(4)]];
 };
 
 struct main0_out
@@ -615,7 +615,29 @@ float4 pbr_path(
         }
         total_light += (pbr_2 * percent_lit_2);
     }
-    float3 ambient = spvDescriptorSet0.per_view_data->ambient_light.xyz * base_color.xyz;
+    float3 ambient = per_view_data.ambient_light.xyz * base_color.xyz;
+    float alpha = 1.0;
+    if (per_material_data.data.enable_alpha_blend != 0u)
+    {
+        alpha = base_color.w;
+    }
+    else
+    {
+        bool _1199 = per_material_data.data.enable_alpha_clip != 0u;
+        bool _1207;
+        if (_1199)
+        {
+            _1207 = base_color.w < per_material_data.data.alpha_threshold;
+        }
+        else
+        {
+            _1207 = _1199;
+        }
+        if (_1207)
+        {
+            alpha = 0.0;
+        }
+    }
     float3 color = (ambient + total_light) + emissive_color.xyz;
     return float4(color, base_color.w);
 }
@@ -642,7 +664,15 @@ float4 pbr_main(
     float4 base_color = per_material_data.data.base_color_factor;
     if (per_material_data.data.has_base_color_texture != 0u)
     {
-        base_color *= base_color_texture.sample(smp, in_uv);
+        float4 sampled_color = base_color_texture.sample(smp, in_uv);
+        if (per_material_data.data.base_color_texture_has_alpha_channel != 0u)
+        {
+            base_color *= sampled_color;
+        }
+        else
+        {
+            base_color = float4(base_color.xyz * sampled_color.xyz, base_color.w);
+        }
     }
     float4 emissive_color = float4(per_material_data.data.emissive_factor[0], per_material_data.data.emissive_factor[1], per_material_data.data.emissive_factor[2], 1.0);
     if (per_material_data.data.has_emissive_texture != 0u)
@@ -700,7 +730,7 @@ float4 pbr_main(
 fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]])
 {
     constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
-    constexpr sampler smp_depth(filter::linear, mip_filter::linear, compare_func::greater, max_anisotropy(16));
+    constexpr sampler smp_depth(filter::linear, mip_filter::linear, compare_func::greater, max_anisotropy(1));
     main0_out out = {};
     float3x3 in_model_view = {};
     in_model_view[0] = in.in_model_view_0;

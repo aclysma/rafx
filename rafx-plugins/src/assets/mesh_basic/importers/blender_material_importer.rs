@@ -1,8 +1,12 @@
 use super::MeshBasicMaterialData;
-use crate::assets::mesh_basic::MeshBasicMaterialDataShaderParam;
+use crate::assets::mesh_basic::{
+    MeshBasicBlendMethod, MeshBasicMaterialDataShaderParam, MeshBasicShadowMethod,
+    MeshMaterialBasicAssetData,
+};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::make_handle_from_str;
+use distill::loader::AssetRef;
 use distill::{core::AssetUuid, importer::ImportOp};
+use distill::{make_handle, make_handle_from_str};
 use rafx::assets::{ImageAsset, MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
 use rafx::distill::loader::handle::Handle;
 use serde::{Deserialize, Serialize};
@@ -11,27 +15,39 @@ use type_uuid::*;
 
 #[derive(Serialize, Deserialize)]
 struct MaterialJsonFileFormat {
-    pub base_color_factor: [f32; 4],     // default: 1,1,1,1
-    pub emissive_factor: [f32; 3],       // default: 0,0,0
-    pub metallic_factor: f32,            // default: 1,
-    pub roughness_factor: f32,           // default: 1,
-    pub normal_texture_scale: f32,       // default: 1
-    pub occlusion_texture_strength: f32, // default 1
-    pub alpha_cutoff: f32,               // default 0.5
+    pub base_color_factor: [f32; 4], // default: 1,1,1,1
+    pub emissive_factor: [f32; 3],   // default: 0,0,0
+    pub metallic_factor: f32,        // default: 1,
+    pub roughness_factor: f32,       // default: 1,
+    pub normal_texture_scale: f32,   // default: 1
 
     #[serde(default)]
-    color_texture: Option<Handle<ImageAsset>>,
+    pub color_texture: Option<Handle<ImageAsset>>,
     #[serde(default)]
     pub metallic_roughness_texture: Option<Handle<ImageAsset>>,
     #[serde(default)]
     pub normal_texture: Option<Handle<ImageAsset>>,
     #[serde(default)]
     pub emissive_texture: Option<Handle<ImageAsset>>,
+
+    #[serde(default)]
+    pub shadow_method: Option<String>,
+    #[serde(default)]
+    pub blend_method: Option<String>,
+    #[serde(default)]
+    pub alpha_threshold: Option<f32>,
+    #[serde(default)]
+    pub backface_culling: Option<bool>,
+    #[serde(default)]
+    pub color_texture_has_alpha_channel: bool,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Default)]
 #[uuid = "2a1e71ac-c18d-45f4-8b21-e851c713c4a8"]
-pub struct MeshBasicBlenderMaterialImporterState(Option<AssetUuid>);
+pub struct MeshBasicBlenderMaterialImporterState {
+    pub mesh_material_id: Option<AssetUuid>,
+    pub material_instance_id: Option<AssetUuid>,
+}
 
 #[derive(TypeUuid)]
 #[uuid = "95d0640f-ce8c-4fe9-a989-63041c824d03"]
@@ -61,10 +77,17 @@ impl Importer for MeshBasicBlenderMaterialImporter {
         _options: &Self::Options,
         state: &mut Self::State,
     ) -> distill::importer::Result<ImporterValue> {
-        let id = state
-            .0
+        let material_instance_id = state
+            .material_instance_id
             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = MeshBasicBlenderMaterialImporterState(Some(id));
+        let mesh_material_id = state
+            .mesh_material_id
+            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+
+        *state = MeshBasicBlenderMaterialImporterState {
+            material_instance_id: Some(material_instance_id),
+            mesh_material_id: Some(mesh_material_id),
+        };
 
         let json_format: MaterialJsonFileFormat = serde_json::from_reader(source)
             .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
@@ -73,19 +96,37 @@ impl Importer for MeshBasicBlenderMaterialImporter {
 
         let null_image_handle = make_handle_from_str("fc937369-cad2-4a00-bf42-5968f1210784")?;
 
+        let shadow_method = match json_format.shadow_method.as_ref().map(|x| x.as_str()) {
+            None => MeshBasicShadowMethod::Opaque,
+            Some("NONE") => MeshBasicShadowMethod::None,
+            Some("OPAQUE") => MeshBasicShadowMethod::Opaque,
+            _ => unimplemented!(), //"CLIP" => MeshBasicShadowMethod::AlphaClip,
+                                   //"HASHED" => MeshBasicShadowMethod::AlphaStochastic
+        };
+
+        let blend_method = match json_format.blend_method.as_ref().map(|x| x.as_str()) {
+            None => MeshBasicBlendMethod::Opaque,
+            Some("OPAQUE") => MeshBasicBlendMethod::Opaque,
+            Some("CLIP") => MeshBasicBlendMethod::AlphaClip,
+            Some("BLEND") => MeshBasicBlendMethod::AlphaBlend,
+            _ => unimplemented!(), //Some("HASHED") => MeshBasicBlendMethod::AlphaStochastic,
+        };
+
         let material_data = MeshBasicMaterialData {
             base_color_factor: json_format.base_color_factor,
             emissive_factor: json_format.emissive_factor,
             metallic_factor: json_format.metallic_factor,
             roughness_factor: json_format.roughness_factor,
             normal_texture_scale: json_format.normal_texture_scale,
-            occlusion_texture_strength: json_format.occlusion_texture_strength,
-            alpha_cutoff: json_format.alpha_cutoff,
             has_base_color_texture: json_format.color_texture.is_some(),
+            base_color_texture_has_alpha_channel: json_format.color_texture_has_alpha_channel,
             has_metallic_roughness_texture: json_format.metallic_roughness_texture.is_some(),
             has_normal_texture: json_format.normal_texture.is_some(),
-            has_occlusion_texture: false,
             has_emissive_texture: json_format.emissive_texture.is_some(),
+            shadow_method,
+            blend_method,
+            alpha_threshold: json_format.alpha_threshold.unwrap_or(0.5),
+            backface_culling: json_format.backface_culling.unwrap_or(true),
         };
 
         let mut slot_assignments = vec![];
@@ -131,7 +172,7 @@ impl Importer for MeshBasicBlenderMaterialImporter {
             "metallic_roughness_texture",
             &mut slot_assignments,
             material_data.has_metallic_roughness_texture,
-            &json_format.matallic_roughness_texture,
+            &json_format.metallic_roughness_texture,
             &null_image_handle,
         );
         push_image_slot_assignment(
@@ -142,13 +183,6 @@ impl Importer for MeshBasicBlenderMaterialImporter {
             &null_image_handle,
         );
         push_image_slot_assignment(
-            "occlusion_texture",
-            &mut slot_assignments,
-            material_data.has_occlusion_texture,
-            &json_format.matallic_roughness_texture,
-            &null_image_handle,
-        );
-        push_image_slot_assignment(
             "emissive_texture",
             &mut slot_assignments,
             material_data.has_emissive_texture,
@@ -156,20 +190,41 @@ impl Importer for MeshBasicBlenderMaterialImporter {
             &null_image_handle,
         );
 
-        let asset_data = MaterialInstanceAssetData {
-            material: material_handle.clone(),
+        let material_instance_asset_data = MaterialInstanceAssetData {
+            material: material_handle,
             slot_assignments,
         };
 
+        let material_instance_handle = make_handle(material_instance_id);
+
+        let mesh_material_data = MeshMaterialBasicAssetData {
+            material_data,
+            material_instance: material_instance_handle.clone(),
+            color_texture: json_format.color_texture,
+            metallic_roughness_texture: json_format.metallic_roughness_texture,
+            normal_texture: json_format.normal_texture,
+            emissive_texture: json_format.emissive_texture,
+        };
+
         Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(asset_data),
-            }],
+            assets: vec![
+                ImportedAsset {
+                    id: mesh_material_id,
+                    search_tags: vec![],
+                    build_deps: vec![],
+                    load_deps: vec![AssetRef::Uuid(material_instance_id)],
+                    build_pipeline: None,
+                    asset_data: Box::new(mesh_material_data),
+                },
+                ImportedAsset {
+                    id: material_instance_id,
+                    search_tags: vec![],
+                    build_deps: vec![],
+                    load_deps: vec![],
+                    build_pipeline: None,
+                    asset_data: Box::new(material_instance_asset_data),
+                },
+            ],
         })
     }
 }

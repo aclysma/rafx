@@ -9,6 +9,7 @@ use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
 
 pub struct MeshBasicStaticResources {
+    pub default_pbr_material: Handle<MaterialAsset>,
     pub depth_material: Handle<MaterialAsset>,
 }
 
@@ -84,13 +85,25 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         render_resources: &mut ResourceMap,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
+        let default_pbr_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "rafx-plugins/materials/basic_pipeline/mesh_basic.material",
+        );
+
         let depth_material = asset_resource.load_asset_path::<MaterialAsset, _>(
             "rafx-plugins/materials/basic_pipeline/depth.material",
         );
 
+        asset_manager.wait_for_asset_to_load(
+            &default_pbr_material,
+            asset_resource,
+            "default_pbr_material",
+        )?;
         asset_manager.wait_for_asset_to_load(&depth_material, asset_resource, "depth")?;
 
-        render_resources.insert(MeshBasicStaticResources { depth_material });
+        render_resources.insert(MeshBasicStaticResources {
+            default_pbr_material,
+            depth_material,
+        });
 
         render_resources.insert(MeshBasicShadowMapResource::default());
 
@@ -125,15 +138,17 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         extract_context: &RenderJobExtractContext<'extract>,
         frame_packet: Box<dyn RenderFeatureFramePacket>,
     ) -> Arc<dyn RenderFeatureExtractJob<'extract> + 'extract> {
-        let depth_material = extract_context
+        let static_resources = extract_context
             .render_resources
-            .fetch::<MeshBasicStaticResources>()
-            .depth_material
-            .clone();
+            .fetch::<MeshBasicStaticResources>();
+
+        let default_pbr_material = static_resources.default_pbr_material.clone();
+        let depth_material = static_resources.depth_material.clone();
 
         MeshBasicExtractJob::new(
             extract_context,
             frame_packet.into_concrete(),
+            default_pbr_material,
             depth_material,
             self.render_objects.clone(),
         )
@@ -157,6 +172,7 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
             let view = view_packet.view();
             let submit_node_blocks = vec![
                 SubmitNodeBlock::with_capacity::<OpaqueRenderPhase>(view, num_submit_nodes),
+                SubmitNodeBlock::with_capacity::<TransparentRenderPhase>(view, num_submit_nodes),
                 SubmitNodeBlock::with_capacity::<DepthPrepassRenderPhase>(view, num_submit_nodes),
                 SubmitNodeBlock::with_capacity::<ShadowMapRenderPhase>(view, num_submit_nodes),
                 SubmitNodeBlock::with_capacity_and_feature_flag::<
