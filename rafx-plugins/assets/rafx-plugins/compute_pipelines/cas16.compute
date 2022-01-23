@@ -1,0 +1,4 @@
+(
+    shader_module: "../shaders/cas/cas16.comp.cookedshaderpackage",
+    entry_name: "main"
+)

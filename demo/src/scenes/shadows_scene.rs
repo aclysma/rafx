@@ -24,7 +24,7 @@ impl ShadowsScene {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
         super::util::setup_skybox(resources, "textures/skybox.basis");
-        super::util::set_ambient_light(resources, glam::Vec3::new(0.005, 0.005, 0.005));
+        super::util::set_ambient_light(resources, glam::Vec3::new(0.05, 0.05, 0.05));
 
         let floor_mesh =
             SpawnableMesh::blocking_load_from_path(resources, "blender/cement_floor.glb");

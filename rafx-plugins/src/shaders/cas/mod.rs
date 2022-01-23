@@ -2,4 +2,5 @@
 
 #![allow(dead_code)]
 
-pub mod cas_comp;
+pub mod cas16_comp;
+pub mod cas32_comp;

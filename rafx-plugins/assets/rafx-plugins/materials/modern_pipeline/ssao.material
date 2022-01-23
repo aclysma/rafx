@@ -1,0 +1,20 @@
+(
+    passes: [
+        (
+            phase: Some("PostProcess"),
+            fixed_function_state: (),
+            shaders: [
+                (
+                    stage: Vertex,
+                    shader_module: "../../shaders/post_shared/postprocess.vert.cookedshaderpackage",
+                    entry_name: "main" 
+                ),
+                (
+                    stage: Fragment,
+                    shader_module: "../../shaders/ssao/ssao.frag.cookedshaderpackage",
+                    entry_name: "main"
+                ),
+            ],
+        ),
+    ]
+)

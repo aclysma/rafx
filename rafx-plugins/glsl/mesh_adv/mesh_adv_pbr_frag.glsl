@@ -1037,7 +1037,8 @@ vec4 pbr_path(
     float metalness,
     float roughness,
     vec3 normal_vs,
-    uint light_cluster_index
+    uint light_cluster_index,
+    float ambient_factor
 ) {
     // used in fresnel, non-metals use 0.04 and metals use the base color
     vec3 fresnel_base = vec3(0.04);
@@ -1104,7 +1105,7 @@ vec4 pbr_path(
     //
     // There are still issues here, not sure how alpha interacts and gamma looks terrible
     //
-    vec3 ambient = per_view_data.ambient_light.rgb * base_color.rgb; //TODO: Multiply ao in here
+    vec3 ambient = per_view_data.ambient_light.rgb * base_color.rgb * ambient_factor;
 
     float alpha = 1.0;
     if (per_material_data.data.enable_alpha_blend) {
@@ -1156,6 +1157,7 @@ uint hash_light_list(uint light_cluster_index) {
 vec4 pbr_main() {
     // Sample the base color, if it exists
     vec4 base_color = per_material_data.data.base_color_factor;
+    float ambient_factor = 1.0;
     uint light_cluster_index = get_light_cluster_index();
 
 #ifdef PBR_TEXTURES
@@ -1167,6 +1169,10 @@ vec4 pbr_main() {
             base_color = vec4(base_color.rgb * sampled_color.rgb, base_color.a);
         }
     }
+
+    float screen_coord_x = (gl_FragCoord.x / float(per_view_data.viewport_width));
+    float screen_coord_y = ((gl_FragCoord.y / float(per_view_data.viewport_height)));
+    ambient_factor = texture(sampler2D(ssao_texture, smp), vec2(screen_coord_x, screen_coord_y)).r;
 #endif
 
     // Sample the emissive color, if it exists
@@ -1225,7 +1231,8 @@ vec4 pbr_main() {
         metalness,
         roughness,
         normal_vs,
-        light_cluster_index
+        light_cluster_index,
+        ambient_factor
     );
 
     // LIGHT COUNT
@@ -1246,6 +1253,7 @@ vec4 pbr_main() {
     //out_color = vec4(in_tangent_vs, 1.0);
     //out_color = vec4(in_binormal_vs, 1.0);
     //out_color = vec4(normal_vs, 1.0);
+    //out_color = vec4(vec3(ambient_factor), 1.0);
     //out_color = vec4(in_uv.x, in_uv.y, 0.0, 1.0);
 
 

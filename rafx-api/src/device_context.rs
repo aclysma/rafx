@@ -46,6 +46,42 @@ pub enum RafxDeviceContext {
 }
 
 impl RafxDeviceContext {
+    pub fn is_vulkan(&self) -> bool {
+        #[allow(unreachable_patterns)]
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxDeviceContext::Vk(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_metal(&self) -> bool {
+        #[allow(unreachable_patterns)]
+        match self {
+            #[cfg(feature = "rafx-metal")]
+            RafxDeviceContext::Metal(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_gles3(&self) -> bool {
+        #[allow(unreachable_patterns)]
+        match self {
+            #[cfg(feature = "rafx-gles3")]
+            RafxDeviceContext::Gles3(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_gles2(&self) -> bool {
+        #[allow(unreachable_patterns)]
+        match self {
+            #[cfg(feature = "rafx-gles2")]
+            RafxDeviceContext::Gles2(_) => true,
+            _ => false,
+        }
+    }
+
     /// Get metadata about the device
     pub fn device_info(&self) -> &RafxDeviceInfo {
         match self {

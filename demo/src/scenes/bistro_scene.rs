@@ -22,7 +22,7 @@ impl BistroScene {
         *render_options = RenderOptions::default_3d();
         render_options.show_skybox = false;
 
-        super::util::set_ambient_light(resources, glam::Vec3::new(0.005, 0.005, 0.005));
+        super::util::set_ambient_light(resources, glam::Vec3::new(0.05, 0.05, 0.05));
 
         let mut demo_camera = DemoCamera::new();
         demo_camera.fly_camera.position = glam::Vec3::new(-15.510543, 2.3574839, 5.751496);

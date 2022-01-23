@@ -259,7 +259,8 @@ pub struct MeshAdvAssetPart {
     pub index_type: RafxIndexType,
 }
 
-pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
+pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize =
+    mesh_adv_textured_frag::PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX;
 
 impl MeshAdvAssetPart {
     pub fn get_material_pass_resource(

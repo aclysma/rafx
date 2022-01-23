@@ -8,7 +8,7 @@ use rafx::api::{
     RafxBufferDef, RafxFormat, RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult,
 };
 use rafx::assets::distill_impl::AssetResource;
-use rafx::assets::{AssetManager, ComputePipelineAsset, MaterialAsset};
+use rafx::assets::{AssetManager, ComputePipelineAsset, ImageAsset, MaterialAsset};
 use rafx::base::resource_map::ResourceMap;
 use rafx::distill::loader::handle::Handle;
 use rafx::framework::{
@@ -71,6 +71,8 @@ pub struct ModernPipelineStaticResources {
     pub bloom_extract_material: Handle<MaterialAsset>,
     pub bloom_blur_material: Handle<MaterialAsset>,
     pub bloom_combine_material: Handle<MaterialAsset>,
+    pub ssao_material: Handle<MaterialAsset>,
+    pub blue_noise_texture: Handle<ImageAsset>,
     pub taa_material: Handle<MaterialAsset>,
     pub luma_build_histogram: Handle<ComputePipelineAsset>,
     pub luma_average_histogram: Handle<ComputePipelineAsset>,
@@ -120,6 +122,14 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
         let bloom_blur_material = asset_resource
             .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/bloom_blur.material");
 
+        let ssao_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "rafx-plugins/materials/modern_pipeline/ssao.material",
+        );
+
+        let blue_noise_texture = asset_resource.load_asset_path::<ImageAsset, _>(
+            "rafx-plugins/images/blue_noise/LDR_RGBA_64_64_0.png",
+        );
+
         let taa_material = asset_resource.load_asset_path::<MaterialAsset, _>(
             "rafx-plugins/materials/modern_pipeline/taa.material",
         );
@@ -139,9 +149,15 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             "rafx-plugins/compute_pipelines/luma_average_histogram.compute",
         );
 
-        let cas_pipeline = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
-            "rafx-plugins/compute_pipelines/cas.compute",
-        );
+        let cas_asset_path = if asset_manager.device_context().is_vulkan() {
+            //TODO: Validation errors if trying to use f16 on vulkan
+            "rafx-plugins/compute_pipelines/cas32.compute"
+        } else {
+            "rafx-plugins/compute_pipelines/cas16.compute"
+        };
+
+        let cas_pipeline =
+            asset_resource.load_asset_path::<ComputePipelineAsset, _>(cas_asset_path);
 
         asset_manager.wait_for_asset_to_load(
             &bloom_extract_material,
@@ -155,6 +171,7 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             "bloom blur material",
         )?;
 
+        asset_manager.wait_for_asset_to_load(&ssao_material, asset_resource, "ssao material")?;
         asset_manager.wait_for_asset_to_load(&taa_material, asset_resource, "taa material")?;
 
         asset_manager.wait_for_asset_to_load(
@@ -227,6 +244,8 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             bloom_extract_material,
             bloom_blur_material,
             bloom_combine_material,
+            ssao_material,
+            blue_noise_texture,
             taa_material,
             luma_build_histogram,
             luma_average_histogram,

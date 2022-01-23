@@ -248,7 +248,7 @@ pub const LIGHT_BIN_OUTPUT_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const LIGHT_BIN_OUTPUT_DESCRIPTOR_BINDING_INDEX: usize = 5;
 pub const ALL_LIGHTS_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const ALL_LIGHTS_DESCRIPTOR_BINDING_INDEX: usize = 6;
-pub const PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX: usize = 2;
 pub const PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
 
 pub struct DescriptorSet0Args<'a> {
@@ -378,18 +378,18 @@ impl DescriptorSet0 {
     }
 }
 
-pub struct DescriptorSet1Args<'a> {
+pub struct DescriptorSet2Args<'a> {
     pub per_material_data: &'a MaterialDataUboUniform,
 }
 
-impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
-    type Output = DescriptorSet1;
+impl<'a> DescriptorSetInitializer<'a> for DescriptorSet2Args<'a> {
+    type Output = DescriptorSet2;
 
     fn create_dyn_descriptor_set(
         descriptor_set: DynDescriptorSet,
         args: Self,
     ) -> Self::Output {
-        let mut descriptor = DescriptorSet1(descriptor_set);
+        let mut descriptor = DescriptorSet2(descriptor_set);
         descriptor.set_args(args);
         descriptor
     }
@@ -405,7 +405,7 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
     }
 }
 
-impl<'a> DescriptorSetWriter<'a> for DescriptorSet1Args<'a> {
+impl<'a> DescriptorSetWriter<'a> for DescriptorSet2Args<'a> {
     fn write_to(
         descriptor_set: &mut DescriptorSetWriterContext,
         args: Self,
@@ -417,12 +417,12 @@ impl<'a> DescriptorSetWriter<'a> for DescriptorSet1Args<'a> {
     }
 }
 
-pub struct DescriptorSet1(pub DynDescriptorSet);
+pub struct DescriptorSet2(pub DynDescriptorSet);
 
-impl DescriptorSet1 {
+impl DescriptorSet2 {
     pub fn set_args_static(
         descriptor_set: &mut DynDescriptorSet,
-        args: DescriptorSet1Args,
+        args: DescriptorSet2Args,
     ) {
         descriptor_set.set_buffer_data(
             PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
@@ -432,7 +432,7 @@ impl DescriptorSet1 {
 
     pub fn set_args(
         &mut self,
-        args: DescriptorSet1Args,
+        args: DescriptorSet2Args,
     ) {
         self.set_per_material_data(args.per_material_data);
     }

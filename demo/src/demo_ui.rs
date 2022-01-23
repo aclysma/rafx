@@ -25,6 +25,8 @@ use rafx_plugins::pipelines::modern::{JitterPattern, TemporalAAOptions};
 pub struct RenderOptions {
     pub anti_alias_method: AntiAliasMethod,
     pub enable_hdr: bool,
+    #[cfg(not(feature = "basic-pipeline"))]
+    pub enable_ssao: bool,
     pub enable_bloom: bool,
     pub enable_textures: bool,
     pub enable_lighting: bool,
@@ -55,6 +57,8 @@ impl RenderOptions {
         RenderOptions {
             anti_alias_method: AntiAliasMethod::Msaa4x,
             enable_hdr: false,
+            #[cfg(not(feature = "basic-pipeline"))]
+            enable_ssao: false,
             enable_bloom: false,
             enable_textures: true,
             enable_lighting: true,
@@ -85,6 +89,8 @@ impl RenderOptions {
         RenderOptions {
             anti_alias_method: AntiAliasMethod::default(),
             enable_hdr: true,
+            #[cfg(not(feature = "basic-pipeline"))]
+            enable_ssao: true,
             enable_bloom: true,
             enable_textures: true,
             enable_lighting: true,
@@ -165,6 +171,11 @@ impl RenderOptions {
                     });
                 }
             });
+        }
+
+        #[cfg(not(feature = "basic-pipeline"))]
+        if self.anti_alias_method != AntiAliasMethod::Msaa4x {
+            ui.checkbox(&mut self.enable_ssao, "enable_ssao");
         }
 
         ui.checkbox(&mut self.show_lights_debug_draw, "show_lights_debug_draw");

@@ -1,3 +1,5 @@
+use rafx::framework::DescriptorSetArc;
+
 // This is user-facing choices that don't change much frame-to-frame
 #[derive(Clone)]
 pub struct MeshAdvRenderOptions {
@@ -27,6 +29,7 @@ impl Default for MeshAdvRenderOptions {
 pub struct MeshAdvRenderPipelineState {
     pub jitter_amount: glam::Vec2,
     pub forward_pass_mip_bias: f32,
+    pub ssao_descriptor_set: Option<DescriptorSetArc>,
 }
 
 impl Default for MeshAdvRenderPipelineState {
@@ -34,6 +37,7 @@ impl Default for MeshAdvRenderPipelineState {
         MeshAdvRenderPipelineState {
             jitter_amount: glam::Vec2::ZERO,
             forward_pass_mip_bias: 0.0,
+            ssao_descriptor_set: None,
         }
     }
 }

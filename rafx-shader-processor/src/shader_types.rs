@@ -323,6 +323,20 @@ pub(crate) fn generate_struct(
         )? - rust_offset;
         assert!(rust_size <= gpu_size);
 
+        // It would be difficult to natively support this and make it ergonomic to use. Probably best to just avoid it.
+        // In general, make sure array elements can align on 16-byte boundaries
+        if !f.array_sizes.is_empty() && rust_size != gpu_size {
+            return Err(format!(
+                "Field {}::{} ({}{}) is an array of elements where the element type's GPU memory layout ({} size in bytes) does not match rust's memory layout ({} size in bytes). This is not currently supported. Try wrapping in a struct.",
+                type_name,
+                f.field_name,
+                f.type_name,
+                format_array_sizes(&f.array_sizes),
+                gpu_size,
+                rust_size
+            ));
+        }
+
         //
         // Add the member to the struct
         //

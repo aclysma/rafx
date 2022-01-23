@@ -169,6 +169,6 @@ struct MaterialData {
 // @[export]
 // @[internal_buffer]
 // @[slot_name("per_material_data")]
-layout (set = 1, binding = 0) uniform MaterialDataUbo {
+layout (set = 2, binding = 0) uniform MaterialDataUbo {
     MaterialData data;
 } per_material_data;

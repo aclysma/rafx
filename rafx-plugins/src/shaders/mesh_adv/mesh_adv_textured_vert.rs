@@ -248,17 +248,19 @@ pub const LIGHT_BIN_OUTPUT_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const LIGHT_BIN_OUTPUT_DESCRIPTOR_BINDING_INDEX: usize = 5;
 pub const ALL_LIGHTS_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const ALL_LIGHTS_DESCRIPTOR_BINDING_INDEX: usize = 6;
-pub const PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX: usize = 2;
 pub const PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
-pub const BASE_COLOR_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const SSAO_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const SSAO_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const BASE_COLOR_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 2;
 pub const BASE_COLOR_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 1;
-pub const METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 2;
 pub const METALLIC_ROUGHNESS_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 2;
-pub const NORMAL_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const NORMAL_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 2;
 pub const NORMAL_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 3;
-pub const OCCLUSION_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const OCCLUSION_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 2;
 pub const OCCLUSION_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 4;
-pub const EMISSIVE_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const EMISSIVE_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 2;
 pub const EMISSIVE_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 5;
 
 pub struct DescriptorSet0Args<'a> {
@@ -389,12 +391,7 @@ impl DescriptorSet0 {
 }
 
 pub struct DescriptorSet1Args<'a> {
-    pub per_material_data: &'a MaterialDataUboUniform,
-    pub base_color_texture: &'a ResourceArc<ImageViewResource>,
-    pub metallic_roughness_texture: &'a ResourceArc<ImageViewResource>,
-    pub normal_texture: &'a ResourceArc<ImageViewResource>,
-    pub occlusion_texture: &'a ResourceArc<ImageViewResource>,
-    pub emissive_texture: &'a ResourceArc<ImageViewResource>,
+    pub ssao_texture: &'a ResourceArc<ImageViewResource>,
 }
 
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
@@ -421,6 +418,86 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
 }
 
 impl<'a> DescriptorSetWriter<'a> for DescriptorSet1Args<'a> {
+    fn write_to(
+        descriptor_set: &mut DescriptorSetWriterContext,
+        args: Self,
+    ) {
+        descriptor_set.set_image(
+            SSAO_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.ssao_texture,
+        );
+    }
+}
+
+pub struct DescriptorSet1(pub DynDescriptorSet);
+
+impl DescriptorSet1 {
+    pub fn set_args_static(
+        descriptor_set: &mut DynDescriptorSet,
+        args: DescriptorSet1Args,
+    ) {
+        descriptor_set.set_image(
+            SSAO_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.ssao_texture,
+        );
+    }
+
+    pub fn set_args(
+        &mut self,
+        args: DescriptorSet1Args,
+    ) {
+        self.set_ssao_texture(args.ssao_texture);
+    }
+
+    pub fn set_ssao_texture(
+        &mut self,
+        ssao_texture: &ResourceArc<ImageViewResource>,
+    ) {
+        self.0
+            .set_image(SSAO_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, ssao_texture);
+    }
+
+    pub fn flush(
+        &mut self,
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+    ) -> RafxResult<()> {
+        self.0.flush(descriptor_set_allocator)
+    }
+}
+
+pub struct DescriptorSet2Args<'a> {
+    pub per_material_data: &'a MaterialDataUboUniform,
+    pub base_color_texture: &'a ResourceArc<ImageViewResource>,
+    pub metallic_roughness_texture: &'a ResourceArc<ImageViewResource>,
+    pub normal_texture: &'a ResourceArc<ImageViewResource>,
+    pub occlusion_texture: &'a ResourceArc<ImageViewResource>,
+    pub emissive_texture: &'a ResourceArc<ImageViewResource>,
+}
+
+impl<'a> DescriptorSetInitializer<'a> for DescriptorSet2Args<'a> {
+    type Output = DescriptorSet2;
+
+    fn create_dyn_descriptor_set(
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> Self::Output {
+        let mut descriptor = DescriptorSet2(descriptor_set);
+        descriptor.set_args(args);
+        descriptor
+    }
+
+    fn create_descriptor_set(
+        descriptor_set_allocator: &mut DescriptorSetAllocator,
+        descriptor_set: DynDescriptorSet,
+        args: Self,
+    ) -> RafxResult<DescriptorSetArc> {
+        let mut descriptor = Self::create_dyn_descriptor_set(descriptor_set, args);
+        descriptor.0.flush(descriptor_set_allocator)?;
+        Ok(descriptor.0.descriptor_set().clone())
+    }
+}
+
+impl<'a> DescriptorSetWriter<'a> for DescriptorSet2Args<'a> {
     fn write_to(
         descriptor_set: &mut DescriptorSetWriterContext,
         args: Self,
@@ -452,12 +529,12 @@ impl<'a> DescriptorSetWriter<'a> for DescriptorSet1Args<'a> {
     }
 }
 
-pub struct DescriptorSet1(pub DynDescriptorSet);
+pub struct DescriptorSet2(pub DynDescriptorSet);
 
-impl DescriptorSet1 {
+impl DescriptorSet2 {
     pub fn set_args_static(
         descriptor_set: &mut DynDescriptorSet,
-        args: DescriptorSet1Args,
+        args: DescriptorSet2Args,
     ) {
         descriptor_set.set_buffer_data(
             PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
@@ -487,7 +564,7 @@ impl DescriptorSet1 {
 
     pub fn set_args(
         &mut self,
-        args: DescriptorSet1Args,
+        args: DescriptorSet2Args,
     ) {
         self.set_per_material_data(args.per_material_data);
         self.set_base_color_texture(args.base_color_texture);

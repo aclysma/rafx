@@ -1152,7 +1152,8 @@ fn propagate_virtual_image_id(
         };
 
         // We can't share images if they aren't the same format
-        let specifications_match = *written_spec == *usage_spec;
+        let specifications_compatible =
+            RenderGraphImageSpecification::specifications_are_compatible(written_spec, usage_spec);
 
         // We can't share images unless it's a read or it's an exclusive write
         let is_read_or_exclusive_write = (read_count > 0
@@ -1162,7 +1163,7 @@ fn propagate_virtual_image_id(
             || write_count <= 1;
 
         let read_type = graph.image_usages[usage_resource_id.0].usage_type;
-        if specifications_match && is_read_or_exclusive_write {
+        if specifications_compatible && is_read_or_exclusive_write {
             // it's a shared read or an exclusive write
             log::trace!(
                 "    Usage {:?} will share an image with {:?} ({:?} -> {:?})",
@@ -1179,14 +1180,14 @@ fn propagate_virtual_image_id(
             // allocate new image
             let virtual_image = virtual_image_id_allocator.allocate();
             log::info!(
-                        "    Allocate image {:?} for {:?} ({:?} -> {:?})  (specifications_match match: {} is_read_or_exclusive_write: {})",
-                        virtual_image,
-                        usage_resource_id,
-                        write_type,
-                        read_type,
-                        specifications_match,
-                        is_read_or_exclusive_write
-                    );
+                "    Allocate image {:?} for {:?} ({:?} -> {:?})  (specifications_compatible match: {} is_read_or_exclusive_write: {})",
+                virtual_image,
+                usage_resource_id,
+                write_type,
+                read_type,
+                specifications_compatible,
+                is_read_or_exclusive_write
+            );
             let overwritten_image =
                 image_usage_to_virtual.insert(*usage_resource_id, virtual_image);
 
@@ -1204,7 +1205,7 @@ fn propagate_virtual_image_id(
                 graph.debug_user_name_of_image_usage(*usage_resource_id)
             );
 
-            if !specifications_match {
+            if !specifications_compatible {
                 log::info!("      writer spec: {:?}", written_spec);
                 log::info!("      reader spec: {:?}", usage_spec);
             }
@@ -1271,7 +1272,8 @@ fn propagate_virtual_buffer_id(
         };
 
         // We can't share buffers if they aren't the same format
-        let specifications_match = *written_spec == *usage_spec;
+        let specifications_compatible =
+            RenderGraphBufferSpecification::specifications_are_compatible(written_spec, usage_spec);
 
         // We can't share buffers unless it's a read or it's an exclusive write
         let is_read_or_exclusive_write = (read_count > 0
@@ -1281,7 +1283,7 @@ fn propagate_virtual_buffer_id(
             || write_count <= 1;
 
         let read_type = graph.buffer_usages[usage_resource_id.0].usage_type;
-        if specifications_match && is_read_or_exclusive_write {
+        if specifications_compatible && is_read_or_exclusive_write {
             // it's a shared read or an exclusive write
             log::trace!(
                 "    Usage {:?} will share a buffer with {:?} ({:?} -> {:?})",
@@ -1298,14 +1300,14 @@ fn propagate_virtual_buffer_id(
             // allocate new buffer
             let virtual_buffer = virtual_buffer_id_allocator.allocate();
             log::info!(
-                        "    Allocate buffer {:?} for {:?} ({:?} -> {:?})  (specifications_match match: {} is_read_or_exclusive_write: {})",
-                        virtual_buffer,
-                        usage_resource_id,
-                        write_type,
-                        read_type,
-                        specifications_match,
-                        is_read_or_exclusive_write
-                    );
+                "    Allocate buffer {:?} for {:?} ({:?} -> {:?})  (specifications_compatible match: {} is_read_or_exclusive_write: {})",
+                virtual_buffer,
+                usage_resource_id,
+                write_type,
+                read_type,
+                specifications_compatible,
+                is_read_or_exclusive_write
+            );
 
             let overwritten_buffer =
                 buffer_usage_to_virtual.insert(*usage_resource_id, virtual_buffer);
@@ -1324,7 +1326,7 @@ fn propagate_virtual_buffer_id(
                 graph.debug_user_name_of_buffer_usage(*usage_resource_id)
             );
 
-            if !specifications_match {
+            if !specifications_compatible {
                 log::info!("      writer spec: {:?}", written_spec);
                 log::info!("      reader spec: {:?}", usage_spec);
             }

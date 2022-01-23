@@ -2,7 +2,7 @@ use rafx::framework::{ComputePipelineResource, DescriptorSetBindings, ResourceAr
 use rafx::graph::*;
 
 use super::ModernPipelineContext;
-use crate::shaders::cas::cas_comp;
+use crate::shaders::cas::cas32_comp;
 use rafx::api::{RafxFormat, RafxSampleCount};
 
 pub(super) struct CasPass {
@@ -64,16 +64,16 @@ pub(super) fn cas_pass(
         let input_height = swapchain_extents.height;
 
         descriptor_set.set_buffer_data(
-            cas_comp::CONFIG_DESCRIPTOR_BINDING_INDEX as u32,
-            &cas_comp::ConfigUniform {
+            cas32_comp::CONFIG_DESCRIPTOR_BINDING_INDEX as u32,
+            &cas32_comp::ConfigUniform {
                 image_width: input_width,
                 image_height: input_height,
                 sharpen_amount: sharpening_amount,
                 _padding0: Default::default(),
             },
         );
-        descriptor_set.set_image(cas_comp::IMG_SRC_DESCRIPTOR_BINDING_INDEX as u32, &src_rt);
-        descriptor_set.set_image(cas_comp::IMG_DST_DESCRIPTOR_BINDING_INDEX as u32, &dst_rt);
+        descriptor_set.set_image(cas32_comp::IMG_SRC_DESCRIPTOR_BINDING_INDEX as u32, &src_rt);
+        descriptor_set.set_image(cas32_comp::IMG_DST_DESCRIPTOR_BINDING_INDEX as u32, &dst_rt);
         descriptor_set.flush(&mut descriptor_set_allocator)?;
         descriptor_set_allocator.flush_changes()?;
 

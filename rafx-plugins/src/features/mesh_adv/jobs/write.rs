@@ -282,10 +282,20 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
                 .as_ref()
                 .unwrap()
                 .bind(command_buffer)?;
-        }
 
-        if let Some(per_material_descriptor_set) = per_material_descriptor_set {
-            per_material_descriptor_set.bind(command_buffer)?;
+            let ssao_descriptor_set = write_context
+                .graph_context
+                .render_resources()
+                .fetch::<MeshAdvRenderPipelineState>()
+                .ssao_descriptor_set
+                .clone();
+            if let Some(ssao_descriptor_set) = ssao_descriptor_set {
+                ssao_descriptor_set.bind(command_buffer)?;
+            }
+
+            if let Some(per_material_descriptor_set) = per_material_descriptor_set {
+                per_material_descriptor_set.bind(command_buffer)?;
+            }
         }
 
         command_buffer.cmd_bind_vertex_buffers(
@@ -320,6 +330,7 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
         } as u32;
 
         command_buffer.cmd_draw_indexed(mesh_part.index_buffer_size_in_bytes / index_size, 0, 0)?;
+
         Ok(())
     }
 

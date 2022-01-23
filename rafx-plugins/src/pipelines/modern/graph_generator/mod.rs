@@ -14,6 +14,8 @@ mod opaque_pass;
 
 mod depth_prepass;
 
+mod ssao_pass;
+
 mod bloom_extract_pass;
 use super::ModernPipelineRenderOptions;
 use super::ModernPipelineStaticResources;
@@ -53,6 +55,7 @@ pub struct ModernPipelineRenderGraphConfig {
     pub swapchain_format: RafxFormat,
     pub samples: RafxSampleCount,
     pub enable_hdr: bool,
+    pub enable_ssao: bool,
     pub enable_bloom: bool,
     pub show_surfaces: bool,
     pub blur_pass_count: usize,
@@ -146,6 +149,8 @@ pub(super) fn generate_render_graph(
             samples: sample_count,
             enable_hdr: render_options.enable_hdr,
             swapchain_format,
+            enable_ssao: render_options.enable_ssao
+                && sample_count == RafxSampleCount::SampleCount1,
             enable_bloom: render_options.enable_bloom,
             show_surfaces: render_options.show_surfaces,
             blur_pass_count: render_options.blur_pass_count,
@@ -253,6 +258,46 @@ pub(super) fn generate_render_graph(
 
     let depth_prepass = depth_prepass::depth_prepass(&mut graph_context);
 
+    let ssao_material_pass = asset_manager
+        .committed_asset(&static_resources.ssao_material)
+        .unwrap()
+        .get_single_material_pass()
+        .unwrap();
+    let noise_texture = asset_manager
+        .committed_asset(&static_resources.blue_noise_texture)
+        .unwrap()
+        .image_view
+        .clone();
+
+    let ssao_rt = if graph_config.enable_ssao {
+        let ssao_pass = ssao_pass::ssao_pass(
+            &mut graph_context,
+            &ssao_material_pass,
+            depth_prepass.depth,
+            &noise_texture,
+        );
+
+        let mut ssao_rt = ssao_pass.ssao_rt;
+
+        let bloom_blur_material_pass = asset_manager
+            .committed_asset(&static_resources.bloom_blur_material)
+            .unwrap()
+            .get_single_material_pass()
+            .unwrap();
+
+        ssao_rt = bloom_blur_pass::blur_pass(
+            &mut graph_context,
+            bloom_blur_material_pass.clone(),
+            ssao_rt,
+            1,
+        )
+        .color;
+
+        Some(ssao_rt)
+    } else {
+        None
+    };
+
     let shadow_map_pass_output = shadow_map_pass::shadow_map_passes(
         &mut graph_context,
         shadow_atlas_image,
@@ -265,9 +310,10 @@ pub(super) fn generate_render_graph(
 
     let opaque_pass = opaque_pass::opaque_pass(
         &mut graph_context,
-        depth_prepass.as_ref().map(|x| x.depth),
+        depth_prepass.depth,
         &shadow_map_pass_output,
         &build_light_lists_pass,
+        ssao_rt,
     );
 
     let taa_material_pass = asset_manager
@@ -289,8 +335,8 @@ pub(super) fn generate_render_graph(
             &render_options.taa_options,
             taa_material_pass,
             opaque_pass.color,
-            depth_prepass.as_ref().unwrap().depth,
-            depth_prepass.as_ref().unwrap().velocity_rt,
+            depth_prepass.depth,
+            depth_prepass.velocity_rt,
             taa_history_rt_image_id,
             taa_history_rt_has_data,
         );

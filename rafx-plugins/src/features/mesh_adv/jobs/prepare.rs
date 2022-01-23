@@ -403,12 +403,13 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 if view.phase_is_relevant::<WireframeRenderPhase>()
                     && view.feature_flag_is_relevant::<MeshAdvWireframeRenderFeatureFlag>()
                 {
-                    let material_pass_resource = mesh_part
-                        .get_material_pass_resource(
-                            view,
-                            WireframeRenderPhase::render_phase_index(),
+                    let material_pass_resource = self
+                        .default_pbr_material
+                        .get_material_pass_by_index(
+                            self.default_pbr_material_pass_indices.wireframe as usize,
                         )
-                        .clone();
+                        .clone()
+                        .unwrap();
 
                     let per_material_descriptor_set = Some(
                         mesh_part

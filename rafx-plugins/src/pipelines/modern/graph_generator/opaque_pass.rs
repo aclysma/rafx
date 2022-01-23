@@ -2,10 +2,14 @@ use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPh
 use rafx::graph::*;
 
 use super::ModernPipelineContext;
+use crate::assets::mesh_adv::MeshAdvShaderPassIndices;
+use crate::features::mesh_adv::{MeshAdvRenderPipelineState, MeshAdvStaticResources};
 use crate::pipelines::modern::graph_generator::light_binning::LightBuildListsPass;
 use crate::pipelines::modern::graph_generator::shadow_map_pass::ShadowMapPassOutput;
-use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
+use crate::shaders::mesh_adv::mesh_adv_textured_frag;
+use rafx::api::RafxColorClearValue;
 use rafx::render_features::RenderJobCommandBufferContext;
+use rafx::renderer::InvalidResources;
 
 pub(super) struct OpaquePass {
     #[allow(dead_code)]
@@ -17,9 +21,10 @@ pub(super) struct OpaquePass {
 
 pub(super) fn opaque_pass(
     context: &mut ModernPipelineContext,
-    depth_prepass: Option<RenderGraphImageUsageId>,
+    depth_prepass: RenderGraphImageUsageId,
     shadow_map_pass_output: &ShadowMapPassOutput,
     light_build_lists_pass: &LightBuildListsPass,
+    ssao_rt: Option<RenderGraphImageUsageId>,
 ) -> OpaquePass {
     let node = context
         .graph
@@ -40,10 +45,10 @@ pub(super) fn opaque_pass(
 
     //let mut shadow_maps = Vec::with_capacity(shadow_map_passes.len());
 
-    if context.graph_config.show_surfaces && depth_prepass.is_some() {
+    if context.graph_config.show_surfaces {
         context.graph.read_depth_attachment(
             node,
-            depth_prepass.unwrap(),
+            depth_prepass,
             RenderGraphImageConstraint {
                 samples: Some(context.graph_config.samples),
                 format: Some(context.graph_config.depth_format),
@@ -51,22 +56,16 @@ pub(super) fn opaque_pass(
             },
             Default::default(),
         );
-    } else {
-        let depth = context.graph.create_depth_attachment(
-            node,
-            Some(RafxDepthStencilClearValue {
-                depth: 0.0,
-                stencil: 0,
-            }),
-            RenderGraphImageConstraint {
-                samples: Some(context.graph_config.samples),
-                format: Some(context.graph_config.depth_format),
-                ..Default::default()
-            },
-            Default::default(),
-        );
-        context.graph.set_image_name(depth, "depth");
     }
+
+    let ssao_rt = ssao_rt.map(|x| {
+        context.graph.sample_image(
+            node,
+            x,
+            RenderGraphImageConstraint::default(),
+            RenderGraphImageViewOptions::default(),
+        )
+    });
 
     // This is a buffer owned by MeshAdvLightBinRenderResource
     context.graph.read_storage_buffer(
@@ -89,9 +88,54 @@ pub(super) fn opaque_pass(
     let main_view = context.main_view.clone();
     let show_models = context.graph_config.show_surfaces;
 
+    let default_pbr_material = context
+        .render_resources
+        .fetch::<MeshAdvStaticResources>()
+        .default_pbr_material
+        .clone();
+    let default_pbr_material = context
+        .asset_manager
+        .committed_asset(&default_pbr_material)
+        .unwrap()
+        .clone();
+
     context.graph.set_renderpass_callback(node, move |args| {
         let mut write_context =
             RenderJobCommandBufferContext::from_graph_visit_render_pass_args(&args);
+
+        let invalid_image = args
+            .graph_context
+            .render_resources()
+            .fetch::<InvalidResources>()
+            .invalid_image_color
+            .clone();
+
+        let ssao_rt = ssao_rt.map(|x| args.graph_context.image_view(x).unwrap());
+        let ssao_rt = ssao_rt.unwrap_or(invalid_image);
+
+        let default_pbr_material_pass_indices =
+            MeshAdvShaderPassIndices::new(&default_pbr_material);
+        let default_pass = default_pbr_material
+            .get_material_pass_by_index(default_pbr_material_pass_indices.opaque as usize)
+            .unwrap();
+
+        let descriptor_set_layouts = &default_pass.get_raw().descriptor_set_layouts;
+        let mut descriptor_set_allocator = args
+            .graph_context
+            .resource_context()
+            .create_descriptor_set_allocator();
+        let descriptor_set = descriptor_set_allocator.create_descriptor_set(
+            &descriptor_set_layouts[mesh_adv_textured_frag::SSAO_TEXTURE_DESCRIPTOR_SET_INDEX],
+            mesh_adv_textured_frag::DescriptorSet1Args {
+                ssao_texture: &ssao_rt,
+            },
+        )?;
+        descriptor_set_allocator.flush_changes()?;
+
+        args.graph_context
+            .render_resources()
+            .fetch_mut::<MeshAdvRenderPipelineState>()
+            .ssao_descriptor_set = Some(descriptor_set);
 
         if show_models {
             {
@@ -108,6 +152,11 @@ pub(super) fn opaque_pass(
                     .write_view_phase::<TransparentRenderPhase>(&main_view, &mut write_context)?;
             }
         }
+
+        args.graph_context
+            .render_resources()
+            .fetch_mut::<MeshAdvRenderPipelineState>()
+            .ssao_descriptor_set = None;
 
         {
             profiling::scope!("Wireframes Pass");

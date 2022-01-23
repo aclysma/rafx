@@ -96,6 +96,19 @@ impl RenderGraphBufferSpecification {
 
         true
     }
+
+    pub fn specifications_are_compatible(
+        written: &RenderGraphBufferSpecification,
+        read: &RenderGraphBufferSpecification,
+    ) -> bool {
+        if written.size != read.size {
+            return false;
+        }
+        if (written.resource_type | read.resource_type) != written.resource_type {
+            return false;
+        }
+        return true;
+    }
 }
 
 /// Constraints on a buffer. Constraints are set per-field and start out None (i.e. unconstrained)

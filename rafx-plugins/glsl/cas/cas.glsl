@@ -1,11 +1,3 @@
-#version 450
-#extension GL_ARB_separate_shader_objects : enable
-#extension GL_ARB_shading_language_420pack : enable
-#extension GL_GOOGLE_include_directive : enable
-
-// Uncomment this if the
-#define CAS_SAMPLE_FP16 1
-
 // Based on CAS sample
 //
 // Copyright(c) 2019 Advanced Micro Devices, Inc.All rights reserved.

@@ -259,7 +259,8 @@ pub struct MeshBasicAssetPart {
     pub index_type: RafxIndexType,
 }
 
-pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize = 1;
+pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize =
+    mesh_basic_textured_frag::PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX;
 
 impl MeshBasicAssetPart {
     pub fn get_material_pass_resource(

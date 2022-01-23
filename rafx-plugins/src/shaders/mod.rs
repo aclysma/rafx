@@ -16,5 +16,6 @@ pub mod post_basic;
 pub mod post_shared;
 pub mod skybox;
 pub mod sprite;
+pub mod ssao;
 pub mod text;
 pub mod tile_layer;

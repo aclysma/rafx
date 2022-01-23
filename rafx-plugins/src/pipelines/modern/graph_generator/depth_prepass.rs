@@ -11,14 +11,7 @@ pub(super) struct DepthPrepass {
     pub(super) depth: RenderGraphImageUsageId,
 }
 
-pub(super) fn depth_prepass(context: &mut ModernPipelineContext) -> Option<DepthPrepass> {
-    if !context
-        .main_view
-        .phase_is_relevant::<DepthPrepassRenderPhase>()
-    {
-        return None;
-    }
-
+pub(super) fn depth_prepass(context: &mut ModernPipelineContext) -> DepthPrepass {
     let node = context
         .graph
         .add_node("DepthPrepass", RenderGraphQueue::DefaultGraphics);
@@ -67,9 +60,9 @@ pub(super) fn depth_prepass(context: &mut ModernPipelineContext) -> Option<Depth
             .write_view_phase::<DepthPrepassRenderPhase>(&main_view, &mut write_context)
     });
 
-    Some(DepthPrepass {
+    DepthPrepass {
         node,
         velocity_rt,
         depth,
-    })
+    }
 }

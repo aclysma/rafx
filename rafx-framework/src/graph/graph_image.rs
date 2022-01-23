@@ -180,6 +180,31 @@ impl RenderGraphImageSpecification {
 
         true
     }
+
+    pub fn specifications_are_compatible(
+        written: &RenderGraphImageSpecification,
+        read: &RenderGraphImageSpecification,
+    ) -> bool {
+        if written.samples != read.samples {
+            return false;
+        }
+        if written.format != read.format {
+            return false;
+        }
+        if written.mip_count != read.mip_count {
+            return false;
+        }
+        if written.layer_count != read.layer_count {
+            return false;
+        }
+        if written.extents != read.extents {
+            return false;
+        }
+        if (written.resource_type | read.resource_type) != written.resource_type {
+            return false;
+        }
+        return true;
+    }
 }
 
 /// Constraints on an image. Constraints are set per-field and start out None (i.e. unconstrained)

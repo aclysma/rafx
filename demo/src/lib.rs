@@ -326,6 +326,7 @@ impl DemoApp {
                 render_options.enable_visibility_update;
             #[cfg(not(feature = "basic-pipeline"))]
             {
+                pipeline_render_options.enable_ssao = render_options.enable_ssao;
                 pipeline_render_options.taa_options = render_options.taa_options.clone();
                 pipeline_render_options.enable_sharpening = render_options.enable_sharpening;
                 pipeline_render_options.sharpening_amount = render_options.sharpening_amount;
