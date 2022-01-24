@@ -1,7 +1,5 @@
 # Rafx
 
-[**Documentation**](docs/index.md)
-
 Rafx is a multi-backend renderer that prioritizes performance, flexibility, and productivity. It optionally integrates 
 with the [`distill`](https://github.com/amethyst/distill) asset pipeline to provide workflows and tools suitable
 for real-world projects with multidisciplinary teams.
@@ -12,8 +10,29 @@ This crate contains several layers:
  * `rafx-framework`: Mid-level framework that eases resource management, lifetime handling, and draw call dispatching
  * `rafx-assets`: Asset layer that integrates with [`distill`](https://github.com/amethyst/distill)
  * `rafx-renderer`: A pipelined renderer with a plugin system for customizing it
+ * `rafx-plugins`: Implementations of many basic and advanced rendering techniques and features
 
 Rafx also provides tools for building shaders and packing assets.
+
+### [**Documentation**](docs/index.md)
+
+[![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
+
+[![Sci-fi Base Screenshot](docs/screenshots/scifi_base_screenshot_thumb.jpg)](docs/screenshots/scifi_base_screenshot.png)
+
+[![Amazon Lumberyard Bistro Screenshot](docs/screenshots/bistro_screenshot_thumb.jpg)](docs/screenshots/bistro_screenshot.png)
+
+Amazon Lumberyard Bistro scene (Original assets: https://developer.nvidia.com/orca/amazon-lumberyard-bistro)
+
+[![Video of Renderer in Use](docs/screenshots/ios_screenshot.png)](https://www.youtube.com/watch?v=Ks_HQbejHE4 "Video of Renderer in Use")
+
+[^ Video of this renderer running on iOS hardware](https://www.youtube.com/watch?v=Ks_HQbejHE4)
+
+![Screenshot of render with real-world assets](docs/screenshots/render_adventure1.png)
+
+![Screenshot of LDTK tilemap integration](docs/screenshots/tilemap_demo.png)
+
+(Tilemap screenshot is an imported ldtk project file)
 
 ### Current Support:
 
@@ -40,22 +59,6 @@ Please keep in mind, this crate is still in pre-0.1.0 status!
 
  * [**Documentation**](docs/index.md)
  * For rustdoc: run `cargo doc --no-deps --open` in the root of the crate (docs.rs is incomplete because it does not build with features)
-
-[![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
-
-[![Amazon Lumberyard Bistro Screenshot](docs/screenshots/bistro_screenshot_thumb.jpg)](docs/screenshots/bistro_screenshot.png)
-
-Amazon Lumberyard Bistro scene (Original assets: https://developer.nvidia.com/orca/amazon-lumberyard-bistro)
-
-[![Video of Renderer in Use](docs/screenshots/ios_screenshot.png)](https://www.youtube.com/watch?v=Ks_HQbejHE4 "Video of Renderer in Use")
-
-[^ Video of this renderer running on iOS hardware](https://www.youtube.com/watch?v=Ks_HQbejHE4)
-
-![Screenshot of render with real-world assets](docs/screenshots/render_adventure1.png)
-
-![Screenshot of LDTK tilemap integration](docs/screenshots/tilemap_demo.png)
-
-(Tilemap screenshot is an imported ldtk project file)
 
 ## Roadmap
 
@@ -88,7 +91,7 @@ pipeline.
 
 ## Running the Demo
 
-The demo should be run from the root of the repository. These commands should clone the repo
+The demo should be run from within the demo directory of the repository. These commands should clone the repo
 and run the demo.
 
 ```
@@ -124,7 +127,8 @@ is highly recommeneded. Asset processing is extremely slow in debug mode.** (i.e
 * Sprites
 * Debug Draw
 * imgui/egui
-* HDR Pipeline with Bloom/Auto-exposure/TAA/FidelityFX CAS
+* Clustered Forward Lighting with shadow atlas cache, supporting 100+ shadow-casting lights
+* HDR Pipeline with Bloom/Auto-exposure/TAA/SSAO/FidelityFX CAS
 * HDR display support (only tested on macOS, might work with vulkan)
 * Point, Spot, and Directional Lights
 * Multiple Spot/Directional/Point light soft shadows
