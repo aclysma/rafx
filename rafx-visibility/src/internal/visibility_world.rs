@@ -8,6 +8,7 @@ use crate::{
 use glam::Vec3;
 use rustc_hash::FxHashMap;
 use slotmap::{DenseSlotMap, SecondaryMap, SlotMap};
+use std::ops::Mul;
 
 pub struct VisibilityWorldInternal {
     pub(crate) zones: DenseSlotMap<ZoneHandle, Zone>,
@@ -506,14 +507,12 @@ impl VisibilityWorldInternal {
 
         let transform = object.transform.unwrap_or_default();
         if let Some(model) = object.cull_model {
+            // We need to account for rotation/scaling because bounding sphere might not be at origin
             let model = self.models.get(model).unwrap();
-            chunk.update(
-                in_chunk_idx,
-                BoundingSphere::new(
-                    transform.translation + model.bounding_sphere.position * transform.scale,
-                    model.bounding_sphere.radius * transform.scale.max_element(),
-                ),
-            )
+            let position = transform.translation
+                + transform.rotation.mul(model.bounding_sphere.position) * transform.scale;
+            let radius = model.bounding_sphere.radius * transform.scale.abs().max_element();
+            chunk.update(in_chunk_idx, BoundingSphere::new(position, radius))
         } else {
             chunk.update(
                 in_chunk_idx,

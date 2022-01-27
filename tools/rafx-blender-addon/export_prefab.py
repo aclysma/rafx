@@ -10,26 +10,26 @@ logging = logging.getLogger(__name__)
 from . import rafx_blender_paths, rafx_errors, rafx_utils, export_model, export_mesh
 from .rafx_export_types import ExportContext
 
-def object_common_attributes(object):
-    attributes = {}
+# def object_rotation_as_quaternion(object):
+#     if object.rotation_mode == 'QUATERNION':
+#         return object.rotation_quaternion
+#     elif object.rotation_mode == 'AXIS_ANGLE':
+#         return mathutils.Quaternion(object.rotation_axis_angle[1:4], object.rotation_axis_angle[0])
+#     else:
+#         return object.rotation_euler.to_quaternion()
 
-    attributes['position'] = object.location
-    if object.rotation_mode == 'QUATERNION':
-        attributes['rotation'] = object.rotation_quaternion
-    elif object.rotation_mode == 'AXIS_ANGLE':
-        attributes['rotation'] = mathutils.Quaternion(object.rotation_axis_angle[1:4], object.rotation_axis_angle[0])
-    else:
-        attributes['rotation'] = object.rotation_euler.to_quaternion()
+# def object_common_attributes(object):
+#     attributes = {}
 
-    attributes['scale'] = object.scale
-    return attributes
+#     attributes['position'] = object.location
+#     attributes['rotation'] = object_rotation_as_quaternion(object)
+#     attributes['scale'] = object.scale
+#     return attributes
 
 def iterate_object(export_context: ExportContext, export_dir, out_objects, object: bpy.types.Object, transform: mathutils.Matrix):
     transform = transform @ object.matrix_basis
-    
-    t = transform.translation
-    r = transform.to_quaternion()
-    s = transform.to_scale()
+
+    t, r, s = transform.decompose()
     transform_attributes = {
         "position": [t.x, t.y, t.z],
         "rotation": [r.x, r.y, r.z, r.w],
