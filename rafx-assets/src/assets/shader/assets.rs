@@ -1,4 +1,5 @@
 use crate::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler};
+use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
 use rafx_api::{RafxResult, RafxShaderPackage};
 use rafx_framework::ResourceArc;
@@ -35,6 +36,7 @@ impl DefaultAssetTypeLoadHandler<ShaderAssetData, ShaderAsset> for ShaderLoadHan
     fn load(
         asset_manager: &mut AssetManager,
         asset_data: ShaderAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<ShaderAsset> {
         let mut reflection_data_lookup = FnvHashMap::default();
         if let Some(reflection_data) = &asset_data.reflection_data {

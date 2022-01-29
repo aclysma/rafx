@@ -176,9 +176,6 @@ impl RafxPipelineVulkan {
         let dynamic_states = [
             vk::DynamicState::VIEWPORT,
             vk::DynamicState::SCISSOR,
-            vk::DynamicState::DEPTH_BIAS,
-            vk::DynamicState::BLEND_CONSTANTS,
-            vk::DynamicState::DEPTH_BOUNDS,
             vk::DynamicState::STENCIL_REFERENCE,
         ];
         let dynamic_states_create_info =

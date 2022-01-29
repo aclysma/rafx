@@ -8,17 +8,6 @@ use std::sync::Arc;
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct PushConstantIndex(pub(crate) u32);
-
-// Push constants aren't really used yet, but I'd rather leave this as placeholder than remove
-#[allow(unused)]
-#[derive(Clone, Debug)]
-pub(crate) struct PushConstantInfo {
-    pub(crate) name: Option<String>,
-    pub(crate) push_constant_index: PushConstantIndex,
-    pub(crate) vk_push_constant_range: vk::PushConstantRange,
-}
 
 //TODO: Could compact this down quite a bit
 #[derive(Clone, Debug)]
@@ -35,13 +24,15 @@ pub(crate) struct DescriptorInfo {
     // Used for arrays of textures, samplers, etc.
     pub(crate) element_count: u32,
 
+    pub(crate) push_constant_size: u32,
+
     // --- vulkan-specific ---
     // The index to the first descriptor in the flattened list of all descriptors in the layout
     // none for immutable samplers, which have no update data
     pub(crate) update_data_offset_in_set: Option<u32>,
     pub(crate) has_immutable_sampler: bool,
 
-    pub(crate) vk_type: vk::DescriptorType,
+    pub(crate) vk_type: Option<vk::DescriptorType>,
     #[allow(unused)]
     pub(crate) vk_stages: vk::ShaderStageFlags,
 }
@@ -66,15 +57,12 @@ pub(crate) struct RafxRootSignatureVulkanInner {
     pub(crate) layouts: [DescriptorSetLayoutInfo; MAX_DESCRIPTOR_SET_LAYOUTS],
     pub(crate) descriptors: Vec<DescriptorInfo>,
     pub(crate) name_to_descriptor_index: FnvHashMap<String, RafxDescriptorIndex>,
+    pub(crate) push_constant_descriptors:
+        [Option<RafxDescriptorIndex>; ALL_SHADER_STAGE_FLAGS.len()],
     // Keeps them in scope so they don't drop
     _immutable_samplers: Vec<RafxSampler>, //empty_descriptor_sets: [vk::DescriptorSet; MAX_DESCRIPTOR_SETS],
 
     // --- vulkan-specific ---
-    // We don't use push constants right now, but leaving as placeholder for later
-    #[allow(unused)]
-    pub(crate) name_to_push_constant_index: FnvHashMap<String, PushConstantIndex>,
-    #[allow(unused)]
-    pub(crate) push_constants: Vec<PushConstantInfo>,
     pub(crate) pipeline_layout: vk::PipelineLayout,
     pub(crate) descriptor_set_layouts: [vk::DescriptorSetLayout; MAX_DESCRIPTOR_SET_LAYOUTS],
 }
@@ -126,6 +114,28 @@ impl RafxRootSignatureVulkan {
             .copied()
     }
 
+    pub fn find_push_constant_descriptor(
+        &self,
+        stage: RafxShaderStageFlags,
+    ) -> Option<RafxDescriptorIndex> {
+        let mut found_descriptor = None;
+        for (stage_index, s) in ALL_SHADER_STAGE_FLAGS.iter().enumerate() {
+            if s.intersects(stage) {
+                let s_descriptor_index = self.inner.push_constant_descriptors[stage_index];
+                if let Some(found_descriptor) = found_descriptor {
+                    if found_descriptor != s_descriptor_index {
+                        // The caller passed multiple stages and they do not use the same push constant descriptor
+                        return None;
+                    }
+                } else {
+                    found_descriptor = Some(s_descriptor_index);
+                }
+            }
+        }
+
+        return found_descriptor.flatten();
+    }
+
     pub(crate) fn descriptor(
         &self,
         descriptor_index: RafxDescriptorIndex,
@@ -158,7 +168,6 @@ impl RafxRootSignatureVulkan {
         // If we update this constant, update the arrays in this function
         assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
 
-        let mut push_constants = vec![];
         let mut descriptors = vec![];
         let mut vk_push_constant_ranges = vec![];
 
@@ -192,9 +201,9 @@ impl RafxRootSignatureVulkan {
         ];
 
         let mut vk_set_bindings = [vec![], vec![], vec![], vec![]];
+        let mut push_constant_descriptors = [None; ALL_SHADER_STAGE_FLAGS.len()];
 
         let mut name_to_descriptor_index = FnvHashMap::default();
-        let mut name_to_push_constant_index = FnvHashMap::default();
 
         //
         // Create bindings (vulkan representation) and descriptors (what we use)
@@ -202,12 +211,13 @@ impl RafxRootSignatureVulkan {
         //
         for resource in &merged_resources {
             let vk_stage_flags = resource.used_in_shader_stages.into();
-            let vk_descriptor_type =
-                super::util::resource_type_to_descriptor_type(resource.resource_type).unwrap();
 
             resource.validate()?;
 
             if resource.resource_type != RafxResourceType::ROOT_CONSTANT {
+                let vk_descriptor_type =
+                    super::util::resource_type_to_descriptor_type(resource.resource_type).unwrap();
+
                 // It's not a push constant, so create a vk binding for it
                 let mut binding = vk::DescriptorSetLayoutBinding::builder()
                     .binding(resource.binding)
@@ -303,10 +313,11 @@ impl RafxRootSignatureVulkan {
                         //texture_dimensions: resource.texture_dimensions,
                         set_index: resource.set_index,
                         binding: resource.binding,
+                        push_constant_size: 0,
                         element_count: resource.element_count_normalized(),
                         update_data_offset_in_set,
                         has_immutable_sampler: immutable_sampler.is_some(),
-                        vk_type: binding.descriptor_type,
+                        vk_type: Some(binding.descriptor_type),
                         vk_stages: binding.stage_flags,
                     });
 
@@ -325,24 +336,37 @@ impl RafxRootSignatureVulkan {
                 // Add the binding to the list
                 vk_bindings.push(binding.build());
             } else {
-                let push_constant_index = PushConstantIndex(push_constants.len() as u32);
                 let vk_push_constant_range = vk::PushConstantRange::builder()
                     .offset(0)
                     .size(resource.size_in_bytes)
                     .stage_flags(vk_stage_flags)
                     .build();
 
-                // it's a push constant
-                let push_constant = PushConstantInfo {
-                    name: resource.name.clone(),
-                    push_constant_index,
-                    vk_push_constant_range,
-                };
-
-                push_constants.push(push_constant);
                 vk_push_constant_ranges.push(vk_push_constant_range);
+
+                // Add it to the descriptor list
+                let descriptor_index = RafxDescriptorIndex(descriptors.len() as u32);
+                descriptors.push(DescriptorInfo {
+                    name: resource.name.clone(),
+                    resource_type: resource.resource_type,
+                    set_index: u32::MAX,
+                    binding: u32::MAX,
+                    push_constant_size: resource.size_in_bytes,
+                    element_count: 0,
+                    update_data_offset_in_set: None,
+                    has_immutable_sampler: false,
+                    vk_type: None,
+                    vk_stages: vk_stage_flags,
+                });
+
                 if let Some(name) = resource.name.as_ref() {
-                    name_to_push_constant_index.insert(name.clone(), push_constant_index);
+                    name_to_descriptor_index.insert(name.clone(), descriptor_index);
+                }
+
+                for (i, stage) in ALL_SHADER_STAGE_FLAGS.iter().enumerate() {
+                    if stage.intersects(resource.used_in_shader_stages) {
+                        push_constant_descriptors[i] = Some(descriptor_index);
+                    }
                 }
             }
         }
@@ -418,11 +442,10 @@ impl RafxRootSignatureVulkan {
             layouts,
             descriptors,
             name_to_descriptor_index,
+            push_constant_descriptors,
             _immutable_samplers: immutable_samplers,
-            push_constants,
             pipeline_layout,
             descriptor_set_layouts,
-            name_to_push_constant_index,
         };
 
         Ok(RafxRootSignatureVulkan {

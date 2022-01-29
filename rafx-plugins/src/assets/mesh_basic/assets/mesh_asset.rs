@@ -3,6 +3,7 @@ use crate::features::mesh_basic::MeshBasicUntexturedRenderFeatureFlag;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
 use crate::shaders::mesh_basic::mesh_basic_textured_frag;
 use distill::loader::handle::{AssetHandle, Handle};
+use distill::loader::LoadHandle;
 use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, MaterialAsset,
@@ -317,6 +318,7 @@ impl DefaultAssetTypeLoadHandler<MeshBasicAssetData, MeshBasicAsset> for MeshBas
     fn load(
         asset_manager: &mut AssetManager,
         mesh_asset: MeshBasicAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<MeshBasicAsset> {
         let vertex_full_buffer = asset_manager
             .latest_asset(&mesh_asset.vertex_full_buffer)

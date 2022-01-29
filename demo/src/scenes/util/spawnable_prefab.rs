@@ -3,6 +3,7 @@ use legion::{Resources, World};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::rafx_visibility::VisibleBounds;
+use rafx::renderer::Renderer;
 use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
 use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
 
@@ -37,10 +38,12 @@ impl SpawnablePrefab {
     ) -> Self {
         let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
+        let renderer = resources.get::<Renderer>().unwrap();
 
         let prefab_asset_handle: Handle<PrefabAsset> = asset_resource.load_asset_path(path);
-        asset_manager
+        renderer
             .wait_for_asset_to_load(
+                &mut asset_manager,
                 &prefab_asset_handle,
                 &mut asset_resource,
                 "spawnable prefab",
@@ -60,6 +63,7 @@ impl SpawnablePrefab {
         let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
         let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
+        let renderer = resources.get::<Renderer>().unwrap();
 
         let prefab_asset = asset_resource
             .asset(&self.prefab_asset_handle)
@@ -67,13 +71,14 @@ impl SpawnablePrefab {
             .clone();
 
         fn load_visible_bounds(
+            renderer: &Renderer,
             asset_manager: &mut AssetManager,
             asset_resource: &mut AssetResource,
             asset_handle: &Handle<MeshAsset>,
             asset_name: &str,
         ) -> Option<VisibleBounds> {
-            asset_manager
-                .wait_for_asset_to_load(asset_handle, asset_resource, asset_name)
+            renderer
+                .wait_for_asset_to_load(asset_manager, asset_handle, asset_resource, asset_name)
                 .unwrap();
 
             asset_manager
@@ -82,7 +87,7 @@ impl SpawnablePrefab {
         }
 
         for object in &prefab_asset.inner.objects {
-            log::debug!("create object {:?}", object);
+            //log::debug!("create object {:?}", object);
             if let Some(model) = &object.model {
                 let model_asset_handle = asset_resource.asset(&model.model);
                 if model_asset_handle.is_none() {
@@ -110,6 +115,7 @@ impl SpawnablePrefab {
                 let mut entry = world.entry(entity).unwrap();
 
                 let visible_bounds = load_visible_bounds(
+                    &renderer,
                     &mut *asset_manager,
                     &mut *asset_resource,
                     &mesh_asset,

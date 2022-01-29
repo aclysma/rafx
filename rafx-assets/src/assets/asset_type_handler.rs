@@ -2,15 +2,11 @@ use crate::distill_impl::{AssetResource, ResourceAssetLoader};
 use crate::{AssetLookup, AssetManager, DynAssetLookup, LoadQueues};
 use crossbeam_channel::Sender;
 use distill::loader::storage::AssetLoadOp;
+use distill::loader::LoadHandle;
 use rafx_api::RafxResult;
 use std::any::TypeId;
 use std::marker::PhantomData;
 use type_uuid::TypeUuid;
-
-pub trait AssetTypeHandlerFactory {
-    /// Register the asset type into the asset resource
-    fn create(asset_resource: &mut AssetResource) -> Box<dyn AssetTypeHandler>;
-}
 
 pub trait AssetTypeHandler: Sync + Send {
     /// Called every frame to process load queues
@@ -18,6 +14,10 @@ pub trait AssetTypeHandler: Sync + Send {
         &mut self,
         asset_manager: &mut AssetManager,
     ) -> RafxResult<()>;
+
+    fn on_frame_complete(&mut self) -> RafxResult<()> {
+        Ok(())
+    }
 
     /// Return the asset lookup which can be used to obtain the committed and the latest (but
     /// possibly not committed) version of the asset
@@ -35,7 +35,15 @@ pub trait DefaultAssetTypeLoadHandler<AssetDataT, AssetT> {
     fn load(
         asset_manager: &mut AssetManager,
         asset_data: AssetDataT,
+        load_handle: LoadHandle,
     ) -> RafxResult<AssetT>;
+
+    fn free(
+        _asset_manager: &mut AssetManager,
+        _load_handle: LoadHandle,
+    ) -> RafxResult<()> {
+        Ok(())
+    }
 }
 
 pub struct DefaultAssetTypeHandler<AssetDataT, AssetT, LoadHandlerT>
@@ -47,25 +55,27 @@ where
     phantom_data: PhantomData<LoadHandlerT>,
 }
 
-impl<AssetDataT, AssetT, LoadHandlerT> AssetTypeHandlerFactory
-    for DefaultAssetTypeHandler<AssetDataT, AssetT, LoadHandlerT>
+impl<AssetDataT, AssetT, LoadHandlerT> DefaultAssetTypeHandler<AssetDataT, AssetT, LoadHandlerT>
 where
     AssetDataT: TypeUuid + for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
     AssetT: TypeUuid + 'static + Send + Clone + Sync,
     LoadHandlerT: DefaultAssetTypeLoadHandler<AssetDataT, AssetT> + 'static + Sync + Send,
 {
-    fn create(asset_resource: &mut AssetResource) -> Box<dyn AssetTypeHandler> {
+    pub fn create(
+        _asset_manager: &mut AssetManager,
+        asset_resource: &mut AssetResource,
+    ) -> RafxResult<Box<dyn AssetTypeHandler>> {
         let load_queues = LoadQueues::<AssetDataT, AssetT>::default();
 
         asset_resource.add_storage_with_loader::<AssetDataT, AssetT, _>(Box::new(
             ResourceAssetLoader(load_queues.create_loader()),
         ));
 
-        Box::new(Self {
+        Ok(Box::new(Self {
             asset_lookup: AssetLookup::new(asset_resource.loader()),
             load_queues,
             phantom_data: Default::default(),
-        })
+        }))
     }
 }
 
@@ -86,7 +96,8 @@ where
                 std::any::type_name::<AssetT>(),
                 request.load_handle,
             );
-            let loaded_asset = LoadHandlerT::load(asset_manager, request.asset);
+            let loaded_asset =
+                LoadHandlerT::load(asset_manager, request.asset, request.load_handle);
             handle_load_result(
                 request.load_op,
                 loaded_asset,
@@ -96,7 +107,17 @@ where
         }
 
         handle_commit_requests(&mut self.load_queues, &mut self.asset_lookup);
-        handle_free_requests(&mut self.load_queues, &mut self.asset_lookup);
+
+        for request in self.load_queues.take_free_requests() {
+            log::trace!(
+                "free asset {:?} {}",
+                request.load_handle,
+                core::any::type_name::<AssetDataT>()
+            );
+            LoadHandlerT::free(asset_manager, request.load_handle)?;
+            self.asset_lookup.free(request.load_handle);
+        }
+
         Ok(())
     }
 
@@ -121,6 +142,7 @@ impl<AssetT> DefaultAssetTypeLoadHandler<AssetT, AssetT>
     fn load(
         _asset_manager: &mut AssetManager,
         asset_data: AssetT,
+        _load_handle: LoadHandle,
     ) -> RafxResult<AssetT> {
         Ok(asset_data)
     }

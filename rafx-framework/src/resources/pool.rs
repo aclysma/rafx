@@ -88,7 +88,7 @@ impl<T: PooledResourceImpl> PooledResourceAllocator<T> {
     ) {
         self.in_flight_pools.push_back(PoolResourceInFlight {
             pool,
-            live_until_frame: self.frame_index + self.max_in_flight_frames + Wrapping(1),
+            live_until_frame: self.frame_index + self.max_in_flight_frames,
         });
     }
 

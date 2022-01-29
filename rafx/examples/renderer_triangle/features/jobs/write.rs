@@ -5,6 +5,7 @@ use rafx::framework::render_features::RenderPhase;
 use rafx::framework::{DescriptorSetBindings, VertexDataLayout, VertexDataSetLayout};
 use rafx::render_feature_write_job_prelude::*;
 use rafx_api::{RafxResult, RafxVertexAttributeRate};
+use rafx_framework::render_features::RenderSubmitNodeArgs;
 use std::marker::PhantomData;
 
 #[derive(Default, Clone, Copy)]
@@ -64,9 +65,7 @@ impl<'write> RenderFeatureWriteJob<'write> for ExampleWriteJob<'write> {
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        _view_frame_index: ViewFrameIndex,
-        _render_phase_index: RenderPhaseIndex,
-        _submit_node_id: SubmitNodeId,
+        _args: RenderSubmitNodeArgs,
     ) -> RafxResult<()> {
         let per_frame_data = self.frame_packet.per_frame_data().get();
 

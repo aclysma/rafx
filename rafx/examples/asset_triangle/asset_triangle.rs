@@ -59,6 +59,13 @@ fn run() -> RafxResult<()> {
     let sdl2_systems = sdl2_init();
 
     //
+    // Render resources is a map of types that are runtime borrow-checked. Plugins can use this to
+    // store/retrieve data. This is often used for plugins to communicate indirectly. For this
+    // example we don't need to add anything to it.
+    //
+    let mut render_resources = RenderResources::default();
+
+    //
     // Create the api. GPU programming is fundamentally unsafe, so all rafx APIs should be
     // considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
     // behavior on the CPU for reasons other than interacting with the GPU.
@@ -135,7 +142,7 @@ fn run() -> RafxResult<()> {
         let mut asset_manager = rafx::assets::AssetManager::new(
             &device_context,
             &render_registry,
-            rafx::assets::UploadQueueConfig {
+            rafx::framework::upload::UploadQueueConfig {
                 max_concurrent_uploads: 2,
                 max_new_uploads_in_single_frame: 1,
                 max_bytes_per_upload: 64 * 1024 * 1024,
@@ -148,13 +155,13 @@ fn run() -> RafxResult<()> {
         // // `add_default_asset_storage` to populate it with all the loaders implemented in rafx.
         // // Then use `add_storage_with_loader` to set up any additional types you have.
         // asset_resource.add_default_asset_storage(&asset_manager);
-        asset_manager.register_default_asset_types(&mut asset_resource);
+        asset_manager.register_default_asset_types(&mut asset_resource, &mut render_resources)?;
 
         // Grab a resource context for use later
         let resource_context = asset_manager.resource_manager().resource_context();
 
         //
-        // Load the triangle material. Materials can contain multiple passes (but this one only has
+        // Load the triangle material. Materials can contain multiple passes (but this oane only has
         // one.) A material pass specifies shaders and fixed function state. Generally a material
         // is 1:1 with a GPU pipeline object with the material specifying *most* of the necessary
         // parameters to create the pipeline. (Some things like the size of the window are not

@@ -4,6 +4,7 @@ use super::*;
 use crate::shaders::debug_pip::debug_pip_frag;
 use rafx::api::RafxPrimitiveTopology;
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataSetLayout};
+use rafx::render_features::RenderSubmitNodeArgs;
 use rafx::renderer::SwapchainRenderResource;
 use std::marker::PhantomData;
 
@@ -52,9 +53,7 @@ impl<'write> RenderFeatureWriteJob<'write> for DebugPipWriteJob<'write> {
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        _view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
-        _submit_node_id: SubmitNodeId,
+        args: RenderSubmitNodeArgs,
     ) -> RafxResult<()> {
         profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
@@ -110,7 +109,7 @@ impl<'write> RenderFeatureWriteJob<'write> for DebugPipWriteJob<'write> {
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
-                    Some(render_phase_index),
+                    Some(args.render_phase_index),
                     &debug_pip_material_pass,
                     &write_context.render_target_meta,
                     &EMPTY_VERTEX_LAYOUT,

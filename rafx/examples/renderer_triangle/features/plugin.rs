@@ -6,6 +6,7 @@ use crate::features::jobs::{ExamplePrepareJob, ExampleWriteJob};
 use crate::phases::OpaqueRenderPhase;
 use rafx::assets::MaterialAsset;
 use rafx::distill::loader::handle::Handle;
+use rafx_renderer::RendererLoadContext;
 
 pub struct ExampleStaticResources {
     pub triangle_material_handle: Handle<MaterialAsset>,
@@ -53,10 +54,11 @@ impl RenderFeaturePlugin for ExampleRenderFeaturePlugin {
 
     fn initialize_static_resources(
         &self,
+        _renderer_load_context: &RendererLoadContext,
         _asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
         _extract_resources: &ExtractResources,
-        render_resources: &mut ResourceMap,
+        render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         //

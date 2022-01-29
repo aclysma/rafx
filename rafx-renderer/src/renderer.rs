@@ -1,10 +1,10 @@
 use rafx_assets::distill_impl::AssetResource;
-use rafx_assets::{image_upload, AssetManagerRenderResource, GpuImageDataColorSpace};
-use rafx_assets::{AssetManager, GpuImageData};
+use rafx_assets::AssetManagerRenderResource;
+use rafx_assets::{distill, AssetManager};
 use rafx_framework::render_features::render_features_prelude::*;
 use rafx_framework::visibility::{VisibilityConfig, VisibilityResource};
-use rafx_framework::{DynResourceAllocatorSet, RenderResources};
 use rafx_framework::{ImageViewResource, ResourceArc};
+use rafx_framework::{RenderResources, ResourceLookupSet};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -17,7 +17,44 @@ use rafx_api::{
     RafxDeviceContext, RafxError, RafxPresentableFrame, RafxQueue, RafxResourceType, RafxResult,
     RafxSwapchainHelper,
 };
-use rafx_assets::image_upload::ImageUploadParams;
+use rafx_framework::upload::image_upload::ImageUploadParams;
+use rafx_framework::upload::{image_upload, GpuImageData, GpuImageDataColorSpace};
+
+// Encapsulates a blocking wait to load assets. The load may be blocked by work that plugins need to perform, so they
+// need to be ticked. A caller can request a load context from the renderer and call wait_for_asset_to_load on it,
+// which will ensure that this is done correctly. (Anything that doesn't require borrows can be a member of the struct,
+// and anything that must be borrowed should be passed by the caller)
+pub struct RendererLoadContext {
+    asset_plugins: Arc<Vec<Arc<dyn RendererAssetPlugin>>>,
+}
+
+impl RendererLoadContext {
+    pub fn wait_for_asset_to_load<T>(
+        &self,
+        render_resources: &RenderResources,
+        asset_manager: &mut AssetManager,
+        asset_handle: &distill::loader::handle::Handle<T>,
+        asset_resource: &mut AssetResource,
+        asset_name: &str,
+    ) -> RafxResult<()> {
+        asset_manager.wait_for_asset_to_load(
+            asset_handle,
+            asset_resource,
+            asset_name,
+            |asset_manager, asset_resource| {
+                for plugin in &*self.asset_plugins {
+                    plugin.process_asset_loading(
+                        asset_manager,
+                        asset_resource,
+                        render_resources,
+                    )?;
+                }
+
+                Ok(())
+            },
+        )
+    }
+}
 
 #[derive(Default, Copy, Clone, Debug)]
 pub struct RendererConfigResource {
@@ -42,7 +79,7 @@ pub struct Renderer {
     pub(super) inner: Arc<Mutex<RendererInner>>,
     pub(super) render_thread: Option<RenderThread>,
     pub(super) pipeline_plugin: Arc<dyn RendererPipelinePlugin>,
-    pub(super) asset_plugins: Vec<Arc<dyn RendererAssetPlugin>>,
+    pub(super) asset_plugins: Arc<Vec<Arc<dyn RendererAssetPlugin>>>,
     pub(super) feature_plugins: Arc<Vec<Arc<dyn RenderFeaturePlugin>>>,
     pub(super) render_resources: Arc<RenderResources>,
     pub(super) graphics_queue: RafxQueue,
@@ -57,7 +94,7 @@ impl Drop for Renderer {
                 .unwrap();
         }
 
-        for plugin in &self.asset_plugins {
+        for plugin in &*self.asset_plugins {
             plugin
                 .prepare_renderer_destroy(&self.render_resources)
                 .unwrap();
@@ -72,6 +109,7 @@ impl Drop for Renderer {
 impl Renderer {
     pub fn new(
         extract_resources: ExtractResources,
+        mut render_resources: RenderResources,
         asset_resource: &mut AssetResource,
         asset_manager: &mut AssetManager,
         graphics_queue: &RafxQueue,
@@ -82,11 +120,10 @@ impl Renderer {
         thread_pool: Box<dyn RendererThreadPool>,
         allow_use_render_thread: bool,
     ) -> RafxResult<Self> {
+        let asset_plugins = Arc::new(asset_plugins);
         let feature_plugins = Arc::new(feature_plugins);
 
         let device_context = graphics_queue.device_context();
-
-        let dyn_resource_allocator = asset_manager.create_dyn_resource_allocator_set();
 
         let mut upload = RafxTransferUpload::new(
             &device_context,
@@ -99,7 +136,7 @@ impl Renderer {
         let invalid_image_color = Self::upload_image_data(
             &device_context,
             &mut upload,
-            &dyn_resource_allocator,
+            &asset_manager.resources(),
             &GpuImageData::new_1x1_rgba8(255, 0, 255, 255, GpuImageDataColorSpace::Linear),
             ImageUploadParams::default(),
         )
@@ -108,7 +145,7 @@ impl Renderer {
         let invalid_image_depth = Self::upload_image_data(
             &device_context,
             &mut upload,
-            &dyn_resource_allocator,
+            &asset_manager.resources(),
             &GpuImageData::new_1x1_d32(0.0),
             ImageUploadParams::default(),
         )
@@ -117,7 +154,7 @@ impl Renderer {
         let invalid_cube_map_image_color = Self::upload_image_data(
             &device_context,
             &mut upload,
-            &dyn_resource_allocator,
+            &asset_manager.resources(),
             &GpuImageData::new_1x1_rgba8(255, 0, 255, 255, GpuImageDataColorSpace::Linear),
             ImageUploadParams {
                 generate_mips: false,
@@ -130,7 +167,7 @@ impl Renderer {
         let invalid_cube_map_image_depth = Self::upload_image_data(
             &device_context,
             &mut upload,
-            &dyn_resource_allocator,
+            &asset_manager.resources(),
             &GpuImageData::new_1x1_d32(0.0),
             ImageUploadParams {
                 generate_mips: false,
@@ -147,14 +184,18 @@ impl Renderer {
             invalid_cube_map_image_depth,
         };
 
-        let mut render_resources = RenderResources::default();
         render_resources.insert(SwapchainRenderResource::default());
         render_resources.insert(AssetManagerRenderResource::default());
         render_resources.insert(TimeRenderResource::default());
         render_resources.insert(MainViewRenderResource::default());
 
+        let load_context = RendererLoadContext {
+            asset_plugins: asset_plugins.clone(),
+        };
+
         for plugin in &*asset_plugins {
             plugin.initialize_static_resources(
+                &load_context,
                 asset_manager,
                 asset_resource,
                 &extract_resources,
@@ -165,6 +206,7 @@ impl Renderer {
 
         for plugin in &*feature_plugins {
             plugin.initialize_static_resources(
+                &load_context,
                 asset_manager,
                 asset_resource,
                 &extract_resources,
@@ -174,6 +216,7 @@ impl Renderer {
         }
 
         pipeline_plugin.initialize_static_resources(
+            &load_context,
             asset_manager,
             asset_resource,
             &extract_resources,
@@ -211,10 +254,44 @@ impl Renderer {
         })
     }
 
+    pub fn load_context(&self) -> RendererLoadContext {
+        RendererLoadContext {
+            asset_plugins: self.asset_plugins.clone(),
+        }
+    }
+
+    pub fn wait_for_asset_to_load<T>(
+        &self,
+        asset_manager: &mut AssetManager,
+        asset_handle: &distill::loader::handle::Handle<T>,
+        asset_resource: &mut AssetResource,
+        asset_name: &str,
+    ) -> RafxResult<()> {
+        self.load_context().wait_for_asset_to_load(
+            &*self.render_resources,
+            asset_manager,
+            asset_handle,
+            asset_resource,
+            asset_name,
+        )
+    }
+
     pub fn clear_temporary_work(&mut self) {
         let mut guard = self.inner.lock().unwrap();
         let renderer_inner = &mut *guard;
         renderer_inner.temporary_work.clear();
+    }
+
+    //TODO: We should probably implicitly do this when we do blocking waits for asset loads as the
+    // background processing to do the load may fetch resources that the render thread also fetches.
+    // However implementing this will require RendererLoadContext to have a ref to the render_thread
+    // to block. We probably also need to be the API such that we not only wait for the render
+    // thread to go idle, but also block it from starting again. When we do this we can remove the
+    // explicit wait_for_render_thread_idle() call from the demo.
+    pub fn wait_for_render_thread_idle(&self) {
+        if let Some(render_thread) = &self.render_thread {
+            render_thread.wait_for_render_finish();
+        }
     }
 
     pub fn graphics_queue(&self) -> &RafxQueue {
@@ -228,15 +305,14 @@ impl Renderer {
     fn upload_image_data(
         device_context: &RafxDeviceContext,
         upload: &mut RafxTransferUpload,
-        dyn_resource_allocator: &DynResourceAllocatorSet,
+        resources: &ResourceLookupSet,
         image_data: &GpuImageData,
         params: ImageUploadParams,
     ) -> Result<ResourceArc<ImageViewResource>, RafxUploadError> {
         let texture = image_upload::enqueue_load_image(device_context, upload, image_data, params)?;
 
-        let image = dyn_resource_allocator.insert_texture(texture);
-
-        Ok(dyn_resource_allocator.insert_image_view(&image, None)?)
+        let image = resources.insert_image(texture);
+        Ok(resources.get_or_create_image_view(&image, None)?)
     }
 
     // This is externally exposed, it checks result of the previous frame (which implicitly also
@@ -343,6 +419,10 @@ impl Renderer {
         render_resources
             .fetch_mut::<TimeRenderResource>()
             .update(previous_update_time);
+
+        for plugin in &*renderer.asset_plugins {
+            plugin.on_frame_complete(asset_manager, extract_resources, &*render_resources)?;
+        }
 
         let renderer_config = extract_resources
             .try_fetch::<RendererConfigResource>()

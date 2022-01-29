@@ -9,3 +9,16 @@ layout (set = 0, binding = 0) uniform PerViewData {
     uint viewport_height;
     vec2 jitter_amount;
 } per_view_data;
+
+layout (set = 1, binding = 0) buffer AllTransforms {
+    TransformWithHistory transforms[];
+} all_transforms;
+
+layout (set = 1, binding = 1) buffer AllDrawData {
+    DrawData draw_data[];
+} all_draw_data;
+
+// @[export]
+layout (push_constant) uniform PushConstants {
+    uint draw_data_index;
+} constants;

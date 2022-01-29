@@ -677,6 +677,7 @@ pub struct RafxBufferBarrier<'a> {
     pub src_state: RafxResourceState,
     pub dst_state: RafxResourceState,
     pub queue_transition: RafxBarrierQueueTransition,
+    pub offset_size: Option<RafxOffsetSize>,
 }
 
 /// A memory barrier for textures. This is used to transition textures between resource states and
@@ -872,7 +873,7 @@ impl<'a> Default for RafxDescriptorKey<'a> {
     }
 }
 
-/// Used when binding buffers to descriptor sets
+/// Used in various APIs where we supply an offset/size pair
 #[derive(Default, Clone, Copy, Debug)]
 pub struct RafxOffsetSize {
     pub byte_offset: u64,

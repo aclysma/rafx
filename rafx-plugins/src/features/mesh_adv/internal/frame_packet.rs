@@ -5,6 +5,7 @@ use crate::components::{
 };
 use crate::shaders::mesh_adv::mesh_adv_textured_frag;
 use fnv::FnvHashMap;
+use rafx::api::RafxIndexType;
 use rafx::assets::MaterialAsset;
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{
@@ -28,6 +29,7 @@ pub struct MeshAdvPerFrameData {
     pub depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     pub shadow_map_atlas_depth_material_pass: Option<ResourceArc<MaterialPassResource>>,
     pub shadow_map_atlas: ResourceArc<ImageViewResource>,
+    pub invalid_image_color: ResourceArc<ImageViewResource>,
 }
 
 pub struct MeshAdvRenderObjectInstanceData {
@@ -84,6 +86,39 @@ pub struct MeshAdvPartMaterialDescriptorSetPair {
     pub untextured_descriptor_set: Option<DescriptorSetArc>,
 }
 
+#[derive(Hash, PartialEq, Eq, Clone)]
+pub struct MeshAdvBatchedPassKey {
+    pub phase: RenderPhaseIndex,
+    pub view_index: RenderViewIndex,
+    pub pass: ResourceArc<MaterialPassResource>,
+    pub index_type: RafxIndexType,
+}
+
+#[derive(Clone)]
+pub struct MeshAdvBatchDrawData {
+    pub transform_index: u32,
+    pub material_index: u32,
+    pub vertex_offset_in_bytes: u32,
+    pub index_buffer_size_in_bytes: u32,
+    pub index_buffer_offset_in_bytes: u32,
+}
+
+pub struct MeshAdvBatchedPassInfo {
+    pub phase: RenderPhaseIndex,
+    pub pass: ResourceArc<MaterialPassResource>,
+    pub draw_data: AtomicOnceCellStack<MeshAdvBatchDrawData>,
+    pub view_index: RenderViewIndex,
+    pub index_type: RafxIndexType,
+}
+
+#[derive(Clone)]
+pub struct MeshAdvBatchedPreparedPassInfo {
+    pub phase: RenderPhaseIndex,
+    pub pass: ResourceArc<MaterialPassResource>,
+    pub index_type: RafxIndexType,
+    pub draw_data: Vec<MeshAdvBatchDrawData>,
+}
+
 pub struct MeshAdvPerFrameSubmitData {
     pub num_shadow_map_2d: usize,
     pub shadow_map_2d_data: [mesh_adv_textured_frag::ShadowMap2DDataStd140; MAX_SHADOW_MAPS_2D],
@@ -94,6 +129,10 @@ pub struct MeshAdvPerFrameSubmitData {
     pub shadow_map_image_index_remap: FnvHashMap<ShadowViewIndex, usize>,
     pub model_matrix_buffer: TrustCell<Option<ResourceArc<BufferResource>>>,
     pub model_matrix_with_history_buffer: TrustCell<Option<ResourceArc<BufferResource>>>,
+    pub all_materials_descriptor_set: TrustCell<Option<DescriptorSetArc>>,
+    pub batched_pass_lookup: AtomicOnceCell<FnvHashMap<MeshAdvBatchedPassKey, usize>>,
+    pub batched_passes: AtomicOnceCell<Vec<MeshAdvBatchedPreparedPassInfo>>,
+    pub per_batch_descriptor_sets: AtomicOnceCell<Vec<Option<DescriptorSetArc>>>,
 }
 
 pub struct MeshAdvRenderObjectInstanceSubmitData {
@@ -123,10 +162,39 @@ pub struct MeshAdvPerViewSubmitData {
     pub shadow_map_atlas_depth_descriptor_set: Option<DescriptorSetArc>,
 }
 
-pub struct MeshAdvDrawCall {
+pub enum MeshAdvDrawCall {
+    Batched(MeshAdvBatchedDrawCall),
+    Unbatched(MeshAdvUnbatchedDrawCall),
+}
+
+impl MeshAdvDrawCall {
+    pub fn as_batched(&self) -> Option<&MeshAdvBatchedDrawCall> {
+        match self {
+            MeshAdvDrawCall::Batched(dc) => Some(dc),
+            MeshAdvDrawCall::Unbatched(_) => None,
+        }
+    }
+
+    pub fn as_unbatched(&self) -> Option<&MeshAdvUnbatchedDrawCall> {
+        match self {
+            MeshAdvDrawCall::Batched(_) => None,
+            MeshAdvDrawCall::Unbatched(dc) => Some(dc),
+        }
+    }
+}
+
+pub struct MeshAdvUnbatchedDrawCall {
     pub render_object_instance_id: RenderObjectInstanceId,
     pub material_pass_resource: ResourceArc<MaterialPassResource>,
-    pub per_material_descriptor_set: Option<DescriptorSetArc>,
+    //pub per_material_descriptor_set: Option<DescriptorSetArc>,
     pub mesh_part_index: usize,
     pub model_matrix_index: usize,
+    pub material_index: Option<u32>,
+    pub index_type: RafxIndexType,
+    pub draw_data_index: u32,
+    pub batch_index: u32,
+}
+
+pub struct MeshAdvBatchedDrawCall {
+    pub batch_index: u32,
 }

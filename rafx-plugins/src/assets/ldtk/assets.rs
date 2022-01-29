@@ -1,4 +1,5 @@
 use crate::shaders::tile_layer::tile_layer_frag;
+use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
 use glam::Vec3;
 use rafx::api::RafxResult;
@@ -91,6 +92,7 @@ impl DefaultAssetTypeLoadHandler<LdtkAssetData, LdtkProjectAsset> for LdtkLoadHa
     fn load(
         asset_manager: &mut AssetManager,
         ldtk_asset: LdtkAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<LdtkProjectAsset> {
         let mut levels = FnvHashMap::<LevelUid, LdtkLevel>::default();
         for (&level_uid, level_data) in &ldtk_asset.levels {

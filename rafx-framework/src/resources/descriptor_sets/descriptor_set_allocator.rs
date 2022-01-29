@@ -97,7 +97,7 @@ impl DescriptorSetAllocator {
         device_context: &RafxDeviceContext,
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
     ) -> &'a mut ManagedDescriptorSetPool {
-        let hash = descriptor_set_layout.get_hash().into();
+        let hash = descriptor_set_layout.resource_hash().into();
         pools.entry(hash).or_insert_with(|| {
             ManagedDescriptorSetPool::new(device_context, descriptor_set_layout.clone())
         })

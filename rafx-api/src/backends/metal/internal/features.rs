@@ -273,6 +273,7 @@ pub struct MetalFeatures {
     pub supports_array_of_samplers: bool,
     pub supports_array_of_textures: bool,
     pub supports_base_vertex_instance_drawing: bool,
+    pub supports_indirect_buffers: bool,
     pub supports_combined_msaa_store_and_resolve_action: bool,
     pub supports_cube_map_texture_arrays: bool,
     pub supports_resource_heaps: bool,
@@ -294,6 +295,7 @@ impl MetalFeatures {
         let mut supports_array_of_samplers = false;
         let mut supports_array_of_textures = false;
         let mut supports_base_vertex_instance_drawing = false;
+        let mut supports_indirect_buffers = false;
         let mut supports_combined_msaa_store_and_resolve_action = false;
         let mut supports_cube_map_texture_arrays = false;
         let mut supports_resource_heaps = false;
@@ -307,6 +309,7 @@ impl MetalFeatures {
             supports_array_of_textures = feature_set_ios.supports_array_of_textures();
             supports_base_vertex_instance_drawing =
                 feature_set_ios.supports_base_vertex_instance_drawing();
+            supports_indirect_buffers = feature_set_ios.supports_indirect_buffers();
             supports_combined_msaa_store_and_resolve_action =
                 feature_set_ios.supports_combined_msaa_store_and_resolve_action();
             supports_cube_map_texture_arrays = feature_set_ios.supports_cube_map_texture_arrays();
@@ -322,6 +325,7 @@ impl MetalFeatures {
             supports_array_of_textures = feature_set_macos.supports_array_of_textures();
             supports_base_vertex_instance_drawing =
                 feature_set_macos.supports_base_vertex_instance_drawing();
+            supports_indirect_buffers = feature_set_macos.supports_indirect_buffers();
             supports_combined_msaa_store_and_resolve_action =
                 feature_set_macos.supports_combined_msaa_store_and_resolve_action();
             supports_cube_map_texture_arrays = feature_set_macos.supports_cube_map_texture_arrays();
@@ -336,6 +340,7 @@ impl MetalFeatures {
             supports_array_of_textures = feature_set_tvos.supports_array_of_textures();
             supports_base_vertex_instance_drawing =
                 feature_set_tvos.supports_base_vertex_instance_drawing();
+            supports_indirect_buffers = feature_set_tvos.supports_indirect_buffers();
             supports_combined_msaa_store_and_resolve_action =
                 feature_set_tvos.supports_combined_msaa_store_and_resolve_action();
             supports_cube_map_texture_arrays = feature_set_tvos.supports_cube_map_texture_arrays();
@@ -360,6 +365,7 @@ impl MetalFeatures {
             supports_array_of_samplers,
             supports_array_of_textures,
             supports_base_vertex_instance_drawing,
+            supports_indirect_buffers,
             supports_combined_msaa_store_and_resolve_action,
             supports_cube_map_texture_arrays,
             supports_resource_heaps,

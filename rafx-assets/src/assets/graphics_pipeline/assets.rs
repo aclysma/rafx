@@ -5,6 +5,7 @@ use crate::{
     AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset, ShaderAsset,
 };
 use distill::loader::handle::Handle;
+use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
 use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
@@ -83,6 +84,8 @@ pub struct FixedFunctionStateData {
     front_face: Option<RafxFrontFace>,
     #[serde(default)]
     fill_mode: Option<RafxFillMode>,
+    #[serde(default)]
+    depth_bias: Option<i32>,
 }
 
 impl FixedFunctionStateData {
@@ -141,6 +144,8 @@ impl FixedFunctionStateData {
                 //do nothing
             }
         }
+
+        rasterizer_state.depth_bias = self.depth_bias.unwrap_or(0);
 
         if let Some(cull_mode) = self.cull_mode {
             rasterizer_state.cull_mode = cull_mode;
@@ -435,6 +440,7 @@ impl DefaultAssetTypeLoadHandler<MaterialAssetData, MaterialAsset> for MaterialL
     fn load(
         asset_manager: &mut AssetManager,
         asset_data: MaterialAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<MaterialAsset> {
         let mut passes = Vec::with_capacity(asset_data.passes.len());
         let mut pass_name_to_index = FnvHashMap::default();
@@ -467,6 +473,7 @@ impl DefaultAssetTypeLoadHandler<MaterialInstanceAssetData, MaterialInstanceAsse
     fn load(
         asset_manager: &mut AssetManager,
         asset_data: MaterialInstanceAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<MaterialInstanceAsset> {
         // Find the material we will bind over, we need the metadata from it
         let material_asset = asset_manager
@@ -556,6 +563,7 @@ impl DefaultAssetTypeLoadHandler<SamplerAssetData, SamplerAsset> for SamplerLoad
     fn load(
         asset_manager: &mut AssetManager,
         asset_data: SamplerAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<SamplerAsset> {
         let sampler = asset_manager
             .resources()

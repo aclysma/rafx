@@ -104,6 +104,7 @@ impl RendererThreadPool for RendererThreadPoolNone {
             .for_each(|prepare_job: &Arc<dyn RenderFeaturePrepareJob>| {
                 profiling::scope!(prepare_job.feature_debug_constants().feature_name);
 
+                //TODO: I bet we could let begin/end per_frame be &mut (maybe wrap dyn RenderFeaturePrepareJob in a TrustCell)
                 prepare_job.begin_per_frame_prepare();
 
                 RenderFrameJob::prepare_render_object_instance_all(prepare_job);

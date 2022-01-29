@@ -1,17 +1,15 @@
 use crate::assets::ImageAssetData;
 use crate::assets::{BufferAsset, ImageAsset, MaterialAsset};
 use crate::{
-    AssetLookup, AssetTypeHandler, AssetTypeHandlerFactory, BufferAssetData, GenericLoader,
-    MaterialInstanceSlotAssignment, UploadQueueConfig,
+    AssetLookup, AssetTypeHandler, BufferAssetData, GenericLoader, MaterialInstanceSlotAssignment,
 };
 use distill::loader::handle::Handle;
 use rafx_framework::{
     DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider, DescriptorSetAllocatorRef,
     DescriptorSetLayoutResource, DescriptorSetWriteSet, DynResourceAllocatorSet,
-    GraphicsPipelineCache, MaterialPass, ResourceArc, SlotNameLookup,
+    GraphicsPipelineCache, MaterialPass, RenderResources, ResourceArc, SlotNameLookup,
 };
 
-use super::upload::UploadManager;
 use crate::assets::buffer::BufferAssetTypeHandler;
 use crate::assets::compute_pipeline::ComputePipelineAssetTypeHandler;
 use crate::assets::graphics_pipeline::{
@@ -29,6 +27,7 @@ use rafx_framework::descriptor_sets::{
     DescriptorSetWriteElementImage,
 };
 use rafx_framework::render_features::RenderRegistry;
+use rafx_framework::upload::{UploadQueue, UploadQueueConfig, UploadQueueContext};
 use rafx_framework::DescriptorSetAllocator;
 use rafx_framework::DynCommandPoolAllocator;
 use rafx_framework::DynResourceAllocatorSetProvider;
@@ -52,7 +51,7 @@ pub struct AssetManagerLoaders {
 pub struct AssetManager {
     device_context: RafxDeviceContext,
     resource_manager: ResourceManager,
-    upload_manager: UploadManager,
+    upload_queue: UploadQueue,
     material_instance_descriptor_sets: DescriptorSetAllocator,
     graphics_queue: RafxQueue,
     transfer_queue: RafxQueue,
@@ -73,16 +72,17 @@ impl AssetManager {
         transfer_queue: &RafxQueue,
     ) -> RafxResult<Self> {
         let resource_manager = ResourceManager::new(device_context, render_registry);
+        let upload_queue = UploadQueue::new(
+            device_context,
+            upload_queue_config,
+            graphics_queue.clone(),
+            transfer_queue.clone(),
+        )?;
 
         Ok(AssetManager {
             device_context: device_context.clone(),
             resource_manager,
-            upload_manager: UploadManager::new(
-                device_context,
-                upload_queue_config,
-                graphics_queue.clone(),
-                transfer_queue.clone(),
-            )?,
+            upload_queue,
             material_instance_descriptor_sets: DescriptorSetAllocator::new(device_context),
             graphics_queue: graphics_queue.clone(),
             transfer_queue: transfer_queue.clone(),
@@ -92,11 +92,10 @@ impl AssetManager {
         })
     }
 
-    pub fn register_asset_type<AssetTypeFactoryT: AssetTypeHandlerFactory>(
+    pub fn register_asset_type(
         &mut self,
-        asset_resource: &mut AssetResource,
-    ) {
-        let asset_type = AssetTypeFactoryT::create(asset_resource);
+        asset_type: Box<dyn AssetTypeHandler>,
+    ) -> RafxResult<()> {
         let mut asset_registration_order = (*self.asset_registration_order).clone();
         asset_registration_order.push(asset_type.asset_type_id());
         self.asset_registration_order = Arc::new(asset_registration_order);
@@ -104,19 +103,29 @@ impl AssetManager {
             .asset_types
             .insert(asset_type.asset_type_id(), asset_type);
         assert!(old.is_none());
+        Ok(())
     }
 
     pub fn register_default_asset_types(
         &mut self,
         asset_resource: &mut AssetResource,
-    ) {
-        self.register_asset_type::<ShaderAssetTypeHandler>(asset_resource);
-        self.register_asset_type::<ComputePipelineAssetTypeHandler>(asset_resource);
-        self.register_asset_type::<MaterialAssetTypeHandler>(asset_resource);
-        self.register_asset_type::<MaterialInstanceAssetTypeHandler>(asset_resource);
-        self.register_asset_type::<SamplerAssetTypeHandler>(asset_resource);
-        self.register_asset_type::<ImageAssetTypeHandler>(asset_resource);
-        self.register_asset_type::<BufferAssetTypeHandler>(asset_resource);
+        _render_resources: &mut RenderResources,
+    ) -> RafxResult<()> {
+        let asset_type = ShaderAssetTypeHandler::create(self, asset_resource)?;
+        self.register_asset_type(asset_type)?;
+        let asset_type = ComputePipelineAssetTypeHandler::create(self, asset_resource)?;
+        self.register_asset_type(asset_type)?;
+        let asset_type = MaterialAssetTypeHandler::create(self, asset_resource)?;
+        self.register_asset_type(asset_type)?;
+        let asset_type = MaterialInstanceAssetTypeHandler::create(self, asset_resource)?;
+        self.register_asset_type(asset_type)?;
+        let asset_type = SamplerAssetTypeHandler::create(self, asset_resource)?;
+        self.register_asset_type(asset_type)?;
+        let asset_type = ImageAssetTypeHandler::create(self, asset_resource)?;
+        self.register_asset_type(asset_type)?;
+        let asset_type = BufferAssetTypeHandler::create(self, asset_resource)?;
+        self.register_asset_type(asset_type)?;
+        Ok(())
     }
 
     pub fn committed_asset<AssetT: 'static>(
@@ -143,12 +152,18 @@ impl AssetManager {
             .get_latest(handle.load_handle())
     }
 
+    // The callback passed to this function will be ticked repeatedly while waiting for the load to complete. This
+    // can be used to update external systems that need to be updated in order for the load to complete
     #[profiling::function]
-    pub fn wait_for_asset_to_load<T>(
+    pub fn wait_for_asset_to_load<
+        T,
+        TickFn: FnMut(&mut AssetManager, &mut AssetResource) -> RafxResult<()>,
+    >(
         &mut self,
         asset_handle: &distill::loader::handle::Handle<T>,
         asset_resource: &mut AssetResource,
         asset_name: &str,
+        mut tick_fn: TickFn,
     ) -> RafxResult<()> {
         const PRINT_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1000);
         let mut last_print_time = None;
@@ -166,15 +181,16 @@ impl AssetManager {
             }
         }
 
-        log::info!(
-            "begin blocking wait for asset to resolve {} {:?}",
-            asset_name,
-            asset_handle
-        );
+        // log::info!(
+        //     "begin blocking wait for asset to resolve {} {:?}",
+        //     asset_name,
+        //     asset_handle
+        // );
 
         loop {
             asset_resource.update();
             self.update_asset_loaders()?;
+            (tick_fn)(self, asset_resource)?;
             match asset_resource.load_status(&asset_handle) {
                 LoadStatus::NotRequested => {
                     unreachable!();
@@ -273,8 +289,8 @@ impl AssetManager {
         &mut self.material_instance_descriptor_sets
     }
 
-    pub(crate) fn upload_manager(&self) -> &UploadManager {
-        &self.upload_manager
+    pub fn upload_queue_context(&self) -> UploadQueueContext {
+        self.upload_queue.upload_queue_context()
     }
 
     //
@@ -304,7 +320,7 @@ impl AssetManager {
                 .insert(asset_type.asset_type_id(), asset_type);
         }
 
-        self.upload_manager.update()?;
+        self.upload_queue.update()?;
 
         Ok(())
     }
@@ -316,6 +332,10 @@ impl AssetManager {
 
     #[profiling::function]
     pub fn on_frame_complete(&mut self) -> RafxResult<()> {
+        for (_, asset_type) in &mut self.asset_types {
+            asset_type.on_frame_complete()?;
+        }
+
         self.resource_manager.on_frame_complete()?;
         self.material_instance_descriptor_sets.on_frame_complete();
         Ok(())

@@ -1,14 +1,14 @@
-use crate::assets::mesh_adv::MeshMaterialAdvAsset;
+use crate::assets::mesh_adv::{MeshAdvBufferAsset, MeshMaterialAdvAsset};
 use crate::features::mesh_adv::MeshAdvUntexturedRenderFeatureFlag;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
-use crate::shaders::mesh_adv::mesh_adv_textured_frag;
 use distill::loader::handle::{AssetHandle, Handle};
+use distill::loader::LoadHandle;
 use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::{
-    AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, MaterialAsset,
+    AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, MaterialAsset,
 };
 use rafx::framework::render_features::{RenderPhase, RenderPhaseIndex, RenderView};
-use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
+use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::rafx_visibility::VisibleBounds;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -32,7 +32,7 @@ pub enum MeshAdvBlendMethod {
 
 // This is non-texture data associated with the material. Must convert to
 // MeshMaterialDataShaderParam to bind to a shader uniform
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[repr(C)]
 pub struct MeshAdvMaterialData {
     // Using f32 arrays for serde support
@@ -75,29 +75,6 @@ impl Default for MeshAdvMaterialData {
     }
 }
 
-pub type MeshAdvMaterialDataShaderParam = mesh_adv_textured_frag::MaterialDataStd140;
-
-impl Into<MeshAdvMaterialDataShaderParam> for MeshAdvMaterialData {
-    fn into(self) -> MeshAdvMaterialDataShaderParam {
-        MeshAdvMaterialDataShaderParam {
-            base_color_factor: self.base_color_factor.into(),
-            emissive_factor: self.emissive_factor.into(),
-            metallic_factor: self.metallic_factor,
-            roughness_factor: self.roughness_factor,
-            normal_texture_scale: self.normal_texture_scale,
-            alpha_threshold: self.alpha_threshold,
-            enable_alpha_blend: (self.blend_method == MeshAdvBlendMethod::AlphaBlend) as u32,
-            enable_alpha_clip: (self.blend_method == MeshAdvBlendMethod::AlphaClip) as u32,
-            has_base_color_texture: self.has_base_color_texture as u32,
-            base_color_texture_has_alpha_channel: self.base_color_texture_has_alpha_channel as u32,
-            has_metallic_roughness_texture: self.has_metallic_roughness_texture as u32,
-            has_normal_texture: self.has_normal_texture as u32,
-            has_emissive_texture: self.has_emissive_texture as u32,
-            _padding0: Default::default(),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MeshAdvPartAssetData {
     pub vertex_full_buffer_offset_in_bytes: u32,
@@ -114,9 +91,9 @@ pub struct MeshAdvPartAssetData {
 #[uuid = "4c888448-2650-4f56-82dc-71ba81f4295b"]
 pub struct MeshAdvAssetData {
     pub mesh_parts: Vec<MeshAdvPartAssetData>,
-    pub vertex_full_buffer: Handle<BufferAsset>, // Vertex type is MeshVertexFull
-    pub vertex_position_buffer: Handle<BufferAsset>, // Vertex type is MeshVertexPosition
-    pub index_buffer: Handle<BufferAsset>,       // u16 indices
+    pub vertex_full_buffer: Handle<MeshAdvBufferAsset>, // Vertex type is MeshVertexFull
+    pub vertex_position_buffer: Handle<MeshAdvBufferAsset>, // Vertex type is MeshVertexPosition
+    pub index_buffer: Handle<MeshAdvBufferAsset>,       // u16 indices
     pub visible_bounds: VisibleBounds,
 }
 
@@ -202,10 +179,9 @@ impl MeshAdvShaderPassIndices {
     pub fn get_material_pass_index(
         &self,
         material_data: &MeshAdvMaterialData,
-        view: &RenderView,
         render_phase_index: RenderPhaseIndex,
+        untextured: bool,
     ) -> usize {
-        let untextured = view.feature_flag_is_relevant::<MeshAdvUntexturedRenderFeatureFlag>();
         let pass_index = if render_phase_index == OpaqueRenderPhase::render_phase_index() {
             if material_data.backface_culling {
                 if untextured {
@@ -259,48 +235,33 @@ pub struct MeshAdvAssetPart {
     pub index_type: RafxIndexType,
 }
 
-pub const PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX: usize =
-    mesh_adv_textured_frag::PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX;
-
 impl MeshAdvAssetPart {
+    fn get_material_pass_index(
+        &self,
+        view: &RenderView,
+        render_phase_index: RenderPhaseIndex,
+    ) -> usize {
+        let untextured = view.feature_flag_is_relevant::<MeshAdvUntexturedRenderFeatureFlag>();
+        self.pass_indices.get_material_pass_index(
+            self.mesh_material.material_data(),
+            render_phase_index,
+            untextured,
+        )
+    }
+
     pub fn get_material_pass_resource(
         &self,
         view: &RenderView,
         render_phase_index: RenderPhaseIndex,
     ) -> &ResourceArc<MaterialPassResource> {
-        &self.mesh_material.material_instance().material.passes[self
-            .pass_indices
-            .get_material_pass_index(
-                &self.mesh_material.data().material_data,
-                view,
-                render_phase_index,
-            )]
+        &self.mesh_material.material_asset().passes
+            [self.get_material_pass_index(view, render_phase_index)]
         .material_pass_resource
-    }
-
-    pub fn get_material_descriptor_set(
-        &self,
-        view: &RenderView,
-        render_phase_index: RenderPhaseIndex,
-    ) -> &DescriptorSetArc {
-        return &self
-            .mesh_material
-            .material_instance()
-            .material_descriptor_sets[self.pass_indices.get_material_pass_index(
-            &self.mesh_material.data().material_data,
-            view,
-            render_phase_index,
-        )][PER_MATERIAL_DESCRIPTOR_SET_LAYOUT_INDEX]
-            .as_ref()
-            .unwrap();
     }
 }
 
 pub struct MeshAdvAssetInner {
-    pub mesh_parts: Vec<Option<MeshAdvAssetPart>>,
-    pub vertex_full_buffer: ResourceArc<BufferResource>,
-    pub vertex_position_buffer: ResourceArc<BufferResource>,
-    pub index_buffer: ResourceArc<BufferResource>,
+    pub mesh_parts: Vec<MeshAdvAssetPart>,
     pub asset_data: MeshAdvAssetData,
 }
 
@@ -317,22 +278,20 @@ impl DefaultAssetTypeLoadHandler<MeshAdvAssetData, MeshAdvAsset> for MeshAdvLoad
     fn load(
         asset_manager: &mut AssetManager,
         mesh_asset: MeshAdvAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<MeshAdvAsset> {
-        let vertex_full_buffer = asset_manager
+        let vertex_full_buffer_byte_offset = asset_manager
             .latest_asset(&mesh_asset.vertex_full_buffer)
             .unwrap()
-            .buffer
-            .clone();
-        let vertex_position_buffer = asset_manager
+            .buffer_byte_offset();
+        let vertex_position_buffer_byte_offset = asset_manager
             .latest_asset(&mesh_asset.vertex_position_buffer)
             .unwrap()
-            .buffer
-            .clone();
-        let index_buffer = asset_manager
+            .buffer_byte_offset();
+        let index_buffer_byte_offset = asset_manager
             .latest_asset(&mesh_asset.index_buffer)
             .unwrap()
-            .buffer
-            .clone();
+            .buffer_byte_offset();
 
         let mesh_parts: Vec<_> = mesh_asset
             .mesh_parts
@@ -347,30 +306,28 @@ impl DefaultAssetTypeLoadHandler<MeshAdvAssetData, MeshAdvAsset> for MeshAdvLoad
                     .latest_asset(&mesh_part.mesh_material)
                     .unwrap();
 
-                let material_instance = mesh_material.material_instance();
-                let pass_indices = MeshAdvShaderPassIndices::new(&material_instance.material);
+                let material_asset = mesh_material.material_asset();
+                let pass_indices = MeshAdvShaderPassIndices::new(&material_asset);
 
-                Some(MeshAdvAssetPart {
+                MeshAdvAssetPart {
                     mesh_material: mesh_material.clone(),
                     pass_indices,
-                    vertex_full_buffer_offset_in_bytes: mesh_part
-                        .vertex_full_buffer_offset_in_bytes,
+                    vertex_full_buffer_offset_in_bytes: vertex_full_buffer_byte_offset
+                        + mesh_part.vertex_full_buffer_offset_in_bytes,
                     vertex_full_buffer_size_in_bytes: mesh_part.vertex_full_buffer_size_in_bytes,
-                    vertex_position_buffer_offset_in_bytes: mesh_part
-                        .vertex_position_buffer_offset_in_bytes,
+                    vertex_position_buffer_offset_in_bytes: vertex_position_buffer_byte_offset
+                        + mesh_part.vertex_position_buffer_offset_in_bytes,
                     vertex_position_buffer_size_in_bytes: mesh_part
                         .vertex_position_buffer_size_in_bytes,
-                    index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
+                    index_buffer_offset_in_bytes: index_buffer_byte_offset
+                        + mesh_part.index_buffer_offset_in_bytes,
                     index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
                     index_type: mesh_part.index_type,
-                })
+                }
             })
             .collect();
 
         let inner = MeshAdvAssetInner {
-            vertex_full_buffer,
-            vertex_position_buffer,
-            index_buffer,
             asset_data: mesh_asset,
             mesh_parts,
         };

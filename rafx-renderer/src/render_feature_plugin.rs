@@ -1,9 +1,8 @@
-use crate::Renderer;
+use crate::{Renderer, RendererLoadContext};
 use rafx_api::extra::upload::RafxTransferUpload;
 use rafx_api::RafxResult;
 use rafx_assets::distill_impl::AssetResource;
 use rafx_assets::AssetManager;
-use rafx_base::resource_map::ResourceMap;
 use rafx_framework::render_features::render_features_prelude::*;
 use rafx_framework::RenderResources;
 use std::path::PathBuf;
@@ -92,10 +91,11 @@ pub trait RenderFeaturePlugin: Send + Sync {
 
     fn initialize_static_resources(
         &self,
+        _renderer_load_context: &RendererLoadContext,
         _asset_manager: &mut AssetManager,
         _asset_resource: &mut AssetResource,
         _extract_resources: &ExtractResources,
-        _render_resources: &mut ResourceMap,
+        _render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         Ok(())
@@ -103,7 +103,7 @@ pub trait RenderFeaturePlugin: Send + Sync {
 
     fn prepare_renderer_destroy(
         &self,
-        _render_resources: &ResourceMap,
+        _render_resources: &RenderResources,
     ) -> RafxResult<()> {
         Ok(())
     }

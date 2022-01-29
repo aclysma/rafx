@@ -3,6 +3,7 @@ use rafx::render_feature_write_job_prelude::*;
 use super::*;
 use rafx::api::RafxPrimitiveTopology;
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataSetLayout};
+use rafx::render_features::RenderSubmitNodeArgs;
 use std::marker::PhantomData;
 
 lazy_static::lazy_static! {
@@ -50,9 +51,7 @@ impl<'write> RenderFeatureWriteJob<'write> for SkyboxWriteJob<'write> {
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
-        _submit_node_id: SubmitNodeId,
+        args: RenderSubmitNodeArgs,
     ) -> RafxResult<()> {
         profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
@@ -63,7 +62,7 @@ impl<'write> RenderFeatureWriteJob<'write> for SkyboxWriteJob<'write> {
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
-                    Some(render_phase_index),
+                    Some(args.render_phase_index),
                     &skybox_material_pass,
                     &write_context.render_target_meta,
                     &EMPTY_VERTEX_LAYOUT,
@@ -73,7 +72,7 @@ impl<'write> RenderFeatureWriteJob<'write> for SkyboxWriteJob<'write> {
 
             let view_submit_data = self
                 .submit_packet
-                .view_submit_packet(view_frame_index)
+                .view_submit_packet(args.view_frame_index)
                 .per_view_submit_data()
                 .get();
 

@@ -80,6 +80,9 @@ impl RafxShaderEmpty {
 pub struct RafxRootSignatureEmpty;
 impl RafxRootSignatureEmpty {
     pub fn pipeline_type(&self) -> RafxPipelineType { unimplemented!() }
+    pub fn find_descriptor_by_name(&self, name: &str) -> Option<RafxDescriptorIndex> { unimplemented!() }
+    pub fn find_descriptor_by_binding(&self, set_index: u32, binding: u32) -> Option<RafxDescriptorIndex> { unimplemented!() }
+    pub fn find_push_constant_descriptor(&self, stage: RafxShaderStageFlags) -> Option<RafxDescriptorIndex> { unimplemented!() }
 }
 
 #[derive(Debug)]
@@ -146,11 +149,12 @@ impl RafxCommandBufferEmpty {
     pub fn cmd_bind_index_buffer(&self, binding: &RafxIndexBufferBinding) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_bind_descriptor_set(&self, descriptor_set_array: &RafxDescriptorSetArrayEmpty, index: u32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_bind_descriptor_set_handle(&self, root_signature: &RafxRootSignatureEmpty, set_index: u32, descriptor_set_handle: &RafxDescriptorSetHandleEmpty) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_bind_push_constant<T: Copy>(&self, root_signature: &RafxRootSignatureEmpty, descriptor_index: RafxDescriptorIndex, data: &T) -> RafxResult<()> { unimplemented!() }
 
     pub fn cmd_draw(&self, vertex_count: u32, first_vertex: u32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_draw_instanced(&self, vertex_count: u32, first_vertex: u32, instance_count: u32, first_instance: u32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_draw_indexed(&self, index_count: u32, first_index: u32, vertex_offset: i32) -> RafxResult<()> { unimplemented!() }
-    pub fn cmd_draw_indexed_instanced(&self, index_count: u32,  first_index: u32,  instance_count: u32,  first_instance: u32,vertex_offset: i32) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_draw_indexed_instanced(&self, index_count: u32, first_index: u32, instance_count: u32, first_instance: u32, vertex_offset: i32) -> RafxResult<()> { unimplemented!() }
 
     pub fn cmd_dispatch(&self, group_count_x: u32,  group_count_y: u32, group_count_z: u32) -> RafxResult<()> { unimplemented!() }
 

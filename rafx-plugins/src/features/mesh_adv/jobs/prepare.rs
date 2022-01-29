@@ -1,3 +1,4 @@
+use fnv::FnvHashMap;
 use rafx::render_feature_prepare_job_predule::*;
 
 use super::*;
@@ -6,13 +7,17 @@ use crate::phases::{
     WireframeRenderPhase,
 };
 use rafx::base::resource_map::{ReadBorrow, WriteBorrow};
-use rafx::framework::{DescriptorSetBindings, MaterialPassResource, ResourceArc, ResourceContext};
+use rafx::framework::{
+    BufferResource, DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetBindings,
+    DynResourceAllocatorSet, MaterialPassResource, ResourceArc, ResourceContext,
+};
 
 use crate::shaders::mesh_adv::{mesh_adv_textured_frag, mesh_adv_wireframe_vert};
 use glam::Mat4;
 use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
 
-use crate::assets::mesh_adv::{MeshAdvBlendMethod, MeshAdvShaderPassIndices};
+use crate::assets::mesh_adv::material_db::MaterialDB;
+use crate::assets::mesh_adv::{MeshAdvAssetPart, MeshAdvBlendMethod, MeshAdvShaderPassIndices};
 use crate::features::mesh_adv::light_binning::MeshAdvLightBinRenderResource;
 use crate::shaders::depth_velocity::depth_velocity_vert;
 use crate::shaders::mesh_adv::lights_bin_comp;
@@ -40,11 +45,14 @@ pub struct MeshAdvPrepareJob<'prepare> {
     light_bin_resource: WriteBorrow<'prepare, MeshAdvLightBinRenderResource>,
     main_view_resource: ReadBorrow<'prepare, MainViewRenderResource>,
     pipeline_state: ReadBorrow<'prepare, MeshAdvRenderPipelineState>,
+    material_db: ReadBorrow<'prepare, MaterialDB>,
     render_object_instance_transforms: Arc<AtomicOnceCellStack<MeshModelMatrix>>,
     render_object_instance_transforms_with_history:
         Arc<AtomicOnceCellStack<MeshModelMatrixWithHistory>>,
     #[allow(dead_code)]
     render_objects: MeshAdvRenderObjectSet,
+    batched_pass_lookup: AtomicOnceCell<FnvHashMap<MeshAdvBatchedPassKey, usize>>,
+    batched_passes: AtomicOnceCell<Vec<MeshAdvBatchedPassInfo>>,
 }
 
 impl<'prepare> MeshAdvPrepareJob<'prepare> {
@@ -113,13 +121,86 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
                         .render_resources
                         .fetch::<MeshAdvRenderPipelineState>()
                 },
+                material_db: { prepare_context.render_resources.fetch::<MaterialDB>() },
                 requires_textured_descriptor_sets,
                 requires_untextured_descriptor_sets,
                 render_objects,
+                batched_pass_lookup: AtomicOnceCell::new(),
+                batched_passes: AtomicOnceCell::new(),
             },
             frame_packet,
             submit_packet,
         ))
+    }
+
+    // This is a helper function that, given a batch (i.e. opaque meshes, shadow pass meshes, in a view, etc.)
+    // we produce a draw data buffer, per-batch descriptor set, and optionally push a batch submit node
+    fn prepare_batch<DrawDataT, CreateDrawDataFnT: Fn(&MeshAdvBatchDrawData) -> DrawDataT>(
+        job_context: &PreparePerFrameContext<'prepare, '_, Self>,
+        resource_context: &ResourceContext,
+        descriptor_set_allocator: &mut DescriptorSetAllocatorRef,
+        transform_buffer: &ResourceArc<BufferResource>,
+        batch: &MeshAdvBatchedPassInfo,
+        batch_index: usize,
+        push_submit_node: bool,
+        per_batch_descriptor_set_index: usize,
+        draw_data_binding: u32,
+        transforms_binding: u32,
+        create_draw_data_fn: CreateDrawDataFnT,
+    ) -> DescriptorSetArc {
+        let dyn_resource_allocator_set = resource_context.create_dyn_resource_allocator_set();
+        let draw_data_buffer_size =
+            batch.draw_data.len() as u64 * std::mem::size_of::<DrawDataT>() as u64;
+        let draw_data_buffer = dyn_resource_allocator_set.insert_buffer(
+            resource_context
+                .device_context()
+                .create_buffer(&RafxBufferDef {
+                    size: draw_data_buffer_size,
+                    memory_usage: RafxMemoryUsage::CpuToGpu,
+                    resource_type: RafxResourceType::BUFFER,
+                    always_mapped: true,
+                    alignment: std::mem::size_of::<DrawDataT>() as u32,
+                    ..Default::default()
+                })
+                .unwrap(),
+        );
+        let memory = draw_data_buffer.get_raw().buffer.mapped_memory().unwrap();
+        unsafe {
+            let dst =
+                std::slice::from_raw_parts_mut::<DrawDataT>(memory as _, batch.draw_data.len());
+            let src = batch.draw_data.get_all_unchecked();
+            for i in 0..batch.draw_data.len() {
+                dst[i] = create_draw_data_fn(&src[i]);
+            }
+        }
+
+        let layout = &batch.pass.get_raw().descriptor_set_layouts[per_batch_descriptor_set_index];
+        let mut dyn_descriptor_set = descriptor_set_allocator
+            .create_dyn_descriptor_set_uninitialized(&layout)
+            .unwrap();
+        dyn_descriptor_set.set_buffer(draw_data_binding, &draw_data_buffer);
+        dyn_descriptor_set.set_buffer(transforms_binding, transform_buffer);
+        dyn_descriptor_set.flush(descriptor_set_allocator).unwrap();
+
+        if push_submit_node {
+            let view_frame_index = job_context
+                .submit_packet()
+                .view_frame_index_from_view_index(batch.view_index)
+                .unwrap();
+            let view_packet = job_context
+                .submit_packet()
+                .view_submit_packet(view_frame_index);
+            view_packet.push_submit_node_into_render_phase(
+                batch.phase,
+                MeshAdvDrawCall::Batched(MeshAdvBatchedDrawCall {
+                    batch_index: batch_index as u32,
+                }),
+                0,
+                0.0,
+            );
+        }
+
+        dyn_descriptor_set.descriptor_set().clone()
     }
 }
 
@@ -128,6 +209,144 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         &self,
         context: &PreparePerFrameContext<'prepare, '_, Self>,
     ) {
+        // Helper function that finds/increments the appropriate entry in a hash map (it counts number
+        // of draws we will need to allocate for in a batch)
+        fn add_batched_pass_count(
+            view_packet: &ViewPacket<MeshAdvRenderFeatureTypes>,
+            mesh_part: &MeshAdvAssetPart,
+            render_phase_index: RenderPhaseIndex,
+            pass: &ResourceArc<MaterialPassResource>,
+            batched_pass_counts: &mut FnvHashMap<MeshAdvBatchedPassKey, usize>,
+        ) {
+            if view_packet
+                .view()
+                .phase_index_is_relevant(render_phase_index)
+            {
+                let view_index = view_packet.view().view_index();
+                let key = MeshAdvBatchedPassKey {
+                    phase: render_phase_index,
+                    view_index,
+                    pass: pass.clone(),
+                    index_type: mesh_part.index_type,
+                };
+                *batched_pass_counts.entry(key).or_default() += 1;
+            }
+        }
+
+        //
+        // Determine how large our batches will be for anything that can be submitted as a single large batch
+        // (anything that doesn't need to be sorted by depth)
+        //
+        let mut batched_pass_counts = FnvHashMap::<_, usize>::default();
+        for view_packet in context.frame_packet().view_packets() {
+            for object_instance in view_packet.render_object_instances() {
+                let render_object_instance_id = object_instance.render_object_instance_id as usize;
+                let render_object_instance_data = context
+                    .frame_packet()
+                    .render_object_instances_data()
+                    .get(render_object_instance_id)
+                    .as_ref()
+                    .unwrap();
+                for mesh_part in &render_object_instance_data.mesh_asset.inner.mesh_parts {
+                    let is_transparent = mesh_part.mesh_material.material_data().blend_method
+                        != MeshAdvBlendMethod::Opaque;
+
+                    if !is_transparent {
+                        if let Some(depth_material_pass) = &self.depth_material_pass {
+                            add_batched_pass_count(
+                                view_packet,
+                                mesh_part,
+                                DepthPrepassRenderPhase::render_phase_index(),
+                                depth_material_pass,
+                                &mut batched_pass_counts,
+                            );
+                        }
+
+                        if let Some(shadow_map_atlas_depth_material_pass) =
+                            &self.shadow_map_atlas_depth_material_pass
+                        {
+                            add_batched_pass_count(
+                                view_packet,
+                                mesh_part,
+                                ShadowMapRenderPhase::render_phase_index(),
+                                shadow_map_atlas_depth_material_pass,
+                                &mut batched_pass_counts,
+                            );
+                        }
+                    }
+
+                    let wireframe_pass = self
+                        .default_pbr_material
+                        .get_material_pass_by_index(
+                            self.default_pbr_material_pass_indices.wireframe as usize,
+                        )
+                        .clone()
+                        .unwrap();
+
+                    if view_packet
+                        .view()
+                        .feature_flag_is_relevant::<MeshAdvWireframeRenderFeatureFlag>()
+                    {
+                        add_batched_pass_count(
+                            view_packet,
+                            mesh_part,
+                            WireframeRenderPhase::render_phase_index(),
+                            &wireframe_pass,
+                            &mut batched_pass_counts,
+                        );
+                    }
+
+                    let render_phase_index = if is_transparent {
+                        TransparentRenderPhase::render_phase_index()
+                    } else {
+                        OpaqueRenderPhase::render_phase_index()
+                    };
+
+                    let pass = mesh_part
+                        .get_material_pass_resource(view_packet.view(), render_phase_index)
+                        .clone();
+
+                    add_batched_pass_count(
+                        view_packet,
+                        mesh_part,
+                        render_phase_index,
+                        &pass,
+                        &mut batched_pass_counts,
+                    );
+                }
+            }
+        }
+
+        //
+        // Allocate draw data buffers
+        //
+        let mut batched_pass_lookup = FnvHashMap::default();
+        let mut batched_passes = Vec::default();
+        for (key, count) in batched_pass_counts {
+            // log::trace!(
+            //     "batch index {} key view={} index_type={:?} pass={:?}, count={}",
+            //     batched_passes.len(),
+            //     key.view_index,
+            //     key.index_type,
+            //     key.pass.get_raw().material_pass_key,
+            //     count
+            // );
+            let pass = key.pass.clone();
+            let pass_info = MeshAdvBatchedPassInfo {
+                phase: key.phase,
+                pass,
+                draw_data: AtomicOnceCellStack::with_capacity(count),
+                view_index: key.view_index,
+                index_type: key.index_type,
+            };
+
+            batched_pass_lookup.insert(key, batched_passes.len());
+            batched_passes.push(pass_info);
+        }
+
+        self.batched_pass_lookup.set(batched_pass_lookup);
+        self.batched_passes.set(batched_passes);
+
         let mut per_frame_submit_data = Box::new(MeshAdvPerFrameSubmitData {
             num_shadow_map_2d: 0,
             shadow_map_2d_data: [mesh_adv_textured_frag::ShadowMap2DDataUniform {
@@ -140,6 +359,10 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             shadow_map_image_index_remap: Default::default(),
             model_matrix_buffer: Default::default(),
             model_matrix_with_history_buffer: Default::default(),
+            all_materials_descriptor_set: Default::default(),
+            batched_pass_lookup: Default::default(),
+            batched_passes: Default::default(),
+            per_batch_descriptor_sets: Default::default(),
         });
 
         let shadow_map_data = &self.shadow_map_data;
@@ -315,6 +538,61 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 .render_object_instance_submit_data()
                 .model_matrix_offset;
 
+            #[derive(Debug)]
+            struct PushDrawDataResult {
+                batch_index: u32,
+                draw_data_index: u32,
+            }
+
+            // helper function that finds the correct batch and pushes draw data into it
+            fn push_draw_data(
+                view: &RenderView,
+                render_phase_index: RenderPhaseIndex,
+                pass: ResourceArc<MaterialPassResource>,
+                mesh_part: &MeshAdvAssetPart,
+                batched_passes: &AtomicOnceCell<Vec<MeshAdvBatchedPassInfo>>,
+                batched_pass_lookup: &AtomicOnceCell<FnvHashMap<MeshAdvBatchedPassKey, usize>>,
+                model_matrix_offset: usize,
+                mesh_part_material_index: u32,
+                use_full_vertices: bool,
+            ) -> PushDrawDataResult {
+                let batch_key = MeshAdvBatchedPassKey {
+                    phase: render_phase_index,
+                    view_index: view.view_index(),
+                    pass,
+                    index_type: mesh_part.index_type,
+                };
+                //println!("pushing to key view={} index_type={:?} pass={:?}", batch_key.view_index, batch_key.index_type, batch_key.pass.get_raw().material_pass_key);
+                let batch_index = *batched_pass_lookup.get().get(&batch_key).unwrap();
+                //println!("batch index {}", batch_index);
+
+                let batched_pass = &batched_passes.get()[batch_index];
+                let draw_data_index = batched_pass.draw_data.len() as u32;
+
+                let vertex_offset = if use_full_vertices {
+                    mesh_part.vertex_full_buffer_offset_in_bytes
+                } else {
+                    mesh_part.vertex_position_buffer_offset_in_bytes
+                };
+
+                batched_pass.draw_data.push(MeshAdvBatchDrawData {
+                    material_index: mesh_part_material_index,
+                    index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
+                    index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
+                    transform_index: model_matrix_offset as u32,
+                    vertex_offset_in_bytes: vertex_offset,
+                });
+
+                PushDrawDataResult {
+                    batch_index: batch_index as u32,
+                    draw_data_index,
+                }
+            }
+
+            //
+            // Iterate all mesh parts and push draw calls into batches. Additionally push submit nodes
+            // for transparent meshes as we need to sort these by depth and draw them individually
+            //
             for (mesh_part_index, mesh_part) in extracted_data
                 .mesh_asset
                 .inner
@@ -322,82 +600,96 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 .iter()
                 .enumerate()
             {
-                if mesh_part.is_none() {
-                    continue;
+                let is_transparent = mesh_part.mesh_material.material_data().blend_method
+                    != MeshAdvBlendMethod::Opaque;
+                let mesh_part_material_index =
+                    mesh_part.mesh_material.inner.material.material_data_index();
+
+                if !is_transparent {
+                    if view.phase_is_relevant::<DepthPrepassRenderPhase>()
+                        && self.depth_material_pass.is_some()
+                    {
+                        let pass = self.depth_material_pass.as_ref().unwrap().clone();
+                        push_draw_data(
+                            view,
+                            DepthPrepassRenderPhase::render_phase_index(),
+                            pass,
+                            mesh_part,
+                            &self.batched_passes,
+                            &self.batched_pass_lookup,
+                            model_matrix_offset,
+                            mesh_part_material_index,
+                            false,
+                        );
+                    }
+
+                    if view.phase_is_relevant::<ShadowMapRenderPhase>()
+                        && self.shadow_map_atlas_depth_material_pass.is_some()
+                    {
+                        let pass = self
+                            .shadow_map_atlas_depth_material_pass
+                            .as_ref()
+                            .unwrap()
+                            .clone();
+                        push_draw_data(
+                            view,
+                            ShadowMapRenderPhase::render_phase_index(),
+                            pass,
+                            mesh_part,
+                            &self.batched_passes,
+                            &self.batched_pass_lookup,
+                            model_matrix_offset,
+                            mesh_part_material_index,
+                            false,
+                        );
+                    }
                 }
 
-                let mesh_part = mesh_part.as_ref().unwrap();
-                let blend_method = mesh_part.mesh_material.data().material_data.blend_method;
-
-                if blend_method == MeshAdvBlendMethod::Opaque
-                    && view.phase_is_relevant::<DepthPrepassRenderPhase>()
-                {
-                    context.push_submit_node::<DepthPrepassRenderPhase>(
-                        MeshAdvDrawCall {
-                            render_object_instance_id,
-                            material_pass_resource: self
-                                .depth_material_pass
-                                .as_ref()
-                                .unwrap()
-                                .clone(),
-                            per_material_descriptor_set: None,
-                            mesh_part_index,
-                            model_matrix_index: model_matrix_offset,
-                        },
-                        0,
-                        distance,
-                    );
-                }
-
-                if view.phase_is_relevant::<ShadowMapRenderPhase>() {
-                    let material_pass = self.default_pbr_material.get_material_pass_by_index(
-                        self.default_pbr_material_pass_indices.shadow_map as usize,
-                    );
-
-                    context.push_submit_node::<ShadowMapRenderPhase>(
-                        MeshAdvDrawCall {
-                            render_object_instance_id,
-                            material_pass_resource: material_pass.as_ref().unwrap().clone(),
-                            per_material_descriptor_set: None,
-                            mesh_part_index,
-                            model_matrix_index: model_matrix_offset,
-                        },
-                        0,
-                        distance,
-                    );
-                }
-
-                let phase_index = if blend_method == MeshAdvBlendMethod::Opaque {
+                let phase_index = if !is_transparent {
                     OpaqueRenderPhase::render_phase_index()
                 } else {
                     TransparentRenderPhase::render_phase_index()
                 };
+
                 if view.phase_index_is_relevant(phase_index) {
                     let material_pass_resource = mesh_part
                         .get_material_pass_resource(view, phase_index)
                         .clone();
 
-                    let per_material_descriptor_set = Some(
-                        mesh_part
-                            .get_material_descriptor_set(
-                                view,
-                                OpaqueRenderPhase::render_phase_index(),
-                            )
-                            .clone(),
+                    let push_draw_data_result = push_draw_data(
+                        view,
+                        phase_index,
+                        material_pass_resource.clone(),
+                        mesh_part,
+                        &self.batched_passes,
+                        &self.batched_pass_lookup,
+                        model_matrix_offset,
+                        mesh_part_material_index,
+                        true,
                     );
 
-                    context.push_submit_node_into_render_phase(
-                        phase_index,
-                        MeshAdvDrawCall {
-                            render_object_instance_id,
-                            material_pass_resource,
-                            per_material_descriptor_set,
-                            mesh_part_index,
-                            model_matrix_index: model_matrix_offset,
-                        },
-                        0,
-                        distance,
-                    );
+                    //
+                    // We only write per-element submit nodes if we need to do depth sorting (i.e. transparent meshes)
+                    //
+                    if is_transparent {
+                        context.push_submit_node_into_render_phase(
+                            phase_index,
+                            MeshAdvDrawCall::Unbatched(MeshAdvUnbatchedDrawCall {
+                                render_object_instance_id,
+                                material_pass_resource,
+                                mesh_part_index,
+                                model_matrix_index: model_matrix_offset,
+                                material_index: Some(
+                                    mesh_part.mesh_material.inner.material.material_data_index(),
+                                ),
+                                draw_data_index: push_draw_data_result.draw_data_index,
+                                index_type: mesh_part.index_type,
+                                batch_index: push_draw_data_result.batch_index,
+                            }),
+                            push_draw_data_result.batch_index,
+                            distance,
+                        );
+                    }
                 }
 
                 if view.phase_is_relevant::<WireframeRenderPhase>()
@@ -411,25 +703,16 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         .clone()
                         .unwrap();
 
-                    let per_material_descriptor_set = Some(
-                        mesh_part
-                            .get_material_descriptor_set(
-                                view,
-                                OpaqueRenderPhase::render_phase_index(),
-                            )
-                            .clone(),
-                    );
-
-                    context.push_submit_node::<WireframeRenderPhase>(
-                        MeshAdvDrawCall {
-                            render_object_instance_id,
-                            material_pass_resource,
-                            per_material_descriptor_set,
-                            mesh_part_index,
-                            model_matrix_index: model_matrix_offset,
-                        },
-                        0,
-                        distance,
+                    push_draw_data(
+                        view,
+                        WireframeRenderPhase::render_phase_index(),
+                        material_pass_resource,
+                        mesh_part,
+                        &self.batched_passes,
+                        &self.batched_pass_lookup,
+                        model_matrix_offset,
+                        mesh_part_material_index,
+                        false,
                     );
                 }
             }
@@ -450,7 +733,9 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         let is_lit = !view.feature_flag_is_relevant::<MeshAdvUnlitRenderFeatureFlag>();
         let has_shadows = !view.feature_flag_is_relevant::<MeshAdvNoShadowsRenderFeatureFlag>();
 
-        let opaque_descriptor_set = if view.phase_is_relevant::<OpaqueRenderPhase>() {
+        let opaque_descriptor_set = if view.phase_is_relevant::<OpaqueRenderPhase>()
+            || view.phase_is_relevant::<TransparentRenderPhase>()
+        {
             let mut all_lights_buffer_data = mesh_adv_textured_frag::AllLightsBuffer {
                 light_count: 0,
                 _padding0: Default::default(),
@@ -666,67 +951,39 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             let shadow_map_atlas = context.per_frame_data().shadow_map_atlas.clone();
 
             // NOTE(dvd): This assumes that all opaque materials have the same per view descriptor set layout.
-            let opaque_per_view_descriptor_set_layout = {
-                let mut opaque_per_view_descriptor_set_layout = None;
+            let default_opaque_pass = self
+                .default_pbr_material
+                .get_material_pass_by_index(self.default_pbr_material_pass_indices.opaque as usize)
+                .unwrap();
+            let opaque_per_view_descriptor_set_layout = default_opaque_pass
+                .get_raw()
+                .descriptor_set_layouts[PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
+                .clone();
 
-                for id in 0..context.render_object_instances().len() {
-                    // TODO(dvd): This could be replaced by an `iter` or `as_slice` method on the data.
-                    if let Some(extracted_data) = context.render_object_instances_data().get(id) {
-                        let mesh_parts = &extracted_data.mesh_asset.inner.mesh_parts;
-                        for mesh_part in mesh_parts {
-                            if let Some(mesh_part) = mesh_part {
-                                opaque_per_view_descriptor_set_layout = Some(
-                                    mesh_part
-                                        .get_material_pass_resource(
-                                            view,
-                                            OpaqueRenderPhase::render_phase_index(),
-                                        )
-                                        .get_raw()
-                                        .descriptor_set_layouts
-                                        [PER_VIEW_DESCRIPTOR_SET_INDEX as usize]
-                                        .clone(),
-                                );
-                                break;
-                            }
-                        }
-                    }
-
-                    if opaque_per_view_descriptor_set_layout.is_some() {
-                        break;
-                    }
-                }
-
-                opaque_per_view_descriptor_set_layout
-            };
-
-            opaque_per_view_descriptor_set_layout.as_ref().and_then(
-                |per_view_descriptor_set_layout| {
-                    let mut dyn_descriptor_set = descriptor_set_allocator
-                        .create_dyn_descriptor_set_uninitialized(per_view_descriptor_set_layout)
-                        .ok()?;
-                    dyn_descriptor_set.set_buffer_data(
-                        mesh_adv_textured_frag::PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-                        &per_view_frag_data,
-                    );
-                    dyn_descriptor_set.set_image(
-                        mesh_adv_textured_frag::SHADOW_MAP_ATLAS_DESCRIPTOR_BINDING_INDEX as u32,
-                        &shadow_map_atlas,
-                    );
-                    dyn_descriptor_set.set_buffer(
-                        mesh_adv_textured_frag::LIGHT_BIN_OUTPUT_DESCRIPTOR_BINDING_INDEX as u32,
-                        self.light_bin_resource
-                            .output_gpu_buffer(view.frame_index()),
-                    );
-                    dyn_descriptor_set.set_buffer(
-                        mesh_adv_textured_frag::ALL_LIGHTS_DESCRIPTOR_BINDING_INDEX as u32,
-                        &all_lights_buffer,
-                    );
-                    dyn_descriptor_set
-                        .flush(&mut descriptor_set_allocator)
-                        .ok()?;
-                    Some(dyn_descriptor_set.descriptor_set().clone())
-                },
-            )
+            let mut dyn_descriptor_set = descriptor_set_allocator
+                .create_dyn_descriptor_set_uninitialized(&opaque_per_view_descriptor_set_layout)
+                .unwrap();
+            dyn_descriptor_set.set_buffer_data(
+                mesh_adv_textured_frag::PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+                &per_view_frag_data,
+            );
+            dyn_descriptor_set.set_image(
+                mesh_adv_textured_frag::SHADOW_MAP_ATLAS_DESCRIPTOR_BINDING_INDEX as u32,
+                &shadow_map_atlas,
+            );
+            dyn_descriptor_set.set_buffer(
+                mesh_adv_textured_frag::LIGHT_BIN_OUTPUT_DESCRIPTOR_BINDING_INDEX as u32,
+                self.light_bin_resource
+                    .output_gpu_buffer(view.frame_index()),
+            );
+            dyn_descriptor_set.set_buffer(
+                mesh_adv_textured_frag::ALL_LIGHTS_DESCRIPTOR_BINDING_INDEX as u32,
+                &all_lights_buffer,
+            );
+            dyn_descriptor_set
+                .flush(&mut descriptor_set_allocator)
+                .unwrap();
+            Some(dyn_descriptor_set.descriptor_set().clone())
         } else {
             None
         };
@@ -869,71 +1126,211 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         &self,
         context: &PreparePerFrameContext<'prepare, '_, Self>,
     ) {
-        let mut model_matrix_buffer = context
-            .per_frame_submit_data()
-            .model_matrix_buffer
-            .borrow_mut();
-
-        let mut model_matrix_with_history_buffer = context
-            .per_frame_submit_data()
-            .model_matrix_with_history_buffer
-            .borrow_mut();
-
         let dyn_resource_allocator_set = self.resource_context.create_dyn_resource_allocator_set();
+        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
 
-        *model_matrix_buffer = if self.render_object_instance_transforms.len() > 0 {
-            let dyn_resource_allocator_set =
-                self.resource_context.create_dyn_resource_allocator_set();
+        // Helper function that allocates a buffer to hold transforms for all draws in a batch and
+        // copies data into it
+        fn create_transform_buffer<T: Copy>(
+            dyn_resource_allocator_set: &DynResourceAllocatorSet,
+            transforms: &Arc<AtomicOnceCellStack<T>>,
+        ) -> Option<ResourceArc<BufferResource>> {
+            if transforms.len() > 0 {
+                let vertex_buffer_size = transforms.len() as u64 * std::mem::size_of::<T>() as u64;
 
-            let vertex_buffer_size = self.render_object_instance_transforms.len() as u64
-                * std::mem::size_of::<MeshModelMatrix>() as u64;
-
-            let vertex_buffer = self
-                .device_context
-                .create_buffer(&RafxBufferDef {
-                    size: vertex_buffer_size,
-                    memory_usage: RafxMemoryUsage::CpuToGpu,
-                    resource_type: RafxResourceType::VERTEX_BUFFER,
-                    ..Default::default()
-                })
-                .unwrap();
-
-            let data = unsafe { self.render_object_instance_transforms.get_all_unchecked() };
-
-            vertex_buffer.copy_to_host_visible_buffer(data).unwrap();
-
-            Some(dyn_resource_allocator_set.insert_buffer(vertex_buffer))
-        } else {
-            None
-        };
-
-        *model_matrix_with_history_buffer =
-            if self.render_object_instance_transforms_with_history.len() > 0 {
-                let vertex_buffer_size = self.render_object_instance_transforms_with_history.len()
-                    as u64
-                    * std::mem::size_of::<MeshModelMatrixWithHistory>() as u64;
-
-                let vertex_buffer = self
+                let vertex_buffer = dyn_resource_allocator_set
                     .device_context
                     .create_buffer(&RafxBufferDef {
                         size: vertex_buffer_size,
                         memory_usage: RafxMemoryUsage::CpuToGpu,
-                        resource_type: RafxResourceType::VERTEX_BUFFER,
+                        resource_type: RafxResourceType::BUFFER,
                         ..Default::default()
                     })
                     .unwrap();
 
-                let data = unsafe {
-                    self.render_object_instance_transforms_with_history
-                        .get_all_unchecked()
-                };
+                let data = unsafe { transforms.get_all_unchecked() };
 
                 vertex_buffer.copy_to_host_visible_buffer(data).unwrap();
 
                 Some(dyn_resource_allocator_set.insert_buffer(vertex_buffer))
             } else {
                 None
-            };
+            }
+        }
+
+        //
+        // Create buffers for transforms
+        //
+        let mut model_matrix_buffer = context
+            .per_frame_submit_data()
+            .model_matrix_buffer
+            .borrow_mut();
+
+        *model_matrix_buffer = create_transform_buffer(
+            &dyn_resource_allocator_set,
+            &self.render_object_instance_transforms,
+        );
+
+        let mut model_matrix_with_history_buffer = context
+            .per_frame_submit_data()
+            .model_matrix_with_history_buffer
+            .borrow_mut();
+
+        *model_matrix_with_history_buffer = create_transform_buffer(
+            &dyn_resource_allocator_set,
+            &self.render_object_instance_transforms_with_history,
+        );
+
+        //
+        // Update the material DB and get the descriptor set with all data/textures
+        //
+        let mut all_materials_descriptor_set = context
+            .per_frame_submit_data()
+            .all_materials_descriptor_set
+            .borrow_mut();
+
+        let pbr_material_descriptor_layout = &self
+            .default_pbr_material
+            .get_material_pass_by_index(self.default_pbr_material_pass_indices.opaque as usize)
+            .unwrap()
+            .get_raw()
+            .descriptor_set_layouts
+            [mesh_adv_textured_frag::ALL_MATERIALS_DESCRIPTOR_SET_INDEX as usize];
+
+        let invalid_image_color = context
+            .frame_packet()
+            .per_frame_data()
+            .get()
+            .invalid_image_color
+            .clone();
+
+        *all_materials_descriptor_set = Some(
+            self.material_db
+                .update_gpu_resources(
+                    &self.resource_context,
+                    pbr_material_descriptor_layout,
+                    &invalid_image_color,
+                )
+                .unwrap(),
+        );
+
+        //
+        // Do final processing for each batch (produces a draw data buffer, per-batch descriptor
+        // set, and optionally push a batch submit node. (Transforms should *not* push submit nodes
+        // because we already pushed per-draw submit nodes, as we need to support them by depth)
+        //
+        let mut per_batch_descriptor_sets = Vec::with_capacity(self.batched_passes.get().len());
+        for (batch_index, batch) in self.batched_passes.get().iter().enumerate() {
+            let per_batch_descriptor_set =
+                if batch.phase == ShadowMapRenderPhase::render_phase_index() {
+                    Some(Self::prepare_batch(
+                        context,
+                        &self.resource_context,
+                        &mut descriptor_set_allocator,
+                        model_matrix_buffer.as_ref().unwrap(),
+                        batch,
+                        batch_index,
+                        true,
+                        shadow_atlas_depth_vert::ALL_DRAW_DATA_DESCRIPTOR_SET_INDEX,
+                        shadow_atlas_depth_vert::ALL_DRAW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+                        shadow_atlas_depth_vert::ALL_TRANSFORMS_DESCRIPTOR_BINDING_INDEX as u32,
+                        |src| shadow_atlas_depth_vert::DrawDataBuffer {
+                            transform_index: src.transform_index,
+                            material_index: src.material_index,
+                        },
+                    ))
+                } else if batch.phase == DepthPrepassRenderPhase::render_phase_index() {
+                    Some(Self::prepare_batch(
+                        context,
+                        &self.resource_context,
+                        &mut descriptor_set_allocator,
+                        model_matrix_with_history_buffer.as_ref().unwrap(),
+                        batch,
+                        batch_index,
+                        true,
+                        depth_velocity_vert::ALL_DRAW_DATA_DESCRIPTOR_SET_INDEX,
+                        depth_velocity_vert::ALL_DRAW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+                        depth_velocity_vert::ALL_TRANSFORMS_DESCRIPTOR_BINDING_INDEX as u32,
+                        |src| depth_velocity_vert::DrawDataBuffer {
+                            transform_index: src.transform_index,
+                            material_index: src.material_index,
+                        },
+                    ))
+                } else if batch.phase == OpaqueRenderPhase::render_phase_index()
+                    || batch.phase == TransparentRenderPhase::render_phase_index()
+                {
+                    let push_submit_node = batch.phase == OpaqueRenderPhase::render_phase_index();
+                    Some(Self::prepare_batch(
+                        context,
+                        &self.resource_context,
+                        &mut descriptor_set_allocator,
+                        model_matrix_buffer.as_ref().unwrap(),
+                        batch,
+                        batch_index,
+                        push_submit_node,
+                        mesh_adv_textured_frag::ALL_DRAW_DATA_DESCRIPTOR_SET_INDEX,
+                        mesh_adv_textured_frag::ALL_DRAW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+                        mesh_adv_textured_frag::ALL_TRANSFORMS_DESCRIPTOR_BINDING_INDEX as u32,
+                        |src| mesh_adv_textured_frag::DrawDataBuffer {
+                            transform_index: src.transform_index,
+                            material_index: src.material_index,
+                        },
+                    ))
+                } else if batch.phase == WireframeRenderPhase::render_phase_index() {
+                    Some(Self::prepare_batch(
+                        context,
+                        &self.resource_context,
+                        &mut descriptor_set_allocator,
+                        model_matrix_buffer.as_ref().unwrap(),
+                        batch,
+                        batch_index,
+                        true,
+                        mesh_adv_wireframe_vert::ALL_DRAW_DATA_DESCRIPTOR_SET_INDEX,
+                        mesh_adv_wireframe_vert::ALL_DRAW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
+                        mesh_adv_wireframe_vert::ALL_TRANSFORMS_DESCRIPTOR_BINDING_INDEX as u32,
+                        |src| mesh_adv_wireframe_vert::DrawDataBuffer {
+                            transform_index: src.transform_index,
+                            material_index: src.material_index,
+                        },
+                    ))
+                } else {
+                    None
+                };
+
+            per_batch_descriptor_sets.push(per_batch_descriptor_set);
+        }
+
+        descriptor_set_allocator.flush_changes().unwrap();
+
+        let mut prepared_batch_data = Vec::default();
+        for pass_info in self.batched_passes.get() {
+            let mut draw_data = Vec::with_capacity(pass_info.draw_data.len());
+            unsafe {
+                for dd in pass_info.draw_data.get_all_unchecked() {
+                    draw_data.push(dd.clone());
+                }
+            }
+
+            prepared_batch_data.push(MeshAdvBatchedPreparedPassInfo {
+                pass: pass_info.pass.clone(),
+                phase: pass_info.phase,
+                index_type: pass_info.index_type,
+                draw_data,
+            })
+        }
+
+        context
+            .per_frame_submit_data()
+            .batched_pass_lookup
+            .set(self.batched_pass_lookup.get().clone());
+        context
+            .per_frame_submit_data()
+            .batched_passes
+            .set(prepared_batch_data);
+        context
+            .per_frame_submit_data()
+            .per_batch_descriptor_sets
+            .set(per_batch_descriptor_sets);
     }
 
     fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {

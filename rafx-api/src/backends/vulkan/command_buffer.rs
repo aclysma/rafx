@@ -421,6 +421,32 @@ impl RafxCommandBufferVulkan {
         Ok(())
     }
 
+    pub fn cmd_bind_push_constant<T: Copy>(
+        &self,
+        root_signature: &RafxRootSignatureVulkan,
+        descriptor_index: RafxDescriptorIndex,
+        data: &T,
+    ) -> RafxResult<()> {
+        let descriptor = root_signature.descriptor(descriptor_index).unwrap();
+        assert_eq!(
+            std::mem::size_of::<T>(),
+            descriptor.push_constant_size as usize
+        );
+        let stages = descriptor.vk_stages;
+        let bytes = rafx_base::memory::any_as_bytes(data);
+        unsafe {
+            self.device_context.device().cmd_push_constants(
+                self.vk_command_buffer,
+                root_signature.vk_pipeline_layout(),
+                stages,
+                0,
+                bytes,
+            )
+        }
+
+        Ok(())
+    }
+
     pub fn cmd_draw(
         &self,
         vertex_count: u32,
@@ -538,6 +564,12 @@ impl RafxCommandBufferVulkan {
         for barrier in buffer_barriers {
             let buffer = barrier.buffer.vk_buffer().unwrap();
 
+            let (offset, size) = if let Some(offset_size) = &barrier.offset_size {
+                (offset_size.byte_offset, offset_size.size)
+            } else {
+                (0, vk::WHOLE_SIZE)
+            };
+
             let mut vk_buffer_barrier = vk::BufferMemoryBarrier::builder()
                 .src_access_mask(super::util::resource_state_to_access_flags(
                     barrier.src_state,
@@ -546,8 +578,8 @@ impl RafxCommandBufferVulkan {
                     barrier.dst_state,
                 ))
                 .buffer(buffer.vk_buffer())
-                .size(vk::WHOLE_SIZE)
-                .offset(0)
+                .size(size)
+                .offset(offset)
                 .build();
 
             match &barrier.queue_transition {

@@ -1,10 +1,12 @@
-use crate::assets::mesh_adv::{MeshAdvAssetData, MeshAdvPartAssetData, MeshMaterialAdvAsset};
+use crate::assets::mesh_adv::{
+    MeshAdvAssetData, MeshAdvBufferAssetData, MeshAdvPartAssetData, MeshMaterialAdvAsset,
+};
+use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use glam::Vec3;
 use rafx::api::RafxResourceType;
-use rafx::assets::push_buffer::PushBuffer;
-use rafx::assets::BufferAssetData;
+use rafx::assets::PushBuffer;
 use rafx::distill::loader::handle::Handle;
 use rafx::distill::make_handle;
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
@@ -213,8 +215,9 @@ impl Importer for MeshAdvBlenderImporter {
         // Vertex Full Buffer
         //
         assert!(!all_vertices_full.is_empty());
-        let vertex_full_buffer_asset = BufferAssetData {
+        let vertex_full_buffer_asset = MeshAdvBufferAssetData {
             resource_type: RafxResourceType::VERTEX_BUFFER,
+            alignment: std::mem::size_of::<MeshVertexFull>() as u32,
             data: all_vertices_full.into_data(),
         };
 
@@ -224,8 +227,9 @@ impl Importer for MeshAdvBlenderImporter {
         // Vertex Position Buffer
         //
         assert!(!all_vertices_position.is_empty());
-        let vertex_position_buffer_asset = BufferAssetData {
+        let vertex_position_buffer_asset = MeshAdvBufferAssetData {
             resource_type: RafxResourceType::VERTEX_BUFFER,
+            alignment: std::mem::size_of::<MeshVertexPosition>() as u32,
             data: all_vertices_position.into_data(),
         };
 
@@ -235,8 +239,9 @@ impl Importer for MeshAdvBlenderImporter {
         // Index Buffer
         //
         assert!(!all_indices.is_empty());
-        let index_buffer_asset = BufferAssetData {
+        let index_buffer_asset = MeshAdvBufferAssetData {
             resource_type: RafxResourceType::INDEX_BUFFER,
+            alignment: std::mem::size_of::<u32>() as u32,
             data: all_indices.into_data(),
         };
 

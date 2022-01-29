@@ -21,6 +21,12 @@ pub struct AtomicOnceCell<T> {
     is_initialized: AtomicU8,
 }
 
+impl<T> Default for AtomicOnceCell<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> AtomicOnceCell<T> {
     pub fn new() -> Self {
         Self {

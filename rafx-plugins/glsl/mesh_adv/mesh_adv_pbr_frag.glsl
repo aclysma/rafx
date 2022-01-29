@@ -79,12 +79,13 @@ const float SHADOW_MAP_BIAS_MIN = 0.0005;
 #ifdef PBR_TEXTURES
 // Passing texture/sampler through like this breaks reflection metadata so for now just grab global data
 vec4 normal_map(
+    int normal_texture,
     mat3 tangent_binormal_normal,
     vec2 uv
 ) {
     // Sample the normal and unflatten it from the texture (i.e. convert
     // range of [0, 1] to [-1, 1])
-    vec3 normal = texture(sampler2D(normal_texture, smp), uv, per_view_data.mip_bias).xyz;
+    vec3 normal = texture(sampler2D(all_material_textures[normal_texture], smp), uv, per_view_data.mip_bias).xyz;
     normal = normal * 2.0 - 1.0;
     normal.z = 0.0;
     normal.z = sqrt(1.0 - dot(normal, normal));
@@ -1107,10 +1108,13 @@ vec4 pbr_path(
     //
     vec3 ambient = per_view_data.ambient_light.rgb * base_color.rgb * ambient_factor;
 
+    uint material_index = all_draw_data.draw_data[constants.draw_data_index].material_index;
+    MaterialDbEntry per_material_data = all_materials.materials[material_index];
+
     float alpha = 1.0;
-    if (per_material_data.data.enable_alpha_blend) {
+    if (per_material_data.enable_alpha_blend) {
         alpha = base_color.a;
-    } else if (per_material_data.data.enable_alpha_clip && base_color.a < per_material_data.data.alpha_threshold) {
+    } else if (per_material_data.enable_alpha_clip && base_color.a < per_material_data.alpha_threshold) {
         alpha = 0.0;
     }
 
@@ -1140,7 +1144,6 @@ uint get_light_cluster_index() {
 }
 
 uint hash_light_list(uint light_cluster_index) {
-    vec3 total_light = vec3(0.0);
     uint light_first = light_bin_output.data.offsets[light_cluster_index].first_light;
     uint light_last = light_first + light_bin_output.data.offsets[light_cluster_index].count;
 
@@ -1155,15 +1158,18 @@ uint hash_light_list(uint light_cluster_index) {
 }
 
 vec4 pbr_main() {
+    uint material_index = all_draw_data.draw_data[constants.draw_data_index].material_index;
+    MaterialDbEntry per_material_data = all_materials.materials[material_index];
+
     // Sample the base color, if it exists
-    vec4 base_color = per_material_data.data.base_color_factor;
+    vec4 base_color = per_material_data.base_color_factor;
     float ambient_factor = 1.0;
     uint light_cluster_index = get_light_cluster_index();
 
 #ifdef PBR_TEXTURES
-    if (per_material_data.data.has_base_color_texture) {
-        vec4 sampled_color = texture(sampler2D(base_color_texture, smp), in_uv, per_view_data.mip_bias);
-        if (per_material_data.data.base_color_texture_has_alpha_channel) {
+    if (per_material_data.color_texture != -1) {
+        vec4 sampled_color = texture(sampler2D(all_material_textures[per_material_data.color_texture], smp), in_uv, per_view_data.mip_bias);
+        if (per_material_data.base_color_texture_has_alpha_channel) {
             base_color *= sampled_color;
         } else {
             base_color = vec4(base_color.rgb * sampled_color.rgb, base_color.a);
@@ -1176,22 +1182,21 @@ vec4 pbr_main() {
 #endif
 
     // Sample the emissive color, if it exists
-    vec4 emissive_color = vec4(per_material_data.data.emissive_factor, 1);
+    vec4 emissive_color = vec4(per_material_data.emissive_factor, 1);
 
 #ifdef PBR_TEXTURES
-    if (per_material_data.data.has_emissive_texture) {
-        emissive_color *= texture(sampler2D(emissive_texture, smp), in_uv, per_view_data.mip_bias);
-        base_color = vec4(1.0, 1.0, 0.0, 1.0);
+    if (per_material_data.emissive_texture != -1) {
+        emissive_color *= texture(sampler2D(all_material_textures[per_material_data.emissive_texture], smp), in_uv, per_view_data.mip_bias);
     }
 #endif
 
     // Sample metalness/roughness
-    float metalness = per_material_data.data.metallic_factor;
-    float roughness = per_material_data.data.roughness_factor;
+    float metalness = per_material_data.metallic_factor;
+    float roughness = per_material_data.roughness_factor;
 
 #ifdef PBR_TEXTURES
-    if (per_material_data.data.has_metallic_roughness_texture) {
-        vec4 sampled = texture(sampler2D(metallic_roughness_texture, smp), in_uv, per_view_data.mip_bias);
+    if (per_material_data.metallic_roughness_texture != -1) {
+        vec4 sampled = texture(sampler2D(all_material_textures[per_material_data.metallic_roughness_texture], smp), in_uv, per_view_data.mip_bias);
         metalness *= sampled.b;
         roughness *= sampled.g;
     }
@@ -1204,9 +1209,10 @@ vec4 pbr_main() {
     vec3 normal_vs;
 
 #ifdef PBR_TEXTURES
-    if (per_material_data.data.has_normal_texture) {
+    if (per_material_data.normal_texture != -1) {
         mat3 tbn = mat3(in_tangent_vs, in_binormal_vs, in_normal_vs);
         normal_vs = normal_map(
+            per_material_data.normal_texture,
             tbn,
             //normal_texture,
             //smp,

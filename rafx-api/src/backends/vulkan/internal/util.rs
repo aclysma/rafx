@@ -351,10 +351,13 @@ pub(crate) fn rasterizer_state_to_create_info(
         .polygon_mode(rasterizer_state.fill_mode.into())
         .cull_mode(rasterizer_state.cull_mode.into())
         .front_face(rasterizer_state.front_face.into())
-        .depth_bias_enable(rasterizer_state.depth_bias != 0)
+        .depth_bias_enable(
+            rasterizer_state.depth_bias != 0 || rasterizer_state.depth_bias_slope_scaled != 0.0,
+        )
         .depth_bias_constant_factor(rasterizer_state.depth_bias as f32)
         .depth_bias_clamp(0.0)
         .depth_bias_slope_factor(rasterizer_state.depth_bias_slope_scaled)
+        .depth_clamp_enable(false)
         .line_width(1.0)
         .build()
 }

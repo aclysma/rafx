@@ -1,3 +1,4 @@
+use distill::loader::LoadHandle;
 use fontdue::FontSettings;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler};
@@ -33,6 +34,7 @@ impl DefaultAssetTypeLoadHandler<FontAssetData, FontAsset> for FontLoadHandler {
     fn load(
         _asset_manager: &mut AssetManager,
         font_asset: FontAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<FontAsset> {
         let settings = FontSettings::default();
         let font = fontdue::Font::from_bytes(font_asset.data.as_slice(), settings)

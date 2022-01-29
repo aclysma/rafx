@@ -6,6 +6,7 @@ use rafx::api::{
     RafxVertexBufferBinding,
 };
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use rafx::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
 use std::marker::PhantomData;
 
 /// Vertex format for vertices sent to the GPU
@@ -65,13 +66,16 @@ impl<'write> RenderFeatureWriteJob<'write> for TileLayerWriteJob<'write> {
         self.frame_packet.view_frame_index(view)
     }
 
-    fn apply_setup(
+    fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        _view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
+        args: BeginSubmitNodeBatchArgs,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_feature_debug_constants().apply_setup);
+        if !args.feature_changed {
+            return Ok(());
+        }
+
+        profiling::scope!(super::render_feature_debug_constants().begin_submit_node_batch);
 
         let command_buffer = &write_context.command_buffer;
 
@@ -79,7 +83,7 @@ impl<'write> RenderFeatureWriteJob<'write> for TileLayerWriteJob<'write> {
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                Some(render_phase_index),
+                Some(args.render_phase_index),
                 self.tile_layer_material_pass.as_ref().unwrap(),
                 &write_context.render_target_meta,
                 &TILE_LAYER_VERTEX_LAYOUT,
@@ -94,15 +98,13 @@ impl<'write> RenderFeatureWriteJob<'write> for TileLayerWriteJob<'write> {
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
-        submit_node_id: SubmitNodeId,
+        args: RenderSubmitNodeArgs,
     ) -> RafxResult<()> {
         profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
         let command_buffer = &write_context.command_buffer;
 
-        let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
+        let view_submit_packet = self.submit_packet.view_submit_packet(args.view_frame_index);
 
         let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
 
@@ -114,7 +116,7 @@ impl<'write> RenderFeatureWriteJob<'write> for TileLayerWriteJob<'write> {
             .bind(command_buffer)?;
 
         let submit_node = view_submit_packet
-            .get_submit_node_data_from_render_phase(render_phase_index, submit_node_id);
+            .get_submit_node_data_from_render_phase(args.render_phase_index, args.submit_node_id);
 
         let render_objects = self.render_objects.read();
         let tile_layer_render_object = render_objects.get_id(&submit_node.render_object_id);

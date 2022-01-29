@@ -61,7 +61,7 @@ impl RenderFeaturePlugin for ImGuiRendererPlugin {
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
         extract_resources: &ExtractResources,
-        render_resources: &mut ResourceMap,
+        render_resources: &mut RenderResources,
         upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let imgui_material = asset_resource

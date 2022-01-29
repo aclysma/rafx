@@ -126,6 +126,16 @@ impl<SubmitPacketDataT: 'static + Send + Sync + SubmitPacketData> RenderFeatureS
             }) as ViewFrameIndex
     }
 
+    fn view_frame_index_from_view_index(
+        &self,
+        view_index: RenderViewIndex,
+    ) -> Option<ViewFrameIndex> {
+        self.view_submit_packets
+            .iter()
+            .position(|view_submit_packet| view_submit_packet.view().view_index() == view_index)
+            .map(|x| x as ViewFrameIndex)
+    }
+
     fn feature_index(&self) -> u32 {
         self.feature_index
     }

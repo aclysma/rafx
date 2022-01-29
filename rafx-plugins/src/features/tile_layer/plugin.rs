@@ -5,6 +5,7 @@ use super::*;
 use crate::phases::TransparentRenderPhase;
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
+use rafx::renderer::RendererLoadContext;
 
 pub struct TileLayerStaticResources {
     pub tile_layer_material: Handle<MaterialAsset>,
@@ -60,16 +61,19 @@ impl RenderFeaturePlugin for TileLayerRendererPlugin {
 
     fn initialize_static_resources(
         &self,
+        renderer_load_context: &RendererLoadContext,
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
         _extract_resources: &ExtractResources,
-        render_resources: &mut ResourceMap,
+        render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let tile_layer_material = asset_resource
             .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/tile_layer.material");
 
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &tile_layer_material,
             asset_resource,
             "tile_layer_material",

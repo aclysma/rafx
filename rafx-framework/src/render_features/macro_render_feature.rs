@@ -37,8 +37,7 @@ macro_rules! declare_render_feature {
 
             on_begin_execute_graph: stringify!($struct_name on_begin_execute_graph),
             render_submit_node: stringify!($struct_name render_submit_node),
-            apply_setup: stringify!($struct_name apply_setup),
-            revert_setup: stringify!($struct_name revert_setup),
+            begin_submit_node_batch: stringify!($struct_name begin_submit_node_batch),
         };
 
         impl $crate::render_features::RenderFeature for $struct_name {

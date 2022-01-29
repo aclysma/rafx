@@ -5,6 +5,7 @@ use crate::phases::WireframeRenderPhase;
 use rafx::api::{RafxPrimitiveTopology, RafxVertexAttributeRate, RafxVertexBufferBinding};
 use rafx::framework::render_features::RenderPhase;
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use rafx::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
 use std::marker::PhantomData;
 
 /// Vertex format for vertices sent to the GPU
@@ -62,13 +63,16 @@ impl<'write> RenderFeatureWriteJob<'write> for Debug3DWriteJob<'write> {
         self.frame_packet.view_frame_index(view)
     }
 
-    fn apply_setup(
+    fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
+        args: BeginSubmitNodeBatchArgs,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_feature_debug_constants().apply_setup);
+        if !args.feature_changed {
+            return Ok(());
+        }
+
+        profiling::scope!(super::render_feature_debug_constants().begin_submit_node_batch);
         let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
 
         if let Some(vertex_buffer) = per_frame_submit_data.vertex_buffer.as_ref() {
@@ -76,7 +80,7 @@ impl<'write> RenderFeatureWriteJob<'write> for Debug3DWriteJob<'write> {
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
-                    Some(render_phase_index),
+                    Some(args.render_phase_index),
                     self.debug3d_material_pass.as_ref().unwrap(),
                     &write_context.render_target_meta,
                     &*DEBUG_VERTEX_LAYOUT,
@@ -85,8 +89,8 @@ impl<'write> RenderFeatureWriteJob<'write> for Debug3DWriteJob<'write> {
             let command_buffer = &write_context.command_buffer;
             command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
 
-            let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
-            if render_phase_index == WireframeRenderPhase::render_phase_index() {
+            let view_submit_packet = self.submit_packet.view_submit_packet(args.view_frame_index);
+            if args.render_phase_index == WireframeRenderPhase::render_phase_index() {
                 let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
 
                 per_view_submit_data
@@ -111,15 +115,13 @@ impl<'write> RenderFeatureWriteJob<'write> for Debug3DWriteJob<'write> {
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        _view_frame_index: ViewFrameIndex,
-        _render_phase_index: RenderPhaseIndex,
-        submit_node_id: SubmitNodeId,
+        args: RenderSubmitNodeArgs,
     ) -> RafxResult<()> {
         profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
         // The prepare phase emits a single node which will draw everything. In the future it might
         // emit a node per draw call that uses transparency
-        if submit_node_id == 0 {
+        if args.submit_node_id == 0 {
             let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
 
             let command_buffer = &write_context.command_buffer;

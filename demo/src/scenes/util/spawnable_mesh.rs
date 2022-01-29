@@ -5,6 +5,7 @@ use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::rafx_visibility::VisibleBounds;
 use rafx::render_features::RenderObjectHandle;
+use rafx::renderer::Renderer;
 use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
 use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
 
@@ -65,13 +66,19 @@ impl SpawnableMesh {
     ) -> SpawnableMesh {
         let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
+        let renderer = resources.get::<Renderer>().unwrap();
 
         let render_object = mesh_render_objects.register_render_object(MeshRenderObject {
             mesh: asset_handle.clone(),
         });
 
-        asset_manager
-            .wait_for_asset_to_load(&asset_handle, asset_resource, "spawnable mesh")
+        renderer
+            .wait_for_asset_to_load(
+                &mut asset_manager,
+                &asset_handle,
+                asset_resource,
+                "spawnable mesh",
+            )
             .unwrap();
 
         let visible_bounds = asset_manager

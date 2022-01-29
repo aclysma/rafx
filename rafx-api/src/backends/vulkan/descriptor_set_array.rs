@@ -225,7 +225,7 @@ impl RafxDescriptorSetArrayVulkan {
             .dst_set(vk_set)
             .dst_binding(descriptor.binding)
             .dst_array_element(update.dst_element_offset)
-            .descriptor_type(descriptor.vk_type);
+            .descriptor_type(descriptor.vk_type.unwrap());
 
         log::trace!(
             "update descriptor set {:?} (set_index: {:?} binding: {} name: {:?} type: {:?} array_index: {} first update data index: {} set: {:?})",
@@ -517,7 +517,7 @@ impl RafxDescriptorSetArrayVulkan {
             RafxResourceType::UNIFORM_BUFFER
             | RafxResourceType::BUFFER
             | RafxResourceType::BUFFER_READ_WRITE => {
-                if descriptor.vk_type == vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC {
+                if descriptor.vk_type.unwrap() == vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC {
                     //TODO: Add support for dynamic uniforms
                     unimplemented!();
                 }

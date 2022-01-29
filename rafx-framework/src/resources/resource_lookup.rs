@@ -224,9 +224,9 @@ where
     fn handle_dropped_resources(inner: &mut ResourceLookupInner<KeyT, ResourceT>) {
         for dropped in inner.drop_rx.try_iter() {
             log::trace!(
-                "dropping {} {:?}",
+                "queue for delete {} {:?}",
                 core::any::type_name::<ResourceT>(),
-                dropped.resource
+                dropped.resource_hash
             );
             inner.drop_sink.retire(dropped.resource);
             inner.resources.remove(&dropped.resource_hash.into());

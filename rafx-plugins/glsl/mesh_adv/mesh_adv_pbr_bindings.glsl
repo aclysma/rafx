@@ -1,8 +1,12 @@
 //
 // Per-Frame Pass
 //
+#include "mesh_adv_types.glsl"
 #include "lights_processing.glsl"
 
+//
+// Per-View Bindings
+//
 struct PointLight {
     vec3 position_ws;
     float range;
@@ -148,9 +152,35 @@ layout (set = 0, binding = 6) buffer AllLights {
 } all_lights;
 
 //
-// Per-Material Bindings
+// Render Graph Supplied Bindings (SSAO)
 //
-struct MaterialData {
+
+// @[export]
+// @[slot_name("ssao_texture")]
+layout (set = 1, binding = 0) uniform texture2D ssao_texture;
+
+
+//
+// Per-Batch Bindings
+//
+layout (set = 2, binding = 0) buffer AllTransforms {
+    Transform transforms[];
+} all_transforms;
+
+layout (set = 2, binding = 1) buffer AllDrawData {
+    DrawData draw_data[];
+} all_draw_data;
+
+// @[export]
+layout (push_constant) uniform PushConstants {
+    uint draw_data_index;
+} constants;
+
+//
+// Material Bindings
+//
+// @[export]
+struct MaterialDbEntry {
     vec4 base_color_factor;
     vec3 emissive_factor;
     float metallic_factor;
@@ -159,16 +189,16 @@ struct MaterialData {
     float alpha_threshold;
     bool enable_alpha_blend;
     bool enable_alpha_clip;
-    bool has_base_color_texture;
+    int color_texture;
     bool base_color_texture_has_alpha_channel;
-    bool has_metallic_roughness_texture;
-    bool has_normal_texture;
-    bool has_emissive_texture;
+    int metallic_roughness_texture;
+    int normal_texture;
+    int emissive_texture;
 };
 
-// @[export]
-// @[internal_buffer]
-// @[slot_name("per_material_data")]
-layout (set = 2, binding = 0) uniform MaterialDataUbo {
-    MaterialData data;
-} per_material_data;
+layout (set = 3, binding = 0) buffer AllMaterials {
+    MaterialDbEntry materials[];
+} all_materials;
+
+layout (set = 3, binding = 1) uniform texture2D all_material_textures[256];
+

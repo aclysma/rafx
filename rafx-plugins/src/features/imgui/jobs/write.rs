@@ -6,6 +6,7 @@ use rafx::api::{
     RafxVertexBufferBinding,
 };
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use rafx::render_features::BeginSubmitNodeBatchArgs;
 use std::marker::PhantomData;
 
 lazy_static::lazy_static! {
@@ -62,13 +63,16 @@ impl<'write> RenderFeatureWriteJob<'write> for ImGuiWriteJob<'write> {
         self.frame_packet.view_frame_index(view)
     }
 
-    fn apply_setup(
+    fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        _view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
+        args: BeginSubmitNodeBatchArgs,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_feature_debug_constants().apply_setup);
+        if !args.feature_changed {
+            return Ok(());
+        }
+
+        profiling::scope!(super::render_feature_debug_constants().begin_submit_node_batch);
 
         let per_frame_data = self.frame_packet.per_frame_data().get();
         let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();

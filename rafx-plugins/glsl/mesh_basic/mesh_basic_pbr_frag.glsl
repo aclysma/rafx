@@ -849,7 +849,7 @@ vec4 pbr_path(
     //
     // There are still issues here, not sure how alpha interacts and gamma looks terrible
     //
-    vec3 ambient = per_view_data.ambient_light.rgb * base_color.rgb; //TODO: Multiply ao in here
+    vec3 ambient = per_view_data.ambient_light.rgb * base_color.rgb;
 
     float alpha = 1.0;
     if (per_material_data.data.enable_alpha_blend) {

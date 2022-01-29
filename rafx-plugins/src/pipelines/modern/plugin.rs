@@ -9,14 +9,13 @@ use rafx::api::{
 };
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::{AssetManager, ComputePipelineAsset, ImageAsset, MaterialAsset};
-use rafx::base::resource_map::ResourceMap;
 use rafx::distill::loader::handle::Handle;
 use rafx::framework::{
     BufferResource, ImageViewResource, RenderResources, ResourceArc, MAX_FRAMES_IN_FLIGHT,
 };
 use rafx::graph::PreparedRenderGraph;
 use rafx::render_features::{ExtractResources, RenderRegistryBuilder, RenderView};
-use rafx::renderer::RendererPipelinePlugin;
+use rafx::renderer::{RendererLoadContext, RendererPipelinePlugin};
 use std::sync::{Arc, Mutex};
 
 // A plugin that add demo-specific configuration
@@ -102,10 +101,11 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
 
     fn initialize_static_resources(
         &self,
+        renderer_load_context: &RendererLoadContext,
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
         _extract_resources: &ExtractResources,
-        render_resources: &mut ResourceMap,
+        render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         //
@@ -159,40 +159,68 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
         let cas_pipeline =
             asset_resource.load_asset_path::<ComputePipelineAsset, _>(cas_asset_path);
 
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &bloom_extract_material,
             asset_resource,
             "bloom extract material",
         )?;
 
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &bloom_blur_material,
             asset_resource,
             "bloom blur material",
         )?;
 
-        asset_manager.wait_for_asset_to_load(&ssao_material, asset_resource, "ssao material")?;
-        asset_manager.wait_for_asset_to_load(&taa_material, asset_resource, "taa material")?;
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
+            &ssao_material,
+            asset_resource,
+            "ssao material",
+        )?;
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
+            &taa_material,
+            asset_resource,
+            "taa material",
+        )?;
 
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &bloom_combine_material,
             asset_resource,
             "bloom combine material",
         )?;
 
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &luma_build_histogram,
             asset_resource,
             "luma_build_histogram",
         )?;
 
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &luma_average_histogram,
             asset_resource,
             "luma_average_histogram",
         )?;
 
-        asset_manager.wait_for_asset_to_load(&cas_pipeline, asset_resource, "cas_pipeline")?;
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
+            &cas_pipeline,
+            asset_resource,
+            "cas_pipeline",
+        )?;
 
         let tonemap_histogram_result =
             asset_manager

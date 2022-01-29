@@ -34,7 +34,7 @@ impl RafxGlUniformMember {
 ///
 /// A RafxShaderResource may be specified by hand or generated using rafx-shader-processor
 //TODO: Consider separate type for bindings vs. push constants
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxShaderResource {
     pub resource_type: RafxResourceType,
@@ -45,7 +45,7 @@ pub struct RafxShaderResource {
     // access it via element_count_normalized(). This ensures that if it
     // is default-initialized to 0, it is treated as 1
     pub element_count: u32,
-    // Valid only for push constants (resource_type != ROOT_CONSTANT)
+    // Valid only for push constants (resource_type == ROOT_CONSTANT)
     pub size_in_bytes: u32,
     pub used_in_shader_stages: RafxShaderStageFlags,
     // Name is optional
@@ -72,6 +72,23 @@ pub struct RafxShaderResource {
     pub gles2_uniform_members: Vec<RafxGlUniformMember>,
 }
 
+impl Default for RafxShaderResource {
+    fn default() -> Self {
+        RafxShaderResource {
+            resource_type: Default::default(),
+            set_index: u32::MAX,
+            binding: u32::MAX,
+            element_count: 0,
+            size_in_bytes: 0,
+            used_in_shader_stages: Default::default(),
+            name: None,
+            gles_name: None,
+            gles_sampler_name: None,
+            gles2_uniform_members: Vec::default(),
+        }
+    }
+}
+
 impl RafxShaderResource {
     pub fn element_count_normalized(&self) -> u32 {
         // Assume 0 = default of 1
@@ -91,21 +108,24 @@ impl RafxShaderResource {
                     )
                 )?;
             }
+
             if self.size_in_bytes == 0 {
                 Err(format!(
                     "binding (set={:?} binding={:?} name={:?} type={:?}) has zero size_in_bytes",
                     self.set_index, self.binding, self.name, self.resource_type
                 ))?;
             }
-            if self.set_index != 0 {
+
+            if self.set_index != u32::MAX {
                 Err(format!(
-                    "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero set_index",
+                    "binding (set={:?} binding={:?} name={:?} type={:?}) has set_index != u32::MAX",
                     self.set_index, self.binding, self.name, self.resource_type
                 ))?;
             }
-            if self.binding != 0 {
+
+            if self.binding != u32::MAX {
                 Err(format!(
-                    "binding (set={:?} binding={:?} name={:?} type={:?}) has non-zero binding",
+                    "binding (set={:?} binding={:?} name={:?} type={:?}) has binding != u32::MAX",
                     self.set_index, self.binding, self.name, self.resource_type
                 ))?;
             }
@@ -120,6 +140,20 @@ impl RafxShaderResource {
                         self.resource_type
                     )
                 )?;
+            }
+
+            if self.set_index == u32::MAX {
+                Err(format!(
+                    "binding (set={:?} binding={:?} name={:?} type={:?}) has binding == u32::MAX",
+                    self.set_index, self.binding, self.name, self.resource_type
+                ))?;
+            }
+
+            if self.binding == u32::MAX {
+                Err(format!(
+                    "binding (set={:?} binding={:?} name={:?} type={:?}) has binding == u32::MAX",
+                    self.set_index, self.binding, self.name, self.resource_type
+                ))?;
             }
 
             if self.set_index as usize >= MAX_DESCRIPTOR_SET_LAYOUTS {
@@ -149,7 +183,7 @@ impl RafxShaderResource {
                 "Pass is using shaders in different stages with different resource_type {:?} and {:?} (set={} binding={})",
                 self.resource_type, other.resource_type,
                 self.set_index,
-                self.binding
+                self.binding,
             ))?;
         }
 

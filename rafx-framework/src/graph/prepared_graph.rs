@@ -208,6 +208,7 @@ impl PreparedRenderGraph {
                 src_state: buffer_barrier.old_state,
                 dst_state: buffer_barrier.new_state,
                 queue_transition: RafxBarrierQueueTransition::None,
+                offset_size: None,
             });
         }
 

@@ -1,4 +1,5 @@
 use crate::render_features::render_features_prelude::*;
+use crate::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
 use fnv::FnvHashMap;
 use rafx_api::RafxResult;
 use std::sync::Arc;
@@ -70,41 +71,38 @@ impl<'write> PreparedRenderData<'write> {
                 &[]
             };
 
-        let mut previous_node_feature_index: i32 = -1;
-        let mut previous_view_frame_index: Option<ViewFrameIndex> = None;
+        let mut previous_node_feature_index: Option<RenderFeatureIndex> = None;
+        let mut previous_node_sort_key: Option<SubmitNodeSortKey> = None;
+        let mut view_frame_index: Option<ViewFrameIndex> = None;
 
         for submit_node in submit_nodes {
-            if submit_node.feature_index() as i32 != previous_node_feature_index {
-                if previous_node_feature_index != -1 {
-                    // call revert setup
-                    log::trace!("revert setup for feature {}", previous_node_feature_index);
-                    self.write_jobs[previous_node_feature_index as usize]
-                        .as_ref()
-                        .unwrap()
-                        .revert_setup(
-                            write_context,
-                            previous_view_frame_index.unwrap(),
-                            render_phase_index,
-                        )?;
-                }
+            let feature_index = submit_node.feature_index();
+            let sort_key = submit_node.sort_key();
+            let feature_changed = Some(feature_index) != previous_node_feature_index;
+            let sort_key_changed = Some(sort_key) != previous_node_sort_key;
 
-                previous_node_feature_index = submit_node.feature_index() as i32;
-                previous_view_frame_index = Some(
+            if feature_changed {
+                view_frame_index = Some(
                     self.write_jobs[submit_node.feature_index() as usize]
                         .as_ref()
                         .unwrap()
                         .view_frame_index(view),
                 );
+            }
 
-                // call apply setup
-                log::trace!("apply setup for feature {}", submit_node.feature_index());
+            if feature_changed || sort_key_changed {
                 self.write_jobs[submit_node.feature_index() as usize]
                     .as_ref()
                     .unwrap()
-                    .apply_setup(
+                    .begin_submit_node_batch(
                         write_context,
-                        previous_view_frame_index.unwrap(),
-                        render_phase_index,
+                        BeginSubmitNodeBatchArgs {
+                            view_frame_index: view_frame_index.unwrap(),
+                            render_phase_index,
+                            feature_changed,
+                            // previous_node_sort_key
+                            sort_key: submit_node.sort_key(),
+                        },
                     )?;
             }
 
@@ -119,23 +117,15 @@ impl<'write> PreparedRenderData<'write> {
                 .unwrap()
                 .render_submit_node(
                     write_context,
-                    previous_view_frame_index.unwrap(),
-                    render_phase_index,
-                    submit_node.submit_node_id(),
+                    RenderSubmitNodeArgs {
+                        view_frame_index: view_frame_index.unwrap(),
+                        render_phase_index,
+                        submit_node_id: submit_node.submit_node_id(),
+                    },
                 )?;
-        }
 
-        if previous_node_feature_index != -1 {
-            // call revert setup
-            log::trace!("revert setup for feature: {}", previous_node_feature_index);
-            self.write_jobs[previous_node_feature_index as usize]
-                .as_ref()
-                .unwrap()
-                .revert_setup(
-                    write_context,
-                    previous_view_frame_index.unwrap(),
-                    render_phase_index,
-                )?;
+            previous_node_feature_index = Some(feature_index);
+            previous_node_sort_key = Some(sort_key);
         }
 
         Ok(())
