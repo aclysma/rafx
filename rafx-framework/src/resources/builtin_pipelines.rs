@@ -130,7 +130,34 @@ impl BuiltinPipelines {
         descriptor_set.flush(&mut descriptor_set_allocator)?;
         descriptor_set_allocator.flush_changes()?;
         descriptor_set.bind(&command_buffer)?;
-        command_buffer.cmd_dispatch(buffer_bytes_div_by_four, 1, 1)
+
+        // Keep in sync with group size in the shader
+        const GROUP_SIZE_X: u32 = 64;
+        let num_workgroups = buffer_bytes_div_by_four / GROUP_SIZE_X;
+
+        let (group_count_x, group_count_y) = if num_workgroups <= 1 {
+            // For group sizes that are small enough,
+            (num_workgroups, 1)
+        } else {
+            // We dispatch in XY shape because some GPUs have a limit of 65k in a single dimension.
+            // This method will ensure we don't dispatch any more than group_count_isqrt-1 unnecessary
+            // workgroups
+
+            // Estimate largest integer <= sqrt(num_workgroups) with fudge for FP accuracy
+            // This may panic due to wrapping if num_workgroups is > ~4B
+            let mut group_count_isqrt = ((num_workgroups as f32).sqrt() - 0.0001).floor() as u32;
+            while group_count_isqrt * group_count_isqrt < num_workgroups {
+                group_count_isqrt += 1;
+            }
+
+            if group_count_isqrt * (group_count_isqrt - 1) >= num_workgroups {
+                (group_count_isqrt, group_count_isqrt - 1)
+            } else {
+                (group_count_isqrt, group_count_isqrt)
+            }
+        };
+
+        command_buffer.cmd_dispatch(group_count_x, group_count_y, 1)
     }
 
     pub fn blit_image(

@@ -14,12 +14,14 @@ layout(set = 0, binding = 1) buffer Buffer
     uint data[];
 } data;
 
-// Expected to invoke workgroup size of (bytes/4, 1, 1)
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+// Expected to invoke workgroup size where x*y >= bytes/4, and z is 1
+// Keep local_size_x in sync with GROUP_SIZE_X in fill_buffer()
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    if (gl_GlobalInvocationID.x < config.buffer_bytes_div_by_four)
+    uint index = gl_GlobalInvocationID.y * (gl_NumWorkGroups.x * gl_WorkGroupSize.x) + gl_GlobalInvocationID.x;
+    if (index < config.buffer_bytes_div_by_four)
     {
-        data.data[gl_GlobalInvocationID.x] = config.fill_value;
+        data.data[index] = config.fill_value;
     }
 }
