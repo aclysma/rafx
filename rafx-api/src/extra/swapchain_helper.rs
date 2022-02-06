@@ -181,11 +181,12 @@ impl RafxPresentableFrame {
 
         let swapchain = shared_state.swapchain.lock().unwrap();
 
+        //NOTE: Don't bail for error until we update the frame indices
         let result = queue.present(
             &*swapchain,
             &signal_semaphores,
             self.swapchain_image.swapchain_image_index,
-        )?;
+        );
 
         shared_state.sync_frame_index.store(
             (sync_frame_index + 1) % shared_state.in_flight_fences.len(),
@@ -195,7 +196,7 @@ impl RafxPresentableFrame {
             .global_frame_index
             .fetch_add(1, Ordering::Relaxed);
 
-        Ok(result)
+        result
     }
 }
 
