@@ -356,7 +356,7 @@ impl GraphicsPipelineCache {
         // May be caused by not registering a render phase before using it
         assert!(render_phase_index < MAX_RENDER_PHASE_COUNT);
         if let Some(existing) = inner.material_pass_assignments[render_phase_index as usize]
-            .get(&material_pass.get_hash())
+            .get(&material_pass.resource_hash())
         {
             if existing.upgrade().is_some() {
                 // Nothing to do here, the previous ref is still valid
@@ -365,7 +365,7 @@ impl GraphicsPipelineCache {
         }
 
         inner.material_pass_assignments[render_phase_index as usize]
-            .insert(material_pass.get_hash(), material_pass.downgrade());
+            .insert(material_pass.resource_hash(), material_pass.downgrade());
         //TODO: Do we need to mark this as a dirty material that may need to build additional
         // pipelines?
     }
@@ -415,7 +415,7 @@ impl GraphicsPipelineCache {
         create_if_missing: bool,
     ) -> Option<RafxResult<ResourceArc<GraphicsPipelineResource>>> {
         let key = CachedGraphicsPipelineKey {
-            material_pass: material_pass.get_hash(),
+            material_pass: material_pass.resource_hash(),
             render_target_meta_hash: render_target_meta.render_target_meta_hash(),
             vertex_data_set_layout: vertex_data_set_layout.hash(),
         };

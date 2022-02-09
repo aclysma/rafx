@@ -2,7 +2,9 @@ use crate::assets::ldtk::LdtkAssetType;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;
+use rafx::framework::RenderResources;
 use rafx::renderer::RendererAssetPlugin;
+use rafx::RafxResult;
 
 pub struct LdtkAssetTypeRendererPlugin;
 
@@ -19,7 +21,9 @@ impl RendererAssetPlugin for LdtkAssetTypeRendererPlugin {
         &self,
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
-    ) {
-        asset_manager.register_asset_type::<LdtkAssetType>(asset_resource);
+        _render_resources: &mut RenderResources,
+    ) -> RafxResult<()> {
+        let asset_type = LdtkAssetType::create(asset_manager, asset_resource)?;
+        asset_manager.register_asset_type(asset_type)
     }
 }

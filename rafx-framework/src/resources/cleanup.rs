@@ -45,7 +45,7 @@ impl<T> ResourceDropSink<T> {
         self.resources_in_flight
             .push_back(DropSinkResourceInFlight::<T> {
                 _resource: resource,
-                live_until_frame: self.frame_index + self.max_in_flight_frames + Wrapping(1),
+                live_until_frame: self.frame_index + self.max_in_flight_frames,
             });
     }
 

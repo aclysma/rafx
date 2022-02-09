@@ -89,6 +89,11 @@ impl<T> RawSlab<T> {
         Default::default()
     }
 
+    pub fn clear(&mut self) {
+        self.storage.clear();
+        self.free_list.clear();
+    }
+
     /// Create an empty but presized RawSlab
     pub fn with_capacity(capacity: SlabIndexT) -> Self {
         let mut storage = Vec::with_capacity(capacity as usize);

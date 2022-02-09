@@ -173,10 +173,16 @@ impl DemoApp {
         let font = {
             let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
             let font = asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf");
-            resources
-                .get_mut::<AssetManager>()
-                .unwrap()
-                .wait_for_asset_to_load(&font, &mut *asset_resource, "demo font")?;
+            let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
+            let renderer = resources.get::<Renderer>().unwrap();
+
+            renderer.wait_for_asset_to_load(
+                &mut asset_manager,
+                &font,
+                &mut *asset_resource,
+                "demo font",
+            )?;
+
             font
         };
 
@@ -241,6 +247,7 @@ impl DemoApp {
                     // allocating each frame. We can clear this between scene transitions.
                     let mut renderer = self.resources.get_mut::<Renderer>().unwrap();
                     renderer.clear_temporary_work();
+                    renderer.wait_for_render_thread_idle();
                 }
 
                 *self.resources.get_mut::<MeshRenderOptions>().unwrap() = Default::default();

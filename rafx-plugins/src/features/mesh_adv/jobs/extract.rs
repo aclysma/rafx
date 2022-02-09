@@ -10,12 +10,15 @@ use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialA
 use rafx::base::resource_map::ReadBorrow;
 use rafx::base::resource_ref_map::ResourceRefBorrow;
 use rafx::distill::loader::handle::Handle;
+use rafx::framework::{ImageViewResource, ResourceArc};
+use rafx::renderer::InvalidResources;
 
 pub struct MeshAdvExtractJob<'extract> {
     world: ResourceRefBorrow<'extract, World>,
     mesh_render_options: Option<ResourceRefBorrow<'extract, MeshAdvRenderOptions>>,
     shadow_map_atlas: ReadBorrow<'extract, ShadowMapAtlas>,
     asset_manager: AssetManagerExtractRef,
+    invalid_image_color: ResourceArc<ImageViewResource>,
     default_pbr_material: Handle<MaterialAsset>,
     depth_material: Handle<MaterialAsset>,
     shadow_map_atlas_depth_material: Handle<MaterialAsset>,
@@ -41,6 +44,11 @@ impl<'extract> MeshAdvExtractJob<'extract> {
                     .render_resources
                     .fetch::<AssetManagerRenderResource>()
                     .extract_ref(),
+                invalid_image_color: extract_context
+                    .render_resources
+                    .fetch::<InvalidResources>()
+                    .invalid_image_color
+                    .clone(),
                 shadow_map_atlas: extract_context.render_resources.fetch::<ShadowMapAtlas>(),
                 default_pbr_material,
                 depth_material,
@@ -82,6 +90,7 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshAdvExtractJob<'extract> {
                     .unwrap()
                     .get_single_material_pass()
                     .ok(),
+                invalid_image_color: self.invalid_image_color.clone(),
                 shadow_map_atlas: self.shadow_map_atlas.shadow_atlas_image_view().clone(),
             });
     }

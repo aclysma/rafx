@@ -4,6 +4,8 @@
 mod resources;
 pub use resources::*;
 
+pub mod upload;
+
 pub mod graph;
 
 pub mod render_features;

@@ -16,7 +16,7 @@ use crate::gles3::RafxRootSignatureGles3;
 use crate::metal::RafxRootSignatureMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxRootSignatureVulkan;
-use crate::RafxPipelineType;
+use crate::{RafxDescriptorIndex, RafxPipelineType, RafxShaderStageFlags};
 
 /// Represents the full "layout" or "interface" of a shader (or set of shaders.)
 ///
@@ -66,6 +66,91 @@ impl RafxRootSignature {
                 ))
             ))]
             RafxRootSignature::Empty(inner) => inner.pipeline_type(),
+        }
+    }
+
+    pub fn find_descriptor_by_name(
+        &self,
+        name: &str,
+    ) -> Option<RafxDescriptorIndex> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxRootSignature::Vk(inner) => inner.find_descriptor_by_name(name),
+            #[cfg(feature = "rafx-metal")]
+            RafxRootSignature::Metal(inner) => inner.find_descriptor_by_name(name),
+            #[cfg(feature = "rafx-gles2")]
+            RafxRootSignature::Gles2(inner) => inner.find_descriptor_by_name(name),
+            #[cfg(feature = "rafx-gles3")]
+            RafxRootSignature::Gles3(inner) => inner.find_descriptor_by_name(name),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxRootSignature::Empty(inner) => inner.find_descriptor_by_name(name),
+        }
+    }
+
+    pub fn find_descriptor_by_binding(
+        &self,
+        set_index: u32,
+        binding: u32,
+    ) -> Option<RafxDescriptorIndex> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxRootSignature::Vk(inner) => inner.find_descriptor_by_binding(set_index, binding),
+            #[cfg(feature = "rafx-metal")]
+            RafxRootSignature::Metal(inner) => inner.find_descriptor_by_binding(set_index, binding),
+            #[cfg(feature = "rafx-gles2")]
+            RafxRootSignature::Gles2(inner) => inner.find_descriptor_by_binding(set_index, binding),
+            #[cfg(feature = "rafx-gles3")]
+            RafxRootSignature::Gles3(inner) => inner.find_descriptor_by_binding(set_index, binding),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxRootSignature::Empty(inner) => inner.find_descriptor_by_binding(set_index, binding),
+        }
+    }
+
+    pub fn find_push_constant_descriptor(
+        &self,
+        stage: RafxShaderStageFlags,
+    ) -> Option<RafxDescriptorIndex> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxRootSignature::Vk(inner) => inner.find_push_constant_descriptor(stage),
+            #[cfg(feature = "rafx-metal")]
+            RafxRootSignature::Metal(inner) => inner.find_push_constant_descriptor(stage),
+            #[cfg(feature = "rafx-gles2")]
+            RafxRootSignature::Gles2(_inner) => {
+                let _ = stage;
+                unimplemented!()
+            }
+            #[cfg(feature = "rafx-gles3")]
+            RafxRootSignature::Gles3(_inner) => {
+                let _ = stage;
+                unimplemented!()
+            }
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxRootSignature::Empty(inner) => inner.find_push_constant_descriptor(stage),
         }
     }
 

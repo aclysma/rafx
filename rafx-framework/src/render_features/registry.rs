@@ -40,8 +40,7 @@ pub struct RenderFeatureDebugConstants {
 
     pub on_begin_execute_graph: &'static str,
     pub render_submit_node: &'static str,
-    pub apply_setup: &'static str,
-    pub revert_setup: &'static str,
+    pub begin_submit_node_batch: &'static str,
 }
 
 pub trait RenderFeature {

@@ -4,6 +4,7 @@ use super::*;
 use crate::phases::WireframeRenderPhase;
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
+use rafx::renderer::RendererLoadContext;
 
 pub struct Debug3DStaticResources {
     pub debug3d_material: Handle<MaterialAsset>,
@@ -55,17 +56,24 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
 
     fn initialize_static_resources(
         &self,
+        renderer_load_context: &RendererLoadContext,
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
         _extract_resources: &ExtractResources,
-        render_resources: &mut ResourceMap,
+        render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let debug3d_material = asset_resource
             .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/debug3d.material");
 
-        asset_manager
-            .wait_for_asset_to_load(&debug3d_material, asset_resource, "debug3d.material")
+        renderer_load_context
+            .wait_for_asset_to_load(
+                render_resources,
+                asset_manager,
+                &debug3d_material,
+                asset_resource,
+                "debug3d.material",
+            )
             .unwrap();
 
         render_resources.insert(Debug3DStaticResources { debug3d_material });

@@ -155,8 +155,14 @@ impl<'prepare, 'entry, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>>
         self.render_object_instance.object_id
     }
 
-    pub fn render_object_id(&self) -> &RenderObjectId {
-        &self.render_object_instance.render_object_id
+    //TODO: Rename to render_object_index
+    pub fn render_object_id(&self) -> RenderObjectId {
+        self.render_object_instance.render_object_id
+    }
+
+    //TODO: Rename to render_object_instance_index
+    pub fn render_object_instance_id(&self) -> RenderObjectInstanceId {
+        self.id as u32
     }
 
     pub fn set_render_object_instance_submit_data(

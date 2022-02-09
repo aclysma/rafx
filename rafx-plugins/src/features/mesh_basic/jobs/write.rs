@@ -8,6 +8,7 @@ use crate::phases::{
 use rafx::api::{RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding};
 use rafx::api::{RafxIndexType, RafxPrimitiveTopology};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+use rafx::render_features::RenderSubmitNodeArgs;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 
@@ -115,19 +116,17 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
-        submit_node_id: SubmitNodeId,
+        args: RenderSubmitNodeArgs,
     ) -> RafxResult<()> {
         profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
         // Bailing here about 118 fps
 
-        let is_wireframe_render_phase = render_phase_index == self.wireframe_index;
-        let is_depth_prepass_render_phase = render_phase_index == self.depth_prepass_index;
-        let is_shadow_map_render_phase = render_phase_index == self.shadow_map_index;
+        let is_wireframe_render_phase = args.render_phase_index == self.wireframe_index;
+        let is_depth_prepass_render_phase = args.render_phase_index == self.depth_prepass_index;
+        let is_shadow_map_render_phase = args.render_phase_index == self.shadow_map_index;
 
-        let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
+        let view_submit_packet = self.submit_packet.view_submit_packet(args.view_frame_index);
 
         let command_buffer = &write_context.command_buffer;
 
@@ -139,7 +138,7 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
             .borrow();
 
         let submit_node_data = view_submit_packet
-            .get_submit_node_data_from_render_phase(render_phase_index, submit_node_id);
+            .get_submit_node_data_from_render_phase(args.render_phase_index, args.submit_node_id);
 
         let render_object_instance = self
             .frame_packet
@@ -164,8 +163,8 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
             vertex_buffer_offset_in_bytes,
             instance_buffer,
             instance_buffer_offset_in_bytes,
-        ) = if render_phase_index == OpaqueRenderPhase::render_phase_index()
-            || render_phase_index == TransparentRenderPhase::render_phase_index()
+        ) = if args.render_phase_index == OpaqueRenderPhase::render_phase_index()
+            || args.render_phase_index == TransparentRenderPhase::render_phase_index()
         {
             (
                 &*MESH_VERTEX_PBR_LAYOUT,
@@ -174,7 +173,7 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
                 model_matrix_buffer,
                 std::mem::size_of::<MeshModelMatrix>() * submit_node_data.model_matrix_index,
             )
-        } else if render_phase_index == DepthPrepassRenderPhase::render_phase_index() {
+        } else if args.render_phase_index == DepthPrepassRenderPhase::render_phase_index() {
             (
                 &*MESH_VERTEX_POSITION_LAYOUT,
                 &mesh_asset.inner.vertex_position_buffer,
@@ -196,7 +195,7 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                Some(render_phase_index),
+                Some(args.render_phase_index),
                 material_pass,
                 &write_context.render_target_meta,
                 mesh_vertex_layout,

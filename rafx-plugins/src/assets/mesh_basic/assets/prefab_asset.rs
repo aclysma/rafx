@@ -1,4 +1,5 @@
 use distill::loader::handle::Handle;
+use distill::loader::LoadHandle;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler};
 use serde::{Deserialize, Serialize};
@@ -73,6 +74,7 @@ impl DefaultAssetTypeLoadHandler<PrefabBasicAssetData, PrefabBasicAsset>
     fn load(
         _asset_manager: &mut AssetManager,
         model_asset: PrefabBasicAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<PrefabBasicAsset> {
         let inner = PrefabBasicAssetInner {
             objects: model_asset.objects,

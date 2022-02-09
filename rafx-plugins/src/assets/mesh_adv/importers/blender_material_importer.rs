@@ -1,13 +1,9 @@
 use super::MeshAdvMaterialData;
-use crate::assets::mesh_adv::{
-    MeshAdvBlendMethod, MeshAdvMaterialDataShaderParam, MeshAdvShadowMethod,
-    MeshMaterialAdvAssetData,
-};
+use crate::assets::mesh_adv::{MeshAdvBlendMethod, MeshAdvShadowMethod, MeshMaterialAdvAssetData};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::loader::AssetRef;
+use distill::make_handle_from_str;
 use distill::{core::AssetUuid, importer::ImportOp};
-use distill::{make_handle, make_handle_from_str};
-use rafx::assets::{ImageAsset, MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
+use rafx::assets::ImageAsset;
 use rafx::distill::loader::handle::Handle;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -94,8 +90,6 @@ impl Importer for MeshAdvBlenderMaterialImporter {
 
         let material_handle = make_handle_from_str("680c6edd-8bed-407b-aea0-d0f6056093d6")?;
 
-        let null_image_handle = make_handle_from_str("fc937369-cad2-4a00-bf42-5968f1210784")?;
-
         let shadow_method = match json_format.shadow_method.as_ref().map(|x| x.as_str()) {
             None => MeshAdvShadowMethod::Opaque,
             Some("NONE") => MeshAdvShadowMethod::None,
@@ -129,77 +123,9 @@ impl Importer for MeshAdvBlenderMaterialImporter {
             backface_culling: json_format.backface_culling.unwrap_or(true),
         };
 
-        let mut slot_assignments = vec![];
-
-        let material_data_shader_param: MeshAdvMaterialDataShaderParam =
-            material_data.clone().into();
-        slot_assignments.push(MaterialInstanceSlotAssignment {
-            slot_name: "per_material_data".to_string(),
-            array_index: 0,
-            image: None,
-            sampler: None,
-            buffer_data: Some(rafx::base::memory::any_as_bytes(&material_data_shader_param).into()),
-        });
-
-        fn push_image_slot_assignment(
-            slot_name: &str,
-            slot_assignments: &mut Vec<MaterialInstanceSlotAssignment>,
-            should_include: bool,
-            image: &Option<Handle<ImageAsset>>,
-            default_image: &Handle<ImageAsset>,
-        ) {
-            slot_assignments.push(MaterialInstanceSlotAssignment {
-                slot_name: slot_name.to_string(),
-                array_index: 0,
-                image: if should_include {
-                    Some(image.as_ref().map_or(default_image, |x| x).clone())
-                } else {
-                    Some(default_image.clone())
-                },
-                sampler: None,
-                buffer_data: None,
-            });
-        }
-
-        push_image_slot_assignment(
-            "base_color_texture",
-            &mut slot_assignments,
-            material_data.has_base_color_texture,
-            &json_format.color_texture,
-            &null_image_handle,
-        );
-        push_image_slot_assignment(
-            "metallic_roughness_texture",
-            &mut slot_assignments,
-            material_data.has_metallic_roughness_texture,
-            &json_format.metallic_roughness_texture,
-            &null_image_handle,
-        );
-        push_image_slot_assignment(
-            "normal_texture",
-            &mut slot_assignments,
-            material_data.has_normal_texture,
-            &json_format.normal_texture,
-            &null_image_handle,
-        );
-        push_image_slot_assignment(
-            "emissive_texture",
-            &mut slot_assignments,
-            material_data.has_emissive_texture,
-            &json_format.emissive_texture,
-            &null_image_handle,
-        );
-
-        let material_instance_asset_data = MaterialInstanceAssetData {
-            material: material_handle,
-            slot_assignments,
-        };
-
-        let material_instance_handle = make_handle(material_instance_id);
-
         let mesh_material_data = MeshMaterialAdvAssetData {
             material_data,
-            material_instance: material_instance_handle.clone(),
+            material_asset: material_handle.clone(),
             color_texture: json_format.color_texture,
             metallic_roughness_texture: json_format.metallic_roughness_texture,
             normal_texture: json_format.normal_texture,
@@ -207,24 +133,14 @@ impl Importer for MeshAdvBlenderMaterialImporter {
         };
 
         Ok(ImporterValue {
-            assets: vec![
-                ImportedAsset {
-                    id: mesh_material_id,
-                    search_tags: vec![],
-                    build_deps: vec![],
-                    load_deps: vec![AssetRef::Uuid(material_instance_id)],
-                    build_pipeline: None,
-                    asset_data: Box::new(mesh_material_data),
-                },
-                ImportedAsset {
-                    id: material_instance_id,
-                    search_tags: vec![],
-                    build_deps: vec![],
-                    load_deps: vec![],
-                    build_pipeline: None,
-                    asset_data: Box::new(material_instance_asset_data),
-                },
-            ],
+            assets: vec![ImportedAsset {
+                id: mesh_material_id,
+                search_tags: vec![],
+                build_deps: vec![],
+                load_deps: vec![],
+                build_pipeline: None,
+                asset_data: Box::new(mesh_material_data),
+            }],
         })
     }
 }

@@ -492,6 +492,7 @@ float3 directional_light_pbr(
 static inline __attribute__((always_inline))
 float4 pbr_path(
     constant spvDescriptorSetBuffer0& spvDescriptorSet0,
+    constant MaterialDataUbo& per_material_data,
     thread const float3& surface_to_eye_vs,
     thread const float4& base_color,
     thread const float4& emissive_color,
@@ -615,7 +616,7 @@ float4 pbr_path(
         }
         total_light += (pbr_2 * percent_lit_2);
     }
-    float3 ambient = per_view_data.ambient_light.xyz * base_color.xyz;
+    float3 ambient = spvDescriptorSet0.per_view_data->ambient_light.xyz * base_color.xyz;
     float alpha = 1.0;
     if (per_material_data.data.enable_alpha_blend != 0u)
     {
@@ -712,6 +713,7 @@ float4 pbr_main(
     float3 param_7 = normal_vs;
     float4 out_color = pbr_path(
         spvDescriptorSet0,
+        per_material_data,
         param_2,
         param_3,
         param_4,

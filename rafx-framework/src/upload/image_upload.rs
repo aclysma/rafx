@@ -1,4 +1,4 @@
-use crate::GpuImageData;
+use crate::upload::gpu_image_data::GpuImageData;
 use rafx_api::extra::upload::{RafxTransferUpload, RafxUploadError};
 use rafx_api::{
     RafxBarrierQueueTransition, RafxCmdCopyBufferToTextureParams, RafxDeviceContext, RafxExtents3D,

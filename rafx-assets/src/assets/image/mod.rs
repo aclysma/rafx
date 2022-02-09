@@ -4,6 +4,11 @@ pub use assets::*;
 //mod importer;
 //pub use importer::*;
 
+mod asset_upload_queue;
+
+mod asset_type_handler;
+pub use asset_type_handler::*;
+
 mod importer_image;
 pub use importer_image::*;
 

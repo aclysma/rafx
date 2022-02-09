@@ -1,11 +1,21 @@
-use crate::assets::mesh_adv::MeshAdvMaterialData;
-use distill::loader::handle::Handle;
-use rafx::api::RafxResult;
-use rafx::assets::{
-    AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset,
-    MaterialInstanceAsset,
+use crate::assets::mesh_adv::material_db::{
+    MaterialDBUploadQueue, MaterialDBUploadQueueContext, MeshAdvMaterial, MeshAdvMaterialDef,
 };
+use crate::assets::mesh_adv::MeshAdvMaterialData;
+use crossbeam_channel::{Receiver, Sender};
+use distill::loader::handle::Handle;
+use distill::loader::LoadHandle;
+use fnv::FnvHashMap;
+use rafx::api::RafxResult;
+use rafx::assets::distill_impl::ResourceAssetLoader;
+use rafx::assets::{
+    asset_type_handler, AssetLookup, AssetManager, AssetTypeHandler, DynAssetLookup, ImageAsset,
+    LoadQueues, MaterialAsset, UploadAssetOp, UploadAssetOpResult,
+};
+use rafx::framework::RenderResources;
+use rafx::render_feature_renderer_prelude::AssetResource;
 use serde::{Deserialize, Serialize};
+use std::any::TypeId;
 use std::sync::Arc;
 use type_uuid::*;
 
@@ -19,22 +29,17 @@ pub struct MeshMaterialAdvAssetDataLod {
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "41ea076f-19d7-4deb-8af1-983148af5383"]
 pub struct MeshMaterialAdvAssetData {
-    pub material_instance: Handle<MaterialInstanceAsset>,
+    pub material_asset: Handle<MaterialAsset>,
     pub material_data: MeshAdvMaterialData,
     pub color_texture: Option<Handle<ImageAsset>>,
     pub metallic_roughness_texture: Option<Handle<ImageAsset>>,
     pub normal_texture: Option<Handle<ImageAsset>>,
     pub emissive_texture: Option<Handle<ImageAsset>>,
-    //shader_data: MeshAdvMaterialDataShaderParam,
-    //color_texture: json_format.color_texture,
-    //matallic_roughness_texture: json_format.matallic_roughness_texture,
-    //normal_texture: json_format.normal_texture,
-    //emissive_texture: json_format.emissive_texture,
 }
 
 pub struct MeshMaterialAdvAssetInner {
-    pub data: MeshMaterialAdvAssetData,
-    pub material_instance: MaterialInstanceAsset,
+    pub material_asset: MaterialAsset,
+    pub material: MeshAdvMaterial,
 }
 
 #[derive(TypeUuid, Clone)]
@@ -44,43 +49,170 @@ pub struct MeshMaterialAdvAsset {
 }
 
 impl MeshMaterialAdvAsset {
-    pub fn data(&self) -> &MeshMaterialAdvAssetData {
-        &self.inner.data
+    pub fn material_data(&self) -> &MeshAdvMaterialData {
+        self.inner.material.data()
     }
 
-    pub fn material_instance(&self) -> &MaterialInstanceAsset {
-        &self.inner.material_instance
+    pub fn material_asset(&self) -> &MaterialAsset {
+        &self.inner.material_asset
     }
 }
 
-pub struct MeshMaterialAdvLoadHandler;
+pub struct MeshAdvMaterialAssetTypeHandler {
+    asset_lookup: AssetLookup<MeshMaterialAdvAsset>,
+    load_queues: LoadQueues<MeshMaterialAdvAssetData, MeshMaterialAdvAsset>,
+    material_upload_context: MaterialDBUploadQueueContext,
 
-impl DefaultAssetTypeLoadHandler<MeshMaterialAdvAssetData, MeshMaterialAdvAsset>
-    for MeshMaterialAdvLoadHandler
-{
-    #[profiling::function]
-    fn load(
+    material_upload_result_tx: Sender<MeshAdvMaterialAssetUploadOpResult>,
+    material_upload_result_rx: Receiver<MeshAdvMaterialAssetUploadOpResult>,
+
+    pending_asset_data: FnvHashMap<LoadHandle, Handle<MaterialAsset>>,
+}
+
+impl MeshAdvMaterialAssetTypeHandler {
+    pub fn create(
+        _asset_manager: &mut AssetManager,
+        asset_resource: &mut AssetResource,
+        render_resources: &mut RenderResources,
+    ) -> RafxResult<Box<dyn AssetTypeHandler>> {
+        let load_queues = LoadQueues::<MeshMaterialAdvAssetData, MeshMaterialAdvAsset>::default();
+
+        asset_resource
+            .add_storage_with_loader::<MeshMaterialAdvAssetData, MeshMaterialAdvAsset, _>(
+                Box::new(ResourceAssetLoader(load_queues.create_loader())),
+            );
+
+        let material_upload_queue = MaterialDBUploadQueue::new();
+        let material_upload_context = material_upload_queue.material_upload_queue_context();
+
+        render_resources.insert(material_upload_queue);
+
+        let (material_upload_result_tx, material_upload_result_rx) = crossbeam_channel::unbounded();
+
+        Ok(Box::new(Self {
+            asset_lookup: AssetLookup::new(asset_resource.loader()),
+            load_queues,
+            material_upload_context,
+            material_upload_result_tx,
+            material_upload_result_rx,
+            pending_asset_data: Default::default(),
+        }))
+    }
+}
+
+impl AssetTypeHandler for MeshAdvMaterialAssetTypeHandler {
+    fn process_load_requests(
+        &mut self,
         asset_manager: &mut AssetManager,
-        asset_data: MeshMaterialAdvAssetData,
-    ) -> RafxResult<MeshMaterialAdvAsset> {
-        let material_instance = asset_manager
-            .latest_asset(&asset_data.material_instance)
-            .unwrap()
-            .clone();
+    ) -> RafxResult<()> {
+        for request in self.load_queues.take_load_requests() {
+            log::info!("Uploading MeshAdvMaterial {:?}", request.load_handle);
+            let load_handle = request.load_handle.clone();
 
-        let inner = MeshMaterialAdvAssetInner {
-            data: asset_data,
-            material_instance,
-        };
+            let color_texture = request
+                .asset
+                .color_texture
+                .map(|x| asset_manager.latest_asset(&x).map(|y| y.image_view.clone()))
+                .flatten();
+            let metallic_roughness_texture = request
+                .asset
+                .metallic_roughness_texture
+                .map(|x| asset_manager.latest_asset(&x).map(|y| y.image_view.clone()))
+                .flatten();
+            let normal_texture = request
+                .asset
+                .normal_texture
+                .map(|x| asset_manager.latest_asset(&x).map(|y| y.image_view.clone()))
+                .flatten();
+            let emissive_texture = request
+                .asset
+                .emissive_texture
+                .map(|x| asset_manager.latest_asset(&x).map(|y| y.image_view.clone()))
+                .flatten();
 
-        Ok(MeshMaterialAdvAsset {
-            inner: Arc::new(inner),
-        })
+            let material_def = MeshAdvMaterialDef {
+                data: request.asset.material_data,
+                color_texture,
+                metallic_roughness_texture,
+                normal_texture,
+                emissive_texture,
+            };
+
+            let op = UploadAssetOp::new(
+                request.load_op,
+                request.load_handle,
+                request.result_tx,
+                self.material_upload_result_tx.clone(),
+            );
+
+            self.material_upload_context
+                .add_material(op, material_def)?;
+            self.pending_asset_data
+                .insert(load_handle, request.asset.material_asset);
+        }
+
+        let results: Vec<_> = self.material_upload_result_rx.try_iter().collect();
+        for result in results {
+            match result {
+                MeshAdvMaterialAssetUploadOpResult::UploadComplete(
+                    load_op,
+                    result_tx,
+                    material,
+                ) => {
+                    log::info!(
+                        "Uploading MeshAdvMaterial {:?} complete",
+                        load_op.load_handle()
+                    );
+                    let material_asset = self
+                        .pending_asset_data
+                        .remove(&load_op.load_handle())
+                        .unwrap();
+
+                    let material_asset =
+                        asset_manager.latest_asset(&material_asset).unwrap().clone();
+
+                    let loaded_asset = Ok(MeshMaterialAdvAsset {
+                        //finish_load_buffer(asset_manager, allocation);
+                        inner: Arc::new(MeshMaterialAdvAssetInner {
+                            material_asset,
+                            material,
+                        }),
+                    });
+                    asset_type_handler::handle_load_result(
+                        load_op,
+                        loaded_asset,
+                        &mut self.asset_lookup,
+                        result_tx,
+                    );
+                }
+                MeshAdvMaterialAssetUploadOpResult::UploadError(load_handle) => {
+                    log::info!("Uploading MeshAdvMaterial {:?} failed", load_handle);
+                    self.pending_asset_data.remove(&load_handle).unwrap();
+                    // Don't need to do anything - the upload should have triggered an error on the load_op
+                }
+                MeshAdvMaterialAssetUploadOpResult::UploadDrop(load_handle) => {
+                    log::info!("Uploading MeshAdvMaterial {:?} cancelled", load_handle);
+                    self.pending_asset_data.remove(&load_handle).unwrap();
+                    // Don't need to do anything - the upload should have triggered an error on the load_op
+                }
+            }
+        }
+
+        asset_type_handler::handle_commit_requests(&mut self.load_queues, &mut self.asset_lookup);
+        asset_type_handler::handle_free_requests(&mut self.load_queues, &mut self.asset_lookup);
+        Ok(())
+    }
+
+    fn asset_lookup(&self) -> &dyn DynAssetLookup {
+        &self.asset_lookup
+    }
+
+    fn asset_type_id(&self) -> TypeId {
+        TypeId::of::<MeshMaterialAdvAsset>()
     }
 }
 
-pub type MeshMaterialAdvAssetType = DefaultAssetTypeHandler<
-    MeshMaterialAdvAssetData,
-    MeshMaterialAdvAsset,
-    MeshMaterialAdvLoadHandler,
->;
+pub type MeshAdvMaterialAssetUploadOpResult =
+    UploadAssetOpResult<MeshAdvMaterial, MeshMaterialAdvAsset>;
+
+pub type MeshAdvMaterialAssetType = MeshAdvMaterialAssetTypeHandler;

@@ -12,57 +12,36 @@ use rafx::framework::{
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct AllLightsStd430 {
-    pub light_count: u32,               // +0 (size: 4)
-    pub _padding0: [u8; 12],            // +4 (size: 12)
-    pub data: [LightInListStd430; 512], // +16 (size: 40960)
-} // 40976 bytes
+pub struct TransformWithHistoryStd140 {
+    pub current_model_matrix: [[f32; 4]; 4],  // +0 (size: 64)
+    pub previous_model_matrix: [[f32; 4]; 4], // +64 (size: 64)
+} // 128 bytes
 
-pub type AllLightsBuffer = AllLightsStd430;
-
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-pub struct MaterialDataUboStd140 {
-    pub data: MaterialDataStd140, // +0 (size: 80)
-} // 80 bytes
-
-impl Default for MaterialDataUboStd140 {
+impl Default for TransformWithHistoryStd140 {
     fn default() -> Self {
-        MaterialDataUboStd140 {
-            data: <MaterialDataStd140>::default(),
+        TransformWithHistoryStd140 {
+            current_model_matrix: <[[f32; 4]; 4]>::default(),
+            previous_model_matrix: <[[f32; 4]; 4]>::default(),
         }
     }
 }
 
-pub type MaterialDataUboUniform = MaterialDataUboStd140;
+pub type TransformWithHistoryUniform = TransformWithHistoryStd140;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct ShadowMap2DDataStd140 {
-    pub uv_min: [f32; 2],                    // +0 (size: 8)
-    pub uv_max: [f32; 2],                    // +8 (size: 8)
-    pub shadow_map_view_proj: [[f32; 4]; 4], // +16 (size: 64)
-    pub shadow_map_light_dir: [f32; 3],      // +80 (size: 12)
-    pub _padding0: [u8; 4],                  // +92 (size: 4)
-} // 96 bytes
+pub struct TransformWithHistoryStd430 {
+    pub current_model_matrix: [[f32; 4]; 4],  // +0 (size: 64)
+    pub previous_model_matrix: [[f32; 4]; 4], // +64 (size: 64)
+} // 128 bytes
 
-impl Default for ShadowMap2DDataStd140 {
-    fn default() -> Self {
-        ShadowMap2DDataStd140 {
-            uv_min: <[f32; 2]>::default(),
-            uv_max: <[f32; 2]>::default(),
-            shadow_map_view_proj: <[[f32; 4]; 4]>::default(),
-            shadow_map_light_dir: <[f32; 3]>::default(),
-            _padding0: [u8::default(); 4],
-        }
-    }
-}
+pub type TransformWithHistoryPushConstant = TransformWithHistoryStd430;
 
-pub type ShadowMap2DDataUniform = ShadowMap2DDataStd140;
+pub type TransformWithHistoryBuffer = TransformWithHistoryStd430;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct MaterialDataStd140 {
+pub struct MaterialDbEntryStd140 {
     pub base_color_factor: [f32; 4],               // +0 (size: 16)
     pub emissive_factor: [f32; 3],                 // +16 (size: 12)
     pub metallic_factor: f32,                      // +28 (size: 4)
@@ -71,17 +50,17 @@ pub struct MaterialDataStd140 {
     pub alpha_threshold: f32,                      // +40 (size: 4)
     pub enable_alpha_blend: u32,                   // +44 (size: 4)
     pub enable_alpha_clip: u32,                    // +48 (size: 4)
-    pub has_base_color_texture: u32,               // +52 (size: 4)
+    pub color_texture: i32,                        // +52 (size: 4)
     pub base_color_texture_has_alpha_channel: u32, // +56 (size: 4)
-    pub has_metallic_roughness_texture: u32,       // +60 (size: 4)
-    pub has_normal_texture: u32,                   // +64 (size: 4)
-    pub has_emissive_texture: u32,                 // +68 (size: 4)
+    pub metallic_roughness_texture: i32,           // +60 (size: 4)
+    pub normal_texture: i32,                       // +64 (size: 4)
+    pub emissive_texture: i32,                     // +68 (size: 4)
     pub _padding0: [u8; 8],                        // +72 (size: 8)
 } // 80 bytes
 
-impl Default for MaterialDataStd140 {
+impl Default for MaterialDbEntryStd140 {
     fn default() -> Self {
-        MaterialDataStd140 {
+        MaterialDbEntryStd140 {
             base_color_factor: <[f32; 4]>::default(),
             emissive_factor: <[f32; 3]>::default(),
             metallic_factor: <f32>::default(),
@@ -90,17 +69,40 @@ impl Default for MaterialDataStd140 {
             alpha_threshold: <f32>::default(),
             enable_alpha_blend: <u32>::default(),
             enable_alpha_clip: <u32>::default(),
-            has_base_color_texture: <u32>::default(),
+            color_texture: <i32>::default(),
             base_color_texture_has_alpha_channel: <u32>::default(),
-            has_metallic_roughness_texture: <u32>::default(),
-            has_normal_texture: <u32>::default(),
-            has_emissive_texture: <u32>::default(),
+            metallic_roughness_texture: <i32>::default(),
+            normal_texture: <i32>::default(),
+            emissive_texture: <i32>::default(),
             _padding0: [u8::default(); 8],
         }
     }
 }
 
-pub type MaterialDataUniform = MaterialDataStd140;
+pub type MaterialDbEntryUniform = MaterialDbEntryStd140;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct MaterialDbEntryStd430 {
+    pub base_color_factor: [f32; 4],               // +0 (size: 16)
+    pub emissive_factor: [f32; 3],                 // +16 (size: 12)
+    pub metallic_factor: f32,                      // +28 (size: 4)
+    pub roughness_factor: f32,                     // +32 (size: 4)
+    pub normal_texture_scale: f32,                 // +36 (size: 4)
+    pub alpha_threshold: f32,                      // +40 (size: 4)
+    pub enable_alpha_blend: u32,                   // +44 (size: 4)
+    pub enable_alpha_clip: u32,                    // +48 (size: 4)
+    pub color_texture: i32,                        // +52 (size: 4)
+    pub base_color_texture_has_alpha_channel: u32, // +56 (size: 4)
+    pub metallic_roughness_texture: i32,           // +60 (size: 4)
+    pub normal_texture: i32,                       // +64 (size: 4)
+    pub emissive_texture: i32,                     // +68 (size: 4)
+    pub _padding0: [u8; 8],                        // +72 (size: 8)
+} // 80 bytes
+
+pub type MaterialDbEntryPushConstant = MaterialDbEntryStd430;
+
+pub type MaterialDbEntryBuffer = MaterialDbEntryStd430;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -144,6 +146,117 @@ pub type PerViewDataUniform = PerViewDataStd140;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
+pub struct LightBinOutputStd430 {
+    pub data: LightBinningOutputStd430, // +0 (size: 3170320)
+} // 3170320 bytes
+
+pub type LightBinOutputBuffer = LightBinOutputStd430;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct ShadowMapCubeDataStd140 {
+    pub uv_min_uv_max: [[f32; 4]; 6],    // +0 (size: 96)
+    pub cube_map_projection_near_z: f32, // +96 (size: 4)
+    pub cube_map_projection_far_z: f32,  // +100 (size: 4)
+    pub _padding0: [u8; 8],              // +104 (size: 8)
+} // 112 bytes
+
+impl Default for ShadowMapCubeDataStd140 {
+    fn default() -> Self {
+        ShadowMapCubeDataStd140 {
+            uv_min_uv_max: [<[f32; 4]>::default(); 6],
+            cube_map_projection_near_z: <f32>::default(),
+            cube_map_projection_far_z: <f32>::default(),
+            _padding0: [u8::default(); 8],
+        }
+    }
+}
+
+pub type ShadowMapCubeDataUniform = ShadowMapCubeDataStd140;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct TransformStd140 {
+    pub model_matrix: [[f32; 4]; 4], // +0 (size: 64)
+} // 64 bytes
+
+impl Default for TransformStd140 {
+    fn default() -> Self {
+        TransformStd140 {
+            model_matrix: <[[f32; 4]; 4]>::default(),
+        }
+    }
+}
+
+pub type TransformUniform = TransformStd140;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct TransformStd430 {
+    pub model_matrix: [[f32; 4]; 4], // +0 (size: 64)
+} // 64 bytes
+
+pub type TransformPushConstant = TransformStd430;
+
+pub type TransformBuffer = TransformStd430;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct DrawDataStd140 {
+    pub transform_index: u32, // +0 (size: 4)
+    pub material_index: u32,  // +4 (size: 4)
+    pub _padding0: [u8; 8],   // +8 (size: 8)
+} // 16 bytes
+
+impl Default for DrawDataStd140 {
+    fn default() -> Self {
+        DrawDataStd140 {
+            transform_index: <u32>::default(),
+            material_index: <u32>::default(),
+            _padding0: [u8::default(); 8],
+        }
+    }
+}
+
+pub type DrawDataUniform = DrawDataStd140;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct DrawDataStd430 {
+    pub transform_index: u32, // +0 (size: 4)
+    pub material_index: u32,  // +4 (size: 4)
+} // 8 bytes
+
+pub type DrawDataPushConstant = DrawDataStd430;
+
+pub type DrawDataBuffer = DrawDataStd430;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct ShadowMap2DDataStd140 {
+    pub uv_min: [f32; 2],                    // +0 (size: 8)
+    pub uv_max: [f32; 2],                    // +8 (size: 8)
+    pub shadow_map_view_proj: [[f32; 4]; 4], // +16 (size: 64)
+    pub shadow_map_light_dir: [f32; 3],      // +80 (size: 12)
+    pub _padding0: [u8; 4],                  // +92 (size: 4)
+} // 96 bytes
+
+impl Default for ShadowMap2DDataStd140 {
+    fn default() -> Self {
+        ShadowMap2DDataStd140 {
+            uv_min: <[f32; 2]>::default(),
+            uv_max: <[f32; 2]>::default(),
+            shadow_map_view_proj: <[[f32; 4]; 4]>::default(),
+            shadow_map_light_dir: <[f32; 3]>::default(),
+            _padding0: [u8::default(); 4],
+        }
+    }
+}
+
+pub type ShadowMap2DDataUniform = ShadowMap2DDataStd140;
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
 pub struct LightInListStd430 {
     pub position_ws: [f32; 3],            // +0 (size: 12)
     pub range: f32,                       // +12 (size: 4)
@@ -184,11 +297,13 @@ pub type DirectionalLightUniform = DirectionalLightStd140;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct LightBinOutputStd430 {
-    pub data: LightBinningOutputStd430, // +0 (size: 3170320)
-} // 3170320 bytes
+pub struct AllLightsStd430 {
+    pub light_count: u32,               // +0 (size: 4)
+    pub _padding0: [u8; 12],            // +4 (size: 12)
+    pub data: [LightInListStd430; 512], // +16 (size: 40960)
+} // 40976 bytes
 
-pub type LightBinOutputBuffer = LightBinOutputStd430;
+pub type AllLightsBuffer = AllLightsStd430;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -214,25 +329,11 @@ pub type ClusterMetaBuffer = ClusterMetaStd430;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct ShadowMapCubeDataStd140 {
-    pub uv_min_uv_max: [[f32; 4]; 6],    // +0 (size: 96)
-    pub cube_map_projection_near_z: f32, // +96 (size: 4)
-    pub cube_map_projection_far_z: f32,  // +100 (size: 4)
-    pub _padding0: [u8; 8],              // +104 (size: 8)
-} // 112 bytes
+pub struct PushConstantsStd430 {
+    pub draw_data_index: u32, // +0 (size: 4)
+} // 4 bytes
 
-impl Default for ShadowMapCubeDataStd140 {
-    fn default() -> Self {
-        ShadowMapCubeDataStd140 {
-            uv_min_uv_max: [<[f32; 4]>::default(); 6],
-            cube_map_projection_near_z: <f32>::default(),
-            cube_map_projection_far_z: <f32>::default(),
-            _padding0: [u8::default(); 8],
-        }
-    }
-}
-
-pub type ShadowMapCubeDataUniform = ShadowMapCubeDataStd140;
+pub type PushConstantsPushConstant = PushConstantsStd430;
 
 pub const PER_VIEW_DATA_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
@@ -248,8 +349,16 @@ pub const LIGHT_BIN_OUTPUT_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const LIGHT_BIN_OUTPUT_DESCRIPTOR_BINDING_INDEX: usize = 5;
 pub const ALL_LIGHTS_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const ALL_LIGHTS_DESCRIPTOR_BINDING_INDEX: usize = 6;
-pub const PER_MATERIAL_DATA_DESCRIPTOR_SET_INDEX: usize = 2;
-pub const PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const SSAO_TEXTURE_DESCRIPTOR_SET_INDEX: usize = 1;
+pub const SSAO_TEXTURE_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const ALL_TRANSFORMS_DESCRIPTOR_SET_INDEX: usize = 2;
+pub const ALL_TRANSFORMS_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const ALL_DRAW_DATA_DESCRIPTOR_SET_INDEX: usize = 2;
+pub const ALL_DRAW_DATA_DESCRIPTOR_BINDING_INDEX: usize = 1;
+pub const ALL_MATERIALS_DESCRIPTOR_SET_INDEX: usize = 3;
+pub const ALL_MATERIALS_DESCRIPTOR_BINDING_INDEX: usize = 0;
+pub const ALL_MATERIAL_TEXTURES_DESCRIPTOR_SET_INDEX: usize = 3;
+pub const ALL_MATERIAL_TEXTURES_DESCRIPTOR_BINDING_INDEX: usize = 1;
 
 pub struct DescriptorSet0Args<'a> {
     pub per_view_data: &'a PerViewDataUniform,
@@ -378,18 +487,18 @@ impl DescriptorSet0 {
     }
 }
 
-pub struct DescriptorSet2Args<'a> {
-    pub per_material_data: &'a MaterialDataUboUniform,
+pub struct DescriptorSet1Args<'a> {
+    pub ssao_texture: &'a ResourceArc<ImageViewResource>,
 }
 
-impl<'a> DescriptorSetInitializer<'a> for DescriptorSet2Args<'a> {
-    type Output = DescriptorSet2;
+impl<'a> DescriptorSetInitializer<'a> for DescriptorSet1Args<'a> {
+    type Output = DescriptorSet1;
 
     fn create_dyn_descriptor_set(
         descriptor_set: DynDescriptorSet,
         args: Self,
     ) -> Self::Output {
-        let mut descriptor = DescriptorSet2(descriptor_set);
+        let mut descriptor = DescriptorSet1(descriptor_set);
         descriptor.set_args(args);
         descriptor
     }
@@ -405,46 +514,44 @@ impl<'a> DescriptorSetInitializer<'a> for DescriptorSet2Args<'a> {
     }
 }
 
-impl<'a> DescriptorSetWriter<'a> for DescriptorSet2Args<'a> {
+impl<'a> DescriptorSetWriter<'a> for DescriptorSet1Args<'a> {
     fn write_to(
         descriptor_set: &mut DescriptorSetWriterContext,
         args: Self,
     ) {
-        descriptor_set.set_buffer_data(
-            PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            args.per_material_data,
+        descriptor_set.set_image(
+            SSAO_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.ssao_texture,
         );
     }
 }
 
-pub struct DescriptorSet2(pub DynDescriptorSet);
+pub struct DescriptorSet1(pub DynDescriptorSet);
 
-impl DescriptorSet2 {
+impl DescriptorSet1 {
     pub fn set_args_static(
         descriptor_set: &mut DynDescriptorSet,
-        args: DescriptorSet2Args,
+        args: DescriptorSet1Args,
     ) {
-        descriptor_set.set_buffer_data(
-            PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            args.per_material_data,
+        descriptor_set.set_image(
+            SSAO_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32,
+            args.ssao_texture,
         );
     }
 
     pub fn set_args(
         &mut self,
-        args: DescriptorSet2Args,
+        args: DescriptorSet1Args,
     ) {
-        self.set_per_material_data(args.per_material_data);
+        self.set_ssao_texture(args.ssao_texture);
     }
 
-    pub fn set_per_material_data(
+    pub fn set_ssao_texture(
         &mut self,
-        per_material_data: &MaterialDataUboUniform,
+        ssao_texture: &ResourceArc<ImageViewResource>,
     ) {
-        self.0.set_buffer_data(
-            PER_MATERIAL_DATA_DESCRIPTOR_BINDING_INDEX as u32,
-            per_material_data,
-        );
+        self.0
+            .set_image(SSAO_TEXTURE_DESCRIPTOR_BINDING_INDEX as u32, ssao_texture);
     }
 
     pub fn flush(
@@ -460,137 +567,209 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_struct_all_lights_std430() {
-        assert_eq!(std::mem::size_of::<AllLightsStd430>(), 40976);
-        assert_eq!(std::mem::size_of::<u32>(), 4);
-        assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(memoffset::offset_of!(AllLightsStd430, light_count), 0);
-        assert_eq!(std::mem::size_of::<[u8; 12]>(), 12);
-        assert_eq!(std::mem::align_of::<[u8; 12]>(), 1);
-        assert_eq!(memoffset::offset_of!(AllLightsStd430, _padding0), 4);
-        assert_eq!(std::mem::size_of::<[LightInListStd430; 512]>(), 40960);
-        assert_eq!(std::mem::align_of::<[LightInListStd430; 512]>(), 4);
-        assert_eq!(memoffset::offset_of!(AllLightsStd430, data), 16);
-    }
-
-    #[test]
-    fn test_struct_material_data_ubo_std140() {
-        assert_eq!(std::mem::size_of::<MaterialDataUboStd140>(), 80);
-        assert_eq!(std::mem::size_of::<MaterialDataStd140>(), 80);
-        assert_eq!(std::mem::align_of::<MaterialDataStd140>(), 4);
-        assert_eq!(memoffset::offset_of!(MaterialDataUboStd140, data), 0);
-    }
-
-    #[test]
-    fn test_struct_shadow_map2_d_data_std140() {
-        assert_eq!(std::mem::size_of::<ShadowMap2DDataStd140>(), 96);
-        assert_eq!(std::mem::size_of::<[f32; 2]>(), 8);
-        assert_eq!(std::mem::align_of::<[f32; 2]>(), 4);
-        assert_eq!(memoffset::offset_of!(ShadowMap2DDataStd140, uv_min), 0);
-        assert_eq!(std::mem::size_of::<[f32; 2]>(), 8);
-        assert_eq!(std::mem::align_of::<[f32; 2]>(), 4);
-        assert_eq!(memoffset::offset_of!(ShadowMap2DDataStd140, uv_max), 8);
+    fn test_struct_transform_with_history_std140() {
+        assert_eq!(std::mem::size_of::<TransformWithHistoryStd140>(), 128);
         assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
         assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
         assert_eq!(
-            memoffset::offset_of!(ShadowMap2DDataStd140, shadow_map_view_proj),
-            16
+            memoffset::offset_of!(TransformWithHistoryStd140, current_model_matrix),
+            0
         );
-        assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
-        assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
         assert_eq!(
-            memoffset::offset_of!(ShadowMap2DDataStd140, shadow_map_light_dir),
-            80
+            memoffset::offset_of!(TransformWithHistoryStd140, previous_model_matrix),
+            64
         );
-        assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
-        assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
-        assert_eq!(memoffset::offset_of!(ShadowMap2DDataStd140, _padding0), 92);
     }
 
     #[test]
-    fn test_struct_material_data_std140() {
-        assert_eq!(std::mem::size_of::<MaterialDataStd140>(), 80);
+    fn test_struct_transform_with_history_std430() {
+        assert_eq!(std::mem::size_of::<TransformWithHistoryStd430>(), 128);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(TransformWithHistoryStd430, current_model_matrix),
+            0
+        );
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(TransformWithHistoryStd430, previous_model_matrix),
+            64
+        );
+    }
+
+    #[test]
+    fn test_struct_material_db_entry_std140() {
+        assert_eq!(std::mem::size_of::<MaterialDbEntryStd140>(), 80);
         assert_eq!(std::mem::size_of::<[f32; 4]>(), 16);
         assert_eq!(std::mem::align_of::<[f32; 4]>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, base_color_factor),
+            memoffset::offset_of!(MaterialDbEntryStd140, base_color_factor),
             0
         );
         assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
         assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, emissive_factor),
+            memoffset::offset_of!(MaterialDbEntryStd140, emissive_factor),
             16
         );
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, metallic_factor),
+            memoffset::offset_of!(MaterialDbEntryStd140, metallic_factor),
             28
         );
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, roughness_factor),
+            memoffset::offset_of!(MaterialDbEntryStd140, roughness_factor),
             32
         );
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, normal_texture_scale),
+            memoffset::offset_of!(MaterialDbEntryStd140, normal_texture_scale),
             36
         );
         assert_eq!(std::mem::size_of::<f32>(), 4);
         assert_eq!(std::mem::align_of::<f32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, alpha_threshold),
+            memoffset::offset_of!(MaterialDbEntryStd140, alpha_threshold),
             40
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, enable_alpha_blend),
+            memoffset::offset_of!(MaterialDbEntryStd140, enable_alpha_blend),
             44
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, enable_alpha_clip),
+            memoffset::offset_of!(MaterialDbEntryStd140, enable_alpha_clip),
             48
         );
-        assert_eq!(std::mem::size_of::<u32>(), 4);
-        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_base_color_texture),
+            memoffset::offset_of!(MaterialDbEntryStd140, color_texture),
             52
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, base_color_texture_has_alpha_channel),
+            memoffset::offset_of!(MaterialDbEntryStd140, base_color_texture_has_alpha_channel),
             56
         );
-        assert_eq!(std::mem::size_of::<u32>(), 4);
-        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_metallic_roughness_texture),
+            memoffset::offset_of!(MaterialDbEntryStd140, metallic_roughness_texture),
             60
         );
-        assert_eq!(std::mem::size_of::<u32>(), 4);
-        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_normal_texture),
+            memoffset::offset_of!(MaterialDbEntryStd140, normal_texture),
             64
         );
-        assert_eq!(std::mem::size_of::<u32>(), 4);
-        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(MaterialDataStd140, has_emissive_texture),
+            memoffset::offset_of!(MaterialDbEntryStd140, emissive_texture),
             68
         );
         assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
         assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
-        assert_eq!(memoffset::offset_of!(MaterialDataStd140, _padding0), 72);
+        assert_eq!(memoffset::offset_of!(MaterialDbEntryStd140, _padding0), 72);
+    }
+
+    #[test]
+    fn test_struct_material_db_entry_std430() {
+        assert_eq!(std::mem::size_of::<MaterialDbEntryStd430>(), 80);
+        assert_eq!(std::mem::size_of::<[f32; 4]>(), 16);
+        assert_eq!(std::mem::align_of::<[f32; 4]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, base_color_factor),
+            0
+        );
+        assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
+        assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, emissive_factor),
+            16
+        );
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, metallic_factor),
+            28
+        );
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, roughness_factor),
+            32
+        );
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, normal_texture_scale),
+            36
+        );
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, alpha_threshold),
+            40
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, enable_alpha_blend),
+            44
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, enable_alpha_clip),
+            48
+        );
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, color_texture),
+            52
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, base_color_texture_has_alpha_channel),
+            56
+        );
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, metallic_roughness_texture),
+            60
+        );
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, normal_texture),
+            64
+        );
+        assert_eq!(std::mem::size_of::<i32>(), 4);
+        assert_eq!(std::mem::align_of::<i32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(MaterialDbEntryStd430, emissive_texture),
+            68
+        );
+        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
+        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
+        assert_eq!(memoffset::offset_of!(MaterialDbEntryStd430, _padding0), 72);
     }
 
     #[test]
@@ -659,6 +838,109 @@ mod test {
             memoffset::offset_of!(PerViewDataStd140, shadow_map_cube_data),
             9776
         );
+    }
+
+    #[test]
+    fn test_struct_light_bin_output_std430() {
+        assert_eq!(std::mem::size_of::<LightBinOutputStd430>(), 3170320);
+        assert_eq!(std::mem::size_of::<LightBinningOutputStd430>(), 3170320);
+        assert_eq!(std::mem::align_of::<LightBinningOutputStd430>(), 4);
+    }
+
+    #[test]
+    fn test_struct_shadow_map_cube_data_std140() {
+        assert_eq!(std::mem::size_of::<ShadowMapCubeDataStd140>(), 112);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 6]>(), 96);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 6]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMapCubeDataStd140, uv_min_uv_max),
+            0
+        );
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMapCubeDataStd140, cube_map_projection_near_z),
+            96
+        );
+        assert_eq!(std::mem::size_of::<f32>(), 4);
+        assert_eq!(std::mem::align_of::<f32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMapCubeDataStd140, cube_map_projection_far_z),
+            100
+        );
+        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
+        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMapCubeDataStd140, _padding0),
+            104
+        );
+    }
+
+    #[test]
+    fn test_struct_transform_std140() {
+        assert_eq!(std::mem::size_of::<TransformStd140>(), 64);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(memoffset::offset_of!(TransformStd140, model_matrix), 0);
+    }
+
+    #[test]
+    fn test_struct_transform_std430() {
+        assert_eq!(std::mem::size_of::<TransformStd430>(), 64);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(memoffset::offset_of!(TransformStd430, model_matrix), 0);
+    }
+
+    #[test]
+    fn test_struct_draw_data_std140() {
+        assert_eq!(std::mem::size_of::<DrawDataStd140>(), 16);
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(memoffset::offset_of!(DrawDataStd140, transform_index), 0);
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(memoffset::offset_of!(DrawDataStd140, material_index), 4);
+        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
+        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
+        assert_eq!(memoffset::offset_of!(DrawDataStd140, _padding0), 8);
+    }
+
+    #[test]
+    fn test_struct_draw_data_std430() {
+        assert_eq!(std::mem::size_of::<DrawDataStd430>(), 8);
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(memoffset::offset_of!(DrawDataStd430, transform_index), 0);
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(memoffset::offset_of!(DrawDataStd430, material_index), 4);
+    }
+
+    #[test]
+    fn test_struct_shadow_map2_d_data_std140() {
+        assert_eq!(std::mem::size_of::<ShadowMap2DDataStd140>(), 96);
+        assert_eq!(std::mem::size_of::<[f32; 2]>(), 8);
+        assert_eq!(std::mem::align_of::<[f32; 2]>(), 4);
+        assert_eq!(memoffset::offset_of!(ShadowMap2DDataStd140, uv_min), 0);
+        assert_eq!(std::mem::size_of::<[f32; 2]>(), 8);
+        assert_eq!(std::mem::align_of::<[f32; 2]>(), 4);
+        assert_eq!(memoffset::offset_of!(ShadowMap2DDataStd140, uv_max), 8);
+        assert_eq!(std::mem::size_of::<[[f32; 4]; 4]>(), 64);
+        assert_eq!(std::mem::align_of::<[[f32; 4]; 4]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMap2DDataStd140, shadow_map_view_proj),
+            16
+        );
+        assert_eq!(std::mem::size_of::<[f32; 3]>(), 12);
+        assert_eq!(std::mem::align_of::<[f32; 3]>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ShadowMap2DDataStd140, shadow_map_light_dir),
+            80
+        );
+        assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
+        assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
+        assert_eq!(memoffset::offset_of!(ShadowMap2DDataStd140, _padding0), 92);
     }
 
     #[test]
@@ -732,10 +1014,17 @@ mod test {
     }
 
     #[test]
-    fn test_struct_light_bin_output_std430() {
-        assert_eq!(std::mem::size_of::<LightBinOutputStd430>(), 3170320);
-        assert_eq!(std::mem::size_of::<LightBinningOutputStd430>(), 3170320);
-        assert_eq!(std::mem::align_of::<LightBinningOutputStd430>(), 4);
+    fn test_struct_all_lights_std430() {
+        assert_eq!(std::mem::size_of::<AllLightsStd430>(), 40976);
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(memoffset::offset_of!(AllLightsStd430, light_count), 0);
+        assert_eq!(std::mem::size_of::<[u8; 12]>(), 12);
+        assert_eq!(std::mem::align_of::<[u8; 12]>(), 1);
+        assert_eq!(memoffset::offset_of!(AllLightsStd430, _padding0), 4);
+        assert_eq!(std::mem::size_of::<[LightInListStd430; 512]>(), 40960);
+        assert_eq!(std::mem::align_of::<[LightInListStd430; 512]>(), 4);
+        assert_eq!(memoffset::offset_of!(AllLightsStd430, data), 16);
     }
 
     #[test]
@@ -767,31 +1056,13 @@ mod test {
     }
 
     #[test]
-    fn test_struct_shadow_map_cube_data_std140() {
-        assert_eq!(std::mem::size_of::<ShadowMapCubeDataStd140>(), 112);
-        assert_eq!(std::mem::size_of::<[[f32; 4]; 6]>(), 96);
-        assert_eq!(std::mem::align_of::<[[f32; 4]; 6]>(), 4);
+    fn test_struct_push_constants_std430() {
+        assert_eq!(std::mem::size_of::<PushConstantsStd430>(), 4);
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(ShadowMapCubeDataStd140, uv_min_uv_max),
+            memoffset::offset_of!(PushConstantsStd430, draw_data_index),
             0
-        );
-        assert_eq!(std::mem::size_of::<f32>(), 4);
-        assert_eq!(std::mem::align_of::<f32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(ShadowMapCubeDataStd140, cube_map_projection_near_z),
-            96
-        );
-        assert_eq!(std::mem::size_of::<f32>(), 4);
-        assert_eq!(std::mem::align_of::<f32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(ShadowMapCubeDataStd140, cube_map_projection_far_z),
-            100
-        );
-        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
-        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
-        assert_eq!(
-            memoffset::offset_of!(ShadowMapCubeDataStd140, _padding0),
-            104
         );
     }
 }

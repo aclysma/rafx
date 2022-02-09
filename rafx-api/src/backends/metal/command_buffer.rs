@@ -6,9 +6,9 @@ use crate::metal::{
 use crate::{
     RafxBufferBarrier, RafxCmdCopyBufferToBufferParams, RafxCmdCopyBufferToTextureParams,
     RafxCmdCopyTextureToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef,
-    RafxDepthStencilRenderTargetBinding, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType,
-    RafxLoadOp, RafxPipelineType, RafxResourceState, RafxResult, RafxTextureBarrier,
-    RafxVertexBufferBinding,
+    RafxDepthStencilRenderTargetBinding, RafxDescriptorIndex, RafxExtents3D,
+    RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState,
+    RafxResult, RafxShaderStageFlags, RafxTextureBarrier, RafxVertexBufferBinding,
 };
 use fnv::FnvHashSet;
 use metal_rs::{
@@ -433,7 +433,7 @@ impl RafxCommandBufferMetal {
                     render_encoder
                         .set_triangle_fill_mode(render_encoder_info.mtl_triangle_fill_mode);
                     render_encoder.set_depth_bias(
-                        render_encoder_info.mtl_depth_bias,
+                        render_encoder_info.mtl_depth_bias as f32,
                         render_encoder_info.mtl_depth_bias_slope_scaled,
                         0.0,
                     );
@@ -632,6 +632,71 @@ impl RafxCommandBufferMetal {
         Ok(())
     }
 
+    pub fn cmd_bind_push_constant<T: Copy>(
+        &self,
+        root_signature: &RafxRootSignatureMetal,
+        descriptor_index: RafxDescriptorIndex,
+        data: &T,
+    ) -> RafxResult<()> {
+        let descriptor = root_signature.descriptor(descriptor_index).unwrap();
+        assert_eq!(
+            std::mem::size_of::<T>(),
+            descriptor.push_constant_size as usize
+        );
+        let inner = self.inner.borrow();
+
+        match root_signature.pipeline_type() {
+            RafxPipelineType::Graphics => {
+                //NOTE: Another reason for hitting this might be doing something that flushes the
+                // render encoder (like binding a compute pipeline)
+                let render_encoder = inner
+                    .render_encoder
+                    .as_ref()
+                    .ok_or("Must begin render pass before binding graphics descriptor sets")?;
+
+                if descriptor
+                    .used_in_shader_stages
+                    .intersects(RafxShaderStageFlags::VERTEX)
+                {
+                    render_encoder.set_vertex_bytes(
+                        descriptor.argument_buffer_id,
+                        std::mem::size_of::<T>() as _,
+                        rafx_base::memory::any_as_bytes(data).as_ptr() as _,
+                    );
+                }
+
+                if descriptor
+                    .used_in_shader_stages
+                    .intersects(RafxShaderStageFlags::FRAGMENT)
+                {
+                    render_encoder.set_fragment_bytes(
+                        descriptor.argument_buffer_id,
+                        std::mem::size_of::<T>() as _,
+                        rafx_base::memory::any_as_bytes(data).as_ptr() as _,
+                    );
+                }
+
+                Ok(())
+            }
+            RafxPipelineType::Compute => {
+                let compute_encoder = inner
+                    .compute_encoder
+                    .as_ref()
+                    .ok_or("Must bind compute pipeline before binding compute descriptor sets")?;
+
+                assert!(descriptor
+                    .used_in_shader_stages
+                    .intersects(RafxShaderStageFlags::COMPUTE));
+                compute_encoder.set_bytes(
+                    descriptor.argument_buffer_id,
+                    std::mem::size_of::<T>() as _,
+                    rafx_base::memory::any_as_bytes(data).as_ptr() as _,
+                );
+                Ok(())
+            }
+        }
+    }
+
     pub fn cmd_draw(
         &self,
         vertex_count: u32,
@@ -643,6 +708,7 @@ impl RafxCommandBufferMetal {
             first_vertex as _,
             vertex_count as _,
         );
+
         Ok(())
     }
 
@@ -684,6 +750,7 @@ impl RafxCommandBufferMetal {
                     first_instance as _,
                 );
         }
+
         Ok(())
     }
 

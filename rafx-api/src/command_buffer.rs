@@ -19,9 +19,9 @@ use crate::vulkan::RafxCommandBufferVulkan;
 use crate::{
     RafxBuffer, RafxBufferBarrier, RafxCmdCopyBufferToBufferParams,
     RafxCmdCopyBufferToTextureParams, RafxCmdCopyTextureToTextureParams,
-    RafxColorRenderTargetBinding, RafxDepthStencilRenderTargetBinding, RafxDescriptorSetArray,
-    RafxDescriptorSetHandle, RafxIndexBufferBinding, RafxPipeline, RafxResult, RafxRootSignature,
-    RafxTexture, RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxColorRenderTargetBinding, RafxDepthStencilRenderTargetBinding, RafxDescriptorIndex,
+    RafxDescriptorSetArray, RafxDescriptorSetHandle, RafxIndexBufferBinding, RafxPipeline,
+    RafxResult, RafxRootSignature, RafxTexture, RafxTextureBarrier, RafxVertexBufferBinding,
 };
 
 /// A list of commands recorded by the CPU and submitted to the GPU.
@@ -527,6 +527,59 @@ impl RafxCommandBuffer {
         }
     }
 
+    /// Binds a push constants for use by the shader in the currently bound pipeline.
+    ///
+    /// Multiple descriptor sets can be bound, but the number is limited to 4.
+    pub fn cmd_bind_push_constant<T: Copy>(
+        &self,
+        root_signature: &RafxRootSignature,
+        descriptor_index: RafxDescriptorIndex,
+        data: &T,
+    ) -> RafxResult<()> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_bind_push_constant(
+                root_signature.vk_root_signature().unwrap(),
+                descriptor_index,
+                data,
+            ),
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => inner.cmd_bind_push_constant(
+                root_signature.metal_root_signature().unwrap(),
+                descriptor_index,
+                data,
+            ),
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(_inner) => {
+                let _ = root_signature;
+                let _ = descriptor_index;
+                let _ = data;
+                unimplemented!()
+            }
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(_inner) => {
+                let _ = root_signature;
+                let _ = descriptor_index;
+                let _ = data;
+                unimplemented!()
+            }
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(inner) => inner.cmd_bind_push_constant(
+                root_signature.empty_root_signature().unwrap(),
+                descriptor_index,
+                data,
+            ),
+        }
+    }
+
     /// Draw primitives using the currently bound pipeline and vertex buffer
     pub fn cmd_draw(
         &self,
@@ -897,17 +950,19 @@ impl RafxCommandBuffer {
                 params,
             ),
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandBuffer::Gles2(inner) => inner.cmd_copy_texture_to_texture(
-                src_texture.gles2_texture().unwrap(),
-                dst_texture.gles2_texture().unwrap(),
-                params,
-            ),
+            RafxCommandBuffer::Gles2(_inner) => {
+                let _ = src_texture;
+                let _ = dst_texture;
+                let _ = params;
+                unimplemented!()
+            }
             #[cfg(feature = "rafx-gles3")]
-            RafxCommandBuffer::Gles3(inner) => inner.cmd_copy_texture_to_texture(
-                src_texture.gles3_texture().unwrap(),
-                dst_texture.gles3_texture().unwrap(),
-                params,
-            ),
+            RafxCommandBuffer::Gles3(_inner) => {
+                let _ = src_texture;
+                let _ = dst_texture;
+                let _ = params;
+                unimplemented!()
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(

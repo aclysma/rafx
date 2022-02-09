@@ -7,6 +7,7 @@ use rafx::api::{
     RafxVertexAttributeRate, RafxVertexBufferBinding,
 };
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use rafx::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
 use std::marker::PhantomData;
 
 lazy_static::lazy_static! {
@@ -150,13 +151,16 @@ impl<'write> RenderFeatureWriteJob<'write> for EguiWriteJob<'write> {
         Ok(())
     }
 
-    fn apply_setup(
+    fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        _view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
+        args: BeginSubmitNodeBatchArgs,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_feature_debug_constants().apply_setup);
+        if !args.feature_changed {
+            return Ok(());
+        }
+
+        profiling::scope!(super::render_feature_debug_constants().begin_submit_node_batch);
 
         let per_frame_data = self.frame_packet.per_frame_data().get();
         let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
@@ -166,7 +170,7 @@ impl<'write> RenderFeatureWriteJob<'write> for EguiWriteJob<'write> {
                 .resource_context
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
-                    Some(render_phase_index),
+                    Some(args.render_phase_index),
                     self.egui_material_pass.as_ref().unwrap(),
                     &write_context.render_target_meta,
                     &*EGUI_VERTEX_LAYOUT,
@@ -194,15 +198,13 @@ impl<'write> RenderFeatureWriteJob<'write> for EguiWriteJob<'write> {
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        _view_frame_index: ViewFrameIndex,
-        _render_phase_index: RenderPhaseIndex,
-        submit_node_id: SubmitNodeId,
+        args: RenderSubmitNodeArgs,
     ) -> RafxResult<()> {
         profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
         // The prepare phase emits a single node which will draw everything. In the future it might
         // emit a node per draw call that uses transparency
-        if submit_node_id == 0 {
+        if args.submit_node_id == 0 {
             let per_frame_data = self.frame_packet.per_frame_data().get();
             let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
 

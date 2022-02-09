@@ -1,5 +1,6 @@
 use crate::assets::mesh_basic::MeshBasicMaterialData;
 use distill::loader::handle::Handle;
+use distill::loader::LoadHandle;
 use rafx::api::RafxResult;
 use rafx::assets::{
     AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset,
@@ -62,6 +63,7 @@ impl DefaultAssetTypeLoadHandler<MeshMaterialBasicAssetData, MeshMaterialBasicAs
     fn load(
         asset_manager: &mut AssetManager,
         asset_data: MeshMaterialBasicAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<MeshMaterialBasicAsset> {
         let material_instance = asset_manager
             .latest_asset(&asset_data.material_instance)

@@ -3,6 +3,7 @@ use type_uuid::*;
 
 use crate::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ShaderAsset};
 use distill::loader::handle::Handle;
+use distill::loader::LoadHandle;
 use rafx_api::RafxResult;
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
@@ -34,6 +35,7 @@ impl DefaultAssetTypeLoadHandler<ComputePipelineAssetData, ComputePipelineAsset>
     fn load(
         asset_manager: &mut AssetManager,
         asset_data: ComputePipelineAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<ComputePipelineAsset> {
         //
         // Get the shader module

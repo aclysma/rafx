@@ -1,3 +1,4 @@
+use distill::loader::LoadHandle;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler};
 use serde::{Deserialize, Serialize};
@@ -92,6 +93,7 @@ impl DefaultAssetTypeLoadHandler<AnimAssetData, AnimAsset> for AnimLoadHandler {
     fn load(
         _asset_manager: &mut AssetManager,
         anim_asset: AnimAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<AnimAsset> {
         let skeleton = Arc::new(anim_asset.skeleton);
         let clips = anim_asset.clips.into_iter().map(|x| Arc::new(x)).collect();

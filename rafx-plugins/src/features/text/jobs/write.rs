@@ -7,6 +7,7 @@ use rafx::api::{
     RafxTextureBarrier, RafxVertexAttributeRate, RafxVertexBufferBinding,
 };
 use rafx::framework::{MaterialPassResource, ResourceArc, VertexDataLayout, VertexDataSetLayout};
+use rafx::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
 use std::marker::PhantomData;
 
 /// Vertex format for vertices sent to the GPU
@@ -153,13 +154,16 @@ impl<'write> RenderFeatureWriteJob<'write> for TextWriteJob<'write> {
         Ok(())
     }
 
-    fn apply_setup(
+    fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
+        args: BeginSubmitNodeBatchArgs,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_feature_debug_constants().apply_setup);
+        if !args.feature_changed {
+            return Ok(());
+        }
+
+        profiling::scope!(super::render_feature_debug_constants().begin_submit_node_batch);
 
         if let Some(text_material_pass) = &self.text_material_pass {
             let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
@@ -168,7 +172,7 @@ impl<'write> RenderFeatureWriteJob<'write> for TextWriteJob<'write> {
                     .resource_context
                     .graphics_pipeline_cache()
                     .get_or_create_graphics_pipeline(
-                        Some(render_phase_index),
+                        Some(args.render_phase_index),
                         &text_material_pass,
                         &write_context.render_target_meta,
                         &*TEXT_VERTEX_LAYOUT,
@@ -177,7 +181,8 @@ impl<'write> RenderFeatureWriteJob<'write> for TextWriteJob<'write> {
                 let command_buffer = &write_context.command_buffer;
                 command_buffer.cmd_bind_pipeline(&*pipeline.get_raw().pipeline)?;
 
-                let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
+                let view_submit_packet =
+                    self.submit_packet.view_submit_packet(args.view_frame_index);
                 view_submit_packet
                     .per_view_submit_data()
                     .get()
@@ -194,15 +199,13 @@ impl<'write> RenderFeatureWriteJob<'write> for TextWriteJob<'write> {
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        _view_frame_index: ViewFrameIndex,
-        _render_phase_index: RenderPhaseIndex,
-        submit_node_id: SubmitNodeId,
+        args: RenderSubmitNodeArgs,
     ) -> RafxResult<()> {
         profiling::scope!(super::render_feature_debug_constants().render_submit_node);
 
         let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
 
-        let draw_call = &per_frame_submit_data.draw_call_metas[submit_node_id as usize];
+        let draw_call = &per_frame_submit_data.draw_call_metas[args.submit_node_id as usize];
         let buffers = &per_frame_submit_data.draw_call_buffers[draw_call.buffer_index as usize];
 
         let command_buffer = &write_context.command_buffer;

@@ -2,7 +2,9 @@ use crate::assets::font::FontAssetType;
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;
+use rafx::framework::RenderResources;
 use rafx::renderer::RendererAssetPlugin;
+use rafx::RafxResult;
 
 pub struct FontAssetTypeRendererPlugin;
 
@@ -19,7 +21,9 @@ impl RendererAssetPlugin for FontAssetTypeRendererPlugin {
         &self,
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
-    ) {
-        asset_manager.register_asset_type::<FontAssetType>(asset_resource);
+        _render_resources: &mut RenderResources,
+    ) -> RafxResult<()> {
+        let asset_type = FontAssetType::create(asset_manager, asset_resource)?;
+        asset_manager.register_asset_type(asset_type)
     }
 }

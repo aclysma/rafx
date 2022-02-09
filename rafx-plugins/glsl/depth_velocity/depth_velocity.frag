@@ -1,6 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+#include "../mesh_adv/mesh_adv_types.glsl"
 #include "depth_velocity.glsl"
 #include "../util/taa_jitter.glsl"
 

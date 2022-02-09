@@ -60,16 +60,16 @@ mod asset_manager_render_resource;
 pub use asset_manager_render_resource::AssetManagerExtractRef;
 pub use asset_manager_render_resource::AssetManagerRenderResource;
 
-mod upload;
-pub use upload::UploadQueueConfig;
+mod upload_asset_op;
+pub use upload_asset_op::UploadAssetOp;
+pub use upload_asset_op::UploadAssetOpResult;
 
 mod asset_lookup;
 pub use asset_lookup::AssetLookup;
 pub use asset_lookup::DynAssetLookup;
 
-mod asset_type_handler;
+pub mod asset_type_handler;
 pub use asset_type_handler::AssetTypeHandler;
-pub use asset_type_handler::AssetTypeHandlerFactory;
 pub use asset_type_handler::DefaultAssetTypeHandler;
 pub use asset_type_handler::DefaultAssetTypeLoadHandler;
 pub use asset_type_handler::StorageOnlyAssetTypeHandler;
@@ -77,6 +77,7 @@ pub use asset_type_handler::StorageOnlyAssetTypeHandler;
 mod load_queue;
 pub use load_queue::GenericLoader;
 pub use load_queue::LoadQueues;
+pub use load_queue::LoadRequest;
 
 mod material_descriptor_sets;
 pub use material_descriptor_sets::DynMaterialInstance;

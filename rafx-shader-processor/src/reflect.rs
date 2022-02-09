@@ -326,13 +326,26 @@ where
     Ok(bindings)
 }
 
+//NOTE: There are special set/binding pairs to control assignment of arg buffers themselves,
+// push constant buffers, etc. For example:
+//
+//     ResourceBindingLocation { desc_set: 0, binding: !3u32, stage: ExecutionModel::Vertex}
+//
+// Will force descriptor set 0 to be [[buffer(n)]] where n is the value of ResourceBinding::buffer_id
+
 //TODO: Exclude MSL constexpr samplers?
 pub(crate) fn msl_assign_argument_buffer_ids(
     entry_points: &[ReflectedEntryPoint]
 ) -> RafxResult<BTreeMap<ResourceBindingLocation, ResourceBinding>> {
     let mut all_resources_lookup = FnvHashMap::<(u32, u32), RafxShaderResource>::default();
+    let mut push_constant_stages = RafxShaderStageFlags::empty();
     for entry_point in entry_points {
         for resource in &entry_point.rafx_api_reflection.resources {
+            if resource.resource_type == RafxResourceType::ROOT_CONSTANT {
+                push_constant_stages |= resource.used_in_shader_stages;
+                continue;
+            }
+
             let key = (resource.set_index, resource.binding);
             if let Some(old) = all_resources_lookup.get_mut(&key) {
                 if resource.resource_type != old.resource_type {
@@ -363,6 +376,28 @@ pub(crate) fn msl_assign_argument_buffer_ids(
     let mut resources: Vec<_> = all_resources_lookup.values().collect();
     resources.sort_by(|lhs, rhs| lhs.binding.cmp(&rhs.binding));
 
+    fn shader_stage_to_execution_model(
+        stages: RafxShaderStageFlags
+    ) -> Vec<spirv_cross::spirv::ExecutionModel> {
+        let mut out = vec![];
+        if stages.intersects(RafxShaderStageFlags::VERTEX) {
+            out.push(ExecutionModel::Vertex)
+        }
+        if stages.intersects(RafxShaderStageFlags::FRAGMENT) {
+            out.push(ExecutionModel::Fragment)
+        }
+        if stages.intersects(RafxShaderStageFlags::COMPUTE) {
+            out.push(ExecutionModel::GlCompute)
+        }
+        if stages.intersects(RafxShaderStageFlags::TESSELLATION_CONTROL) {
+            out.push(ExecutionModel::TessellationControl)
+        }
+        if stages.intersects(RafxShaderStageFlags::TESSELLATION_EVALUATION) {
+            out.push(ExecutionModel::TessellationEvaluation)
+        }
+        out
+    }
+
     // If we update this constant, update the arrays in this function
     assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
 
@@ -371,70 +406,49 @@ pub(crate) fn msl_assign_argument_buffer_ids(
     let mut argument_buffer_assignments =
         BTreeMap::<ResourceBindingLocation, ResourceBinding>::default();
 
+    let mut max_set_index = -1;
     for resource in resources {
         let msl_argument_buffer_id = next_msl_argument_buffer_id[resource.set_index as usize];
-
-        let location = ResourceBindingLocation {
-            // We'll overwrite the stage as needed when we insert into the map
-            stage: spirv_cross::spirv::ExecutionModel::TessellationEvaluation,
-            desc_set: resource.set_index,
-            binding: resource.binding,
-        };
-
-        let new_binding = ResourceBinding {
-            buffer_id: msl_argument_buffer_id,
-            texture_id: msl_argument_buffer_id,
-            sampler_id: msl_argument_buffer_id,
-            count: resource.element_count_normalized(),
-        };
-
-        if resource
-            .used_in_shader_stages
-            .intersects(RafxShaderStageFlags::VERTEX)
-        {
-            let mut location = location.clone();
-            location.stage = ExecutionModel::Vertex;
-            argument_buffer_assignments.insert(location, new_binding.clone());
-        }
-
-        if resource
-            .used_in_shader_stages
-            .intersects(RafxShaderStageFlags::FRAGMENT)
-        {
-            let mut location = location.clone();
-            location.stage = ExecutionModel::Fragment;
-            argument_buffer_assignments.insert(location, new_binding.clone());
-        }
-
-        if resource
-            .used_in_shader_stages
-            .intersects(RafxShaderStageFlags::COMPUTE)
-        {
-            let mut location = location.clone();
-            location.stage = ExecutionModel::GlCompute;
-            argument_buffer_assignments.insert(location, new_binding.clone());
-        }
-
-        if resource
-            .used_in_shader_stages
-            .intersects(RafxShaderStageFlags::TESSELLATION_CONTROL)
-        {
-            let mut location = location.clone();
-            location.stage = ExecutionModel::TessellationControl;
-            argument_buffer_assignments.insert(location, new_binding.clone());
-        }
-
-        if resource
-            .used_in_shader_stages
-            .intersects(RafxShaderStageFlags::TESSELLATION_EVALUATION)
-        {
-            let mut location = location.clone();
-            location.stage = ExecutionModel::TessellationEvaluation;
-            argument_buffer_assignments.insert(location, new_binding.clone());
-        }
-
         next_msl_argument_buffer_id[resource.set_index as usize] +=
             resource.element_count_normalized();
+        max_set_index = max_set_index.max(resource.set_index as i32);
+
+        let execution_models = shader_stage_to_execution_model(resource.used_in_shader_stages);
+        for execution_model in execution_models {
+            argument_buffer_assignments.insert(
+                ResourceBindingLocation {
+                    stage: execution_model,
+                    desc_set: resource.set_index,
+                    binding: resource.binding,
+                },
+                ResourceBinding {
+                    buffer_id: msl_argument_buffer_id,
+                    texture_id: msl_argument_buffer_id,
+                    sampler_id: msl_argument_buffer_id,
+                    count: resource.element_count_normalized(),
+                },
+            );
+        }
+    }
+
+    if !push_constant_stages.is_empty() {
+        let push_constant_set_index = (max_set_index + 1) as u32;
+        let push_constant_execution_models = shader_stage_to_execution_model(push_constant_stages);
+        for execution_model in push_constant_execution_models {
+            argument_buffer_assignments.insert(
+                ResourceBindingLocation {
+                    desc_set: !0,
+                    binding: 0,
+                    stage: execution_model,
+                },
+                ResourceBinding {
+                    count: 1,
+                    buffer_id: push_constant_set_index,
+                    sampler_id: push_constant_set_index,
+                    texture_id: push_constant_set_index,
+                },
+            );
+        }
     }
 
     Ok(argument_buffer_assignments)
@@ -622,6 +636,10 @@ fn generate_gl_uniform_members(
                 )?;
             } else {
                 let element_count = element_count(&field.array_sizes);
+                if element_count == 0 {
+                    return Err("Variable array encountered in generate_gl_uniform_members, not supported in GL ES")?;
+                }
+
                 for i in 0..element_count {
                     let member_full_name = format!("{}.{}[{}]", prefix, field.field_name, i);
                     let field_offset =
@@ -745,21 +763,20 @@ where
         //TODO: This is using a list of push constants but I don't think multiple are allowed within
         // the same file
         for push_constant in &shader_resources.push_constant_buffers {
-            let push_constant_ranges = ast
-                .get_active_buffer_ranges(push_constant.id)
-                .map_err(|_x| "could not get active buffer ranges")?;
-            for push_constant_range in &push_constant_ranges {
-                let resource = RafxShaderResource {
-                    resource_type: RafxResourceType::ROOT_CONSTANT,
-                    size_in_bytes: push_constant_range.range as u32,
-                    used_in_shader_stages: stage_flags,
-                    name: Some(push_constant.name.clone()),
-                    ..Default::default()
-                };
-                resource.validate()?;
+            let declared_size = ast.get_declared_struct_size(push_constant.type_id).unwrap();
 
-                rafx_bindings.push(resource);
-            }
+            let resource = RafxShaderResource {
+                resource_type: RafxResourceType::ROOT_CONSTANT,
+                size_in_bytes: declared_size as u32,
+                used_in_shader_stages: stage_flags,
+                name: Some(push_constant.name.clone()),
+                set_index: u32::MAX,
+                binding: u32::MAX,
+                ..Default::default()
+            };
+            resource.validate()?;
+
+            rafx_bindings.push(resource);
         }
 
         //TODO: Store the type and verify that the format associated in the game i.e. R32G32B32 is

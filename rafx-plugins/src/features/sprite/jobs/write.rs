@@ -7,6 +7,7 @@ use rafx::api::{
 };
 use rafx::framework::{MaterialPassResource, ResourceArc};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
+use rafx::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
 
@@ -67,13 +68,16 @@ impl<'write> RenderFeatureWriteJob<'write> for SpriteWriteJob<'write> {
         self.frame_packet.view_frame_index(view)
     }
 
-    fn apply_setup(
+    fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
+        args: BeginSubmitNodeBatchArgs,
     ) -> RafxResult<()> {
-        profiling::scope!(super::render_feature_debug_constants().apply_setup);
+        if !args.feature_changed {
+            return Ok(());
+        }
+
+        profiling::scope!(super::render_feature_debug_constants().begin_submit_node_batch);
 
         let command_buffer = &write_context.command_buffer;
 
@@ -81,7 +85,7 @@ impl<'write> RenderFeatureWriteJob<'write> for SpriteWriteJob<'write> {
             .resource_context
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
-                Some(render_phase_index),
+                Some(args.render_phase_index),
                 self.sprite_material_pass.as_ref().unwrap(),
                 &write_context.render_target_meta,
                 &SPRITE_VERTEX_LAYOUT,
@@ -91,7 +95,7 @@ impl<'write> RenderFeatureWriteJob<'write> for SpriteWriteJob<'write> {
         command_buffer.cmd_bind_pipeline(&pipeline.get_raw().pipeline)?;
 
         // Bind per-pass data (UBO with view/proj matrix, sampler)
-        let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
+        let view_submit_packet = self.submit_packet.view_submit_packet(args.view_frame_index);
         let per_view_submit_data = view_submit_packet.per_view_submit_data().get();
 
         per_view_submit_data
@@ -130,15 +134,13 @@ impl<'write> RenderFeatureWriteJob<'write> for SpriteWriteJob<'write> {
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
-        view_frame_index: ViewFrameIndex,
-        render_phase_index: RenderPhaseIndex,
-        submit_node_id: SubmitNodeId,
+        args: RenderSubmitNodeArgs,
     ) -> RafxResult<()> {
         let command_buffer = &write_context.command_buffer;
 
-        let view_submit_packet = self.submit_packet.view_submit_packet(view_frame_index);
+        let view_submit_packet = self.submit_packet.view_submit_packet(args.view_frame_index);
         let submit_node = &view_submit_packet
-            .get_submit_node_data_from_render_phase(render_phase_index, submit_node_id);
+            .get_submit_node_data_from_render_phase(args.render_phase_index, args.submit_node_id);
 
         // Bind per-draw-call data (i.e. texture)
         submit_node

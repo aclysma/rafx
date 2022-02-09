@@ -163,7 +163,9 @@ where
         self.inner.resource.borrow().resource.clone()
     }
 
-    pub(super) fn get_hash(&self) -> ResourceId {
+    //NOTE: This is highly likely to be unique, especially when comparing against like resources,
+    // but it's not absolutely guaranteed
+    pub(super) fn resource_hash(&self) -> ResourceId {
         self.inner.resource.resource_hash
     }
 

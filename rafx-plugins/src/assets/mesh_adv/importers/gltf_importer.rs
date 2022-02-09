@@ -1,7 +1,8 @@
 use crate::assets::mesh_adv::{
-    MeshAdvAssetData, MeshAdvMaterialData, MeshAdvMaterialDataShaderParam, MeshAdvPartAssetData,
+    MeshAdvAssetData, MeshAdvBufferAssetData, MeshAdvMaterialData, MeshAdvPartAssetData,
     MeshMaterialAdvAsset, MeshMaterialAdvAssetData,
 };
+use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use distill::core::AssetUuid;
 use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
 use distill::loader::handle::Handle;
@@ -12,11 +13,9 @@ use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
 use itertools::Itertools;
 use rafx::api::RafxResourceType;
-use rafx::assets::push_buffer::PushBuffer;
-use rafx::assets::BufferAssetData;
 use rafx::assets::ImageAsset;
+use rafx::assets::PushBuffer;
 use rafx::assets::{ImageAssetColorSpaceConfig, ImageAssetData};
-use rafx::assets::{MaterialInstanceAssetData, MaterialInstanceSlotAssignment};
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -99,7 +98,7 @@ struct MeshToImport {
 
 struct BufferToImport {
     id: GltfObjectId,
-    asset: BufferAssetData,
+    asset: MeshAdvBufferAssetData,
 }
 
 // The asset state is stored in this format using Vecs
@@ -271,8 +270,6 @@ impl Importer for MeshAdvGltfImporter {
 
         let material_handle = make_handle_from_str("680c6edd-8bed-407b-aea0-d0f6056093d6")?;
 
-        let null_image_handle = make_handle_from_str("fc937369-cad2-4a00-bf42-5968f1210784")?;
-
         //
         // Material instance
         //
@@ -281,12 +278,10 @@ impl Importer for MeshAdvGltfImporter {
             //
             // Push the material instance UUID into the list so that we have an O(1) lookup material index to UUID
             //
-            let material_instance_uuid = *unstable_state
+            let _material_instance_uuid = *unstable_state
                 .material_instance_asset_uuids
                 .entry(material_to_import.id.clone())
                 .or_insert_with(|| op.new_asset_uuid());
-
-            let material_instance_handle = make_handle(material_instance_uuid);
 
             let mut search_tags: Vec<(String, Option<String>)> = vec![];
             if let GltfObjectId::Name(name) = &material_to_import.id {
@@ -296,97 +291,7 @@ impl Importer for MeshAdvGltfImporter {
             //
             // Create the material instance
             //
-            let mut slot_assignments = vec![];
-
             let material_data = &material_to_import.asset.material_data;
-            let material_data_shader_param: MeshAdvMaterialDataShaderParam =
-                material_data.clone().into();
-            slot_assignments.push(MaterialInstanceSlotAssignment {
-                slot_name: "per_material_data".to_string(),
-                array_index: 0,
-                image: None,
-                sampler: None,
-                buffer_data: Some(
-                    rafx::base::memory::any_as_bytes(&material_data_shader_param).into(),
-                ),
-            });
-
-            fn choose_image_handle(
-                should_include: bool,
-                image: &Option<Handle<ImageAsset>>,
-                default_image: &Handle<ImageAsset>,
-            ) -> Option<Handle<ImageAsset>> {
-                if should_include {
-                    Some(image.as_ref().map_or(default_image, |x| x).clone())
-                } else {
-                    Some(default_image.clone())
-                }
-            }
-
-            fn push_image_slot_assignment(
-                slot_name: &str,
-                slot_assignments: &mut Vec<MaterialInstanceSlotAssignment>,
-                should_include: bool,
-                image: &Option<Handle<ImageAsset>>,
-                default_image: &Handle<ImageAsset>,
-            ) {
-                slot_assignments.push(MaterialInstanceSlotAssignment {
-                    slot_name: slot_name.to_string(),
-                    array_index: 0,
-                    image: choose_image_handle(should_include, image, default_image),
-                    sampler: None,
-                    buffer_data: None,
-                });
-            }
-
-            push_image_slot_assignment(
-                "base_color_texture",
-                &mut slot_assignments,
-                material_data.has_base_color_texture,
-                &material_to_import.asset.base_color_texture,
-                &null_image_handle,
-            );
-            push_image_slot_assignment(
-                "metallic_roughness_texture",
-                &mut slot_assignments,
-                material_data.has_metallic_roughness_texture,
-                &material_to_import.asset.metallic_roughness_texture,
-                &null_image_handle,
-            );
-            push_image_slot_assignment(
-                "normal_texture",
-                &mut slot_assignments,
-                material_data.has_normal_texture,
-                &material_to_import.asset.normal_texture,
-                &null_image_handle,
-            );
-            push_image_slot_assignment(
-                "emissive_texture",
-                &mut slot_assignments,
-                material_data.has_emissive_texture,
-                &material_to_import.asset.emissive_texture,
-                &null_image_handle,
-            );
-
-            let material_instance_asset = MaterialInstanceAssetData {
-                material: material_handle.clone(),
-                slot_assignments,
-            };
-
-            log::debug!(
-                "Importing material instance uuid {:?}",
-                material_instance_uuid
-            );
-
-            // Create the asset
-            imported_assets.push(ImportedAsset {
-                id: material_instance_uuid,
-                search_tags,
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(material_instance_asset),
-            });
 
             //
             // Create the mesh material
@@ -411,27 +316,14 @@ impl Importer for MeshAdvGltfImporter {
 
             let mesh_material_asset = MeshMaterialAdvAssetData {
                 material_data: material_data.clone(),
-                material_instance: material_instance_handle,
-                color_texture: choose_image_handle(
-                    material_data.has_base_color_texture,
-                    &material_to_import.asset.base_color_texture,
-                    &null_image_handle,
-                ),
-                metallic_roughness_texture: choose_image_handle(
-                    material_data.has_metallic_roughness_texture,
-                    &material_to_import.asset.metallic_roughness_texture,
-                    &null_image_handle,
-                ),
-                normal_texture: choose_image_handle(
-                    material_data.has_normal_texture,
-                    &material_to_import.asset.normal_texture,
-                    &null_image_handle,
-                ),
-                emissive_texture: choose_image_handle(
-                    material_data.has_emissive_texture,
-                    &material_to_import.asset.emissive_texture,
-                    &null_image_handle,
-                ),
+                material_asset: material_handle.clone(),
+                color_texture: material_to_import.asset.base_color_texture.clone(),
+                metallic_roughness_texture: material_to_import
+                    .asset
+                    .metallic_roughness_texture
+                    .clone(),
+                normal_texture: material_to_import.asset.normal_texture.clone(),
+                emissive_texture: material_to_import.asset.emissive_texture.clone(),
             };
 
             imported_assets.push(ImportedAsset {
@@ -463,7 +355,7 @@ impl Importer for MeshAdvGltfImporter {
                 .entry(buffer_to_import.id.clone())
                 .or_insert_with(|| op.new_asset_uuid());
 
-            let buffer_handle = make_handle::<BufferAssetData>(buffer_uuid);
+            let buffer_handle = make_handle::<MeshAdvBufferAssetData>(buffer_uuid);
 
             // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
             buffer_index_to_handle.push(buffer_handle);
@@ -489,37 +381,10 @@ impl Importer for MeshAdvGltfImporter {
                 .entry(mesh_to_import.id.clone())
                 .or_insert_with(|| op.new_asset_uuid());
 
-            // Push the UUID into the list so that we have an O(1) lookup for image index to UUID
-            //mesh_index_to_uuid_lookup.push(mesh_uuid.clone());
-
             let mut search_tags: Vec<(String, Option<String>)> = vec![];
             if let GltfObjectId::Name(name) = &mesh_to_import.id {
                 search_tags.push(("name".to_string(), Some(name.clone())));
             }
-
-            // let mut load_deps = vec![];
-            //
-            // // Vertex buffer dependency
-            // let vertex_buffer_uuid = SerdeContext::with_active(|x, _| {
-            //     x.get_asset_id(mesh_to_import.asset.vertex_buffer.load_handle())
-            // }).unwrap();
-            // load_deps.push(AssetRef::Uuid(vertex_buffer_uuid));
-            //
-            // // Index buffer dependency
-            // let index_buffer_uuid = SerdeContext::with_active(|x, _| {
-            //     x.get_asset_id(mesh_to_import.asset.index_buffer.load_handle())
-            // }).unwrap();
-            // load_deps.push(AssetRef::Uuid(index_buffer_uuid));
-            //
-            // // Materials dependencies
-            // for mesh_part in &mesh_to_import.asset.mesh_parts {
-            //     if let Some(material) = &mesh_part.material {
-            //         let material_uuid = SerdeContext::with_active(|x, _| {
-            //             x.get_asset_id(material.load_handle())
-            //         }).unwrap();
-            //         load_deps.push(AssetRef::Uuid(material_uuid));
-            //     }
-            // }
 
             log::debug!("Importing mesh uuid {:?}", mesh_uuid);
 
@@ -911,8 +776,9 @@ fn extract_meshes_to_import(
         //
         // Vertex Full Buffer
         //
-        let vertex_full_buffer_asset = BufferAssetData {
+        let vertex_full_buffer_asset = MeshAdvBufferAssetData {
             resource_type: RafxResourceType::VERTEX_BUFFER,
+            alignment: std::mem::size_of::<MeshVertexFull>() as u32,
             data: all_vertices_full.into_data(),
         };
 
@@ -934,8 +800,9 @@ fn extract_meshes_to_import(
         //
         // Vertex Position Buffer
         //
-        let vertex_position_buffer_asset = BufferAssetData {
+        let vertex_position_buffer_asset = MeshAdvBufferAssetData {
             resource_type: RafxResourceType::VERTEX_BUFFER,
+            alignment: std::mem::size_of::<MeshVertexPosition>() as u32,
             data: all_vertices_position.into_data(),
         };
 
@@ -957,8 +824,9 @@ fn extract_meshes_to_import(
         //
         // Index Buffer
         //
-        let index_buffer_asset = BufferAssetData {
+        let index_buffer_asset = MeshAdvBufferAssetData {
             resource_type: RafxResourceType::INDEX_BUFFER,
+            alignment: std::mem::size_of::<u32>() as u32,
             data: all_indices.into_data(),
         };
 

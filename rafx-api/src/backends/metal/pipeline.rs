@@ -188,8 +188,7 @@ impl RafxPipelineMetal {
         let mtl_triangle_fill_mode = pipeline_def.rasterizer_state.fill_mode.into();
         let mtl_front_facing_winding = pipeline_def.rasterizer_state.front_face.into();
         let mtl_depth_bias = pipeline_def.rasterizer_state.depth_bias as f32;
-        let mtl_depth_bias_slope_scaled =
-            pipeline_def.rasterizer_state.depth_bias_slope_scaled as f32;
+        let mtl_depth_bias_slope_scaled = pipeline_def.rasterizer_state.depth_bias_slope_scaled;
         let mtl_depth_clip_mode = if pipeline_def.rasterizer_state.depth_clamp_enable {
             metal_rs::MTLDepthClipMode::Clamp
         } else {

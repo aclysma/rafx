@@ -8,6 +8,7 @@ use crate::phases::{
 };
 use distill::loader::handle::Handle;
 use rafx::assets::{ComputePipelineAsset, MaterialAsset};
+use rafx::renderer::RendererLoadContext;
 
 pub struct MeshAdvStaticResources {
     pub default_pbr_material: Handle<MaterialAsset>,
@@ -84,10 +85,11 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
 
     fn initialize_static_resources(
         &self,
+        renderer_load_context: &RendererLoadContext,
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
         _extract_resources: &ExtractResources,
-        render_resources: &mut ResourceMap,
+        render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let default_pbr_material = asset_resource.load_asset_path::<MaterialAsset, _>(
@@ -117,28 +119,44 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
                 "rafx-plugins/compute_pipelines/lights_build_lists.compute",
             );
 
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &default_pbr_material,
             asset_resource,
             "default_pbr_material",
         )?;
-        asset_manager.wait_for_asset_to_load(&depth_material, asset_resource, "depth")?;
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
+            &depth_material,
+            asset_resource,
+            "depth",
+        )?;
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &shadow_map_atlas_depth_material,
             asset_resource,
             "shadow atlas depth",
         )?;
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &shadow_map_atlas_clear_tiles_material,
             asset_resource,
             "shadow atlas clear",
         )?;
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &lights_bin_compute_pipeline,
             asset_resource,
             "lights_bin.compute",
         )?;
-        asset_manager.wait_for_asset_to_load(
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
             &lights_build_lists_compute_pipeline,
             asset_resource,
             "lights_build_lists.compute",
@@ -166,7 +184,7 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
 
     fn prepare_renderer_destroy(
         &self,
-        render_resources: &ResourceMap,
+        render_resources: &RenderResources,
     ) -> RafxResult<()> {
         // Clear shadow map assignments so that all shadow map atlas elements are free
         let mut shadow_map_resource = render_resources.fetch_mut::<MeshAdvShadowMapResource>();

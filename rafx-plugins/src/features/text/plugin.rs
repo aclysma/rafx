@@ -5,6 +5,7 @@ use crate::assets::font::FontAsset;
 use crate::phases::UiRenderPhase;
 use distill::loader::handle::Handle;
 use rafx::assets::MaterialAsset;
+use rafx::renderer::RendererLoadContext;
 use std::path::PathBuf;
 
 pub struct TextStaticResources {
@@ -68,10 +69,11 @@ impl RenderFeaturePlugin for TextRendererPlugin {
 
     fn initialize_static_resources(
         &self,
+        renderer_load_context: &RendererLoadContext,
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
         _extract_resources: &ExtractResources,
-        render_resources: &mut ResourceMap,
+        render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let text_material = asset_resource
@@ -79,9 +81,21 @@ impl RenderFeaturePlugin for TextRendererPlugin {
         let default_font = asset_resource
             .load_asset_path::<FontAsset, _>("rafx-plugins/fonts/mplus-1p-regular.ttf");
 
-        asset_manager.wait_for_asset_to_load(&text_material, asset_resource, "text material")?;
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
+            &text_material,
+            asset_resource,
+            "text material",
+        )?;
 
-        asset_manager.wait_for_asset_to_load(&default_font, asset_resource, "default font")?;
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
+            &default_font,
+            asset_resource,
+            "default font",
+        )?;
 
         render_resources.insert(TextStaticResources {
             text_material,

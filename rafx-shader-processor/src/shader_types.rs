@@ -226,7 +226,7 @@ pub(crate) fn generate_struct(
 
         log::trace!("    offset: {} align to {}", gpu_offset, gpu_alignment);
         gpu_offset = align_offset(gpu_offset, gpu_alignment);
-        let gpu_size = determine_size(
+        let maybe_gpu_size = determine_size(
             builtin_types,
             user_types,
             &f.type_name,
@@ -235,7 +235,11 @@ pub(crate) fn generate_struct(
             gpu_offset,
             &f.type_name,
             layout,
-        )? - gpu_offset;
+        )?;
+        if maybe_gpu_size.is_none() {
+            return Err("Variable sized struct found, export is not supported as these can't be represented in rust")?;
+        }
+        let gpu_size = maybe_gpu_size.unwrap() - gpu_offset;
 
         //
         // Determine the alignment of this type in rust
@@ -311,7 +315,7 @@ pub(crate) fn generate_struct(
         // will flag an error if this is not possible.
         //
         assert_eq!(rust_offset, gpu_offset);
-        let rust_size = determine_size_of_member_in_rust(
+        let maybe_rust_size = determine_size_of_member_in_rust(
             builtin_types,
             user_types,
             &f.type_name,
@@ -320,7 +324,11 @@ pub(crate) fn generate_struct(
             rust_offset,
             &f.type_name,
             layout,
-        )? - rust_offset;
+        )?;
+        if maybe_rust_size.is_none() {
+            return Err("Variable sized struct found, export is not supported as these can't be represented in rust")?;
+        }
+        let rust_size = maybe_rust_size.unwrap() - rust_offset;
         assert!(rust_size <= gpu_size);
 
         // It would be difficult to natively support this and make it ergonomic to use. Probably best to just avoid it.
@@ -377,7 +385,7 @@ pub(crate) fn generate_struct(
     // Check how large this type is supposed to be in total. We will add padding on the end of the
     // struct to ensure that the rust type's size matches the size used in the gpu layout
     //
-    let full_gpu_size = determine_size(
+    let maybe_full_gpu_size = determine_size(
         builtin_types,
         user_types,
         &type_name,
@@ -387,6 +395,11 @@ pub(crate) fn generate_struct(
         &type_name,
         layout,
     )?;
+
+    if maybe_full_gpu_size.is_none() {
+        return Err("Variable sized struct found, export is not supported as these can't be represented in rust")?;
+    }
+    let full_gpu_size = maybe_full_gpu_size.unwrap();
 
     assert!(rust_offset <= full_gpu_size);
     if rust_offset < full_gpu_size {
@@ -459,8 +472,16 @@ fn align_offset(
 }
 
 pub(crate) fn element_count(array_sizes: &[usize]) -> usize {
+    if let Some(&last) = array_sizes.last() {
+        if last == 0 {
+            // It's a variable sized array
+            return 0;
+        }
+    }
+
     let mut element_count = 1;
     for x in array_sizes {
+        assert!(*x != 0);
         element_count *= x;
     }
 
@@ -476,7 +497,7 @@ fn determine_size_of_member_in_rust(
     logging_offset: usize,
     logging_name: &str,
     gpu_layout: MemoryLayout,
-) -> Result<usize, String> {
+) -> Result<Option<usize>, String> {
     let memory_layout = if builtin_types.contains_key(query_type) {
         MemoryLayout::C
     } else if user_types.contains_key(query_type) {
@@ -506,9 +527,13 @@ fn determine_size(
     logging_offset: usize,
     logging_name: &str,
     layout: MemoryLayout,
-) -> Result<usize, String> {
+) -> Result<Option<usize>, String> {
     // We only need to know how many elements we have
     let element_count = element_count(array_sizes);
+    if element_count == 0 {
+        // Variable sized struct returns None
+        return Ok(None);
+    }
 
     // Align this type (may be a struct, built-in, etc.
     // Caller should probably already align
@@ -541,7 +566,7 @@ fn determine_size(
             offset += padded_size * element_count;
         }
 
-        Ok(offset)
+        Ok(Some(offset))
     } else if let Some(user_type) = user_types.get(query_type) {
         let mut offset_within_struct = 0;
         //println!("  process fields for {}", logging_name);
@@ -556,7 +581,7 @@ fn determine_size(
             )?;
             offset_within_struct = align_offset(offset_within_struct, field_alignment);
 
-            offset_within_struct = determine_size(
+            let maybe_offset_within_struct = determine_size(
                 builtin_types,
                 user_types,
                 &f.type_name,
@@ -566,21 +591,28 @@ fn determine_size(
                 &f.field_name,
                 layout,
             )?;
+
+            if maybe_offset_within_struct.is_none() {
+                return Ok(None);
+            }
+
+            offset_within_struct = maybe_offset_within_struct.unwrap();
         }
 
         let padded_size = align_offset(offset_within_struct, alignment);
         log::trace!(
-            "        struct {} total size: {} [{} elements of size {}]",
+            "        struct {} total size: {} [{} elements of size {} padded to {}]",
             logging_name,
             padded_size * element_count,
             element_count,
+            offset_within_struct,
             padded_size
         );
         offset += padded_size * element_count;
 
         // // the base offset of the member following the sub-structure is rounded up to the next multiple of the base alignment of the structure
         // offset = (offset + alignment - 1) / alignment * alignment;
-        Ok(offset)
+        Ok(Some(offset))
     } else {
         return Err(format!("Could not find type {}. Is this a built in type that needs to be added to create_builtin_type_lookup()?", query_type));
     }
@@ -727,9 +759,12 @@ pub(crate) fn verify_all_binding_layouts(
         }
     }
 
+    // spirv-reflect seems to be producing wrong info for push constants
+    /*
     for push_constant in reflect_data.enumerate_push_constant_blocks(None).unwrap() {
         //println!("check push constant binding {}", push_constant.name);
         let type_description = push_constant.type_description.as_ref().unwrap();
+        println!("PUSH CONSTANT {:#?}", push_constant);
         verify_layout(
             builtin_types,
             user_types,
@@ -738,6 +773,7 @@ pub(crate) fn verify_all_binding_layouts(
             MemoryLayout::Std430,
         )?;
     }
+    */
 
     Ok(())
 }
@@ -769,44 +805,63 @@ fn verify_layout(
             layout,
         )?;
 
-        if block.padded_size != 0 {
-            // The easy check, but it's 0 on storage buffers for some reason
-            if size != block.size as usize {
-                println!("{:?}", block);
+        // Skip checking for variables-sized structs
+        if !size.is_none() {
+            let size = size.unwrap();
 
-                fn print_block_members(
-                    reflect_block_variable: &spirv_reflect::types::ReflectBlockVariable
-                ) {
-                    for member in &reflect_block_variable.members {
-                        log::trace!("+{} (size {}) {}", member.offset, member.size, member.name);
-                        print_block_members(&member);
+            //NOTE: determine_size will, depending on type/array
+            let alignment =
+                determine_alignment(builtin_types, user_types, type_name, &array_sizes, layout)?;
+
+            if block.padded_size != 0 {
+                let padded_size = align_offset(block.size as usize, alignment);
+                // The easy check, but it's 0 on storage buffers for some reason
+                if size != padded_size {
+                    fn print_block_members(
+                        reflect_block_variable: &spirv_reflect::types::ReflectBlockVariable
+                    ) {
+                        for member in &reflect_block_variable.members {
+                            log::info!("+{} (size {}) {}", member.offset, member.size, member.name);
+                            print_block_members(&member);
+                        }
                     }
+
+                    print_block_members(block);
+
+                    return Err(format!(
+                        "Found a mismatch between logic and compiled spv alignments in type {} for layout {:?}. Logic size: {} SPV size is: {}",
+                        type_name,
+                        layout,
+                        size,
+                        block.size
+                    ));
                 }
+            } else {
+                // Alternative method, see comments and code here:
+                // https://github.com/KhronosGroup/SPIRV-Cross/blob/e6f5ce6b8998f551f3400ad743b77be51bbe3019/spirv_cross.hpp#L246
+                let mut size_from_reflection = block
+                    .members
+                    .last()
+                    .map(|x| x.offset + x.padded_size)
+                    .unwrap_or(0) as usize;
 
-                print_block_members(block);
+                // Sizes returned from determine_size will be padded
+                size_from_reflection = align_offset(size_from_reflection, alignment);
 
-                return Err(format!(
-                    "Found a mismatch between logic and compiled spv alignments in type {} for layout {:?}. Logic size: {} SPV size is: {}",
-                    type_name,
-                    layout,
-                    size,
-                    block.size
-                ));
-            }
-        } else {
-            // Alternative method, see comments and code here:
-            // https://github.com/KhronosGroup/SPIRV-Cross/blob/e6f5ce6b8998f551f3400ad743b77be51bbe3019/spirv_cross.hpp#L246
-            let size_from_reflection = block
-                .members
-                .last()
-                .map(|x| x.offset + x.padded_size)
-                .unwrap_or(0) as usize;
-            let element_count = element_count(&array_sizes);
-
-            if size != size_from_reflection * element_count {
-                return Err(format!(
-                    "Found a mismatch between logic and compiled spv alignments"
-                ));
+                let element_count = element_count(&array_sizes);
+                if size != size_from_reflection * element_count {
+                    println!("alignment {}", alignment);
+                    return Err(format!(
+                        "Found a mismatch between logic and compiled spv alignments in type {} for layout {:?}. Logic size: {} SPV size is: {} ({} * {} elements, array sizes {:?})",
+                        type_name,
+                        layout,
+                        size,
+                        size_from_reflection * element_count,
+                        size_from_reflection,
+                        element_count,
+                        array_sizes
+                    ));
+                }
             }
         }
 

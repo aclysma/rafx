@@ -4,7 +4,9 @@ use crate::assets::mesh_basic::{
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::distill::daemon::AssetDaemon;
+use rafx::framework::RenderResources;
 use rafx::renderer::RendererAssetPlugin;
+use rafx::RafxResult;
 
 pub struct MeshBasicAssetTypeRendererPlugin;
 
@@ -29,10 +31,16 @@ impl RendererAssetPlugin for MeshBasicAssetTypeRendererPlugin {
         &self,
         asset_manager: &mut AssetManager,
         asset_resource: &mut AssetResource,
-    ) {
-        asset_manager.register_asset_type::<MeshMaterialBasicAssetType>(asset_resource);
-        asset_manager.register_asset_type::<MeshBasicAssetType>(asset_resource);
-        asset_manager.register_asset_type::<ModelBasicAssetType>(asset_resource);
-        asset_manager.register_asset_type::<PrefabBasicAssetType>(asset_resource);
+        _render_resources: &mut RenderResources,
+    ) -> RafxResult<()> {
+        let asset_type = MeshMaterialBasicAssetType::create(asset_manager, asset_resource)?;
+        asset_manager.register_asset_type(asset_type)?;
+        let asset_type = MeshBasicAssetType::create(asset_manager, asset_resource)?;
+        asset_manager.register_asset_type(asset_type)?;
+        let asset_type = ModelBasicAssetType::create(asset_manager, asset_resource)?;
+        asset_manager.register_asset_type(asset_type)?;
+        let asset_type = PrefabBasicAssetType::create(asset_manager, asset_resource)?;
+        asset_manager.register_asset_type(asset_type)?;
+        Ok(())
     }
 }

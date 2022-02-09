@@ -1,7 +1,7 @@
 use crate::metal::RafxDeviceContextMetal;
 use crate::{
     RafxDescriptorIndex, RafxPipelineType, RafxResourceType, RafxResult, RafxRootSignatureDef,
-    MAX_DESCRIPTOR_SET_LAYOUTS,
+    RafxShaderStageFlags, ALL_SHADER_STAGE_FLAGS, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use cocoa_foundation::foundation::NSUInteger;
 use fnv::FnvHashMap;
@@ -22,6 +22,10 @@ pub(crate) struct DescriptorInfo {
     pub(crate) binding: u32,
     // Used for arrays of textures, samplers, etc.
     pub(crate) element_count: u32,
+
+    pub(crate) push_constant_size: u32,
+    pub(crate) used_in_shader_stages: RafxShaderStageFlags,
+
     // Index into DescriptorSetLayoutInfo::descriptors list
     // NOT THE BINDING INDEX!!!
     //pub(crate) descriptor_index: RafxDescriptorIndex,
@@ -74,6 +78,8 @@ pub(crate) struct RafxRootSignatureMetalInner {
     pub(crate) layouts: [DescriptorSetLayoutInfo; MAX_DESCRIPTOR_SET_LAYOUTS],
     pub(crate) descriptors: Vec<DescriptorInfo>,
     pub(crate) name_to_descriptor_index: FnvHashMap<String, RafxDescriptorIndex>,
+    pub(crate) push_constant_descriptors:
+        [Option<RafxDescriptorIndex>; ALL_SHADER_STAGE_FLAGS.len()],
 
     // --- metal-specific ---
     pub(crate) argument_descriptors: [Vec<ArgumentDescriptor>; MAX_DESCRIPTOR_SET_LAYOUTS],
@@ -118,6 +124,28 @@ impl RafxRootSignatureMetal {
             .copied()
     }
 
+    pub fn find_push_constant_descriptor(
+        &self,
+        stage: RafxShaderStageFlags,
+    ) -> Option<RafxDescriptorIndex> {
+        let mut found_descriptor = None;
+        for (stage_index, s) in ALL_SHADER_STAGE_FLAGS.iter().enumerate() {
+            if s.intersects(stage) {
+                let s_descriptor_index = self.inner.push_constant_descriptors[stage_index];
+                if let Some(found_descriptor) = found_descriptor {
+                    if found_descriptor != s_descriptor_index {
+                        // The caller passed multiple stages and they do not use the same push constant descriptor
+                        return None;
+                    }
+                } else {
+                    found_descriptor = Some(s_descriptor_index);
+                }
+            }
+        }
+
+        return found_descriptor.flatten();
+    }
+
     pub(crate) fn descriptor(
         &self,
         descriptor_index: RafxDescriptorIndex,
@@ -155,108 +183,147 @@ impl RafxRootSignatureMetal {
         ];
 
         let mut resource_usages = [vec![], vec![], vec![], vec![]];
+        let mut push_constant_descriptors = [None; ALL_SHADER_STAGE_FLAGS.len()];
 
         let mut next_argument_buffer_id = [0, 0, 0, 0];
 
         let mut descriptors = Vec::with_capacity(merged_resources.len());
         let mut name_to_descriptor_index = FnvHashMap::default();
 
+        // Used to determine the arg buffer index for push constants
+        let mut max_set_index = -1;
+        for resource in &merged_resources {
+            if resource.resource_type != RafxResourceType::ROOT_CONSTANT {
+                max_set_index = max_set_index.max(resource.set_index as i32)
+            }
+        }
+
         for resource in &merged_resources {
             resource.validate()?;
 
-            // Not currently supported
-            assert_ne!(resource.resource_type, RafxResourceType::ROOT_CONSTANT);
-
             // Verify set index is valid
 
-            let immutable_sampler = crate::internal_shared::find_immutable_sampler_index(
-                root_signature_def.immutable_samplers,
-                &resource.name,
-                resource.set_index,
-                resource.binding,
-            );
+            if resource.resource_type != RafxResourceType::ROOT_CONSTANT {
+                let immutable_sampler = crate::internal_shared::find_immutable_sampler_index(
+                    root_signature_def.immutable_samplers,
+                    &resource.name,
+                    resource.set_index,
+                    resource.binding,
+                );
 
-            // Check that if an immutable sampler is set, the array size matches the resource element count
-            if let Some(immutable_sampler_index) = immutable_sampler {
-                if resource.element_count_normalized() as usize
-                    != root_signature_def.immutable_samplers[immutable_sampler_index]
-                        .samplers
-                        .len()
-                {
-                    Err(format!(
-                        "Descriptor (set={:?} binding={:?}) named {:?} specifies {} elements but the count of provided immutable samplers ({}) did not match",
-                        resource.set_index,
-                        resource.binding,
-                        resource.name,
-                        resource.element_count_normalized(),
-                        root_signature_def.immutable_samplers[immutable_sampler_index].samplers.len()
-                    ))?;
+                // Check that if an immutable sampler is set, the array size matches the resource element count
+                if let Some(immutable_sampler_index) = immutable_sampler {
+                    if resource.element_count_normalized() as usize
+                        != root_signature_def.immutable_samplers[immutable_sampler_index]
+                            .samplers
+                            .len()
+                    {
+                        Err(format!(
+                            "Descriptor (set={:?} binding={:?}) named {:?} specifies {} elements but the count of provided immutable samplers ({}) did not match",
+                            resource.set_index,
+                            resource.binding,
+                            resource.name,
+                            resource.element_count_normalized(),
+                            root_signature_def.immutable_samplers[immutable_sampler_index].samplers.len()
+                        ))?;
+                    }
                 }
-            }
 
-            let layout: &mut DescriptorSetLayoutInfo = &mut layouts[resource.set_index as usize];
+                let layout: &mut DescriptorSetLayoutInfo =
+                    &mut layouts[resource.set_index as usize];
 
-            let descriptor_index = RafxDescriptorIndex(descriptors.len() as u32);
+                let descriptor_index = RafxDescriptorIndex(descriptors.len() as u32);
 
-            let argument_buffer_id = next_argument_buffer_id[resource.set_index as usize];
-            next_argument_buffer_id[resource.set_index as usize] +=
-                resource.element_count_normalized();
+                let argument_buffer_id = next_argument_buffer_id[resource.set_index as usize];
+                next_argument_buffer_id[resource.set_index as usize] +=
+                    resource.element_count_normalized();
 
-            //let update_data_offset_in_set = Some(layout.update_data_count_per_set);
+                //let update_data_offset_in_set = Some(layout.update_data_count_per_set);
 
-            if let Some(_immutable_sampler_index) = immutable_sampler {
-                // This is now embedded by spirv_cross in the shader
-                // let samplers = root_signature_def
-                //     .immutable_samplers[immutable_sampler_index]
-                //     .samplers
-                //     .iter()
-                //     .map(|x| x.metal_sampler().unwrap().clone())
-                //     .collect();
-                //
-                // layout.immutable_samplers.push(ImmutableSampler {
-                //     //binding: resource.binding,
-                //     samplers,
-                //     argument_buffer_id: argument_buffer_id as _
-                // });
+                if let Some(_immutable_sampler_index) = immutable_sampler {
+                    // This is now embedded by spirv_cross in the shader
+                    // let samplers = root_signature_def
+                    //     .immutable_samplers[immutable_sampler_index]
+                    //     .samplers
+                    //     .iter()
+                    //     .map(|x| x.metal_sampler().unwrap().clone())
+                    //     .collect();
+                    //
+                    // layout.immutable_samplers.push(ImmutableSampler {
+                    //     //binding: resource.binding,
+                    //     samplers,
+                    //     argument_buffer_id: argument_buffer_id as _
+                    // });
+                } else {
+                    // Add it to the descriptor list
+                    descriptors.push(DescriptorInfo {
+                        name: resource.name.clone(),
+                        resource_type: resource.resource_type,
+                        //texture_dimensions: resource.texture_dimensions,
+                        set_index: resource.set_index,
+                        binding: resource.binding,
+                        element_count: resource.element_count_normalized(),
+                        push_constant_size: 0,
+                        used_in_shader_stages: resource.used_in_shader_stages,
+                        //descriptor_index,
+                        //immutable_sampler: immutable_sampler.map(|x| immutable_samplers[x].clone()),
+                        //update_data_offset_in_set,
+                        //usage
+                        argument_buffer_id: argument_buffer_id as _,
+                    });
+
+                    if let Some(name) = resource.name.as_ref() {
+                        name_to_descriptor_index.insert(name.clone(), descriptor_index);
+                    }
+
+                    layout.descriptors.push(descriptor_index);
+                    layout
+                        .binding_to_descriptor_index
+                        .insert(resource.binding, descriptor_index);
+                    layout.argument_buffer_id_range =
+                        next_argument_buffer_id[resource.set_index as usize];
+
+                    // Build out the MTLResourceUsage usages - it's used when we bind descriptor sets
+                    let layout_resource_usages = &mut resource_usages[resource.set_index as usize];
+                    layout_resource_usages.resize(
+                        layout.argument_buffer_id_range as usize,
+                        MTLResourceUsage::empty(),
+                    );
+                    let usage =
+                        super::util::resource_type_mtl_resource_usage(resource.resource_type);
+                    for i in argument_buffer_id..layout.argument_buffer_id_range {
+                        layout_resource_usages[i as usize] = usage;
+                    }
+
+                    debug_assert_ne!(layout.argument_buffer_id_range, 0);
+                }
             } else {
-                // Add it to the descriptor list
+                let descriptor_index = RafxDescriptorIndex(descriptors.len() as u32);
                 descriptors.push(DescriptorInfo {
                     name: resource.name.clone(),
                     resource_type: resource.resource_type,
                     //texture_dimensions: resource.texture_dimensions,
-                    set_index: resource.set_index,
-                    binding: resource.binding,
-                    element_count: resource.element_count_normalized(),
+                    set_index: u32::MAX,
+                    binding: u32::MAX,
+                    element_count: 0,
+                    push_constant_size: resource.size_in_bytes,
+                    used_in_shader_stages: resource.used_in_shader_stages,
                     //descriptor_index,
                     //immutable_sampler: immutable_sampler.map(|x| immutable_samplers[x].clone()),
                     //update_data_offset_in_set,
                     //usage
-                    argument_buffer_id: argument_buffer_id as _,
+                    argument_buffer_id: (max_set_index + 1) as _,
                 });
 
                 if let Some(name) = resource.name.as_ref() {
                     name_to_descriptor_index.insert(name.clone(), descriptor_index);
                 }
 
-                layout.descriptors.push(descriptor_index);
-                layout
-                    .binding_to_descriptor_index
-                    .insert(resource.binding, descriptor_index);
-                layout.argument_buffer_id_range =
-                    next_argument_buffer_id[resource.set_index as usize];
-
-                // Build out the MTLResourceUsage usages - it's used when we bind descriptor sets
-                let layout_resource_usages = &mut resource_usages[resource.set_index as usize];
-                layout_resource_usages.resize(
-                    layout.argument_buffer_id_range as usize,
-                    MTLResourceUsage::empty(),
-                );
-                let usage = super::util::resource_type_mtl_resource_usage(resource.resource_type);
-                for i in argument_buffer_id..layout.argument_buffer_id_range {
-                    layout_resource_usages[i as usize] = usage;
+                for (i, stage) in ALL_SHADER_STAGE_FLAGS.iter().enumerate() {
+                    if stage.intersects(resource.used_in_shader_stages) {
+                        push_constant_descriptors[i] = Some(descriptor_index);
+                    }
                 }
-
-                debug_assert_ne!(layout.argument_buffer_id_range, 0);
             }
         }
 
@@ -299,6 +366,7 @@ impl RafxRootSignatureMetal {
             layouts,
             descriptors,
             name_to_descriptor_index,
+            push_constant_descriptors,
             argument_buffer_resource_usages,
             argument_descriptors,
         };

@@ -6,8 +6,10 @@ use crate::{RendererAssetPlugin, RendererThreadPool};
 use fnv::FnvHashSet;
 use rafx_api::{RafxApi, RafxQueueType, RafxResult};
 use rafx_assets::distill_impl::AssetResource;
-use rafx_assets::{AssetManager, UploadQueueConfig};
+use rafx_assets::AssetManager;
 use rafx_framework::render_features::{ExtractResources, RenderRegistryBuilder};
+use rafx_framework::upload::UploadQueueConfig;
+use rafx_framework::RenderResources;
 use std::sync::Arc;
 
 pub enum AssetSource {
@@ -183,14 +185,21 @@ impl RendererBuilder {
             &transfer_queue,
         )?;
 
-        asset_manager.register_default_asset_types(&mut asset_resource);
+        let mut render_resources = RenderResources::default();
+
+        asset_manager.register_default_asset_types(&mut asset_resource, &mut render_resources)?;
 
         for plugin in &self.asset_plugins {
-            plugin.register_asset_types(&mut asset_manager, &mut asset_resource);
+            plugin.register_asset_types(
+                &mut asset_manager,
+                &mut asset_resource,
+                &mut render_resources,
+            )?;
         }
 
         let renderer = Renderer::new(
             extract_resources,
+            render_resources,
             &mut asset_resource,
             &mut asset_manager,
             &graphics_queue,

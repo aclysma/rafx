@@ -1,4 +1,5 @@
 use distill::loader::handle::Handle;
+use distill::loader::LoadHandle;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler};
 use serde::{Deserialize, Serialize};
@@ -35,6 +36,7 @@ impl DefaultAssetTypeLoadHandler<ModelBasicAssetData, ModelBasicAsset> for Model
     fn load(
         _asset_manager: &mut AssetManager,
         model_asset: ModelBasicAssetData,
+        _load_handle: LoadHandle,
     ) -> RafxResult<ModelBasicAsset> {
         let inner = ModelBasicAssetInner {
             lods: model_asset.lods,
