@@ -14,7 +14,10 @@ use rafx::framework::{
 
 use crate::shaders::mesh_adv::{mesh_adv_textured_frag, mesh_adv_wireframe_vert};
 use glam::Mat4;
-use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
+use rafx::api::{
+    RafxBufferDef, RafxDeviceContext, RafxDrawIndexedIndirectCommand, RafxMemoryUsage,
+    RafxResourceType,
+};
 
 use crate::assets::mesh_adv::material_db::MaterialDB;
 use crate::assets::mesh_adv::{MeshAdvAssetPart, MeshAdvBlendMethod, MeshAdvShaderPassIndices};
@@ -146,9 +149,9 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
         per_batch_descriptor_set_index: usize,
         draw_data_binding: u32,
         transforms_binding: u32,
+        dyn_resource_allocator_set: &DynResourceAllocatorSet,
         create_draw_data_fn: CreateDrawDataFnT,
     ) -> DescriptorSetArc {
-        let dyn_resource_allocator_set = resource_context.create_dyn_resource_allocator_set();
         let draw_data_buffer_size =
             batch.draw_data.len() as u64 * std::mem::size_of::<DrawDataT>() as u64;
         let draw_data_buffer = dyn_resource_allocator_set.insert_buffer(
@@ -569,18 +572,31 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 let batched_pass = &batched_passes.get()[batch_index];
                 let draw_data_index = batched_pass.draw_data.len() as u32;
 
-                let vertex_offset = if use_full_vertices {
-                    mesh_part.vertex_full_buffer_offset_in_bytes
+                let (vertex_size, vertex_buffer_offset_in_bytes) = if use_full_vertices {
+                    (
+                        std::mem::size_of::<MeshVertexFull>() as u32,
+                        mesh_part.vertex_full_buffer_offset_in_bytes,
+                    )
                 } else {
-                    mesh_part.vertex_position_buffer_offset_in_bytes
+                    (
+                        std::mem::size_of::<MeshVertexPosition>() as u32,
+                        mesh_part.vertex_position_buffer_offset_in_bytes,
+                    )
                 };
+
+                assert!(vertex_buffer_offset_in_bytes % vertex_size as u32 == 0);
+                let vertex_offset = vertex_buffer_offset_in_bytes / vertex_size;
+
+                let index_size_in_bytes = mesh_part.index_type.size_in_bytes() as u32;
+                assert!(mesh_part.index_buffer_size_in_bytes % index_size_in_bytes == 0);
+                assert!(mesh_part.index_buffer_offset_in_bytes % index_size_in_bytes == 0);
 
                 batched_pass.draw_data.push(MeshAdvBatchDrawData {
                     material_index: mesh_part_material_index,
-                    index_buffer_size_in_bytes: mesh_part.index_buffer_size_in_bytes,
-                    index_buffer_offset_in_bytes: mesh_part.index_buffer_offset_in_bytes,
+                    index_count: mesh_part.index_buffer_size_in_bytes / index_size_in_bytes,
+                    index_offset: mesh_part.index_buffer_offset_in_bytes / index_size_in_bytes,
                     transform_index: model_matrix_offset as u32,
-                    vertex_offset_in_bytes: vertex_offset,
+                    vertex_offset,
                 });
 
                 PushDrawDataResult {
@@ -1234,6 +1250,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         shadow_atlas_depth_vert::ALL_DRAW_DATA_DESCRIPTOR_SET_INDEX,
                         shadow_atlas_depth_vert::ALL_DRAW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
                         shadow_atlas_depth_vert::ALL_TRANSFORMS_DESCRIPTOR_BINDING_INDEX as u32,
+                        &dyn_resource_allocator_set,
                         |src| shadow_atlas_depth_vert::DrawDataBuffer {
                             transform_index: src.transform_index,
                             material_index: src.material_index,
@@ -1251,6 +1268,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         depth_velocity_vert::ALL_DRAW_DATA_DESCRIPTOR_SET_INDEX,
                         depth_velocity_vert::ALL_DRAW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
                         depth_velocity_vert::ALL_TRANSFORMS_DESCRIPTOR_BINDING_INDEX as u32,
+                        &dyn_resource_allocator_set,
                         |src| depth_velocity_vert::DrawDataBuffer {
                             transform_index: src.transform_index,
                             material_index: src.material_index,
@@ -1271,6 +1289,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         mesh_adv_textured_frag::ALL_DRAW_DATA_DESCRIPTOR_SET_INDEX,
                         mesh_adv_textured_frag::ALL_DRAW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
                         mesh_adv_textured_frag::ALL_TRANSFORMS_DESCRIPTOR_BINDING_INDEX as u32,
+                        &dyn_resource_allocator_set,
                         |src| mesh_adv_textured_frag::DrawDataBuffer {
                             transform_index: src.transform_index,
                             material_index: src.material_index,
@@ -1288,6 +1307,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         mesh_adv_wireframe_vert::ALL_DRAW_DATA_DESCRIPTOR_SET_INDEX,
                         mesh_adv_wireframe_vert::ALL_DRAW_DATA_DESCRIPTOR_BINDING_INDEX as u32,
                         mesh_adv_wireframe_vert::ALL_TRANSFORMS_DESCRIPTOR_BINDING_INDEX as u32,
+                        &dyn_resource_allocator_set,
                         |src| mesh_adv_wireframe_vert::DrawDataBuffer {
                             transform_index: src.transform_index,
                             material_index: src.material_index,
@@ -1311,11 +1331,44 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 }
             }
 
+            let indirect_buffer_size = draw_data.len() as u64
+                * std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u64;
+            let indirect_buffer = dyn_resource_allocator_set.insert_buffer(
+                dyn_resource_allocator_set
+                    .device_context
+                    .create_buffer(&RafxBufferDef {
+                        size: indirect_buffer_size,
+                        memory_usage: RafxMemoryUsage::CpuToGpu,
+                        resource_type: RafxResourceType::BUFFER,
+                        always_mapped: true,
+                        alignment: std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32,
+                        ..Default::default()
+                    })
+                    .unwrap(),
+            );
+            let memory = indirect_buffer.get_raw().buffer.mapped_memory().unwrap();
+            unsafe {
+                let dst = std::slice::from_raw_parts_mut::<RafxDrawIndexedIndirectCommand>(
+                    memory as _,
+                    draw_data.len(),
+                );
+                for (i, src) in draw_data.iter().enumerate() {
+                    dst[i] = RafxDrawIndexedIndirectCommand {
+                        index_count: src.index_count,
+                        instance_count: 1,
+                        first_index: src.index_offset,
+                        vertex_offset: src.vertex_offset as i32,
+                        first_instance: i as u32,
+                    }
+                }
+            }
+
             prepared_batch_data.push(MeshAdvBatchedPreparedPassInfo {
                 pass: pass_info.pass.clone(),
                 phase: pass_info.phase,
                 index_type: pass_info.index_type,
                 draw_data,
+                indirect_buffer,
             })
         }
 

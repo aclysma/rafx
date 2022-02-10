@@ -98,9 +98,9 @@ pub struct MeshAdvBatchedPassKey {
 pub struct MeshAdvBatchDrawData {
     pub transform_index: u32,
     pub material_index: u32,
-    pub vertex_offset_in_bytes: u32,
-    pub index_buffer_size_in_bytes: u32,
-    pub index_buffer_offset_in_bytes: u32,
+    pub vertex_offset: u32, // in number of vertices, not bytes
+    pub index_count: u32,   // In number of indices, not bytes
+    pub index_offset: u32,  // In number of indices, not bytes
 }
 
 pub struct MeshAdvBatchedPassInfo {
@@ -117,6 +117,7 @@ pub struct MeshAdvBatchedPreparedPassInfo {
     pub pass: ResourceArc<MaterialPassResource>,
     pub index_type: RafxIndexType,
     pub draw_data: Vec<MeshAdvBatchDrawData>,
+    pub indirect_buffer: ResourceArc<BufferResource>,
 }
 
 pub struct MeshAdvPerFrameSubmitData {

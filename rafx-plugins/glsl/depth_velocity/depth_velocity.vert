@@ -15,7 +15,7 @@ layout (location = 1) out vec4 out_new_position_clip;
 void main() {
 
     // draw_data_index push constant can be replaced by gl_DrawID
-    DrawData draw_data = all_draw_data.draw_data[constants.draw_data_index];
+    DrawData draw_data = all_draw_data.draw_data[gl_InstanceIndex];
     mat4 previous_model_matrix = all_transforms.transforms[draw_data.transform_index].previous_model_matrix;
     mat4 current_model_matrix = all_transforms.transforms[draw_data.transform_index].current_model_matrix;
 

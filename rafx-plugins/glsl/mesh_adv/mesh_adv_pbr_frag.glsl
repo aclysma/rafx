@@ -7,6 +7,9 @@ layout (location = 3) in vec3 in_binormal_vs;
 layout (location = 4) in vec2 in_uv;
 layout (location = 5) in vec4 in_position_ws;
 layout (location = 6) in mat3 in_model_view;
+//layout (location = 7) in mat3 in_model_view;
+//layout (location = 8) in mat3 in_model_view;
+layout (location = 9) flat in uint in_instance_index;
 
 // References:
 // https://www.3dgep.com/forward-plus/
@@ -1108,7 +1111,7 @@ vec4 pbr_path(
     //
     vec3 ambient = per_view_data.ambient_light.rgb * base_color.rgb * ambient_factor;
 
-    uint material_index = all_draw_data.draw_data[constants.draw_data_index].material_index;
+    uint material_index = all_draw_data.draw_data[in_instance_index].material_index;
     MaterialDbEntry per_material_data = all_materials.materials[material_index];
 
     float alpha = 1.0;
@@ -1158,7 +1161,7 @@ uint hash_light_list(uint light_cluster_index) {
 }
 
 vec4 pbr_main() {
-    uint material_index = all_draw_data.draw_data[constants.draw_data_index].material_index;
+    uint material_index = all_draw_data.draw_data[in_instance_index].material_index;
     MaterialDbEntry per_material_data = all_materials.materials[material_index];
 
     // Sample the base color, if it exists

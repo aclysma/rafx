@@ -6,12 +6,11 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
     WireframeRenderPhase,
 };
-use crate::shaders::mesh_adv::mesh_adv_textured_frag;
+use rafx::api::RafxPrimitiveTopology;
 use rafx::api::{
-    RafxIndexBufferBinding, RafxShaderStageFlags, RafxVertexAttributeRate, RafxVertexBufferBinding,
+    RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding,
 };
-use rafx::api::{RafxIndexType, RafxPrimitiveTopology};
-use rafx::framework::{ResourceArc, RootSignatureResource, VertexDataLayout, VertexDataSetLayout};
+use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
@@ -123,65 +122,6 @@ impl<'write> MeshAdvWriteJob<'write> {
             &*MESH_FULL_LAYOUT
         } else {
             &*MESH_POSITION_LAYOUT
-        }
-    }
-
-    fn vertex_size_for_phase_index(phase_index: RenderPhaseIndex) -> u32 {
-        if phase_index == OpaqueRenderPhase::render_phase_index()
-            || phase_index == TransparentRenderPhase::render_phase_index()
-        {
-            std::mem::size_of::<MeshVertexFull>() as u32
-        } else {
-            std::mem::size_of::<MeshVertexPosition>() as u32
-        }
-    }
-
-    fn root_signature_for_phase_index(
-        &self,
-        phase_index: RenderPhaseIndex,
-    ) -> ResourceArc<RootSignatureResource> {
-        let frame_data = self.frame_packet.per_frame_data().get();
-
-        if phase_index == OpaqueRenderPhase::render_phase_index()
-            || phase_index == TransparentRenderPhase::render_phase_index()
-        {
-            frame_data
-                .default_pbr_material
-                .get_material_pass_by_index(
-                    frame_data.default_pbr_material_pass_indices.opaque as usize,
-                )
-                .unwrap()
-                .get_raw()
-                .root_signature
-                .clone()
-        } else if phase_index == WireframeRenderPhase::render_phase_index() {
-            frame_data
-                .default_pbr_material
-                .get_material_pass_by_index(
-                    frame_data.default_pbr_material_pass_indices.wireframe as usize,
-                )
-                .unwrap()
-                .get_raw()
-                .root_signature
-                .clone()
-        } else if phase_index == DepthPrepassRenderPhase::render_phase_index() {
-            frame_data
-                .depth_material_pass
-                .as_ref()
-                .unwrap()
-                .get_raw()
-                .root_signature
-                .clone()
-        } else if phase_index == ShadowMapRenderPhase::render_phase_index() {
-            frame_data
-                .shadow_map_atlas_depth_material_pass
-                .as_ref()
-                .unwrap()
-                .get_raw()
-                .root_signature
-                .clone()
-        } else {
-            panic!("unexpected render phase when drawing meshes");
         }
     }
 
@@ -330,34 +270,14 @@ impl<'write> MeshAdvWriteJob<'write> {
             .batched_passes
             .get()[batched_draw_call.batch_index as usize];
 
-        let root_signature = self.root_signature_for_phase_index(render_phase_index);
-
-        let descriptor = root_signature
-            .get_raw()
-            .root_signature
-            .find_push_constant_descriptor(RafxShaderStageFlags::VERTEX)
-            .unwrap();
-
-        let index_size = match batch.index_type {
-            RafxIndexType::Uint16 => std::mem::size_of::<u16>(),
-            RafxIndexType::Uint32 => std::mem::size_of::<u32>(),
-        } as u32;
-
         for (draw_data_index, draw_data) in batch.draw_data.iter().enumerate() {
-            command_buffer.cmd_bind_push_constant(
-                &root_signature.get_raw().root_signature,
-                descriptor,
-                &mesh_adv_textured_frag::PushConstantsPushConstant {
-                    draw_data_index: draw_data_index as u32,
-                },
+            command_buffer.cmd_draw_indexed_instanced(
+                draw_data.index_count,
+                draw_data.index_offset,
+                1,
+                draw_data_index as u32,
+                draw_data.vertex_offset as i32,
             )?;
-
-            let vertex_offset = draw_data.vertex_offset_in_bytes
-                / Self::vertex_size_for_phase_index(render_phase_index);
-            let index_count = draw_data.index_buffer_size_in_bytes / index_size;
-            let first_index = draw_data.index_buffer_offset_in_bytes / index_size;
-
-            command_buffer.cmd_draw_indexed(index_count, first_index, vertex_offset as i32)?;
         }
 
         return Ok(());
@@ -377,39 +297,6 @@ impl<'write> MeshAdvWriteJob<'write> {
 
         let command_buffer = &write_context.command_buffer;
 
-        let render_object_instance = self
-            .frame_packet
-            .render_object_instances_data()
-            .get(submit_node_data.render_object_instance_id as usize)
-            .as_ref()
-            .unwrap();
-
-        let mesh_part_index = submit_node_data.mesh_part_index;
-
-        let mesh_asset = &render_object_instance.mesh_asset;
-        let mesh_part = &mesh_asset.inner.mesh_parts[mesh_part_index];
-
-        let root_signature = self.root_signature_for_phase_index(render_phase_index);
-
-        let descriptor = root_signature
-            .get_raw()
-            .root_signature
-            .find_push_constant_descriptor(RafxShaderStageFlags::VERTEX)
-            .unwrap();
-
-        command_buffer.cmd_bind_push_constant(
-            &root_signature.get_raw().root_signature,
-            descriptor,
-            &crate::shaders::mesh_adv::mesh_adv_textured_frag::PushConstantsPushConstant {
-                draw_data_index: submit_node_data.draw_data_index,
-            },
-        )?;
-
-        let index_size = match mesh_part.index_type {
-            RafxIndexType::Uint16 => std::mem::size_of::<u16>(),
-            RafxIndexType::Uint32 => std::mem::size_of::<u32>(),
-        } as u32;
-
         let batch = &self
             .submit_packet
             .per_frame_submit_data()
@@ -419,12 +306,13 @@ impl<'write> MeshAdvWriteJob<'write> {
 
         let draw_data = &batch.draw_data[submit_node_data.draw_data_index as usize];
 
-        let vertex_offset = draw_data.vertex_offset_in_bytes
-            / Self::vertex_size_for_phase_index(render_phase_index);
-        let index_count = draw_data.index_buffer_size_in_bytes / index_size;
-        let first_index = draw_data.index_buffer_offset_in_bytes / index_size;
-
-        command_buffer.cmd_draw_indexed(index_count, first_index, vertex_offset as i32)?;
+        command_buffer.cmd_draw_indexed_instanced(
+            draw_data.index_count,
+            draw_data.index_offset,
+            1,
+            submit_node_data.draw_data_index,
+            draw_data.vertex_offset as i32,
+        )?;
 
         Ok(())
     }

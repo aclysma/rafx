@@ -697,7 +697,7 @@ impl RafxCommandBuffer {
         first_index: u32,
         instance_count: u32,
         first_instance: u32,
-        vertex_offset: i32,
+        vertex_offset: i32, // value added to the vertex index before indexing into the vertex buffer
     ) -> RafxResult<()> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
