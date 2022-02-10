@@ -751,6 +751,87 @@ impl RafxCommandBuffer {
         }
     }
 
+
+    pub fn cmd_draw_indirect(
+        &self,
+        indirect_buffer: &RafxBuffer,
+        indirect_buffer_offset_in_bytes: u32,
+        draw_count: u32,
+    ) -> RafxResult<()> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_draw_indirect(
+                indirect_buffer.vk_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count
+            ),
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => inner.cmd_draw_indirect(
+                indirect_buffer.metal_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count
+            ),
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(_) => unimplemented!(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(_) => unimplemented!(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(inner) => inner.cmd_draw_indirect(
+                indirect_buffer.empty_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count
+            ),
+        }
+    }
+
+    pub fn cmd_draw_indexed_indirect(
+        &self,
+        indirect_buffer: &RafxBuffer,
+        indirect_buffer_offset_in_bytes: u32,
+        draw_count: u32,
+    ) -> RafxResult<()> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_draw_indexed_indirect(
+                indirect_buffer.vk_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count
+            ),
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => inner.cmd_draw_indexed_indirect(
+                indirect_buffer.metal_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count
+            ),
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(_) => unimplemented!(),
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(_) => unimplemented!(),
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(inner) => inner.cmd_draw_indexed_indirect(
+                indirect_buffer.empty_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count
+            ),
+        }
+    }
+
     /// Dispatch the current pipeline. Only usable with compute pipelines.
     pub fn cmd_dispatch(
         &self,

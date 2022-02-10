@@ -1339,7 +1339,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     .create_buffer(&RafxBufferDef {
                         size: indirect_buffer_size,
                         memory_usage: RafxMemoryUsage::CpuToGpu,
-                        resource_type: RafxResourceType::BUFFER,
+                        resource_type: RafxResourceType::BUFFER | RafxResourceType::INDIRECT_BUFFER,
                         always_mapped: true,
                         alignment: std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32,
                         ..Default::default()

@@ -270,15 +270,11 @@ impl<'write> MeshAdvWriteJob<'write> {
             .batched_passes
             .get()[batched_draw_call.batch_index as usize];
 
-        for (draw_data_index, draw_data) in batch.draw_data.iter().enumerate() {
-            command_buffer.cmd_draw_indexed_instanced(
-                draw_data.index_count,
-                draw_data.index_offset,
-                1,
-                draw_data_index as u32,
-                draw_data.vertex_offset as i32,
-            )?;
-        }
+        command_buffer.cmd_draw_indexed_indirect(
+            &*batch.indirect_buffer.get_raw().buffer,
+            0,
+            batch.draw_data.len() as u32,
+        )?;
 
         return Ok(());
     }

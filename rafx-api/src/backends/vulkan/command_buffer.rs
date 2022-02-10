@@ -527,6 +527,50 @@ impl RafxCommandBufferVulkan {
         Ok(())
     }
 
+    pub fn cmd_draw_indirect(
+        &self,
+        indirect_buffer: &RafxBufferVulkan,
+        indirect_buffer_offset_in_bytes: u32,
+        draw_count: u32,
+    ) -> RafxResult<()> {
+        for i in 0..draw_count {
+            let byte_offset = std::mem::size_of::<RafxDrawIndirectCommand>() as u32 * i;
+            unsafe {
+                self.device_context.device().cmd_draw_indirect(
+                    self.vk_command_buffer,
+                    indirect_buffer.vk_buffer(),
+                    (indirect_buffer_offset_in_bytes + byte_offset ) as _,
+                    1,
+                    std::mem::size_of::<RafxDrawIndirectCommand>() as _
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn cmd_draw_indexed_indirect(
+        &self,
+        indirect_buffer: &RafxBufferVulkan,
+        indirect_buffer_offset_in_bytes: u32,
+        draw_count: u32,
+    ) -> RafxResult<()> {
+        for i in 0..draw_count {
+            let byte_offset = std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32 * i;
+            unsafe {
+                self.device_context.device().cmd_draw_indexed_indirect(
+                    self.vk_command_buffer,
+                    indirect_buffer.vk_buffer(),
+                    (indirect_buffer_offset_in_bytes + byte_offset ) as _,
+                    1,
+                    std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as _
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn cmd_dispatch(
         &self,
         group_count_x: u32,
