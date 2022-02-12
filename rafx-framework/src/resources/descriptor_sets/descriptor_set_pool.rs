@@ -145,7 +145,8 @@ impl ManagedDescriptorSetPool {
             descriptor_index -= chunk_size;
         }
 
-        return VARIABLE_SIZED_POOL_COUNT + (descriptor_index / Self::descriptor_count_in_chunk(VARIABLE_SIZED_POOL_COUNT));
+        return VARIABLE_SIZED_POOL_COUNT
+            + (descriptor_index / Self::descriptor_count_in_chunk(VARIABLE_SIZED_POOL_COUNT));
     }
 
     fn get_next_unused_slab_key(
