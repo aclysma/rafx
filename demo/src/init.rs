@@ -89,6 +89,9 @@ pub fn rendering_init(
             .fill_mode_non_solid(true)
             // Used for user clipping in shadow atlas generation
             .shader_clip_distance(true)
+            // Used for indirect draw
+            .multi_draw_indirect(true)
+            .draw_indirect_first_instance(true)
             .build();
 
         api_def.vk_options = Some(rafx::api::RafxApiDefVulkan {
