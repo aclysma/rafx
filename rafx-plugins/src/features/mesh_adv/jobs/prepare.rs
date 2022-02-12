@@ -1,5 +1,6 @@
 use fnv::FnvHashMap;
 use rafx::render_feature_prepare_job_predule::*;
+use std::ops::Mul;
 
 use super::*;
 use crate::phases::{
@@ -9,18 +10,20 @@ use crate::phases::{
 use rafx::base::resource_map::{ReadBorrow, WriteBorrow};
 use rafx::framework::{
     BufferResource, DescriptorSetAllocatorRef, DescriptorSetArc, DescriptorSetBindings,
-    DynResourceAllocatorSet, MaterialPassResource, ResourceArc, ResourceContext,
+    DynResourceAllocatorSet, MaterialPassResource, ResourceArc,
 };
 
-use crate::shaders::mesh_adv::{mesh_adv_textured_frag, mesh_adv_wireframe_vert};
-use glam::Mat4;
-use rafx::api::{
-    RafxBufferDef, RafxDeviceContext, RafxDrawIndexedIndirectCommand, RafxMemoryUsage,
-    RafxResourceType,
+use crate::shaders::mesh_adv::{
+    mesh_adv_textured_frag, mesh_adv_wireframe_vert, mesh_culling_comp,
 };
+use glam::Mat4;
+use rafx::api::{RafxBufferDef, RafxDrawIndexedIndirectCommand, RafxMemoryUsage, RafxResourceType};
 
 use crate::assets::mesh_adv::material_db::MaterialDB;
 use crate::assets::mesh_adv::{MeshAdvAssetPart, MeshAdvBlendMethod, MeshAdvShaderPassIndices};
+use crate::features::mesh_adv::gpu_occlusion_cull::{
+    MeshAdvGpuOcclusionCullRenderResource, OcclusionJob,
+};
 use crate::features::mesh_adv::light_binning::MeshAdvLightBinRenderResource;
 use crate::shaders::depth_velocity::depth_velocity_vert;
 use crate::shaders::mesh_adv::lights_bin_comp;
@@ -34,8 +37,6 @@ const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
     mesh_adv_textured_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
 
 pub struct MeshAdvPrepareJob<'prepare> {
-    resource_context: ResourceContext,
-    device_context: RafxDeviceContext,
     #[allow(dead_code)]
     requires_textured_descriptor_sets: bool,
     #[allow(dead_code)]
@@ -52,6 +53,8 @@ pub struct MeshAdvPrepareJob<'prepare> {
     render_object_instance_transforms: Arc<AtomicOnceCellStack<MeshModelMatrix>>,
     render_object_instance_transforms_with_history:
         Arc<AtomicOnceCellStack<MeshModelMatrixWithHistory>>,
+    render_object_instance_bounding_spheres:
+        Arc<AtomicOnceCellStack<mesh_culling_comp::BoundingSphereBuffer>>,
     #[allow(dead_code)]
     render_objects: MeshAdvRenderObjectSet,
     batched_pass_lookup: AtomicOnceCell<FnvHashMap<MeshAdvBatchedPassKey, usize>>,
@@ -82,8 +85,6 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
         let per_frame_data = frame_packet.per_frame_data().get();
         Arc::new(PrepareJob::new(
             Self {
-                resource_context: prepare_context.resource_context.clone(),
-                device_context: prepare_context.device_context.clone(),
                 render_object_instance_transforms: {
                     // TODO: Ideally this would use an allocator from the `prepare_context`.
                     Arc::new(AtomicOnceCellStack::with_capacity(
@@ -91,6 +92,12 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
                     ))
                 },
                 render_object_instance_transforms_with_history: {
+                    // TODO: Ideally this would use an allocator from the `prepare_context`.
+                    Arc::new(AtomicOnceCellStack::with_capacity(
+                        frame_packet.render_object_instances().len(),
+                    ))
+                },
+                render_object_instance_bounding_spheres: {
                     // TODO: Ideally this would use an allocator from the `prepare_context`.
                     Arc::new(AtomicOnceCellStack::with_capacity(
                         frame_packet.render_object_instances().len(),
@@ -131,6 +138,7 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
                 batched_pass_lookup: AtomicOnceCell::new(),
                 batched_passes: AtomicOnceCell::new(),
             },
+            prepare_context,
             frame_packet,
             submit_packet,
         ))
@@ -140,7 +148,6 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
     // we produce a draw data buffer, per-batch descriptor set, and optionally push a batch submit node
     fn prepare_batch<DrawDataT, CreateDrawDataFnT: Fn(&MeshAdvBatchDrawData) -> DrawDataT>(
         job_context: &PreparePerFrameContext<'prepare, '_, Self>,
-        resource_context: &ResourceContext,
         descriptor_set_allocator: &mut DescriptorSetAllocatorRef,
         transform_buffer: &ResourceArc<BufferResource>,
         batch: &MeshAdvBatchedPassInfo,
@@ -151,11 +158,11 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
         transforms_binding: u32,
         dyn_resource_allocator_set: &DynResourceAllocatorSet,
         create_draw_data_fn: CreateDrawDataFnT,
-    ) -> DescriptorSetArc {
+    ) -> (ResourceArc<BufferResource>, DescriptorSetArc) {
         let draw_data_buffer_size =
             batch.draw_data.len() as u64 * std::mem::size_of::<DrawDataT>() as u64;
         let draw_data_buffer = dyn_resource_allocator_set.insert_buffer(
-            resource_context
+            job_context
                 .device_context()
                 .create_buffer(&RafxBufferDef {
                     size: draw_data_buffer_size,
@@ -186,13 +193,9 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
         dyn_descriptor_set.flush(descriptor_set_allocator).unwrap();
 
         if push_submit_node {
-            let view_frame_index = job_context
-                .submit_packet()
-                .view_frame_index_from_view_index(batch.view_index)
-                .unwrap();
             let view_packet = job_context
                 .submit_packet()
-                .view_submit_packet(view_frame_index);
+                .view_submit_packet(batch.view_frame_index);
             view_packet.push_submit_node_into_render_phase(
                 batch.phase,
                 MeshAdvDrawCall::Batched(MeshAdvBatchedDrawCall {
@@ -203,7 +206,10 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
             );
         }
 
-        dyn_descriptor_set.descriptor_set().clone()
+        (
+            draw_data_buffer,
+            dyn_descriptor_set.descriptor_set().clone(),
+        )
     }
 }
 
@@ -225,10 +231,9 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 .view()
                 .phase_index_is_relevant(render_phase_index)
             {
-                let view_index = view_packet.view().view_index();
                 let key = MeshAdvBatchedPassKey {
                     phase: render_phase_index,
-                    view_index,
+                    view_frame_index: view_packet.view_frame_index(),
                     pass: pass.clone(),
                     index_type: mesh_part.index_type,
                 };
@@ -339,7 +344,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 phase: key.phase,
                 pass,
                 draw_data: AtomicOnceCellStack::with_capacity(count),
-                view_index: key.view_index,
+                view_frame_index: key.view_frame_index,
                 index_type: key.index_type,
             };
 
@@ -366,6 +371,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             batched_pass_lookup: Default::default(),
             batched_passes: Default::default(),
             per_batch_descriptor_sets: Default::default(),
+            indirect_buffer: Default::default(),
         });
 
         let shadow_map_data = &self.shadow_map_data;
@@ -518,7 +524,31 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 current_model_matrix: model,
                 previous_model_matrix: previous_model,
             });
+
+        let bounding_sphere = extracted_data
+            .bounding_sphere
+            .map(|x| {
+                //TODO: Do this in the compute shader if possible. For now do it on CPU so I know it
+                // matches frustum culling
+                let t = extracted_data.transform;
+                let position = t.translation + t.rotation.mul(x.position) * t.scale;
+                let radius = x.radius * t.scale.abs().max_element();
+                mesh_culling_comp::BoundingSphereBuffer {
+                    position: position.into(),
+                    radius: radius,
+                }
+            })
+            .unwrap_or_else(|| mesh_culling_comp::BoundingSphereBuffer {
+                position: [0.0, 0.0, 0.0],
+                radius: -1.0,
+            });
+
+        let bounding_spheres_offset = self
+            .render_object_instance_bounding_spheres
+            .push(bounding_sphere);
+
         debug_assert_eq!(model_matrix_offset, model_matrix_with_history_offset);
+        debug_assert_eq!(model_matrix_offset, bounding_spheres_offset);
 
         context.set_render_object_instance_submit_data(MeshAdvRenderObjectInstanceSubmitData {
             model_matrix_offset,
@@ -549,7 +579,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
 
             // helper function that finds the correct batch and pushes draw data into it
             fn push_draw_data(
-                view: &RenderView,
+                view_frame_index: ViewFrameIndex,
                 render_phase_index: RenderPhaseIndex,
                 pass: ResourceArc<MaterialPassResource>,
                 mesh_part: &MeshAdvAssetPart,
@@ -561,7 +591,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             ) -> PushDrawDataResult {
                 let batch_key = MeshAdvBatchedPassKey {
                     phase: render_phase_index,
-                    view_index: view.view_index(),
+                    view_frame_index,
                     pass,
                     index_type: mesh_part.index_type,
                 };
@@ -627,7 +657,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     {
                         let pass = self.depth_material_pass.as_ref().unwrap().clone();
                         push_draw_data(
-                            view,
+                            context.view_frame_index(),
                             DepthPrepassRenderPhase::render_phase_index(),
                             pass,
                             mesh_part,
@@ -648,7 +678,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                             .unwrap()
                             .clone();
                         push_draw_data(
-                            view,
+                            context.view_frame_index(),
                             ShadowMapRenderPhase::render_phase_index(),
                             pass,
                             mesh_part,
@@ -673,7 +703,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         .clone();
 
                     let push_draw_data_result = push_draw_data(
-                        view,
+                        context.view_frame_index(),
                         phase_index,
                         material_pass_resource.clone(),
                         mesh_part,
@@ -720,7 +750,7 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                         .unwrap();
 
                     push_draw_data(
-                        view,
+                        context.view_frame_index(),
                         WireframeRenderPhase::render_phase_index(),
                         material_pass_resource,
                         mesh_part,
@@ -739,7 +769,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         &self,
         context: &PreparePerViewContext<'prepare, '_, Self>,
     ) {
-        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
+        let mut descriptor_set_allocator =
+            context.resource_context().create_descriptor_set_allocator();
         let shadow_map_data = &self.shadow_map_data;
 
         let per_view_data = context.per_view_data();
@@ -942,13 +973,14 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             };
 
             let all_lights_buffer = {
-                let dyn_resource_allocator_set =
-                    self.resource_context.create_dyn_resource_allocator_set();
+                let dyn_resource_allocator_set = context
+                    .resource_context()
+                    .create_dyn_resource_allocator_set();
 
                 let all_lights_buffer_size =
                     std::mem::size_of::<mesh_adv_textured_frag::AllLightsBuffer>();
-                let all_lights_buffer = self
-                    .device_context
+                let all_lights_buffer = context
+                    .device_context()
                     .create_buffer(&RafxBufferDef {
                         size: all_lights_buffer_size as u64,
                         memory_usage: RafxMemoryUsage::CpuToGpu,
@@ -1142,33 +1174,38 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         &self,
         context: &PreparePerFrameContext<'prepare, '_, Self>,
     ) {
-        let dyn_resource_allocator_set = self.resource_context.create_dyn_resource_allocator_set();
-        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
+        let dyn_resource_allocator_set = context
+            .resource_context()
+            .create_dyn_resource_allocator_set();
+        let mut descriptor_set_allocator =
+            context.resource_context().create_descriptor_set_allocator();
 
         // Helper function that allocates a buffer to hold transforms for all draws in a batch and
         // copies data into it
-        fn create_transform_buffer<T: Copy>(
+        fn create_buffer_from_atomic_once_stack<T: Copy + 'static>(
             dyn_resource_allocator_set: &DynResourceAllocatorSet,
             transforms: &Arc<AtomicOnceCellStack<T>>,
+            memory_usage: RafxMemoryUsage,
+            resource_type: RafxResourceType,
         ) -> Option<ResourceArc<BufferResource>> {
             if transforms.len() > 0 {
-                let vertex_buffer_size = transforms.len() as u64 * std::mem::size_of::<T>() as u64;
+                let buffer_size = transforms.len() as u64 * std::mem::size_of::<T>() as u64;
 
-                let vertex_buffer = dyn_resource_allocator_set
+                let buffer = dyn_resource_allocator_set
                     .device_context
                     .create_buffer(&RafxBufferDef {
-                        size: vertex_buffer_size,
-                        memory_usage: RafxMemoryUsage::CpuToGpu,
-                        resource_type: RafxResourceType::BUFFER,
+                        size: buffer_size,
+                        memory_usage,
+                        resource_type,
                         ..Default::default()
                     })
                     .unwrap();
 
                 let data = unsafe { transforms.get_all_unchecked() };
 
-                vertex_buffer.copy_to_host_visible_buffer(data).unwrap();
+                buffer.copy_to_host_visible_buffer(data).unwrap();
 
-                Some(dyn_resource_allocator_set.insert_buffer(vertex_buffer))
+                Some(dyn_resource_allocator_set.insert_buffer(buffer))
             } else {
                 None
             }
@@ -1177,24 +1214,37 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         //
         // Create buffers for transforms
         //
+        let all_transforms = create_buffer_from_atomic_once_stack(
+            &dyn_resource_allocator_set,
+            &self.render_object_instance_transforms,
+            RafxMemoryUsage::CpuToGpu,
+            RafxResourceType::BUFFER,
+        );
+
         let mut model_matrix_buffer = context
             .per_frame_submit_data()
             .model_matrix_buffer
             .borrow_mut();
 
-        *model_matrix_buffer = create_transform_buffer(
-            &dyn_resource_allocator_set,
-            &self.render_object_instance_transforms,
-        );
+        *model_matrix_buffer = all_transforms.clone();
 
         let mut model_matrix_with_history_buffer = context
             .per_frame_submit_data()
             .model_matrix_with_history_buffer
             .borrow_mut();
 
-        *model_matrix_with_history_buffer = create_transform_buffer(
+        *model_matrix_with_history_buffer = create_buffer_from_atomic_once_stack(
             &dyn_resource_allocator_set,
             &self.render_object_instance_transforms_with_history,
+            RafxMemoryUsage::CpuToGpu,
+            RafxResourceType::BUFFER,
+        );
+
+        let bounding_spheres_buffer = create_buffer_from_atomic_once_stack(
+            &dyn_resource_allocator_set,
+            &self.render_object_instance_bounding_spheres,
+            RafxMemoryUsage::CpuToGpu,
+            RafxResourceType::BUFFER,
         );
 
         //
@@ -1223,25 +1273,57 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
         *all_materials_descriptor_set = Some(
             self.material_db
                 .update_gpu_resources(
-                    &self.resource_context,
+                    context.resource_context(),
                     pbr_material_descriptor_layout,
                     &invalid_image_color,
                 )
                 .unwrap(),
         );
 
+        //NOTE: We make indirect commands even for non-batched render nodes so that we can do GPU
+        // culling with them
+        let mut all_indirect_commands_count = 0;
+        for pass in self.batched_passes.get() {
+            all_indirect_commands_count += pass.draw_data.len()
+        }
+
+        let indirect_buffer_size_in_bytes = all_indirect_commands_count as u64
+            * std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u64;
+        let indirect_buffer = dyn_resource_allocator_set.insert_buffer(
+            dyn_resource_allocator_set
+                .device_context
+                .create_buffer(&RafxBufferDef {
+                    size: indirect_buffer_size_in_bytes,
+                    memory_usage: RafxMemoryUsage::CpuToGpu,
+                    resource_type: RafxResourceType::BUFFER | RafxResourceType::INDIRECT_BUFFER,
+                    always_mapped: true,
+                    alignment: std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32,
+                    ..Default::default()
+                })
+                .unwrap(),
+        );
+        let indirect_buffer_memory = indirect_buffer.get_raw().buffer.mapped_memory().unwrap();
+        let indirect_buffer_slice = unsafe {
+            std::slice::from_raw_parts_mut::<RafxDrawIndexedIndirectCommand>(
+                indirect_buffer_memory as _,
+                all_indirect_commands_count,
+            )
+        };
+
+        let mut indirect_buffer_next_command_index = 0;
+
         //
         // Do final processing for each batch (produces a draw data buffer, per-batch descriptor
         // set, and optionally push a batch submit node. (Transforms should *not* push submit nodes
         // because we already pushed per-draw submit nodes, as we need to support them by depth)
         //
+        let mut draw_data_buffers = Vec::with_capacity(self.batched_passes.get().len());
         let mut per_batch_descriptor_sets = Vec::with_capacity(self.batched_passes.get().len());
         for (batch_index, batch) in self.batched_passes.get().iter().enumerate() {
             let per_batch_descriptor_set =
                 if batch.phase == ShadowMapRenderPhase::render_phase_index() {
                     Some(Self::prepare_batch(
                         context,
-                        &self.resource_context,
                         &mut descriptor_set_allocator,
                         model_matrix_buffer.as_ref().unwrap(),
                         batch,
@@ -1259,7 +1341,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 } else if batch.phase == DepthPrepassRenderPhase::render_phase_index() {
                     Some(Self::prepare_batch(
                         context,
-                        &self.resource_context,
                         &mut descriptor_set_allocator,
                         model_matrix_with_history_buffer.as_ref().unwrap(),
                         batch,
@@ -1280,7 +1361,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     let push_submit_node = batch.phase == OpaqueRenderPhase::render_phase_index();
                     Some(Self::prepare_batch(
                         context,
-                        &self.resource_context,
                         &mut descriptor_set_allocator,
                         model_matrix_buffer.as_ref().unwrap(),
                         batch,
@@ -1298,7 +1378,6 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 } else if batch.phase == WireframeRenderPhase::render_phase_index() {
                     Some(Self::prepare_batch(
                         context,
-                        &self.resource_context,
                         &mut descriptor_set_allocator,
                         model_matrix_buffer.as_ref().unwrap(),
                         batch,
@@ -1317,59 +1396,101 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     None
                 };
 
-            per_batch_descriptor_sets.push(per_batch_descriptor_set);
+            if let Some((draw_data_buffer, per_batch_descriptor_set)) = per_batch_descriptor_set {
+                draw_data_buffers.push(Some(draw_data_buffer));
+                per_batch_descriptor_sets.push(Some(per_batch_descriptor_set));
+            } else {
+                draw_data_buffers.push(None);
+                per_batch_descriptor_sets.push(None);
+            }
         }
 
         descriptor_set_allocator.flush_changes().unwrap();
 
         let mut prepared_batch_data = Vec::default();
         for pass_info in self.batched_passes.get() {
-            let mut draw_data = Vec::with_capacity(pass_info.draw_data.len());
-            unsafe {
-                for dd in pass_info.draw_data.get_all_unchecked() {
-                    draw_data.push(dd.clone());
-                }
-            }
+            let indirect_buffer_first_command_index = indirect_buffer_next_command_index as u32;
+            let draw_data_count = pass_info.draw_data.len() as u32;
 
-            let indirect_buffer_size = draw_data.len() as u64
-                * std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u64;
-            let indirect_buffer = dyn_resource_allocator_set.insert_buffer(
-                dyn_resource_allocator_set
-                    .device_context
-                    .create_buffer(&RafxBufferDef {
-                        size: indirect_buffer_size,
-                        memory_usage: RafxMemoryUsage::CpuToGpu,
-                        resource_type: RafxResourceType::BUFFER | RafxResourceType::INDIRECT_BUFFER,
-                        always_mapped: true,
-                        alignment: std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32,
-                        ..Default::default()
-                    })
-                    .unwrap(),
-            );
-            let memory = indirect_buffer.get_raw().buffer.mapped_memory().unwrap();
-            unsafe {
-                let dst = std::slice::from_raw_parts_mut::<RafxDrawIndexedIndirectCommand>(
-                    memory as _,
-                    draw_data.len(),
-                );
-                for (i, src) in draw_data.iter().enumerate() {
-                    dst[i] = RafxDrawIndexedIndirectCommand {
+            let is_batched = pass_info.phase != TransparentRenderPhase::render_phase_index();
+            let draw_data = if !is_batched {
+                let mut draw_data = Vec::with_capacity(draw_data_count as usize);
+                unsafe {
+                    for dd in pass_info.draw_data.get_all_unchecked() {
+                        draw_data.push(dd.clone());
+                    }
+                }
+                Some(draw_data)
+            } else {
+                None
+            };
+
+            for (i, src) in pass_info.draw_data.iter().enumerate() {
+                indirect_buffer_slice[indirect_buffer_next_command_index] =
+                    RafxDrawIndexedIndirectCommand {
                         index_count: src.index_count,
                         instance_count: 1,
                         first_index: src.index_offset,
                         vertex_offset: src.vertex_offset as i32,
                         first_instance: i as u32,
-                    }
-                }
+                    };
+                indirect_buffer_next_command_index += 1;
             }
 
+            assert_eq!(
+                indirect_buffer_next_command_index as u32 - indirect_buffer_first_command_index,
+                draw_data_count
+            );
             prepared_batch_data.push(MeshAdvBatchedPreparedPassInfo {
                 pass: pass_info.pass.clone(),
                 phase: pass_info.phase,
                 index_type: pass_info.index_type,
+                indirect_buffer_first_command_index,
+                indirect_buffer_command_count: draw_data_count,
                 draw_data,
-                indirect_buffer,
             })
+        }
+
+        assert_eq!(
+            indirect_buffer_next_command_index,
+            all_indirect_commands_count
+        );
+
+        let mut occlusion_cull_resource = context
+            .render_resources()
+            .fetch_mut::<MeshAdvGpuOcclusionCullRenderResource>();
+        occlusion_cull_resource.data.clear();
+
+        for (batch_index, prepared_pass_info) in prepared_batch_data.iter().enumerate() {
+            if prepared_pass_info.phase == OpaqueRenderPhase::render_phase_index()
+                || prepared_pass_info.phase == TransparentRenderPhase::render_phase_index()
+            {
+                let pass_info = &self.batched_passes.get()[batch_index];
+
+                let draw_data_count = pass_info.draw_data.len() as u32;
+                if draw_data_count == 0 {
+                    continue;
+                }
+
+                let view = context
+                    .frame_packet()
+                    .view_packet(pass_info.view_frame_index)
+                    .view();
+
+                if let Some(draw_data_buffer) = &draw_data_buffers[batch_index] {
+                    // Set indirect_buffer, all_transforms, and bounding_spheres_buffer volume buffers for later usage?
+                    occlusion_cull_resource.data.push(OcclusionJob {
+                        draw_data_count,
+                        render_view: view.clone(),
+                        indirect_first_command_index: prepared_pass_info
+                            .indirect_buffer_first_command_index,
+                        draw_data: draw_data_buffer.clone(),
+                        transforms: all_transforms.clone().unwrap(),
+                        bounding_spheres: bounding_spheres_buffer.clone().unwrap(),
+                        indirect_commands: indirect_buffer.clone(),
+                    });
+                }
+            }
         }
 
         context
@@ -1384,6 +1505,10 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             .per_frame_submit_data()
             .per_batch_descriptor_sets
             .set(per_batch_descriptor_sets);
+        context
+            .per_frame_submit_data()
+            .indirect_buffer
+            .set(indirect_buffer);
     }
 
     fn feature_debug_constants(&self) -> &'static RenderFeatureDebugConstants {

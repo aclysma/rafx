@@ -50,4 +50,7 @@ pub use render_options::*;
 pub mod light_binning;
 mod shadow_map_atlas;
 
+mod gpu_occlusion_cull;
+pub use gpu_occlusion_cull::*;
+
 pub use shadow_map_atlas::*;

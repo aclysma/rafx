@@ -30,6 +30,7 @@ impl<'extract> Debug3DExtractJob<'extract> {
                     .extract_ref(),
                 debug3d_material,
             },
+            extract_context,
             frame_packet,
         ))
     }

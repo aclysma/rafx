@@ -10,5 +10,6 @@ pub mod mesh_adv_untextured_frag;
 pub mod mesh_adv_untextured_vert;
 pub mod mesh_adv_wireframe_frag;
 pub mod mesh_adv_wireframe_vert;
+pub mod mesh_culling_comp;
 pub mod shadow_atlas_clear_tiles_vert;
 pub mod shadow_atlas_depth_vert;

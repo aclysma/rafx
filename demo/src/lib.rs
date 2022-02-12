@@ -52,9 +52,10 @@ use rafx_plugins::features::mesh_adv::{
     MeshAdvRenderObjectSet as MeshRenderObjectSet, MeshAdvRenderOptions as MeshRenderOptions,
 };
 #[cfg(not(feature = "basic-pipeline"))]
+use rafx_plugins::pipelines::modern::ModernPipelineMeshCullingDebugData;
+#[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::pipelines::modern::{
-    ModernPipelineRenderOptions as PipelineRenderOptions,
-    ModernPipelineTonemapDebugData as PipelineTonemapDebugData,
+    ModernPipelineRenderOptions as PipelineRenderOptions, ModernPipelineTonemapDebugData,
 };
 
 #[cfg(all(feature = "profile-with-tracy-memory", not(feature = "stats_alloc")))]
@@ -153,7 +154,9 @@ impl DemoApp {
         resources.insert(MeshRenderOptions::default());
         resources.insert(PipelineRenderOptions::default());
         #[cfg(not(feature = "basic-pipeline"))]
-        resources.insert(PipelineTonemapDebugData::default());
+        resources.insert(ModernPipelineTonemapDebugData::default());
+        #[cfg(not(feature = "basic-pipeline"))]
+        resources.insert(ModernPipelineMeshCullingDebugData::default());
         resources.insert(DebugUiState::default());
 
         let asset_source = args.asset_source().unwrap();
@@ -337,6 +340,8 @@ impl DemoApp {
                 pipeline_render_options.taa_options = render_options.taa_options.clone();
                 pipeline_render_options.enable_sharpening = render_options.enable_sharpening;
                 pipeline_render_options.sharpening_amount = render_options.sharpening_amount;
+                pipeline_render_options.enable_occlusion_culling =
+                    render_options.enable_occlusion_culling;
             }
 
             let mut render_config_resource =
@@ -433,6 +438,11 @@ impl DemoApp {
                 rafx_plugins::features::egui::WinitEguiManager,
                 winit_egui_manager
             );
+
+            #[cfg(not(feature = "basic-pipeline"))]
+            add_to_extract_resources!(ModernPipelineTonemapDebugData);
+            #[cfg(not(feature = "basic-pipeline"))]
+            add_to_extract_resources!(ModernPipelineMeshCullingDebugData);
 
             extract_resources.insert(&mut self.world);
 

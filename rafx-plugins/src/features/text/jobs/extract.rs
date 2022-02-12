@@ -31,6 +31,7 @@ impl<'extract> TextExtractJob<'extract> {
                     .extract_ref(),
                 text_material,
             },
+            extract_context,
             frame_packet,
         ))
     }

@@ -51,12 +51,17 @@ pub struct SubmitPacket<SubmitPacketDataT: SubmitPacketData> {
     view_submit_packets: Vec<ViewSubmitPacket<SubmitPacketDataT>>,
 }
 
-impl<SubmitPacketDataT: SubmitPacketData> SubmitPacket<SubmitPacketDataT> {
+impl<SubmitPacketDataT: SubmitPacketData + Send + Sync + 'static> SubmitPacket<SubmitPacketDataT> {
     pub fn new(
         feature_index: RenderFeatureIndex,
         num_render_object_instances: usize,
         view_submit_packets: Vec<ViewSubmitPacket<SubmitPacketDataT>>,
     ) -> Self {
+        #[cfg(debug_assertions)]
+        for (i, vp) in view_submit_packets.iter().enumerate() {
+            assert_eq!(i, vp.view_frame_index() as usize);
+        }
+
         Self {
             feature_index,
             per_frame_submit_data: AtomicOnceCell::new(),
@@ -73,14 +78,14 @@ impl<SubmitPacketDataT: SubmitPacketData> SubmitPacket<SubmitPacketDataT> {
 
     pub fn view_submit_packet(
         &self,
-        view_index: ViewFrameIndex,
+        view_frame_index: ViewFrameIndex,
     ) -> &ViewSubmitPacket<SubmitPacketDataT> {
         self.view_submit_packets
-            .get(view_index as usize)
+            .get(view_frame_index as usize)
             .unwrap_or_else(|| {
                 panic!(
                     "ViewSubmitPacket with ViewFrameIndex {} was not found in {}.",
-                    view_index,
+                    view_frame_index,
                     std::any::type_name::<SubmitPacketDataT>()
                 )
             })
@@ -105,35 +110,6 @@ impl<SubmitPacketDataT: 'static + Send + Sync + SubmitPacketData> RenderFeatureS
         view_index: ViewFrameIndex,
     ) -> &dyn RenderFeatureViewSubmitPacket {
         self.view_submit_packet(view_index)
-    }
-
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.view_submit_packets
-            .iter()
-            .position(|view_submit_packet| {
-                view_submit_packet.view().view_index() == view.view_index()
-            })
-            .unwrap_or_else(|| {
-                panic!(
-                    "View {} with ViewIndex {} was not found in {}.",
-                    view.debug_name(),
-                    view.view_index(),
-                    std::any::type_name::<SubmitPacketDataT>()
-                )
-            }) as ViewFrameIndex
-    }
-
-    fn view_frame_index_from_view_index(
-        &self,
-        view_index: RenderViewIndex,
-    ) -> Option<ViewFrameIndex> {
-        self.view_submit_packets
-            .iter()
-            .position(|view_submit_packet| view_submit_packet.view().view_index() == view_index)
-            .map(|x| x as ViewFrameIndex)
     }
 
     fn feature_index(&self) -> u32 {

@@ -171,7 +171,7 @@ impl MaterialDB {
                 image: image_view.clone(),
             });
             self.image_view_lookup.insert(image_view, key);
-            assert!(key.index() < 256);
+            assert!(key.index() < 768);
             key
         }
     }
@@ -312,7 +312,7 @@ impl MaterialDB {
         // certain features 2) there is nothing clearing old bindings from previous frames. We can
         // end up with textures from previous frames that were dropped being bound. (Even if we
         // don't try to index them, binding the descriptor set with stale resources can cause UB)
-        for i in 0..256 {
+        for i in 0..768 {
             descriptor_set.set_image_at_index(
                 mesh_adv_textured_frag::ALL_MATERIAL_TEXTURES_DESCRIPTOR_BINDING_INDEX as u32,
                 i,

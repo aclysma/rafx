@@ -15,7 +15,9 @@ use rafx_plugins::pipelines::basic::TonemapperTypeBasic as TonemapperType;
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::pipelines::modern::AntiAliasMethodAdv as AntiAliasMethod;
 #[cfg(not(feature = "basic-pipeline"))]
-use rafx_plugins::pipelines::modern::ModernPipelineTonemapDebugData as PipelineTonemapDebugData;
+use rafx_plugins::pipelines::modern::ModernPipelineMeshCullingDebugData;
+#[cfg(not(feature = "basic-pipeline"))]
+use rafx_plugins::pipelines::modern::ModernPipelineTonemapDebugData;
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::pipelines::modern::TonemapperTypeAdv as TonemapperType;
 #[cfg(not(feature = "basic-pipeline"))]
@@ -50,6 +52,8 @@ pub struct RenderOptions {
     pub enable_sharpening: bool,
     #[cfg(not(feature = "basic-pipeline"))]
     pub sharpening_amount: f32,
+    #[cfg(not(feature = "basic-pipeline"))]
+    pub enable_occlusion_culling: bool,
 }
 
 impl RenderOptions {
@@ -82,6 +86,8 @@ impl RenderOptions {
             enable_sharpening: false,
             #[cfg(not(feature = "basic-pipeline"))]
             sharpening_amount: 0.0,
+            #[cfg(not(feature = "basic-pipeline"))]
+            enable_occlusion_culling: false,
         }
     }
 
@@ -114,6 +120,8 @@ impl RenderOptions {
             enable_sharpening: true,
             #[cfg(not(feature = "basic-pipeline"))]
             sharpening_amount: 1.0,
+            #[cfg(not(feature = "basic-pipeline"))]
+            enable_occlusion_culling: true,
         }
     }
 }
@@ -216,6 +224,11 @@ impl RenderOptions {
         ui.checkbox(&mut self.enable_sharpening, "enable_sharpening");
         #[cfg(not(feature = "basic-pipeline"))]
         ui.add(egui::Slider::new(&mut self.sharpening_amount, 0.0..=1.0).text("sharpening_amount"));
+        #[cfg(not(feature = "basic-pipeline"))]
+        ui.checkbox(
+            &mut self.enable_occlusion_culling,
+            "enable_occlusion_culling",
+        );
     }
 }
 
@@ -227,6 +240,8 @@ pub struct DebugUiState {
     pub show_taa_options: bool,
     #[cfg(not(feature = "basic-pipeline"))]
     pub show_tonemap_debug: bool,
+    #[cfg(not(feature = "basic-pipeline"))]
+    pub show_mesh_culling_debug: bool,
 
     #[cfg(feature = "profile-with-puffin")]
     pub show_profiler: bool,
@@ -290,7 +305,11 @@ pub fn draw_ui(resources: &Resources) {
     let mut debug_ui_state = resources.get_mut::<DebugUiState>().unwrap();
     let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
     #[cfg(not(feature = "basic-pipeline"))]
-    let tonemap_debug_data = resources.get::<PipelineTonemapDebugData>().unwrap();
+    let tonemap_debug_data = resources.get::<ModernPipelineTonemapDebugData>().unwrap();
+    #[cfg(not(feature = "basic-pipeline"))]
+    let mesh_culling_debug_data = resources
+        .get::<ModernPipelineMeshCullingDebugData>()
+        .unwrap();
     let asset_resource = resources.get::<AssetResource>().unwrap();
 
     egui::TopBottomPanel::top("top_panel").show(&ctx, |ui| {
@@ -305,6 +324,12 @@ pub fn draw_ui(resources: &Resources) {
 
                 #[cfg(not(feature = "basic-pipeline"))]
                 ui.checkbox(&mut debug_ui_state.show_tonemap_debug, "Tonemap Debug");
+
+                #[cfg(not(feature = "basic-pipeline"))]
+                ui.checkbox(
+                    &mut debug_ui_state.show_mesh_culling_debug,
+                    "Mesh Culling Debug",
+                );
 
                 #[cfg(feature = "profile-with-puffin")]
                 if ui
@@ -374,12 +399,48 @@ pub fn draw_ui(resources: &Resources) {
     }
 
     #[cfg(not(feature = "basic-pipeline"))]
+    if debug_ui_state.show_mesh_culling_debug {
+        egui::Window::new("Mesh Culling Debug")
+            .open(&mut debug_ui_state.show_mesh_culling_debug)
+            .show(&ctx, |ui| {
+                let data = mesh_culling_debug_data.inner.lock().unwrap();
+
+                ui.add(egui::Label::new(format!(
+                    "culled_mesh_count: {}",
+                    data.culled_mesh_count
+                )));
+                ui.add(egui::Label::new(format!(
+                    "total_mesh_count: {}",
+                    data.total_mesh_count
+                )));
+
+                ui.add(egui::Label::new(format!(
+                    "culled_primitive_count: {}",
+                    data.culled_primitive_count
+                )));
+                ui.add(egui::Label::new(format!(
+                    "total_primitive_count: {}",
+                    data.total_primitive_count
+                )));
+            });
+    }
+
+    #[cfg(not(feature = "basic-pipeline"))]
     {
         tonemap_debug_data
             .inner
             .lock()
             .unwrap()
             .enable_debug_data_collection = debug_ui_state.show_tonemap_debug;
+    }
+
+    #[cfg(not(feature = "basic-pipeline"))]
+    {
+        mesh_culling_debug_data
+            .inner
+            .lock()
+            .unwrap()
+            .enable_debug_data_collection = debug_ui_state.show_mesh_culling_debug;
     }
 
     if debug_ui_state.show_render_options {

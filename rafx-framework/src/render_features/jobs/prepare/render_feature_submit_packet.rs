@@ -12,16 +12,6 @@ pub trait RenderFeatureSubmitPacket: Downcast + Send + Sync {
         view_index: ViewFrameIndex,
     ) -> &dyn RenderFeatureViewSubmitPacket;
 
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex;
-
-    fn view_frame_index_from_view_index(
-        &self,
-        view_index: RenderViewIndex,
-    ) -> Option<ViewFrameIndex>;
-
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 

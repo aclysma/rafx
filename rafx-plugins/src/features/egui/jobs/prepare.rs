@@ -3,13 +3,10 @@ use rafx::render_feature_prepare_job_predule::*;
 use super::*;
 use crate::phases::UiRenderPhase;
 use crate::shaders::egui::{egui_frag, egui_vert};
-use rafx::api::{RafxBufferDef, RafxDeviceContext};
+use rafx::api::RafxBufferDef;
 use rafx::base::resource_map::WriteBorrow;
-use rafx::framework::ResourceContext;
 
 pub struct EguiPrepareJob<'prepare> {
-    resource_context: ResourceContext,
-    device_context: RafxDeviceContext,
     font_atlas_cache: TrustCell<WriteBorrow<'prepare, EguiFontAtlasCache>>,
 }
 
@@ -21,14 +18,13 @@ impl<'prepare> EguiPrepareJob<'prepare> {
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
         Arc::new(PrepareJob::new(
             Self {
-                resource_context: prepare_context.resource_context.clone(),
-                device_context: prepare_context.device_context.clone(),
                 font_atlas_cache: TrustCell::new(
                     prepare_context
                         .render_resources
                         .fetch_mut::<EguiFontAtlasCache>(),
                 ),
             },
+            prepare_context,
             frame_packet,
             submit_packet,
         ))
@@ -43,7 +39,9 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for EguiPrepareJob<'prepare> {
         let per_frame_data = context.per_frame_data();
         let mut per_frame_submit_data = EguiPerFrameSubmitData::default();
 
-        let dyn_resource_allocator_set = self.resource_context.create_dyn_resource_allocator_set();
+        let dyn_resource_allocator_set = context
+            .resource_context()
+            .create_dyn_resource_allocator_set();
 
         let descriptor_set_layouts = &per_frame_data
             .egui_material_pass
@@ -52,7 +50,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for EguiPrepareJob<'prepare> {
             .get_raw()
             .descriptor_set_layouts;
 
-        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
+        let mut descriptor_set_allocator =
+            context.resource_context().create_descriptor_set_allocator();
 
         let mut font_atlas_cache = self.font_atlas_cache.borrow_mut();
 
@@ -66,8 +65,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for EguiPrepareJob<'prepare> {
             .ok();
 
         if let Some(draw_data) = &per_frame_data.egui_draw_data {
-            let vertex_buffer = self
-                .device_context
+            let vertex_buffer = context
+                .device_context()
                 .create_buffer(&RafxBufferDef::for_staging_vertex_buffer_data(
                     &draw_data.vertices,
                 ))
@@ -78,8 +77,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for EguiPrepareJob<'prepare> {
             let vertex_buffer = dyn_resource_allocator_set.insert_buffer(vertex_buffer);
             per_frame_submit_data.vertex_buffer = Some(vertex_buffer);
 
-            let index_buffer = self
-                .device_context
+            let index_buffer = context
+                .device_context()
                 .create_buffer(&RafxBufferDef::for_staging_index_buffer_data(
                     &draw_data.indices,
                 ))

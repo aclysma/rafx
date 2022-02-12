@@ -195,5 +195,5 @@ layout (set = 3, binding = 0) buffer AllMaterials {
     MaterialDbEntry materials[];
 } all_materials;
 
-layout (set = 3, binding = 1) uniform texture2D all_material_textures[256];
+layout (set = 3, binding = 1) uniform texture2D all_material_textures[768];
 

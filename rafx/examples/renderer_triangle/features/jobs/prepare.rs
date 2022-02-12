@@ -7,11 +7,16 @@ pub struct ExamplePrepareJob {}
 
 impl ExamplePrepareJob {
     pub fn new<'prepare>(
-        _prepare_context: &RenderJobPrepareContext<'prepare>,
+        prepare_context: &RenderJobPrepareContext<'prepare>,
         frame_packet: Box<ExampleFramePacket>,
         submit_packet: Box<ExampleSubmitPacket>,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
-        Arc::new(PrepareJob::new(Self {}, frame_packet, submit_packet))
+        Arc::new(PrepareJob::new(
+            Self {},
+            prepare_context,
+            frame_packet,
+            submit_packet,
+        ))
     }
 }
 

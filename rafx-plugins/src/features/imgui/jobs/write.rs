@@ -56,13 +56,6 @@ impl<'write> ImGuiWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for ImGuiWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,

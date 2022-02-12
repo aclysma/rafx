@@ -182,6 +182,13 @@ impl VisibilityWorldInternal {
     // Models
     // --------
 
+    pub fn model(
+        &self,
+        handle: ModelHandle,
+    ) -> Option<&VisibleBounds> {
+        self.models.get(handle)
+    }
+
     /// Returns a handle to a `Model` created from `PolygonSoup`
     pub fn new_model(
         &mut self,

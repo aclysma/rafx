@@ -1,4 +1,6 @@
 use crate::render_features::render_features_prelude::*;
+use crate::{RenderResources, ResourceContext};
+use rafx_api::RafxDeviceContext;
 
 /// `PrepareJobEntryPoints` provides a generic set of callbacks for a `RenderFeature`
 /// compatible with the `PrepareJob` struct. This simplifies the work of implementing
@@ -78,6 +80,7 @@ pub struct PreparePerFrameContext<
     'entry,
     PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>,
 > {
+    prepare_context: &'entry RenderJobPrepareContext<'prepare>,
     frame_packet: &'entry FramePacket<PrepareJobEntryPointsT::FramePacketDataT>,
     submit_packet: &'entry SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>,
 }
@@ -86,13 +89,27 @@ impl<'prepare, 'entry, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>>
     PreparePerFrameContext<'prepare, 'entry, PrepareJobEntryPointsT>
 {
     pub fn new(
+        prepare_context: &'entry RenderJobPrepareContext<'prepare>,
         frame_packet: &'entry FramePacket<PrepareJobEntryPointsT::FramePacketDataT>,
         submit_packet: &'entry SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>,
     ) -> Self {
         Self {
+            prepare_context,
             frame_packet,
             submit_packet,
         }
+    }
+
+    pub fn device_context(&self) -> &RafxDeviceContext {
+        &self.prepare_context.device_context
+    }
+
+    pub fn resource_context(&self) -> &ResourceContext {
+        &self.prepare_context.resource_context
+    }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        &self.prepare_context.render_resources
     }
 
     pub fn per_frame_data(
@@ -121,6 +138,7 @@ pub struct PrepareRenderObjectInstanceContext<
     'entry,
     PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>,
 > {
+    prepare_context: &'entry RenderJobPrepareContext<'prepare>,
     frame_packet: &'entry FramePacket<PrepareJobEntryPointsT::FramePacketDataT>,
     submit_packet: &'entry SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>,
     render_object_instance: &'entry RenderObjectInstance,
@@ -131,17 +149,31 @@ impl<'prepare, 'entry, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>>
     PrepareRenderObjectInstanceContext<'prepare, 'entry, PrepareJobEntryPointsT>
 {
     pub fn new(
+        prepare_context: &'entry RenderJobPrepareContext<'prepare>,
         frame_packet: &'entry FramePacket<PrepareJobEntryPointsT::FramePacketDataT>,
         submit_packet: &'entry SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>,
         id: usize,
     ) -> Self {
         let render_object_instance = &frame_packet.render_object_instances[id];
         Self {
+            prepare_context,
             frame_packet,
             submit_packet,
             render_object_instance,
             id,
         }
+    }
+
+    pub fn device_context(&self) -> &RafxDeviceContext {
+        &self.prepare_context.device_context
+    }
+
+    pub fn resource_context(&self) -> &ResourceContext {
+        &self.prepare_context.resource_context
+    }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        &self.prepare_context.render_resources
     }
 
     pub fn render_object_instance_data(
@@ -180,6 +212,7 @@ pub struct PreparePerViewContext<
     'entry,
     PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>,
 > {
+    prepare_context: &'entry RenderJobPrepareContext<'prepare>,
     frame_packet: &'entry FramePacket<PrepareJobEntryPointsT::FramePacketDataT>,
     submit_packet: &'entry SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>,
     view_packet: &'entry ViewPacket<PrepareJobEntryPointsT::FramePacketDataT>,
@@ -190,17 +223,31 @@ impl<'prepare, 'entry, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>>
     PreparePerViewContext<'prepare, 'entry, PrepareJobEntryPointsT>
 {
     pub fn new(
+        prepare_context: &'entry RenderJobPrepareContext<'prepare>,
         frame_packet: &'entry FramePacket<PrepareJobEntryPointsT::FramePacketDataT>,
         submit_packet: &'entry SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>,
         view_packet: &'entry ViewPacket<PrepareJobEntryPointsT::FramePacketDataT>,
         view_submit_packet: &'entry ViewSubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>,
     ) -> Self {
         Self {
+            prepare_context,
             frame_packet,
             submit_packet,
             view_packet,
             view_submit_packet,
         }
+    }
+
+    pub fn device_context(&self) -> &RafxDeviceContext {
+        &self.prepare_context.device_context
+    }
+
+    pub fn resource_context(&self) -> &ResourceContext {
+        &self.prepare_context.resource_context
+    }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        &self.prepare_context.render_resources
     }
 
     pub fn per_frame_data(
@@ -254,6 +301,7 @@ pub struct PrepareRenderObjectInstancePerViewContext<
     'entry,
     PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>,
 > {
+    prepare_context: &'entry RenderJobPrepareContext<'prepare>,
     frame_packet: &'entry FramePacket<PrepareJobEntryPointsT::FramePacketDataT>,
     submit_packet: &'entry SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>,
     view_packet: &'entry ViewPacket<PrepareJobEntryPointsT::FramePacketDataT>,
@@ -266,6 +314,7 @@ impl<'prepare, 'entry, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>>
     PrepareRenderObjectInstancePerViewContext<'prepare, 'entry, PrepareJobEntryPointsT>
 {
     pub fn new(
+        prepare_context: &'entry RenderJobPrepareContext<'prepare>,
         frame_packet: &'entry FramePacket<PrepareJobEntryPointsT::FramePacketDataT>,
         submit_packet: &'entry SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>,
         view_packet: &'entry ViewPacket<PrepareJobEntryPointsT::FramePacketDataT>,
@@ -274,6 +323,7 @@ impl<'prepare, 'entry, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>>
     ) -> Self {
         let render_object_instance_per_view = &view_packet.render_object_instances[id];
         Self {
+            prepare_context,
             frame_packet,
             submit_packet,
             view_packet,
@@ -281,6 +331,18 @@ impl<'prepare, 'entry, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>>
             render_object_instance_per_view,
             id,
         }
+    }
+
+    pub fn device_context(&self) -> &RafxDeviceContext {
+        &self.prepare_context.device_context
+    }
+
+    pub fn resource_context(&self) -> &ResourceContext {
+        &self.prepare_context.resource_context
+    }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        &self.prepare_context.render_resources
     }
 
     pub fn render_object_instance_id(&self) -> RenderObjectInstanceId {
@@ -323,6 +385,10 @@ impl<'prepare, 'entry, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>>
 
     pub fn view(&self) -> &RenderView {
         self.view_packet.view()
+    }
+
+    pub fn view_frame_index(&self) -> ViewFrameIndex {
+        self.view_packet.view_frame_index()
     }
 
     pub fn set_render_object_instance_per_view_submit_data(

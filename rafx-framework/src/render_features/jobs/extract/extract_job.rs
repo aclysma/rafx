@@ -9,6 +9,7 @@ use std::ops::Range;
 /// entry point defined in `ExtractJobEntryPoints`.
 pub struct ExtractJob<'extract, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>> {
     inner: ExtractJobEntryPointsT,
+    extract_context: RenderJobExtractContext<'extract>,
     frame_packet: Option<Box<FramePacket<ExtractJobEntryPointsT::FramePacketDataT>>>,
     #[allow(dead_code)]
     debug_constants: &'static RenderFeatureDebugConstants,
@@ -20,11 +21,13 @@ impl<'extract, ExtractJobEntryPointsT: 'extract + ExtractJobEntryPoints<'extract
 {
     pub fn new(
         inner: ExtractJobEntryPointsT,
+        extract_context: &RenderJobExtractContext<'extract>,
         frame_packet: Box<FramePacket<ExtractJobEntryPointsT::FramePacketDataT>>,
     ) -> Self {
         let debug_constants = inner.feature_debug_constants();
         Self {
             inner,
+            extract_context: extract_context.clone(),
             frame_packet: Some(frame_packet),
             debug_constants,
             _phantom: Default::default(),
@@ -66,7 +69,8 @@ impl<'extract, ExtractJobEntryPointsT: 'extract + ExtractJobEntryPoints<'extract
     fn begin_per_frame_extract(&self) {
         profiling::scope!(self.debug_constants.begin_per_frame_extract);
 
-        let context = ExtractPerFrameContext::new(self.frame_packet.as_ref().unwrap());
+        let context =
+            ExtractPerFrameContext::new(&self.extract_context, self.frame_packet.as_ref().unwrap());
         self.inner.begin_per_frame_extract(&context);
     }
 
@@ -93,8 +97,12 @@ impl<'extract, ExtractJobEntryPointsT: 'extract + ExtractJobEntryPoints<'extract
         let job_context = job_context.as_mut().unwrap();
         let frame_packet = self.frame_packet.as_ref().unwrap();
         for id in range {
-            let context =
-                ExtractRenderObjectInstanceContext::new(frame_packet, visibility_resource, id);
+            let context = ExtractRenderObjectInstanceContext::new(
+                &self.extract_context,
+                frame_packet,
+                visibility_resource,
+                id,
+            );
             self.inner
                 .extract_render_object_instance(job_context, &context);
         }
@@ -138,6 +146,7 @@ impl<'extract, ExtractJobEntryPointsT: 'extract + ExtractJobEntryPoints<'extract
 
         for id in range {
             let context = ExtractRenderObjectInstancePerViewContext::new(
+                &self.extract_context,
                 frame_packet,
                 view_packet,
                 visibility_resource,
@@ -157,14 +166,19 @@ impl<'extract, ExtractJobEntryPointsT: 'extract + ExtractJobEntryPoints<'extract
         let view_packet: &ViewPacket<ExtractJobEntryPointsT::FramePacketDataT> =
             view_packet.as_concrete();
 
-        let context = ExtractPerViewContext::new(self.frame_packet.as_ref().unwrap(), view_packet);
+        let context = ExtractPerViewContext::new(
+            &self.extract_context,
+            self.frame_packet.as_ref().unwrap(),
+            view_packet,
+        );
         self.inner.end_per_view_extract(&context);
     }
 
     fn end_per_frame_extract(&self) {
         profiling::scope!(self.debug_constants.end_per_frame_extract);
 
-        let context = ExtractPerFrameContext::new(self.frame_packet.as_ref().unwrap());
+        let context =
+            ExtractPerFrameContext::new(&self.extract_context, self.frame_packet.as_ref().unwrap());
         self.inner.end_per_frame_extract(&context);
     }
 

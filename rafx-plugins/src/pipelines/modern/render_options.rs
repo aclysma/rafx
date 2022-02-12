@@ -178,6 +178,7 @@ pub struct ModernPipelineRenderOptions {
     pub enable_visibility_update: bool,
     pub enable_sharpening: bool,
     pub sharpening_amount: f32,
+    pub enable_occlusion_culling: bool,
 }
 
 impl Default for ModernPipelineRenderOptions {
@@ -200,6 +201,7 @@ impl Default for ModernPipelineRenderOptions {
             enable_visibility_update: true,
             enable_sharpening: true,
             sharpening_amount: 1.0,
+            enable_occlusion_culling: true,
         }
     }
 }

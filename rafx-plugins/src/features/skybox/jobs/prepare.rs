@@ -3,11 +3,8 @@ use rafx::render_feature_prepare_job_predule::*;
 use super::*;
 use crate::phases::OpaqueRenderPhase;
 use crate::shaders::skybox::skybox_frag;
-use rafx::framework::ResourceContext;
 
-pub struct SkyboxPrepareJob {
-    resource_context: ResourceContext,
-}
+pub struct SkyboxPrepareJob {}
 
 impl SkyboxPrepareJob {
     pub fn new<'prepare>(
@@ -16,9 +13,8 @@ impl SkyboxPrepareJob {
         submit_packet: Box<SkyboxSubmitPacket>,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
         Arc::new(PrepareJob::new(
-            Self {
-                resource_context: prepare_context.resource_context.clone(),
-            },
+            Self {},
+            prepare_context,
             frame_packet,
             submit_packet,
         ))
@@ -31,7 +27,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for SkyboxPrepareJob {
         context: &PreparePerViewContext<'prepare, '_, Self>,
     ) {
         let per_frame_data = context.per_frame_data();
-        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
+        let mut descriptor_set_allocator =
+            context.resource_context().create_descriptor_set_allocator();
 
         if let Some(skybox_material) = &per_frame_data.skybox_material_pass {
             if let Some(skybox_texture) = &per_frame_data.skybox_texture {

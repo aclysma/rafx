@@ -11,7 +11,7 @@ use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{
     BufferResource, DescriptorSetArc, ImageViewResource, MaterialPassResource, ResourceArc,
 };
-use rafx::rafx_visibility::geometry::Transform;
+use rafx::rafx_visibility::geometry::{BoundingSphere, Transform};
 
 pub struct MeshAdvRenderFeatureTypes;
 
@@ -36,6 +36,7 @@ pub struct MeshAdvRenderObjectInstanceData {
     pub mesh_asset: MeshAdvAsset,
     pub transform: Transform,
     pub previous_transform: Option<Transform>,
+    pub bounding_sphere: Option<BoundingSphere>,
 }
 
 #[derive(Default)]
@@ -89,11 +90,12 @@ pub struct MeshAdvPartMaterialDescriptorSetPair {
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct MeshAdvBatchedPassKey {
     pub phase: RenderPhaseIndex,
-    pub view_index: RenderViewIndex,
+    pub view_frame_index: ViewFrameIndex,
     pub pass: ResourceArc<MaterialPassResource>,
     pub index_type: RafxIndexType,
 }
 
+//TODO: We make one per view * object, is this really necessary?
 #[derive(Clone)]
 pub struct MeshAdvBatchDrawData {
     pub transform_index: u32,
@@ -107,7 +109,7 @@ pub struct MeshAdvBatchedPassInfo {
     pub phase: RenderPhaseIndex,
     pub pass: ResourceArc<MaterialPassResource>,
     pub draw_data: AtomicOnceCellStack<MeshAdvBatchDrawData>,
-    pub view_index: RenderViewIndex,
+    pub view_frame_index: ViewFrameIndex,
     pub index_type: RafxIndexType,
 }
 
@@ -116,8 +118,9 @@ pub struct MeshAdvBatchedPreparedPassInfo {
     pub phase: RenderPhaseIndex,
     pub pass: ResourceArc<MaterialPassResource>,
     pub index_type: RafxIndexType,
-    pub draw_data: Vec<MeshAdvBatchDrawData>,
-    pub indirect_buffer: ResourceArc<BufferResource>,
+    pub indirect_buffer_first_command_index: u32,
+    pub indirect_buffer_command_count: u32,
+    pub draw_data: Option<Vec<MeshAdvBatchDrawData>>,
 }
 
 pub struct MeshAdvPerFrameSubmitData {
@@ -134,6 +137,7 @@ pub struct MeshAdvPerFrameSubmitData {
     pub batched_pass_lookup: AtomicOnceCell<FnvHashMap<MeshAdvBatchedPassKey, usize>>,
     pub batched_passes: AtomicOnceCell<Vec<MeshAdvBatchedPreparedPassInfo>>,
     pub per_batch_descriptor_sets: AtomicOnceCell<Vec<Option<DescriptorSetArc>>>,
+    pub indirect_buffer: AtomicOnceCell<ResourceArc<BufferResource>>,
 }
 
 pub struct MeshAdvRenderObjectInstanceSubmitData {

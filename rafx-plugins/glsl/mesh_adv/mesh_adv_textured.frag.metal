@@ -192,7 +192,7 @@ struct spvDescriptorSetBuffer2
 struct spvDescriptorSetBuffer3
 {
     device AllMaterials* all_materials [[id(0)]];
-    array<texture2d<float>, 256> all_material_textures [[id(1)]];
+    array<texture2d<float>, 768> all_material_textures [[id(1)]];
 };
 
 struct main0_out

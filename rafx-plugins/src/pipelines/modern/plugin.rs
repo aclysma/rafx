@@ -2,6 +2,7 @@ use crate::phases::{
     DebugPipRenderPhase, DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase,
     ShadowMapRenderPhase, TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
+use crate::shaders::mesh_adv::mesh_culling_comp;
 use crate::shaders::post_adv::luma_average_histogram_comp;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::{
@@ -66,6 +67,44 @@ impl Default for ModernPipelineTonemapDebugData {
     }
 }
 
+#[derive(Debug)]
+pub struct ModernPipelineMeshCullingDebugDataInner {
+    // The values will only be updated if this is set to true
+    pub enable_debug_data_collection: bool,
+
+    pub culled_mesh_count: u32,
+    pub total_mesh_count: u32,
+    pub culled_primitive_count: u32,
+    pub total_primitive_count: u32,
+}
+
+impl Default for ModernPipelineMeshCullingDebugDataInner {
+    fn default() -> Self {
+        ModernPipelineMeshCullingDebugDataInner {
+            enable_debug_data_collection: false,
+            culled_mesh_count: 0,
+            total_mesh_count: 0,
+            culled_primitive_count: 0,
+            total_primitive_count: 0,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ModernPipelineMeshCullingDebugData {
+    pub inner: Arc<Mutex<ModernPipelineMeshCullingDebugDataInner>>,
+}
+
+impl Default for ModernPipelineMeshCullingDebugData {
+    fn default() -> Self {
+        ModernPipelineMeshCullingDebugData {
+            inner: Arc::new(Mutex::new(
+                ModernPipelineMeshCullingDebugDataInner::default(),
+            )),
+        }
+    }
+}
+
 pub struct ModernPipelineStaticResources {
     pub bloom_extract_material: Handle<MaterialAsset>,
     pub bloom_blur_material: Handle<MaterialAsset>,
@@ -76,8 +115,11 @@ pub struct ModernPipelineStaticResources {
     pub luma_build_histogram: Handle<ComputePipelineAsset>,
     pub luma_average_histogram: Handle<ComputePipelineAsset>,
     pub cas_pipeline: Handle<ComputePipelineAsset>,
+    pub mesh_culling_pipeline: Handle<ComputePipelineAsset>,
+    pub depth_pyramid_pipeline: Handle<ComputePipelineAsset>,
     pub tonemap_histogram_result: ResourceArc<BufferResource>,
     pub tonemap_debug_output: Vec<ResourceArc<BufferResource>>,
+    pub mesh_culling_debug_output: Vec<ResourceArc<BufferResource>>,
     pub taa_history_rt: Option<ResourceArc<ImageViewResource>>,
 }
 
@@ -159,6 +201,14 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
         let cas_pipeline =
             asset_resource.load_asset_path::<ComputePipelineAsset, _>(cas_asset_path);
 
+        let mesh_culling_pipeline = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
+            "rafx-plugins/compute_pipelines/mesh_culling.compute",
+        );
+
+        let depth_pyramid_pipeline = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
+            "rafx-plugins/compute_pipelines/depth_pyramid.compute",
+        );
+
         renderer_load_context.wait_for_asset_to_load(
             render_resources,
             asset_manager,
@@ -222,6 +272,22 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             "cas_pipeline",
         )?;
 
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
+            &mesh_culling_pipeline,
+            asset_resource,
+            "mesh_culling_pipeline",
+        )?;
+
+        renderer_load_context.wait_for_asset_to_load(
+            render_resources,
+            asset_manager,
+            &depth_pyramid_pipeline,
+            asset_resource,
+            "depth_pyramid_pipeline",
+        )?;
+
         let tonemap_histogram_result =
             asset_manager
                 .device_context()
@@ -266,6 +332,29 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             );
         }
 
+        let mut mesh_culling_debug_output = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT + 1);
+        for _ in 0..=MAX_FRAMES_IN_FLIGHT {
+            let mesh_culling_debug_output_buffer =
+                asset_manager
+                    .device_context()
+                    .create_buffer(&RafxBufferDef {
+                        size: std::mem::size_of::<mesh_culling_comp::DebugOutputBuffer>() as u64,
+                        alignment: 256,
+                        memory_usage: RafxMemoryUsage::GpuToCpu,
+                        queue_type: RafxQueueType::Graphics,
+                        resource_type: RafxResourceType::BUFFER_READ_WRITE,
+                        elements: Default::default(),
+                        format: RafxFormat::UNDEFINED,
+                        always_mapped: false,
+                    })?;
+            mesh_culling_debug_output.push(
+                asset_manager
+                    .resource_manager()
+                    .resources()
+                    .insert_buffer(mesh_culling_debug_output_buffer),
+            );
+        }
+
         let taa_history_rt = None;
 
         render_resources.insert(ModernPipelineStaticResources {
@@ -278,8 +367,11 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             luma_build_histogram,
             luma_average_histogram,
             cas_pipeline,
+            mesh_culling_pipeline,
+            depth_pyramid_pipeline,
             tonemap_histogram_result,
             tonemap_debug_output,
+            mesh_culling_debug_output,
             taa_history_rt,
         });
 

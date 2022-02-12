@@ -106,13 +106,6 @@ impl<'write> MeshBasicWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> u32 {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
@@ -192,7 +185,7 @@ impl<'write> RenderFeatureWriteJob<'write> for MeshBasicWriteJob<'write> {
         };
 
         let pipeline = write_context
-            .resource_context
+            .resource_context()
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
                 Some(args.render_phase_index),

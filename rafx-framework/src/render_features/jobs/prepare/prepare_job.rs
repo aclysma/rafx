@@ -8,6 +8,7 @@ use std::ops::Range;
 /// to each entry point defined in `RenderFeaturePrepareJob`.
 pub struct PrepareJob<'prepare, PrepareJobEntryPointsT: PrepareJobEntryPoints<'prepare>> {
     inner: PrepareJobEntryPointsT,
+    prepare_context: RenderJobPrepareContext<'prepare>,
     frame_packet: Option<Box<FramePacket<PrepareJobEntryPointsT::FramePacketDataT>>>,
     submit_packet: Option<Box<SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>>>,
     #[allow(dead_code)]
@@ -20,12 +21,14 @@ impl<'prepare, PrepareJobEntryPointsT: 'prepare + PrepareJobEntryPoints<'prepare
 {
     pub fn new(
         inner: PrepareJobEntryPointsT,
+        prepare_context: &RenderJobPrepareContext<'prepare>,
         frame_packet: Box<FramePacket<PrepareJobEntryPointsT::FramePacketDataT>>,
         submit_packet: Box<SubmitPacket<PrepareJobEntryPointsT::SubmitPacketDataT>>,
     ) -> Self {
         let debug_constants = inner.feature_debug_constants();
         Self {
             inner,
+            prepare_context: prepare_context.clone(),
             frame_packet: Some(frame_packet),
             submit_packet: Some(submit_packet),
             debug_constants,
@@ -71,6 +74,7 @@ impl<'prepare, PrepareJobEntryPointsT: 'prepare + PrepareJobEntryPoints<'prepare
         profiling::scope!(self.debug_constants.begin_per_frame_prepare);
 
         let context = PreparePerFrameContext::new(
+            &self.prepare_context,
             self.frame_packet.as_ref().unwrap(),
             self.submit_packet.as_ref().unwrap(),
         );
@@ -100,7 +104,12 @@ impl<'prepare, PrepareJobEntryPointsT: 'prepare + PrepareJobEntryPoints<'prepare
         let frame_packet = self.frame_packet.as_ref().unwrap();
         let submit_packet = self.submit_packet.as_ref().unwrap();
         for id in range {
-            let context = PrepareRenderObjectInstanceContext::new(frame_packet, submit_packet, id);
+            let context = PrepareRenderObjectInstanceContext::new(
+                &self.prepare_context,
+                frame_packet,
+                submit_packet,
+                id,
+            );
             self.inner
                 .prepare_render_object_instance(job_context, &context);
         }
@@ -159,6 +168,7 @@ impl<'prepare, PrepareJobEntryPointsT: 'prepare + PrepareJobEntryPoints<'prepare
 
         for id in range {
             let context = PrepareRenderObjectInstancePerViewContext::new(
+                &self.prepare_context,
                 frame_packet,
                 submit_packet,
                 view_packet,
@@ -184,6 +194,7 @@ impl<'prepare, PrepareJobEntryPointsT: 'prepare + PrepareJobEntryPoints<'prepare
             view_submit_packet.as_concrete();
 
         let context = PreparePerViewContext::new(
+            &self.prepare_context,
             self.frame_packet.as_ref().unwrap(),
             self.submit_packet.as_ref().unwrap(),
             view_packet,
@@ -197,6 +208,7 @@ impl<'prepare, PrepareJobEntryPointsT: 'prepare + PrepareJobEntryPoints<'prepare
         profiling::scope!(self.debug_constants.end_per_frame_prepare);
 
         let context = PreparePerFrameContext::new(
+            &self.prepare_context,
             self.frame_packet.as_ref().unwrap(),
             self.submit_packet.as_ref().unwrap(),
         );

@@ -1361,6 +1361,16 @@ impl RenderGraphBuilder {
         self.node_mut(node_id).can_be_culled = false;
     }
 
+    pub fn add_explicit_dependency(
+        &mut self,
+        before_node_id: RenderGraphNodeId,
+        after_node_id: RenderGraphNodeId,
+    ) {
+        self.node_mut(after_node_id)
+            .explicit_dependencies
+            .push(before_node_id);
+    }
+
     pub fn set_buffer_required(
         &mut self,
         buffer_usage: RenderGraphBufferUsageId,

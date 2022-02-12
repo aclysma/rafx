@@ -129,6 +129,7 @@ impl RenderFeaturePlugin for SpriteRendererPlugin {
             view_submit_packets.push(ViewSubmitPacket::new(
                 submit_node_blocks,
                 &ViewPacketSize::size_of(view_packet),
+                view_packet.view_frame_index(),
             ));
         }
 

@@ -14,7 +14,7 @@ lazy_static::lazy_static! {
 
 pub struct SkyboxWriteJob<'write> {
     skybox_material_pass: Option<ResourceArc<MaterialPassResource>>,
-    frame_packet: Box<SkyboxFramePacket>,
+    _frame_packet: Box<SkyboxFramePacket>,
     submit_packet: Box<SkyboxSubmitPacket>,
     phantom: PhantomData<&'write ()>,
 }
@@ -33,7 +33,7 @@ impl<'write> SkyboxWriteJob<'write> {
                     .skybox_material_pass
                     .clone()
             },
-            frame_packet,
+            _frame_packet: frame_packet,
             submit_packet,
             phantom: Default::default(),
         })
@@ -41,13 +41,6 @@ impl<'write> SkyboxWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for SkyboxWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
@@ -59,7 +52,7 @@ impl<'write> RenderFeatureWriteJob<'write> for SkyboxWriteJob<'write> {
             let command_buffer = &write_context.command_buffer;
 
             let pipeline = write_context
-                .resource_context
+                .resource_context()
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     Some(args.render_phase_index),

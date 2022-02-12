@@ -31,6 +31,7 @@ impl<'prepare> TextPrepareJob<'prepare> {
                 },
                 device_context: prepare_context.device_context.clone(),
             },
+            prepare_context,
             frame_packet,
             submit_packet,
         ))

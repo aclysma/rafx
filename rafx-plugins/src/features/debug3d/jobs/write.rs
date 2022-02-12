@@ -29,7 +29,7 @@ lazy_static::lazy_static! {
 
 pub struct Debug3DWriteJob<'write> {
     debug3d_material_pass: Option<ResourceArc<MaterialPassResource>>,
-    frame_packet: Box<Debug3DFramePacket>,
+    _frame_packet: Box<Debug3DFramePacket>,
     submit_packet: Box<Debug3DSubmitPacket>,
     phantom: PhantomData<&'write ()>,
 }
@@ -48,7 +48,7 @@ impl<'write> Debug3DWriteJob<'write> {
                     .debug3d_material_pass
                     .clone()
             },
-            frame_packet,
+            _frame_packet: frame_packet,
             submit_packet,
             phantom: Default::default(),
         })
@@ -56,13 +56,6 @@ impl<'write> Debug3DWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for Debug3DWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
@@ -77,7 +70,7 @@ impl<'write> RenderFeatureWriteJob<'write> for Debug3DWriteJob<'write> {
 
         if let Some(vertex_buffer) = per_frame_submit_data.vertex_buffer.as_ref() {
             let pipeline = write_context
-                .resource_context
+                .resource_context()
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     Some(args.render_phase_index),

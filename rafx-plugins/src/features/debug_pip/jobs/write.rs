@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
 
 pub struct DebugPipWriteJob<'write> {
     debug_pip_material_pass: Option<ResourceArc<MaterialPassResource>>,
-    frame_packet: Box<DebugPipFramePacket>,
+    _frame_packet: Box<DebugPipFramePacket>,
     _submit_packet: Box<DebugPipSubmitPacket>,
     phantom: PhantomData<&'write ()>,
 }
@@ -35,7 +35,7 @@ impl<'write> DebugPipWriteJob<'write> {
                     .debug_pip_material_pass
                     .clone()
             },
-            frame_packet,
+            _frame_packet: frame_packet,
             _submit_packet: submit_packet,
             phantom: Default::default(),
         })
@@ -43,13 +43,6 @@ impl<'write> DebugPipWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for DebugPipWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
@@ -79,7 +72,7 @@ impl<'write> RenderFeatureWriteJob<'write> for DebugPipWriteJob<'write> {
                 .extents;
 
             let mut descriptor_set_allocator = write_context
-                .resource_context
+                .resource_context()
                 .create_descriptor_set_allocator();
             let mut descriptor_sets =
                 Vec::with_capacity(debug_pip_render_resource.sampled_render_graph_images.len());
@@ -106,7 +99,7 @@ impl<'write> RenderFeatureWriteJob<'write> for DebugPipWriteJob<'write> {
             let command_buffer = &write_context.command_buffer;
 
             let pipeline = write_context
-                .resource_context
+                .resource_context()
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     Some(args.render_phase_index),
