@@ -771,9 +771,19 @@ impl RafxCommandBuffer {
                 draw_count,
             ),
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandBuffer::Gles2(_) => unimplemented!(),
+            RafxCommandBuffer::Gles2(_) => {
+                let _ = indirect_buffer;
+                let _ = indirect_buffer_offset_in_bytes;
+                let _ = draw_count;
+                unimplemented!()
+            }
             #[cfg(feature = "rafx-gles3")]
-            RafxCommandBuffer::Gles3(_) => unimplemented!(),
+            RafxCommandBuffer::Gles3(_) => {
+                let _ = indirect_buffer;
+                let _ = indirect_buffer_offset_in_bytes;
+                let _ = draw_count;
+                unimplemented!()
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
@@ -811,9 +821,19 @@ impl RafxCommandBuffer {
                 draw_count,
             ),
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandBuffer::Gles2(_) => unimplemented!(),
+            RafxCommandBuffer::Gles2(_) => {
+                let _ = indirect_buffer;
+                let _ = indirect_buffer_offset_in_bytes;
+                let _ = draw_count;
+                unimplemented!()
+            }
             #[cfg(feature = "rafx-gles3")]
-            RafxCommandBuffer::Gles3(_) => unimplemented!(),
+            RafxCommandBuffer::Gles3(_) => {
+                let _ = indirect_buffer;
+                let _ = indirect_buffer_offset_in_bytes;
+                let _ = draw_count;
+                unimplemented!()
+            }
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
