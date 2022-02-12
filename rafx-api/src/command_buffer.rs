@@ -697,7 +697,7 @@ impl RafxCommandBuffer {
         first_index: u32,
         instance_count: u32,
         first_instance: u32,
-        vertex_offset: i32,
+        vertex_offset: i32, // value added to the vertex index before indexing into the vertex buffer
     ) -> RafxResult<()> {
         match self {
             #[cfg(feature = "rafx-vulkan")]
@@ -747,6 +747,106 @@ impl RafxCommandBuffer {
                 instance_count,
                 first_instance,
                 vertex_offset,
+            ),
+        }
+    }
+
+    pub fn cmd_draw_indirect(
+        &self,
+        indirect_buffer: &RafxBuffer,
+        indirect_buffer_offset_in_bytes: u32,
+        draw_count: u32,
+    ) -> RafxResult<()> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_draw_indirect(
+                indirect_buffer.vk_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count,
+            ),
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => inner.cmd_draw_indirect(
+                indirect_buffer.metal_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count,
+            ),
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(_) => {
+                let _ = indirect_buffer;
+                let _ = indirect_buffer_offset_in_bytes;
+                let _ = draw_count;
+                unimplemented!()
+            }
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(_) => {
+                let _ = indirect_buffer;
+                let _ = indirect_buffer_offset_in_bytes;
+                let _ = draw_count;
+                unimplemented!()
+            }
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(inner) => inner.cmd_draw_indirect(
+                indirect_buffer.empty_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count,
+            ),
+        }
+    }
+
+    pub fn cmd_draw_indexed_indirect(
+        &self,
+        indirect_buffer: &RafxBuffer,
+        indirect_buffer_offset_in_bytes: u32,
+        draw_count: u32,
+    ) -> RafxResult<()> {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_draw_indexed_indirect(
+                indirect_buffer.vk_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count,
+            ),
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => inner.cmd_draw_indexed_indirect(
+                indirect_buffer.metal_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count,
+            ),
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(_) => {
+                let _ = indirect_buffer;
+                let _ = indirect_buffer_offset_in_bytes;
+                let _ = draw_count;
+                unimplemented!()
+            }
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(_) => {
+                let _ = indirect_buffer;
+                let _ = indirect_buffer_offset_in_bytes;
+                let _ = draw_count;
+                unimplemented!()
+            }
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(inner) => inner.cmd_draw_indexed_indirect(
+                indirect_buffer.empty_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count,
             ),
         }
     }

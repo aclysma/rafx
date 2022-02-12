@@ -15,8 +15,3 @@ layout (set = 1, binding = 0) buffer AllTransforms {
 layout (set = 1, binding = 1) buffer AllDrawData {
     DrawData draw_data[];
 } all_draw_data;
-
-// @[export]
-layout (push_constant) uniform PushConstants {
-    uint draw_data_index;
-} constants;

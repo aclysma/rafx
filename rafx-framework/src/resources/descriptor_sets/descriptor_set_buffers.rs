@@ -1,4 +1,4 @@
-use crate::resources::descriptor_sets::{DescriptorSetBindingKey, MAX_DESCRIPTOR_SETS_PER_POOL};
+use crate::resources::descriptor_sets::DescriptorSetBindingKey;
 use fnv::FnvHashMap;
 use rafx_api::{
     RafxBuffer, RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxQueueType, RafxResourceType,
@@ -27,13 +27,14 @@ pub(super) struct DescriptorBindingBufferSet {
 impl DescriptorBindingBufferSet {
     fn new(
         device_context: &RafxDeviceContext,
+        descriptor_set_count: u32,
         buffer_info: &DescriptorSetPoolRequiredBufferInfo,
     ) -> RafxResult<Self> {
         //This is the only one we support right now
         assert!(buffer_info.descriptor_type == RafxResourceType::UNIFORM_BUFFER);
 
         let buffer = device_context.create_buffer(&RafxBufferDef {
-            size: (buffer_info.per_descriptor_stride * MAX_DESCRIPTOR_SETS_PER_POOL) as u64,
+            size: (buffer_info.per_descriptor_stride * descriptor_set_count) as u64,
             memory_usage: RafxMemoryUsage::CpuToGpu,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
             queue_type: RafxQueueType::Graphics,
@@ -58,11 +59,16 @@ impl DescriptorLayoutBufferSet {
     pub(super) fn new(
         device_context: &RafxDeviceContext,
         buffer_infos: &[DescriptorSetPoolRequiredBufferInfo],
+        descriptor_set_count: u32,
     ) -> RafxResult<Self> {
         let mut buffer_sets: FnvHashMap<DescriptorSetBindingKey, DescriptorBindingBufferSet> =
             Default::default();
         for buffer_info in buffer_infos {
-            let buffer = DescriptorBindingBufferSet::new(device_context, &buffer_info)?;
+            let buffer = DescriptorBindingBufferSet::new(
+                device_context,
+                descriptor_set_count,
+                &buffer_info,
+            )?;
             buffer_sets.insert(buffer_info.dst_element, buffer);
         }
 

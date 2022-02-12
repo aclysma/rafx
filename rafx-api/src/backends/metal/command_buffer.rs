@@ -6,9 +6,10 @@ use crate::metal::{
 use crate::{
     RafxBufferBarrier, RafxCmdCopyBufferToBufferParams, RafxCmdCopyBufferToTextureParams,
     RafxCmdCopyTextureToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef,
-    RafxDepthStencilRenderTargetBinding, RafxDescriptorIndex, RafxExtents3D,
-    RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState,
-    RafxResult, RafxShaderStageFlags, RafxTextureBarrier, RafxVertexBufferBinding,
+    RafxDepthStencilRenderTargetBinding, RafxDescriptorIndex, RafxDrawIndexedIndirectCommand,
+    RafxDrawIndirectCommand, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp,
+    RafxPipelineType, RafxResourceState, RafxResult, RafxShaderStageFlags, RafxTextureBarrier,
+    RafxVertexBufferBinding,
 };
 use fnv::FnvHashSet;
 use metal_rs::{
@@ -845,6 +846,60 @@ impl RafxCommandBufferMetal {
                 );
         }
 
+        Ok(())
+    }
+
+    pub fn cmd_draw_indirect(
+        &self,
+        indirect_buffer: &RafxBufferMetal,
+        indirect_buffer_offset_in_bytes: u32,
+        draw_count: u32,
+    ) -> RafxResult<()> {
+        let features = self.queue.device_context().metal_features();
+        assert!(features.supports_indirect_buffers);
+
+        let inner = self.inner.borrow();
+        for i in 0..draw_count {
+            let byte_offset = std::mem::size_of::<RafxDrawIndirectCommand>() as u32 * i;
+            inner
+                .render_encoder
+                .as_ref()
+                .unwrap()
+                .draw_primitives_indirect(
+                    inner.primitive_type,
+                    indirect_buffer.metal_buffer(),
+                    (indirect_buffer_offset_in_bytes + byte_offset) as _,
+                );
+        }
+
+        Ok(())
+    }
+
+    pub fn cmd_draw_indexed_indirect(
+        &self,
+        indirect_buffer: &RafxBufferMetal,
+        indirect_buffer_offset_in_bytes: u32,
+        draw_count: u32,
+    ) -> RafxResult<()> {
+        let features = self.queue.device_context().metal_features();
+        assert!(features.supports_indirect_buffers);
+
+        let inner = self.inner.borrow();
+        for i in 0..draw_count {
+            let byte_offset = std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32 * i;
+            inner
+                .render_encoder
+                .as_ref()
+                .unwrap()
+                .draw_indexed_primitives_indirect(
+                    inner.primitive_type,
+                    inner.current_index_buffer_type,
+                    inner.current_index_buffer.as_ref().unwrap(),
+                    0,
+                    indirect_buffer.metal_buffer(),
+                    (indirect_buffer_offset_in_bytes + byte_offset) as _,
+                );
+        }
         Ok(())
     }
 

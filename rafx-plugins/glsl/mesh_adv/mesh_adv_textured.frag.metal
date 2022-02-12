@@ -120,11 +120,6 @@ struct AllDrawData
     DrawData draw_data[1];
 };
 
-struct PushConstants
-{
-    uint draw_data_index;
-};
-
 struct MaterialDbEntry
 {
     float4 base_color_factor;
@@ -216,6 +211,7 @@ struct main0_in
     float3 in_model_view_0 [[user(locn6)]];
     float3 in_model_view_1 [[user(locn7)]];
     float3 in_model_view_2 [[user(locn8)]];
+    uint in_instance_index [[user(locn9)]];
 };
 
 static inline __attribute__((always_inline))
@@ -396,12 +392,12 @@ float do_calculate_percent_lit(thread const float3& normal_vs, thread const int&
         for (int y = -1; y <= 1; y++)
         {
             float4 uv = float4(sample_location_uv + (float2(float(x), float(y)) * texelSize), 0.0, 0.0);
-            float2 _666 = -uv.xy;
-            uv = float4(uv.x, uv.y, _666.x, _666.y);
+            float2 _664 = -uv.xy;
+            uv = float4(uv.x, uv.y, _664.x, _664.y);
             if (all(uv >= uv_min_max_compare))
             {
-                float3 _686 = float3(uv.xy, depth_of_surface + bias0);
-                percent_lit += shadow_map_atlas.sample_compare(smp_depth_linear, _686.xy, _686.z);
+                float3 _684 = float3(uv.xy, depth_of_surface + bias0);
+                percent_lit += shadow_map_atlas.sample_compare(smp_depth_linear, _684.xy, _684.z);
             }
             else
             {
@@ -459,33 +455,33 @@ static inline __attribute__((always_inline))
 float3 cube_sample_to_uv_and_face_index(thread const float3& dir)
 {
     float3 dirAbs = abs(dir);
-    bool _320 = dirAbs.z >= dirAbs.x;
-    bool _328;
-    if (_320)
+    bool _318 = dirAbs.z >= dirAbs.x;
+    bool _326;
+    if (_318)
     {
-        _328 = dirAbs.z >= dirAbs.y;
+        _326 = dirAbs.z >= dirAbs.y;
     }
     else
     {
-        _328 = _320;
+        _326 = _318;
     }
     float faceIndex;
     float ma;
     float2 uv;
-    if (_328)
+    if (_326)
     {
         faceIndex = (dir.z < 0.0) ? 5.0 : 4.0;
         ma = 0.5 / dirAbs.z;
-        float _346;
+        float _344;
         if (dir.z < 0.0)
         {
-            _346 = -dir.x;
+            _344 = -dir.x;
         }
         else
         {
-            _346 = dir.x;
+            _344 = dir.x;
         }
-        uv = float2(_346, -dir.y);
+        uv = float2(_344, -dir.y);
     }
     else
     {
@@ -493,31 +489,31 @@ float3 cube_sample_to_uv_and_face_index(thread const float3& dir)
         {
             faceIndex = (dir.y < 0.0) ? 3.0 : 2.0;
             ma = 0.5 / dirAbs.y;
-            float _381;
+            float _379;
             if (dir.y < 0.0)
             {
-                _381 = -dir.z;
+                _379 = -dir.z;
             }
             else
             {
-                _381 = dir.z;
+                _379 = dir.z;
             }
-            uv = float2(dir.x, _381);
+            uv = float2(dir.x, _379);
         }
         else
         {
             faceIndex = float(dir.x < 0.0);
             ma = 0.5 / dirAbs.x;
-            float _403;
+            float _401;
             if (dir.x < 0.0)
             {
-                _403 = dir.z;
+                _401 = dir.z;
             }
             else
             {
-                _403 = -dir.z;
+                _401 = -dir.z;
             }
-            uv = float2(_403, -dir.y);
+            uv = float2(_401, -dir.y);
         }
     }
     return float3((uv * ma) + float2(0.5), faceIndex);
@@ -545,8 +541,8 @@ float do_calculate_percent_lit_cube(thread const float3& light_position_ws, thre
         return 1.0;
     }
     float2 uv_to_sample = mix(uv_min_uv_max.xy, uv_min_uv_max.zw, uv_and_face.xy);
-    float3 _517 = float3(uv_to_sample, depth_of_surface + bias0);
-    float shadow = shadow_map_atlas.sample_compare(smp_depth_nearest, _517.xy, _517.z);
+    float3 _515 = float3(uv_to_sample, depth_of_surface + bias0);
+    float shadow = shadow_map_atlas.sample_compare(smp_depth_nearest, _515.xy, _515.z);
     return shadow;
 }
 
@@ -762,7 +758,7 @@ float3 directional_light_pbr(thread const DirectionalLight& light, thread const 
 }
 
 static inline __attribute__((always_inline))
-float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& base_color, thread const float4& emissive_color, thread const float& metalness, thread const float& roughness, thread const float3& normal_vs, thread const uint& light_cluster_index, thread const float& ambient_factor, constant PerViewData& per_view_data, thread float4& in_position_ws, thread float3& in_position_vs, thread float3& in_normal_vs, thread depth2d<float> shadow_map_atlas, thread sampler smp_depth_nearest, thread float3x3& in_model_view, thread sampler smp_depth_linear, device AllLights& all_lights, device LightBinOutput& light_bin_output, device AllDrawData& all_draw_data, constant PushConstants& constants, device AllMaterials& all_materials)
+float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& base_color, thread const float4& emissive_color, thread const float& metalness, thread const float& roughness, thread const float3& normal_vs, thread const uint& light_cluster_index, thread const float& ambient_factor, constant PerViewData& per_view_data, thread float4& in_position_ws, thread float3& in_position_vs, thread float3& in_normal_vs, thread depth2d<float> shadow_map_atlas, thread sampler smp_depth_nearest, thread float3x3& in_model_view, thread sampler smp_depth_linear, device AllLights& all_lights, device LightBinOutput& light_bin_output, device AllDrawData& all_draw_data, thread uint& in_instance_index, device AllMaterials& all_materials)
 {
     float3 fresnel_base = float3(0.039999999105930328369140625);
     fresnel_base = mix(fresnel_base, base_color.xyz, float3(metalness));
@@ -823,7 +819,7 @@ float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& bas
         total_light += (pbr * percent_lit);
     }
     float3 ambient = (per_view_data.ambient_light.xyz * base_color.xyz) * ambient_factor;
-    uint material_index = all_draw_data.draw_data[constants.draw_data_index].material_index;
+    uint material_index = all_draw_data.draw_data[in_instance_index].material_index;
     MaterialDbEntry per_material_data;
     per_material_data.base_color_factor = all_materials.materials[material_index].base_color_factor;
     per_material_data.emissive_factor = float3(all_materials.materials[material_index].emissive_factor);
@@ -845,16 +841,16 @@ float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& bas
     }
     else
     {
-        bool _1734;
+        bool _1729;
         if (per_material_data.enable_alpha_clip)
         {
-            _1734 = base_color.w < per_material_data.alpha_threshold;
+            _1729 = base_color.w < per_material_data.alpha_threshold;
         }
         else
         {
-            _1734 = per_material_data.enable_alpha_clip;
+            _1729 = per_material_data.enable_alpha_clip;
         }
-        if (_1734)
+        if (_1729)
         {
             alpha = 0.0;
         }
@@ -864,9 +860,9 @@ float4 pbr_path(thread const float3& surface_to_eye_vs, thread const float4& bas
 }
 
 static inline __attribute__((always_inline))
-float4 pbr_main(thread sampler smp, constant PerViewData& per_view_data, thread float4& in_position_ws, thread float3& in_position_vs, thread float3& in_normal_vs, thread depth2d<float> shadow_map_atlas, thread sampler smp_depth_nearest, thread float3x3& in_model_view, thread sampler smp_depth_linear, device AllLights& all_lights, device LightBinOutput& light_bin_output, device AllDrawData& all_draw_data, constant PushConstants& constants, constant spvDescriptorSetBuffer3& spvDescriptorSet3, thread float4& gl_FragCoord, thread float2& in_uv, thread texture2d<float> ssao_texture, thread float3& in_tangent_vs, thread float3& in_binormal_vs)
+float4 pbr_main(thread sampler smp, constant PerViewData& per_view_data, thread float4& in_position_ws, thread float3& in_position_vs, thread float3& in_normal_vs, thread depth2d<float> shadow_map_atlas, thread sampler smp_depth_nearest, thread float3x3& in_model_view, thread sampler smp_depth_linear, device AllLights& all_lights, device LightBinOutput& light_bin_output, device AllDrawData& all_draw_data, constant spvDescriptorSetBuffer3& spvDescriptorSet3, thread uint& in_instance_index, thread float4& gl_FragCoord, thread float2& in_uv, thread texture2d<float> ssao_texture, thread float3& in_tangent_vs, thread float3& in_binormal_vs)
 {
-    uint material_index = all_draw_data.draw_data[constants.draw_data_index].material_index;
+    uint material_index = all_draw_data.draw_data[in_instance_index].material_index;
     MaterialDbEntry per_material_data;
     per_material_data.base_color_factor = spvDescriptorSet3.all_materials->materials[material_index].base_color_factor;
     per_material_data.emissive_factor = float3(spvDescriptorSet3.all_materials->materials[material_index].emissive_factor);
@@ -937,11 +933,11 @@ float4 pbr_main(thread sampler smp, constant PerViewData& per_view_data, thread 
     float3 param_8 = normal_vs;
     uint param_9 = light_cluster_index;
     float param_10 = ambient_factor;
-    float4 out_color = pbr_path(param_3, param_4, param_5, param_6, param_7, param_8, param_9, param_10, per_view_data, in_position_ws, in_position_vs, in_normal_vs, shadow_map_atlas, smp_depth_nearest, in_model_view, smp_depth_linear, all_lights, light_bin_output, all_draw_data, constants, *spvDescriptorSet3.all_materials);
+    float4 out_color = pbr_path(param_3, param_4, param_5, param_6, param_7, param_8, param_9, param_10, per_view_data, in_position_ws, in_position_vs, in_normal_vs, shadow_map_atlas, smp_depth_nearest, in_model_view, smp_depth_linear, all_lights, light_bin_output, all_draw_data, in_instance_index, *spvDescriptorSet3.all_materials);
     return out_color;
 }
 
-fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]], constant spvDescriptorSetBuffer2& spvDescriptorSet2 [[buffer(2)]], constant spvDescriptorSetBuffer3& spvDescriptorSet3 [[buffer(3)]], constant PushConstants& constants [[buffer(4)]], float4 gl_FragCoord [[position]])
+fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant spvDescriptorSetBuffer1& spvDescriptorSet1 [[buffer(1)]], constant spvDescriptorSetBuffer2& spvDescriptorSet2 [[buffer(2)]], constant spvDescriptorSetBuffer3& spvDescriptorSet3 [[buffer(3)]], float4 gl_FragCoord [[position]])
 {
     constexpr sampler smp(filter::linear, mip_filter::linear, address::repeat, compare_func::never, max_anisotropy(16));
     constexpr sampler smp_depth_nearest(mip_filter::nearest, compare_func::greater, max_anisotropy(1), lod_clamp(0.0, 0.0));
@@ -951,7 +947,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant spvDescriptorSetBuff
     in_model_view[0] = in.in_model_view_0;
     in_model_view[1] = in.in_model_view_1;
     in_model_view[2] = in.in_model_view_2;
-    out.out_color = pbr_main(smp, (*spvDescriptorSet0.per_view_data), in.in_position_ws, in.in_position_vs, in.in_normal_vs, spvDescriptorSet0.shadow_map_atlas, smp_depth_nearest, in_model_view, smp_depth_linear, (*spvDescriptorSet0.all_lights), (*spvDescriptorSet0.light_bin_output), (*spvDescriptorSet2.all_draw_data), constants, spvDescriptorSet3, gl_FragCoord, in.in_uv, spvDescriptorSet1.ssao_texture, in.in_tangent_vs, in.in_binormal_vs);
+    out.out_color = pbr_main(smp, (*spvDescriptorSet0.per_view_data), in.in_position_ws, in.in_position_vs, in.in_normal_vs, spvDescriptorSet0.shadow_map_atlas, smp_depth_nearest, in_model_view, smp_depth_linear, (*spvDescriptorSet0.all_lights), (*spvDescriptorSet0.light_bin_output), (*spvDescriptorSet2.all_draw_data), spvDescriptorSet3, in.in_instance_index, gl_FragCoord, in.in_uv, spvDescriptorSet1.ssao_texture, in.in_tangent_vs, in.in_binormal_vs);
     return out;
 }
 

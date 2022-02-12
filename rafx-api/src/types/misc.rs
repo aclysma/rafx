@@ -431,6 +431,15 @@ impl Default for RafxIndexType {
     }
 }
 
+impl RafxIndexType {
+    pub fn size_in_bytes(self) -> usize {
+        match self {
+            RafxIndexType::Uint32 => 4,
+            RafxIndexType::Uint16 => 2,
+        }
+    }
+}
+
 /// Affects blending. Similar to VkBlendFactor
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
@@ -923,4 +932,28 @@ impl<'a> Default for RafxDescriptorUpdate<'a> {
             texture_bind_type: None,
         }
     }
+}
+
+// Corresponds 1:1 with VkDrawIndirectCommand, MTLDrawPrimitivesIndirectArguments, D3D12_DRAW_ARGUMENTS
+pub struct RafxDrawIndirectCommand {
+    pub vertex_count: u32,
+    pub instance_count: u32,
+    pub first_vertex: u32,
+    pub first_instance: u32,
+}
+
+// Corresponds 1:1 with VkDrawIndexedIndirectCommand, MTLDrawIndexedPrimitivesIndirectArguments, D3D12_DRAW_INDEXED_ARGUMENTS
+pub struct RafxDrawIndexedIndirectCommand {
+    pub index_count: u32,
+    pub instance_count: u32,
+    pub first_index: u32,
+    pub vertex_offset: i32, // value added to the vertex index before indexing into the vertex buffer
+    pub first_instance: u32,
+}
+
+// Corresponds 1:1 with VkDispatchIndirectCommand, MTLDispatchThreadgroupsIndirectArguments, D3D12_DISPATCH_ARGUMENTS
+pub struct RafxDispatchIndirectCommand {
+    pub group_count_x: u32,
+    pub group_count_y: u32,
+    pub group_count_z: u32,
 }

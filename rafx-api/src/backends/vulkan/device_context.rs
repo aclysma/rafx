@@ -830,6 +830,8 @@ fn create_logical_device(
             .sample_rate_shading(true)
             // Used for debug drawing lines/points
             .fill_mode_non_solid(true)
+            // We can trivially fake this if the feature isn't available, so we can have it on by default
+            .multi_draw_indirect(physical_device_info.features.multi_draw_indirect != 0)
             .build()
     });
 

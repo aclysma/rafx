@@ -9,7 +9,7 @@ layout (location = 0) in vec3 in_pos;
 
 void main() {
     // draw_data_index push constant can be replaced by gl_DrawID
-    DrawData draw_data = all_draw_data.draw_data[constants.draw_data_index];
+    DrawData draw_data = all_draw_data.draw_data[gl_InstanceIndex];
     mat4 model_matrix = all_transforms.transforms[draw_data.transform_index].model_matrix;
 
     mat4 model_view_proj = per_view_data.view_proj * model_matrix;

@@ -28,10 +28,13 @@ layout (location = 4) out vec2 out_uv;
 // for shadows
 layout (location = 5) out vec4 out_position_ws;
 layout (location = 6) out mat3 out_model_view;
+//layout (location = 7) out mat3 out_model_view;
+//layout (location = 8) out mat3 out_model_view;
+layout (location = 9) flat out uint out_instance_index;
 
 void pbr_main() {
     // draw_data_index push constant can be replaced by gl_DrawID
-    DrawData draw_data = all_draw_data.draw_data[constants.draw_data_index];
+    DrawData draw_data = all_draw_data.draw_data[gl_InstanceIndex];
     mat4 model_matrix = all_transforms.transforms[draw_data.transform_index].model_matrix;
 
     mat4 model_view_proj = per_view_data.view_proj * model_matrix;
@@ -59,4 +62,5 @@ void pbr_main() {
     out_position_ws = model_matrix * vec4(in_pos, 1.0);
 
     out_model_view = mat3(model_view);
+    out_instance_index = gl_InstanceIndex;
 }

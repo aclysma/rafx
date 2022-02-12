@@ -327,14 +327,6 @@ pub struct ClusterMetaStd430 {
 
 pub type ClusterMetaBuffer = ClusterMetaStd430;
 
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-pub struct PushConstantsStd430 {
-    pub draw_data_index: u32, // +0 (size: 4)
-} // 4 bytes
-
-pub type PushConstantsPushConstant = PushConstantsStd430;
-
 pub const PER_VIEW_DATA_DESCRIPTOR_SET_INDEX: usize = 0;
 pub const PER_VIEW_DATA_DESCRIPTOR_BINDING_INDEX: usize = 0;
 pub const SMP_DESCRIPTOR_SET_INDEX: usize = 0;
@@ -1053,16 +1045,5 @@ mod test {
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(memoffset::offset_of!(ClusterMetaStd430, first_light), 4);
-    }
-
-    #[test]
-    fn test_struct_push_constants_std430() {
-        assert_eq!(std::mem::size_of::<PushConstantsStd430>(), 4);
-        assert_eq!(std::mem::size_of::<u32>(), 4);
-        assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(
-            memoffset::offset_of!(PushConstantsStd430, draw_data_index),
-            0
-        );
     }
 }

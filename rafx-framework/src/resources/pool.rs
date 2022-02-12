@@ -2,8 +2,9 @@ use rafx_api::{RafxDescriptorSetArray, RafxDeviceContext, RafxResult};
 use std::collections::VecDeque;
 use std::num::Wrapping;
 
+// The u32 is the index of the pool being created (i.e. increases by 1 every time callback is invoked)
 pub type PoolResourceAllocatorAllocFn<T> =
-    dyn Fn(&RafxDeviceContext) -> RafxResult<T> + Send + Sync;
+    dyn Fn(&RafxDeviceContext, u32) -> RafxResult<T> + Send + Sync;
 
 /// Implement to customize how PoolAllocator resets and destroys pools
 pub trait PooledResourceImpl {
@@ -52,7 +53,7 @@ impl<T: PooledResourceImpl> PooledResourceAllocator<T> {
     /// in the sink. If max_in_flight_frames is 2, then you would have a resource that has
     /// likely not been submitted to the GPU yet, plus a resource per the N frames that have
     /// been submitted
-    pub fn new<F: Fn(&RafxDeviceContext) -> RafxResult<T> + Send + Sync + 'static>(
+    pub fn new<F: Fn(&RafxDeviceContext, u32) -> RafxResult<T> + Send + Sync + 'static>(
         device_context: &RafxDeviceContext,
         max_in_flight_frames: u32,
         max_pool_count: u32,
@@ -75,9 +76,10 @@ impl<T: PooledResourceImpl> PooledResourceAllocator<T> {
     /// is called. After this point, we will wait for N frames before restting it.
     pub fn allocate_pool(&mut self) -> RafxResult<T> {
         self.reset_pools.pop().map(Ok).unwrap_or_else(|| {
+            let pool_index = self.created_pool_count;
             self.created_pool_count += 1;
             assert!(self.created_pool_count <= self.max_pool_count);
-            (self.allocate_fn)(&self.device_context)
+            (self.allocate_fn)(&self.device_context, pool_index)
         })
     }
 
