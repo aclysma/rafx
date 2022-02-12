@@ -1,7 +1,7 @@
 use super::DescriptorSetWriteElementBufferData;
 use super::{
     DescriptorLayoutBufferSet, DescriptorSetElementKey, DescriptorSetPoolRequiredBufferInfo,
-    DescriptorSetWriteSet, ManagedDescriptorSet, MAX_DESCRIPTOR_SETS_PER_POOL,
+    DescriptorSetWriteSet, ManagedDescriptorSet,
 };
 use crate::descriptor_sets::{
     DescriptorSetElementWrite, DescriptorSetWriteElementBufferDataBufferRef,
@@ -449,8 +449,8 @@ struct PendingDescriptorSetWriteSet {
 }
 
 //
-// A single chunk within a pool. This allows us to create MAX_DESCRIPTOR_SETS_PER_POOL * MAX_FRAMES_IN_FLIGHT_PLUS_1
-// descriptors for a single descriptor set layout
+// A single chunk within a pool. This allows us to create descriptor_set_count descriptors for a single descriptor set
+// layout
 //
 pub(super) struct ManagedDescriptorSetPoolChunk {
     // for logging
@@ -467,6 +467,9 @@ pub(super) struct ManagedDescriptorSetPoolChunk {
     // The writes that have been scheduled to occur over the next MAX_FRAMES_IN_FLIGHT_PLUS_1 frames. This
     // ensures that each frame's descriptor sets/buffers are appropriately updated
     pending_set_writes: VecDeque<PendingDescriptorSetWriteSet>,
+
+    pub(super) first_descriptor_set_index: u32,
+    pub(super) descriptor_set_count: u32,
 }
 
 impl ManagedDescriptorSetPoolChunk {
@@ -476,17 +479,19 @@ impl ManagedDescriptorSetPoolChunk {
         buffer_info: &[DescriptorSetPoolRequiredBufferInfo],
         descriptor_set_layout: &ResourceArc<DescriptorSetLayoutResource>,
         allocator: &mut DescriptorSetArrayPoolAllocator,
+        first_descriptor_set_index: u32,
+        descriptor_set_count: u32,
     ) -> RafxResult<Self> {
         let mut descriptor_set_array = allocator.allocate_pool()?;
 
         // Now allocate all the buffers that act as backing-stores for descriptor sets
-        let buffers = DescriptorLayoutBufferSet::new(device_context, buffer_info)?;
+        let buffers = DescriptorLayoutBufferSet::new(device_context, buffer_info, descriptor_set_count)?;
 
         // For every binding/buffer set
         for (binding_key, binding_buffers) in &buffers.buffer_sets {
             // For every descriptor
             let mut offset = 0;
-            for i in 0..MAX_DESCRIPTOR_SETS_PER_POOL {
+            for i in 0..descriptor_set_count {
                 descriptor_set_array.queue_descriptor_set_update(&RafxDescriptorUpdate {
                     descriptor_key: RafxDescriptorKey::Binding(binding_key.dst_binding),
                     array_index: i,
@@ -514,6 +519,8 @@ impl ManagedDescriptorSetPoolChunk {
             //descriptor_sets,
             pending_set_writes: Default::default(),
             buffers,
+            first_descriptor_set_index,
+            descriptor_set_count,
         })
     }
 
@@ -541,7 +548,8 @@ impl ManagedDescriptorSetPoolChunk {
             self.descriptor_set_layout
         );
 
-        let descriptor_index = slab_key.index() % MAX_DESCRIPTOR_SETS_PER_POOL;
+        let descriptor_index = slab_key.index() - self.first_descriptor_set_index;
+        debug_assert!(descriptor_index < self.descriptor_set_count);
 
         let descriptor_set_handle = descriptor_set_array.handle(descriptor_index).unwrap();
 
@@ -579,7 +587,8 @@ impl ManagedDescriptorSetPoolChunk {
         // be a list of hashmaps
         self.pending_set_writes.push_back(pending_write);
 
-        let descriptor_index = slab_key.index() % MAX_DESCRIPTOR_SETS_PER_POOL;
+        let descriptor_index = slab_key.index() - self.first_descriptor_set_index;
+        debug_assert!(descriptor_index < self.descriptor_set_count);
         self.descriptor_set_array
             .as_ref()
             .unwrap()
@@ -609,7 +618,8 @@ impl ManagedDescriptorSetPoolChunk {
 
             //log::trace!("{:#?}", element);
 
-            let descriptor_set_index = slab_key.index() % MAX_DESCRIPTOR_SETS_PER_POOL;
+            let descriptor_set_index = slab_key.index() - self.first_descriptor_set_index;
+            debug_assert!(descriptor_set_index < self.descriptor_set_count);
 
             log::trace!(
                 "Process descriptor set pending_write for {:?} {:?}. layout {:?}",

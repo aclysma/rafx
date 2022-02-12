@@ -2,7 +2,7 @@ use super::ManagedDescriptorSet;
 use super::ManagedDescriptorSetPoolChunk;
 use super::{
     DescriptorSetArc, DescriptorSetBindingKey, DescriptorSetPoolRequiredBufferInfo,
-    DescriptorSetWriteSet, FrameInFlightIndex, MAX_DESCRIPTOR_SETS_PER_POOL, MAX_FRAMES_IN_FLIGHT,
+    DescriptorSetWriteSet, FrameInFlightIndex, MAX_FRAMES_IN_FLIGHT,
 };
 use crate::resources::descriptor_sets::descriptor_set_pool_chunk::DescriptorSetWriter;
 use crate::resources::resource_lookup::DescriptorSetLayoutResource;
@@ -14,6 +14,10 @@ use rafx_api::{
 };
 use rafx_base::slab::{RawSlab, RawSlabKey};
 use std::collections::VecDeque;
+
+const VARIABLE_SIZED_POOL_COUNT: u32 = 4;
+// MUST BE POWER OF 2!!
+const FIRST_POOL_SIZE: u32 = 4;
 
 struct PendingDescriptorSetDrop {
     slab_key: RawSlabKey<ManagedDescriptorSet>,
@@ -64,12 +68,12 @@ impl ManagedDescriptorSetPool {
         let descriptor_pool_allocator = DescriptorSetArrayPoolAllocator::new(
             device_context,
             MAX_FRAMES_IN_FLIGHT as u32,
-            std::u32::MAX, // No upper bound on pool count
-            move |device_context| {
+            u32::MAX, // No upper bound on pool count
+            move |device_context, chunk_index| {
                 device_context.create_descriptor_set_array(&RafxDescriptorSetArrayDef {
                     root_signature: &descriptor_set_layout_clone.get_raw().root_signature,
                     set_index: descriptor_set_layout_clone.get_raw().set_index,
-                    array_length: MAX_DESCRIPTOR_SETS_PER_POOL as usize,
+                    array_length: Self::descriptor_count_in_chunk(chunk_index) as usize,
                 })
             },
         );
@@ -114,7 +118,7 @@ impl ManagedDescriptorSetPool {
         }
 
         ManagedDescriptorSetPool {
-            slab: RawSlab::with_capacity(MAX_DESCRIPTOR_SETS_PER_POOL),
+            slab: RawSlab::with_capacity(64),
             drop_tx,
             drop_rx,
             descriptor_pool_allocator,
@@ -126,8 +130,22 @@ impl ManagedDescriptorSetPool {
         }
     }
 
-    fn get_chunk_index(slab_key: &RawSlabKey<ManagedDescriptorSet>) -> usize {
-        (slab_key.index() / MAX_DESCRIPTOR_SETS_PER_POOL) as usize
+    fn descriptor_count_in_chunk(chunk_index: u32) -> u32 {
+        FIRST_POOL_SIZE<<chunk_index.min(VARIABLE_SIZED_POOL_COUNT) // Up to 64
+    }
+
+    fn get_chunk_index(slab_key: &RawSlabKey<ManagedDescriptorSet>) -> u32 {
+        let mut descriptor_index = slab_key.index();
+
+        for chunk_index in 0..VARIABLE_SIZED_POOL_COUNT {
+            let chunk_size = Self::descriptor_count_in_chunk(chunk_index);
+            if descriptor_index < chunk_size {
+                return chunk_index;
+            }
+            descriptor_index -= chunk_size;
+        }
+
+        return VARIABLE_SIZED_POOL_COUNT + (descriptor_index / Self::descriptor_count_in_chunk(VARIABLE_SIZED_POOL_COUNT));
     }
 
     fn get_next_unused_slab_key(
@@ -145,11 +163,16 @@ impl ManagedDescriptorSetPool {
 
         // Add more chunks if necessary
         while chunk_index as usize >= self.chunks.len() {
+            let first_descriptor_set_index = self.chunks.last().map(|x| x.first_descriptor_set_index + x.descriptor_set_count).unwrap_or(0);
+            let descriptor_set_count = Self::descriptor_count_in_chunk(self.chunks.len() as u32);
+
             self.chunks.push(ManagedDescriptorSetPoolChunk::new(
                 device_context,
                 &self.buffer_infos,
                 &self.descriptor_set_layout,
                 &mut self.descriptor_pool_allocator,
+                first_descriptor_set_index,
+                descriptor_set_count
             )?);
         }
 
@@ -175,7 +198,7 @@ impl ManagedDescriptorSetPool {
         args: T,
     ) -> RafxResult<DescriptorSetArc> {
         let slab_key = self.get_next_unused_slab_key(device_context)?;
-        let chunk_index = Self::get_chunk_index(&slab_key);
+        let chunk_index = Self::get_chunk_index(&slab_key) as usize;
 
         let descriptor_set_handle = {
             let mut writer_context = self.chunks[chunk_index].get_writer(slab_key)?;
@@ -197,7 +220,7 @@ impl ManagedDescriptorSetPool {
 
         // Insert the write into the chunk, it will be applied when update() is next called on it
         let descriptor_set_handle =
-            self.chunks[chunk_index].schedule_write_set(slab_key, write_set);
+            self.chunks[chunk_index as usize].schedule_write_set(slab_key, write_set);
 
         // Return the ref-counted descriptor set
         Ok(self.get_descriptor_arc(slab_key, descriptor_set_handle))
