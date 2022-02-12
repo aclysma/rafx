@@ -7,9 +7,7 @@ use crate::phases::{
     WireframeRenderPhase,
 };
 use rafx::api::RafxPrimitiveTopology;
-use rafx::api::{
-    RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding,
-};
+use rafx::api::{RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
 use serde::{Deserialize, Serialize};

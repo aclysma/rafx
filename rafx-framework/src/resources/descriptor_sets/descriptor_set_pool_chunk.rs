@@ -485,7 +485,8 @@ impl ManagedDescriptorSetPoolChunk {
         let mut descriptor_set_array = allocator.allocate_pool()?;
 
         // Now allocate all the buffers that act as backing-stores for descriptor sets
-        let buffers = DescriptorLayoutBufferSet::new(device_context, buffer_info, descriptor_set_count)?;
+        let buffers =
+            DescriptorLayoutBufferSet::new(device_context, buffer_info, descriptor_set_count)?;
 
         // For every binding/buffer set
         for (binding_key, binding_buffers) in &buffers.buffer_sets {

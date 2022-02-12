@@ -539,9 +539,9 @@ impl RafxCommandBufferVulkan {
                 self.device_context.device().cmd_draw_indirect(
                     self.vk_command_buffer,
                     indirect_buffer.vk_buffer(),
-                    (indirect_buffer_offset_in_bytes + byte_offset ) as _,
+                    (indirect_buffer_offset_in_bytes + byte_offset) as _,
                     1,
-                    std::mem::size_of::<RafxDrawIndirectCommand>() as _
+                    std::mem::size_of::<RafxDrawIndirectCommand>() as _,
                 );
             }
         }
@@ -561,9 +561,9 @@ impl RafxCommandBufferVulkan {
                 self.device_context.device().cmd_draw_indexed_indirect(
                     self.vk_command_buffer,
                     indirect_buffer.vk_buffer(),
-                    (indirect_buffer_offset_in_bytes + byte_offset ) as _,
+                    (indirect_buffer_offset_in_bytes + byte_offset) as _,
                     1,
-                    std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as _
+                    std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as _,
                 );
             }
         }

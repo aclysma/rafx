@@ -751,7 +751,6 @@ impl RafxCommandBuffer {
         }
     }
 
-
     pub fn cmd_draw_indirect(
         &self,
         indirect_buffer: &RafxBuffer,
@@ -763,13 +762,13 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.cmd_draw_indirect(
                 indirect_buffer.vk_buffer().unwrap(),
                 indirect_buffer_offset_in_bytes,
-                draw_count
+                draw_count,
             ),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_draw_indirect(
                 indirect_buffer.metal_buffer().unwrap(),
                 indirect_buffer_offset_in_bytes,
-                draw_count
+                draw_count,
             ),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(_) => unimplemented!(),
@@ -787,7 +786,7 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Empty(inner) => inner.cmd_draw_indirect(
                 indirect_buffer.empty_buffer().unwrap(),
                 indirect_buffer_offset_in_bytes,
-                draw_count
+                draw_count,
             ),
         }
     }
@@ -803,13 +802,13 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Vk(inner) => inner.cmd_draw_indexed_indirect(
                 indirect_buffer.vk_buffer().unwrap(),
                 indirect_buffer_offset_in_bytes,
-                draw_count
+                draw_count,
             ),
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_draw_indexed_indirect(
                 indirect_buffer.metal_buffer().unwrap(),
                 indirect_buffer_offset_in_bytes,
-                draw_count
+                draw_count,
             ),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(_) => unimplemented!(),
@@ -827,7 +826,7 @@ impl RafxCommandBuffer {
             RafxCommandBuffer::Empty(inner) => inner.cmd_draw_indexed_indirect(
                 indirect_buffer.empty_buffer().unwrap(),
                 indirect_buffer_offset_in_bytes,
-                draw_count
+                draw_count,
             ),
         }
     }

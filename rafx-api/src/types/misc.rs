@@ -957,4 +957,3 @@ pub struct RafxDispatchIndirectCommand {
     pub group_count_y: u32,
     pub group_count_z: u32,
 }
-

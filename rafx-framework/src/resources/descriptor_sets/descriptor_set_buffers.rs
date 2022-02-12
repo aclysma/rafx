@@ -64,7 +64,11 @@ impl DescriptorLayoutBufferSet {
         let mut buffer_sets: FnvHashMap<DescriptorSetBindingKey, DescriptorBindingBufferSet> =
             Default::default();
         for buffer_info in buffer_infos {
-            let buffer = DescriptorBindingBufferSet::new(device_context, descriptor_set_count, &buffer_info)?;
+            let buffer = DescriptorBindingBufferSet::new(
+                device_context,
+                descriptor_set_count,
+                &buffer_info,
+            )?;
             buffer_sets.insert(buffer_info.dst_element, buffer);
         }
 

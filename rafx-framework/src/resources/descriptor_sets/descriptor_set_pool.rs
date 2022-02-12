@@ -131,7 +131,7 @@ impl ManagedDescriptorSetPool {
     }
 
     fn descriptor_count_in_chunk(chunk_index: u32) -> u32 {
-        FIRST_POOL_SIZE<<chunk_index.min(VARIABLE_SIZED_POOL_COUNT) // Up to 64
+        FIRST_POOL_SIZE << chunk_index.min(VARIABLE_SIZED_POOL_COUNT) // Up to 64
     }
 
     fn get_chunk_index(slab_key: &RawSlabKey<ManagedDescriptorSet>) -> u32 {
@@ -163,7 +163,11 @@ impl ManagedDescriptorSetPool {
 
         // Add more chunks if necessary
         while chunk_index as usize >= self.chunks.len() {
-            let first_descriptor_set_index = self.chunks.last().map(|x| x.first_descriptor_set_index + x.descriptor_set_count).unwrap_or(0);
+            let first_descriptor_set_index = self
+                .chunks
+                .last()
+                .map(|x| x.first_descriptor_set_index + x.descriptor_set_count)
+                .unwrap_or(0);
             let descriptor_set_count = Self::descriptor_count_in_chunk(self.chunks.len() as u32);
 
             self.chunks.push(ManagedDescriptorSetPoolChunk::new(
@@ -172,7 +176,7 @@ impl ManagedDescriptorSetPool {
                 &self.descriptor_set_layout,
                 &mut self.descriptor_pool_allocator,
                 first_descriptor_set_index,
-                descriptor_set_count
+                descriptor_set_count,
             )?);
         }
 

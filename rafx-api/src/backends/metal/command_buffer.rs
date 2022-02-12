@@ -3,7 +3,14 @@ use crate::metal::{
     RafxDescriptorSetArrayMetal, RafxDescriptorSetHandleMetal, RafxPipelineMetal, RafxQueueMetal,
     RafxRootSignatureMetal, RafxTextureMetal,
 };
-use crate::{RafxBufferBarrier, RafxCmdCopyBufferToBufferParams, RafxCmdCopyBufferToTextureParams, RafxCmdCopyTextureToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef, RafxDepthStencilRenderTargetBinding, RafxDescriptorIndex, RafxDrawIndexedIndirectCommand, RafxDrawIndirectCommand, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp, RafxPipelineType, RafxResourceState, RafxResult, RafxShaderStageFlags, RafxTextureBarrier, RafxVertexBufferBinding};
+use crate::{
+    RafxBufferBarrier, RafxCmdCopyBufferToBufferParams, RafxCmdCopyBufferToTextureParams,
+    RafxCmdCopyTextureToTextureParams, RafxColorRenderTargetBinding, RafxCommandBufferDef,
+    RafxDepthStencilRenderTargetBinding, RafxDescriptorIndex, RafxDrawIndexedIndirectCommand,
+    RafxDrawIndirectCommand, RafxExtents3D, RafxIndexBufferBinding, RafxIndexType, RafxLoadOp,
+    RafxPipelineType, RafxResourceState, RafxResult, RafxShaderStageFlags, RafxTextureBarrier,
+    RafxVertexBufferBinding,
+};
 use fnv::FnvHashSet;
 use metal_rs::{
     MTLBlitOption, MTLIndexType, MTLOrigin, MTLPrimitiveType, MTLRenderStages, MTLResourceUsage,
@@ -854,11 +861,15 @@ impl RafxCommandBufferMetal {
         let inner = self.inner.borrow();
         for i in 0..draw_count {
             let byte_offset = std::mem::size_of::<RafxDrawIndirectCommand>() as u32 * i;
-            inner.render_encoder.as_ref().unwrap().draw_primitives_indirect(
-                inner.primitive_type,
-                indirect_buffer.metal_buffer(),
-                (indirect_buffer_offset_in_bytes + byte_offset ) as _,
-            );
+            inner
+                .render_encoder
+                .as_ref()
+                .unwrap()
+                .draw_primitives_indirect(
+                    inner.primitive_type,
+                    indirect_buffer.metal_buffer(),
+                    (indirect_buffer_offset_in_bytes + byte_offset) as _,
+                );
         }
 
         Ok(())
@@ -876,14 +887,18 @@ impl RafxCommandBufferMetal {
         let inner = self.inner.borrow();
         for i in 0..draw_count {
             let byte_offset = std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32 * i;
-            inner.render_encoder.as_ref().unwrap().draw_indexed_primitives_indirect(
-                inner.primitive_type,
-                inner.current_index_buffer_type,
-                inner.current_index_buffer.as_ref().unwrap(),
-                0,
-                indirect_buffer.metal_buffer(),
-                (indirect_buffer_offset_in_bytes + byte_offset ) as _,
-            );
+            inner
+                .render_encoder
+                .as_ref()
+                .unwrap()
+                .draw_indexed_primitives_indirect(
+                    inner.primitive_type,
+                    inner.current_index_buffer_type,
+                    inner.current_index_buffer.as_ref().unwrap(),
+                    0,
+                    indirect_buffer.metal_buffer(),
+                    (indirect_buffer_offset_in_bytes + byte_offset) as _,
+                );
         }
         Ok(())
     }
