@@ -4,6 +4,7 @@ use crate::render_features::render_features_prelude::*;
 /// Read documentation on `SubmitPacketData`.
 pub struct ViewSubmitPacket<SubmitPacketDataT: SubmitPacketData> {
     view: RenderView,
+    view_frame_index: ViewFrameIndex,
 
     pub(crate) per_view_submit_data: AtomicOnceCell<SubmitPacketDataT::PerViewSubmitData>,
     pub(crate) render_object_instances_submit_data:
@@ -26,12 +27,17 @@ impl<SubmitPacketDataT: 'static + Send + Sync + SubmitPacketData>
             num_submit_nodes.unwrap_or(view_packet_size.num_render_object_instances),
         )];
 
-        ViewSubmitPacket::new(submit_node_blocks, &view_packet_size)
+        ViewSubmitPacket::new(
+            submit_node_blocks,
+            &view_packet_size,
+            view_packet.view_frame_index(),
+        )
     }
 
     pub fn new(
         submit_node_blocks: Vec<SubmitNodeBlock<SubmitPacketDataT>>,
         view_packet_size: &ViewPacketSize,
+        view_frame_index: ViewFrameIndex,
     ) -> Self {
         assert!((u8::MAX as u32) > MAX_RENDER_FEATURE_COUNT);
         let mut submit_node_phases = [None; MAX_RENDER_FEATURE_COUNT as usize];
@@ -41,6 +47,7 @@ impl<SubmitPacketDataT: 'static + Send + Sync + SubmitPacketData>
 
         Self {
             view: view_packet_size.view.clone(),
+            view_frame_index,
             per_view_submit_data: AtomicOnceCell::new(),
             render_object_instances_submit_data: AtomicOnceCellArray::with_capacity(
                 view_packet_size.num_render_object_instances,
@@ -54,6 +61,10 @@ impl<SubmitPacketDataT: 'static + Send + Sync + SubmitPacketData>
         &self
     ) -> &AtomicOnceCellArray<SubmitPacketDataT::RenderObjectInstancePerViewSubmitData> {
         &self.render_object_instances_submit_data
+    }
+
+    pub fn view_frame_index(&self) -> ViewFrameIndex {
+        self.view_frame_index
     }
 
     pub fn per_view_submit_data(&self) -> &AtomicOnceCell<SubmitPacketDataT::PerViewSubmitData> {

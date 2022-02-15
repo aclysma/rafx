@@ -2,10 +2,11 @@ use crate::features::internal::{ExampleFramePacket, ExampleSubmitPacket};
 use crate::phases::OpaqueRenderPhase;
 use rafx::api::{RafxBufferDef, RafxFormat, RafxPrimitiveTopology, RafxVertexBufferBinding};
 use rafx::framework::render_features::RenderPhase;
-use rafx::framework::{DescriptorSetBindings, VertexDataLayout, VertexDataSetLayout};
+use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::render_feature_write_job_prelude::*;
 use rafx_api::{RafxResult, RafxVertexAttributeRate};
 use rafx_framework::render_features::RenderSubmitNodeArgs;
+use rafx_framework::DescriptorSetBindings;
 use std::marker::PhantomData;
 
 #[derive(Default, Clone, Copy)]
@@ -55,13 +56,6 @@ impl<'write> ExampleWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for ExampleWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn render_submit_node(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
@@ -97,10 +91,10 @@ impl<'write> RenderFeatureWriteJob<'write> for ExampleWriteJob<'write> {
         //
 
         let resource_allocator = write_context
-            .resource_context
+            .resource_context()
             .create_dyn_resource_allocator_set();
         let vertex_buffer = write_context
-            .device_context
+            .device_context()
             .create_buffer(&RafxBufferDef::for_staging_vertex_buffer_data(&vertex_data))?;
 
         vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
@@ -124,7 +118,7 @@ impl<'write> RenderFeatureWriteJob<'write> for ExampleWriteJob<'write> {
         let descriptor_set_layout = material_pass.get_raw().descriptor_set_layouts[0].clone();
 
         let mut descriptor_set_allocator = write_context
-            .resource_context
+            .resource_context()
             .create_descriptor_set_allocator();
         let mut dyn_descriptor_set = descriptor_set_allocator
             .create_dyn_descriptor_set_uninitialized(&descriptor_set_layout)?;
@@ -145,7 +139,7 @@ impl<'write> RenderFeatureWriteJob<'write> for ExampleWriteJob<'write> {
         // materials can create pipelines ahead-of-time, off the render codepath.
         //
         let pipeline = write_context
-            .resource_context
+            .resource_context()
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
                 Some(OpaqueRenderPhase::render_phase_index()),

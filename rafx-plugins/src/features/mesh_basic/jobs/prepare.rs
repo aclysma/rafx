@@ -6,12 +6,12 @@ use crate::phases::{
     WireframeRenderPhase,
 };
 use rafx::base::resource_map::ReadBorrow;
-use rafx::framework::{MaterialPassResource, ResourceArc, ResourceContext};
+use rafx::framework::{MaterialPassResource, ResourceArc};
 
 use crate::shaders::depth::depth_vert::PerViewDataUniform as ShadowPerViewShaderParam;
 use crate::shaders::mesh_basic::{mesh_basic_textured_frag, mesh_basic_wireframe_vert};
 use glam::Mat4;
-use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
+use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::renderer::InvalidResources;
 
 use crate::assets::mesh_basic::{MeshBasicBlendMethod, MeshBasicShaderPassIndices};
@@ -23,8 +23,6 @@ const PER_VIEW_DESCRIPTOR_SET_INDEX: u32 =
     mesh_basic_textured_frag::PER_VIEW_DATA_DESCRIPTOR_SET_INDEX as u32;
 
 pub struct MeshBasicPrepareJob<'prepare> {
-    resource_context: ResourceContext,
-    device_context: RafxDeviceContext,
     #[allow(dead_code)]
     requires_textured_descriptor_sets: bool,
     #[allow(dead_code)]
@@ -63,8 +61,6 @@ impl<'prepare> MeshBasicPrepareJob<'prepare> {
         let per_frame_data = frame_packet.per_frame_data().get();
         Arc::new(PrepareJob::new(
             Self {
-                resource_context: prepare_context.resource_context.clone(),
-                device_context: prepare_context.device_context.clone(),
                 render_object_instance_transforms: {
                     // TODO: Ideally this would use an allocator from the `prepare_context`.
                     Arc::new(AtomicOnceCellStack::with_capacity(
@@ -92,6 +88,7 @@ impl<'prepare> MeshBasicPrepareJob<'prepare> {
                 invalid_resources: { prepare_context.render_resources.fetch::<InvalidResources>() },
                 render_objects,
             },
+            prepare_context,
             frame_packet,
             submit_packet,
         ))
@@ -377,7 +374,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
         &self,
         context: &PreparePerViewContext<'prepare, '_, Self>,
     ) {
-        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
+        let mut descriptor_set_allocator =
+            context.resource_context().create_descriptor_set_allocator();
         let shadow_map_data = &self.shadow_map_data;
 
         let per_view_data = context.per_view_data();
@@ -701,14 +699,15 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshBasicPrepareJob<'prepare>
             .borrow_mut();
 
         *model_matrix_buffer = if self.render_object_instance_transforms.len() > 0 {
-            let dyn_resource_allocator_set =
-                self.resource_context.create_dyn_resource_allocator_set();
+            let dyn_resource_allocator_set = context
+                .resource_context()
+                .create_dyn_resource_allocator_set();
 
             let vertex_buffer_size = self.render_object_instance_transforms.len() as u64
                 * std::mem::size_of::<MeshModelMatrix>() as u64;
 
-            let vertex_buffer = self
-                .device_context
+            let vertex_buffer = context
+                .device_context()
                 .create_buffer(&RafxBufferDef {
                     size: vertex_buffer_size,
                     memory_usage: RafxMemoryUsage::CpuToGpu,

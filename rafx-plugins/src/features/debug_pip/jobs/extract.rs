@@ -32,6 +32,7 @@ impl<'extract> DebugPipExtractJob<'extract> {
                 debug_pip_material,
                 phantom_data: PhantomData,
             },
+            extract_context,
             frame_packet,
         ))
     }

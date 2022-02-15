@@ -21,7 +21,9 @@ use super::ModernPipelineRenderOptions;
 use super::ModernPipelineStaticResources;
 use crate::features::debug_pip::DebugPipRenderResource;
 use crate::features::mesh_adv::{MeshAdvRenderPipelineState, ShadowMapAtlas};
-use crate::pipelines::modern::{AntiAliasMethodAdv, ModernPipelineTonemapDebugData};
+use crate::pipelines::modern::{
+    AntiAliasMethodAdv, ModernPipelineMeshCullingDebugData, ModernPipelineTonemapDebugData,
+};
 use rafx::assets::AssetManager;
 use rafx::renderer::SwapchainRenderResource;
 use rafx::renderer::TimeRenderResource;
@@ -41,6 +43,10 @@ mod ui_pass;
 mod taa_pass;
 
 mod cas_pass;
+
+mod mesh_culling;
+
+mod depth_pyramid;
 
 lazy_static::lazy_static! {
     pub static ref EMPTY_VERTEX_LAYOUT : VertexDataSetLayout = {
@@ -221,6 +227,10 @@ pub(super) fn generate_render_graph(
         .try_fetch::<ModernPipelineTonemapDebugData>()
         .map(|x| x.clone());
 
+    let mesh_culling_debug_data = extract_resources
+        .try_fetch::<ModernPipelineMeshCullingDebugData>()
+        .map(|x| x.clone());
+
     let mut graph = RenderGraphBuilder::default();
 
     let mut graph_context = ModernPipelineContext {
@@ -256,7 +266,26 @@ pub(super) fn generate_render_graph(
         RafxResourceState::UNORDERED_ACCESS,
     );
 
+    let mesh_culling_debug_output = graph_context.graph.add_external_buffer(
+        static_resources.mesh_culling_debug_output[rotating_frame_index].clone(),
+        RafxResourceState::UNORDERED_ACCESS,
+        RafxResourceState::UNORDERED_ACCESS,
+    );
+
     let depth_prepass = depth_prepass::depth_prepass(&mut graph_context);
+
+    let depth_pyramid_pipeline = asset_manager
+        .committed_asset(&static_resources.depth_pyramid_pipeline)
+        .unwrap()
+        .compute_pipeline
+        .clone();
+
+    let depth_pyramid_pass = depth_pyramid::depth_pyramid_pass(
+        &mut graph_context,
+        &depth_pyramid_pipeline,
+        depth_prepass.depth,
+        &swapchain_info.swapchain_surface_info,
+    );
 
     let ssao_material_pass = asset_manager
         .committed_asset(&static_resources.ssao_material)
@@ -308,6 +337,26 @@ pub(super) fn generate_render_graph(
     let build_light_lists_pass =
         light_binning::lights_build_lists_pass(&mut graph_context, light_bin_pass);
 
+    let mesh_culling_pipeline = asset_manager
+        .committed_asset(&static_resources.mesh_culling_pipeline)
+        .unwrap()
+        .compute_pipeline
+        .clone();
+
+    let mesh_culling_node = if render_options.enable_occlusion_culling {
+        // No outputs here because the buffer is being managed outside the render graph
+        Some(mesh_culling::mesh_culling_pass(
+            &mut graph_context,
+            &mesh_culling_pipeline,
+            &swapchain_info.swapchain_surface_info,
+            &depth_pyramid_pass,
+            mesh_culling_debug_data,
+            mesh_culling_debug_output,
+        ))
+    } else {
+        None
+    };
+
     let opaque_pass = opaque_pass::opaque_pass(
         &mut graph_context,
         depth_prepass.depth,
@@ -315,6 +364,12 @@ pub(super) fn generate_render_graph(
         &build_light_lists_pass,
         ssao_rt,
     );
+
+    if render_options.enable_occlusion_culling {
+        graph_context
+            .graph
+            .add_explicit_dependency(mesh_culling_node.unwrap().node, opaque_pass.node);
+    }
 
     let taa_material_pass = asset_manager
         .committed_asset(&static_resources.taa_material)

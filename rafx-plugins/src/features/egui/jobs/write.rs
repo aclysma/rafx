@@ -57,13 +57,6 @@ impl<'write> EguiWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for EguiWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn on_begin_execute_graph(
         &self,
         begin_execute_graph_context: &mut RenderJobBeginExecuteGraphContext,
@@ -167,7 +160,7 @@ impl<'write> RenderFeatureWriteJob<'write> for EguiWriteJob<'write> {
 
         if per_frame_data.egui_draw_data.is_some() {
             let pipeline = write_context
-                .resource_context
+                .resource_context()
                 .graphics_pipeline_cache()
                 .get_or_create_graphics_pipeline(
                     Some(args.render_phase_index),

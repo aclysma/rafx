@@ -1,0 +1,187 @@
+#version 450
+
+#include "mesh_adv_types.glsl"
+
+// @[export]
+struct BoundingSphere {
+    vec3 position;
+    float radius;
+};
+
+// @[export]
+struct IndirectCommand {
+    uint index_count;
+    uint instance_count;
+    uint first_index;
+    int vertex_offset;
+    uint first_instance;
+};
+
+// Data for the view we are processing
+// @[export]
+// @[internal_buffer]
+layout (set = 0, binding = 0) uniform Config {
+    mat4 view_matrix;
+    mat4 proj_matrix;
+    uint draw_data_count;
+    uint indirect_first_command_index;
+    uint depth_mip_slice_count;
+    uint viewport_width;
+    uint viewport_height;
+    float z_near;
+    bool write_debug_output;
+} config;
+
+// The draw_data - we use this to pair transform/bounding data with a slot in the indirect command buffer
+layout (set = 0, binding = 1) buffer AllDrawData {
+    DrawData draw_data[];
+} all_draw_data;
+
+// Bounding sphere of each object, indexed by transform_index (this is a parallel array with transforms)
+layout (set = 0, binding = 2) buffer AllBoundingSpheres {
+    BoundingSphere bounding_spheres[];
+} all_bounding_spheres;
+
+// The output data - we will poke a 0 or 1 into the instance_count field depending on if it's visible
+layout (set = 0, binding = 3) buffer IndirectData {
+    IndirectCommand indirect_commands[];
+} all_indirect_commands;
+
+// @[export]
+layout (set = 0, binding = 4) uniform texture2D depth_mip_slices[16];
+
+// @[immutable_samplers([
+//     (
+//         mag_filter: Nearest,
+//         min_filter: Nearest,
+//         mip_map_mode: Linear,
+//         address_mode_u: ClampToEdge,
+//         address_mode_v: ClampToEdge,
+//         address_mode_w: ClampToEdge,
+//     )
+// ])]
+layout (set = 0, binding = 5) uniform sampler smp;
+
+//
+// Currently don't need this, we pre-transform the bounding spheres
+//
+// Transform of the each object, indexed by transform_index
+/*
+layout (set = 0, binding = 6) buffer AllTransforms {
+    Transform transforms[];
+} all_transforms;
+*/
+
+// @[export]
+struct PerCullInfo {
+    bool was_culled;
+};
+
+// @[export]
+layout (set = 0, binding = 6) buffer DebugOutput {
+    uint total_mesh_count;
+    uint culled_mesh_count;
+    uint total_primitive_count;
+    uint culled_primitive_count;
+    PerCullInfo per_cull_info[4000];
+} debug_output;
+
+layout(local_size_x = 1, local_size_y = 64, local_size_z = 1) in;
+void main() {
+    //
+    // Bail if this thread is not in-bounds of the draw data list
+    //
+    uint draw_index = gl_GlobalInvocationID.y;
+    if (draw_index >= config.draw_data_count) {
+        return;
+    }
+
+    if (config.write_debug_output) {
+        uint indirect_index = config.indirect_first_command_index + draw_index;
+        atomicAdd(debug_output.total_mesh_count, 1);
+        atomicAdd(debug_output.total_primitive_count, all_indirect_commands.indirect_commands[indirect_index].index_count / 3);
+    }
+
+    //
+    // Determine location of bounding sphere in view space
+    // TODO: We currently pre-transform position/radius on CPU
+    //
+    uint transform_index = all_draw_data.draw_data[draw_index].transform_index;
+    BoundingSphere bs = all_bounding_spheres.bounding_spheres[transform_index];
+    //Transform transform = all_transforms.transforms[transform_index];
+    vec3 center_vs = (config.view_matrix * vec4(bs.position, 1.0)).xyz;
+    float radius = bs.radius;
+
+    if (radius < 0.0) {
+        return;
+    }
+
+    //
+    // Find an AABB aligned to view space
+    // TODO: Optimize by doing log(n) min/max calls?
+    //
+    vec3 min_bounds_vs = center_vs;
+    vec3 max_bounds_vs = center_vs;
+    min_bounds_vs = min(min_bounds_vs, center_vs + vec3(-radius, -radius, -radius));
+    min_bounds_vs = min(min_bounds_vs, center_vs + vec3(-radius, -radius,  radius));
+    min_bounds_vs = min(min_bounds_vs, center_vs + vec3(-radius,  radius, -radius));
+    min_bounds_vs = min(min_bounds_vs, center_vs + vec3(-radius,  radius,  radius));
+    min_bounds_vs = min(min_bounds_vs, center_vs + vec3( radius, -radius, -radius));
+    min_bounds_vs = min(min_bounds_vs, center_vs + vec3( radius, -radius,  radius));
+    min_bounds_vs = min(min_bounds_vs, center_vs + vec3( radius,  radius, -radius));
+    min_bounds_vs = min(min_bounds_vs, center_vs + vec3( radius,  radius,  radius));
+
+    max_bounds_vs = max(max_bounds_vs, center_vs + vec3(-radius, -radius, -radius));
+    max_bounds_vs = max(max_bounds_vs, center_vs + vec3(-radius, -radius,  radius));
+    max_bounds_vs = max(max_bounds_vs, center_vs + vec3(-radius,  radius, -radius));
+    max_bounds_vs = max(max_bounds_vs, center_vs + vec3(-radius,  radius,  radius));
+    max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius, -radius, -radius));
+    max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius, -radius,  radius));
+    max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius,  radius, -radius));
+    max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius,  radius,  radius));
+
+    vec4 min_clip = config.proj_matrix * vec4(min_bounds_vs, 1.0);
+    vec4 max_clip = config.proj_matrix * vec4(max_bounds_vs, 1.0);
+
+    vec3 ndc1 = min_clip.xyz / min_clip.w; //TODO: Getting UVs outsize [0,1]?
+    vec3 ndc2 = max_clip.xyz / max_clip.w;
+
+    // Projection can flip things around so that min/max is no longer min/max
+    vec3 min_ndc = min(ndc1, ndc2);
+    vec3 max_ndc = max(ndc1, ndc2);
+
+    vec2 min_uv = (min_ndc.xy * 0.5) + 0.5;
+    vec2 max_uv = (max_ndc.xy * 0.5) + 0.5;
+    float temp = min_uv.y;
+    min_uv.y = 1.0 - max_uv.y;
+    max_uv.y = 1.0 - temp;
+
+    float width = (max_uv.x - min_uv.x) * config.viewport_width;
+    float height = (max_uv.y - min_uv.y) * config.viewport_height;
+
+    float max_dim = max(width, height);
+    uint level = 0;
+    if (max_dim >= 1.0) {
+        level = uint(ceil(log2(max_dim))) + 1;
+    }
+
+    uint indirect_index = config.indirect_first_command_index + draw_index;
+    if (level >= config.depth_mip_slice_count) {
+        // Can't cull, require a lower mip
+        return;
+    }
+
+    //TODO: Is this the best way to compare depth? Is one sample enough? Consider a gather instead.
+    float hiz_depth = texture(sampler2D(depth_mip_slices[level], smp), (min_uv + max_uv) * 0.5).x;
+    //float sphere_depth = config.z_near / (min_bounds_vs.z - radius);
+    float sphere_depth = min_ndc.z;
+
+    if (sphere_depth > 0.0 && sphere_depth < hiz_depth) {
+        all_indirect_commands.indirect_commands[indirect_index].instance_count = 0;
+
+        if (config.write_debug_output) {
+            atomicAdd(debug_output.culled_mesh_count, 1);
+            atomicAdd(debug_output.culled_primitive_count, all_indirect_commands.indirect_commands[indirect_index].index_count / 3);
+        }
+    }
+}

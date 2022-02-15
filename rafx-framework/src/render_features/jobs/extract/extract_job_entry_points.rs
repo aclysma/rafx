@@ -1,6 +1,7 @@
 use crate::render_features::render_features_prelude::*;
 use crate::render_features::RenderObjectInstancePerView;
 use crate::visibility::VisibilityObjectInfo;
+use crate::RenderResources;
 
 /// `ExtractJobEntryPoints` provides a generic set of callbacks for a `RenderFeature`
 /// compatible with the `ExtractJob` struct. This simplifies the work of implementing
@@ -79,6 +80,7 @@ pub struct ExtractPerFrameContext<
     'entry,
     ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>,
 > {
+    extract_context: &'entry RenderJobExtractContext<'extract>,
     frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
 }
 
@@ -86,9 +88,21 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
     ExtractPerFrameContext<'extract, 'entry, ExtractJobEntryPointsT>
 {
     pub fn new(
-        frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>
+        extract_context: &'entry RenderJobExtractContext<'extract>,
+        frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
     ) -> Self {
-        Self { frame_packet }
+        Self {
+            extract_context,
+            frame_packet,
+        }
+    }
+
+    pub fn extract_resources(&self) -> &ExtractResources<'extract> {
+        self.extract_context.extract_resources
+    }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        self.extract_context.render_resources
     }
 
     pub fn frame_packet(&self) -> &FramePacket<ExtractJobEntryPointsT::FramePacketDataT> {
@@ -101,6 +115,7 @@ pub struct ExtractRenderObjectInstanceContext<
     'entry,
     ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>,
 > {
+    extract_context: &'entry RenderJobExtractContext<'extract>,
     frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
     visibility_resource: &'entry VisibilityResource,
     render_object_instance: &'entry RenderObjectInstance,
@@ -111,17 +126,27 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
     ExtractRenderObjectInstanceContext<'extract, 'entry, ExtractJobEntryPointsT>
 {
     pub fn new(
+        extract_context: &'entry RenderJobExtractContext<'extract>,
         frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
         visibility_resource: &'entry VisibilityResource,
         id: usize,
     ) -> Self {
         let render_object_instance = &frame_packet.render_object_instances[id];
         Self {
+            extract_context,
             frame_packet,
             visibility_resource,
             render_object_instance,
             id,
         }
+    }
+
+    pub fn extract_resources(&self) -> &ExtractResources<'extract> {
+        self.extract_context.extract_resources
+    }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        self.extract_context.render_resources
     }
 
     pub fn object_id(&self) -> ObjectId {
@@ -157,6 +182,7 @@ pub struct ExtractPerViewContext<
     'entry,
     ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>,
 > {
+    extract_context: &'entry RenderJobExtractContext<'extract>,
     frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
     view_packet: &'entry ViewPacket<ExtractJobEntryPointsT::FramePacketDataT>,
 }
@@ -165,13 +191,23 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
     ExtractPerViewContext<'extract, 'entry, ExtractJobEntryPointsT>
 {
     pub fn new(
+        extract_context: &'entry RenderJobExtractContext<'extract>,
         frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
         view_packet: &'entry ViewPacket<ExtractJobEntryPointsT::FramePacketDataT>,
     ) -> Self {
         Self {
+            extract_context,
             frame_packet,
             view_packet,
         }
+    }
+
+    pub fn extract_resources(&self) -> &ExtractResources<'extract> {
+        self.extract_context.extract_resources
+    }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        self.extract_context.render_resources
     }
 
     pub fn per_frame_data(
@@ -207,6 +243,7 @@ pub struct ExtractRenderObjectInstancePerViewContext<
     'entry,
     ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>,
 > {
+    extract_context: &'entry RenderJobExtractContext<'extract>,
     frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
     view_packet: &'entry ViewPacket<ExtractJobEntryPointsT::FramePacketDataT>,
     render_object_instance_per_view: &'entry RenderObjectInstancePerView,
@@ -218,6 +255,7 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
     ExtractRenderObjectInstancePerViewContext<'extract, 'entry, ExtractJobEntryPointsT>
 {
     pub fn new(
+        extract_context: &'entry RenderJobExtractContext<'extract>,
         frame_packet: &'entry FramePacket<ExtractJobEntryPointsT::FramePacketDataT>,
         view_packet: &'entry ViewPacket<ExtractJobEntryPointsT::FramePacketDataT>,
         visibility_resource: &'entry VisibilityResource,
@@ -225,12 +263,21 @@ impl<'extract, 'entry, ExtractJobEntryPointsT: ExtractJobEntryPoints<'extract>>
     ) -> Self {
         let render_object_instance_per_view = &view_packet.render_object_instances[id];
         Self {
+            extract_context,
             frame_packet,
             view_packet,
             render_object_instance_per_view,
             visibility_resource,
             id,
         }
+    }
+
+    pub fn extract_resources(&self) -> &ExtractResources<'extract> {
+        self.extract_context.extract_resources
+    }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        self.extract_context.render_resources
     }
 
     pub fn render_object_instance_id(&self) -> RenderObjectInstanceId {

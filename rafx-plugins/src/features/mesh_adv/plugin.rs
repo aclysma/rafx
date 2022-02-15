@@ -1,6 +1,7 @@
 use rafx::render_feature_renderer_prelude::*;
 
 use super::*;
+use crate::features::mesh_adv::gpu_occlusion_cull::MeshAdvGpuOcclusionCullRenderResource;
 use crate::features::mesh_adv::light_binning::MeshAdvLightBinRenderResource;
 use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
@@ -173,6 +174,7 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
 
         render_resources.insert(MeshAdvShadowMapResource::default());
         render_resources.insert(MeshAdvRenderPipelineState::default());
+        render_resources.insert(MeshAdvGpuOcclusionCullRenderResource::default());
 
         render_resources.insert(MeshAdvLightBinRenderResource::new(
             &asset_manager.resources(),
@@ -279,6 +281,7 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             view_submit_packets.push(ViewSubmitPacket::new(
                 submit_node_blocks,
                 &ViewPacketSize::size_of(view_packet),
+                view_packet.view_frame_index(),
             ));
         }
 

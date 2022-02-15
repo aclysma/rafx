@@ -3,13 +3,9 @@ use rafx::render_feature_prepare_job_predule::*;
 use super::*;
 use crate::phases::WireframeRenderPhase;
 use crate::shaders::debug3d::debug3d_vert;
-use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
-use rafx::framework::ResourceContext;
+use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 
-pub struct Debug3DPrepareJob {
-    resource_context: ResourceContext,
-    device_context: RafxDeviceContext,
-}
+pub struct Debug3DPrepareJob {}
 
 impl Debug3DPrepareJob {
     pub fn new<'prepare>(
@@ -18,10 +14,8 @@ impl Debug3DPrepareJob {
         submit_packet: Box<Debug3DSubmitPacket>,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
         Arc::new(PrepareJob::new(
-            Self {
-                resource_context: prepare_context.resource_context.clone(),
-                device_context: prepare_context.device_context.clone(),
-            },
+            Self {},
+            prepare_context,
             frame_packet,
             submit_packet,
         ))
@@ -57,13 +51,15 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for Debug3DPrepareJob {
 
         // We would probably want to support multiple buffers at some point
 
-        let dyn_resource_allocator_set = self.resource_context.create_dyn_resource_allocator_set();
+        let dyn_resource_allocator_set = context
+            .resource_context()
+            .create_dyn_resource_allocator_set();
         per_frame_submit_data.vertex_buffer = if !per_frame_submit_data.draw_calls.is_empty() {
             let vertex_buffer_size = per_frame_submit_data.vertex_list.len() as u64
                 * std::mem::size_of::<Debug3DVertex>() as u64;
 
-            let vertex_buffer = self
-                .device_context
+            let vertex_buffer = context
+                .device_context()
                 .create_buffer(&RafxBufferDef {
                     size: vertex_buffer_size,
                     memory_usage: RafxMemoryUsage::CpuToGpu,
@@ -106,7 +102,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for Debug3DPrepareJob {
             view_proj: (view.projection_matrix() * view.view_matrix()).to_cols_array_2d(),
         };
 
-        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
+        let mut descriptor_set_allocator =
+            context.resource_context().create_descriptor_set_allocator();
         context
             .view_submit_packet()
             .per_view_submit_data()

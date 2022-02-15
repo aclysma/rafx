@@ -31,6 +31,7 @@ impl<'extract> SpriteExtractJob<'extract> {
                 sprite_material,
                 render_objects,
             },
+            extract_context,
             frame_packet,
         ))
     }

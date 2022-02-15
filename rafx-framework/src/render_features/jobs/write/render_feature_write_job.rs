@@ -1,6 +1,6 @@
 use crate::render_features::{
     RenderFeatureDebugConstants, RenderFeatureIndex, RenderJobBeginExecuteGraphContext,
-    RenderJobCommandBufferContext, RenderPhaseIndex, RenderView, SubmitNodeId, ViewFrameIndex,
+    RenderJobCommandBufferContext, RenderPhaseIndex, SubmitNodeId, ViewFrameIndex,
 };
 use rafx_api::RafxResult;
 
@@ -30,13 +30,6 @@ pub trait RenderFeatureWriteJob<'write>: Sync + Send {
     ) -> RafxResult<()> {
         Ok(())
     }
-
-    /// Returns the `ViewFrameIndex` of a `RenderView` in the `RenderFeature`'s frame packet. This
-    /// function **must** panic if the `RenderView` is not part of the `RenderFeature`'s frame packet.
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex;
 
     /// Called by `PreparedRenderData` in `write_view_phase` whenever the current `RenderFeatureIndex`
     /// changes **into** this `RenderFeature` OR when the `sort_key` changes. This can be used to

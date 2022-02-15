@@ -6,7 +6,7 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
     WireframeRenderPhase,
 };
-use rafx::api::RafxPrimitiveTopology;
+use rafx::api::{RafxDrawIndexedIndirectCommand, RafxPrimitiveTopology};
 use rafx::api::{RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
@@ -86,7 +86,7 @@ lazy_static::lazy_static! {
 }
 
 pub struct MeshAdvWriteJob<'write> {
-    frame_packet: Box<MeshAdvFramePacket>,
+    _frame_packet: Box<MeshAdvFramePacket>,
     submit_packet: Box<MeshSubmitPacket>,
     buffer_heaps: MeshAdvBindlessBuffers,
     phantom: PhantomData<&'write ()>,
@@ -104,7 +104,7 @@ impl<'write> MeshAdvWriteJob<'write> {
         .clone();
 
         Arc::new(Self {
-            frame_packet,
+            _frame_packet: frame_packet,
             submit_packet,
             buffer_heaps,
             phantom: Default::default(),
@@ -183,7 +183,7 @@ impl<'write> MeshAdvWriteJob<'write> {
             .clone();
 
         let pipeline = write_context
-            .resource_context
+            .resource_context()
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
                 Some(batch.phase),
@@ -261,17 +261,18 @@ impl<'write> MeshAdvWriteJob<'write> {
         )?;
 
         let command_buffer = &write_context.command_buffer;
-        let batch = &self
-            .submit_packet
-            .per_frame_submit_data()
-            .get()
-            .batched_passes
-            .get()[batched_draw_call.batch_index as usize];
+        let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
+
+        let batch =
+            &per_frame_submit_data.batched_passes.get()[batched_draw_call.batch_index as usize];
+
+        let indirect_buffer = &per_frame_submit_data.indirect_buffer.get();
 
         command_buffer.cmd_draw_indexed_indirect(
-            &*batch.indirect_buffer.get_raw().buffer,
-            0,
-            batch.draw_data.len() as u32,
+            &*indirect_buffer.get_raw().buffer,
+            batch.indirect_buffer_first_command_index
+                * std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32,
+            batch.indirect_buffer_command_count,
         )?;
 
         return Ok(());
@@ -291,21 +292,32 @@ impl<'write> MeshAdvWriteJob<'write> {
 
         let command_buffer = &write_context.command_buffer;
 
-        let batch = &self
-            .submit_packet
-            .per_frame_submit_data()
-            .get()
-            .batched_passes
-            .get()[submit_node_data.batch_index as usize];
+        let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
 
-        let draw_data = &batch.draw_data[submit_node_data.draw_data_index as usize];
+        let batch =
+            &per_frame_submit_data.batched_passes.get()[submit_node_data.batch_index as usize];
 
+        // This is equivalent code not using indirect
+        /*
+        let draw_data = &batch.draw_data.as_ref().unwrap()[submit_node_data.draw_data_index as usize];
         command_buffer.cmd_draw_indexed_instanced(
             draw_data.index_count,
             draw_data.index_offset,
             1,
             submit_node_data.draw_data_index,
             draw_data.vertex_offset as i32,
+        );
+        */
+
+        let indirect_buffer = &per_frame_submit_data.indirect_buffer.get();
+        let indirect_buffer_command_index =
+            batch.indirect_buffer_first_command_index + submit_node_data.draw_data_index;
+
+        command_buffer.cmd_draw_indexed_indirect(
+            &*indirect_buffer.get_raw().buffer,
+            indirect_buffer_command_index
+                * std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32,
+            1,
         )?;
 
         Ok(())
@@ -313,13 +325,6 @@ impl<'write> MeshAdvWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for MeshAdvWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> u32 {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,

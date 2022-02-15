@@ -55,6 +55,7 @@ impl<'extract> MeshAdvExtractJob<'extract> {
                 shadow_map_atlas_depth_material,
                 render_objects,
             },
+            extract_context,
             frame_packet,
         ))
     }
@@ -112,11 +113,23 @@ impl<'extract> ExtractJobEntryPoints<'extract> for MeshAdvExtractJob<'extract> {
         let transform = visibility_info.transform();
         let previous_transform = visibility_info.previous_frame_transform();
 
+        let bounding_sphere = if let Some(model_handle) = visibility_info.model_handle() {
+            context
+                .visibility_resource()
+                .world()
+                .inner
+                .model(*model_handle)
+                .map(|x| x.bounding_sphere)
+        } else {
+            None
+        };
+
         context.set_render_object_instance_data(mesh_asset.and_then(|mesh_asset| {
             Some(MeshAdvRenderObjectInstanceData {
                 mesh_asset: mesh_asset.clone(),
                 transform,
                 previous_transform,
+                bounding_sphere,
             })
         }));
     }

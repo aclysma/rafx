@@ -50,6 +50,7 @@ impl<'extract> EguiExtractJob<'extract> {
                 egui_material,
                 phantom_data: PhantomData,
             },
+            extract_context,
             frame_packet,
         ))
     }

@@ -44,11 +44,6 @@ pub trait RenderFeatureFramePacket: Downcast + Send + Sync {
         view_index: ViewFrameIndex,
     ) -> &mut dyn RenderFeatureViewPacket;
 
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex;
-
     fn feature_index(&self) -> RenderFeatureIndex;
 }
 

@@ -15,6 +15,8 @@ impl_downcast!(RenderFeatureViewPacket);
 pub trait RenderFeatureViewPacket: Downcast + Sync + Send {
     fn view(&self) -> &RenderView;
 
+    fn view_frame_index(&self) -> ViewFrameIndex;
+
     fn num_render_object_instances(&self) -> usize;
 
     fn push_render_object_instance(

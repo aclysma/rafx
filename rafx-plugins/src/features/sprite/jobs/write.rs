@@ -34,7 +34,7 @@ lazy_static::lazy_static! {
 
 pub struct SpriteWriteJob<'write> {
     sprite_material_pass: Option<ResourceArc<MaterialPassResource>>,
-    frame_packet: Box<SpriteFramePacket>,
+    _frame_packet: Box<SpriteFramePacket>,
     submit_packet: Box<SpriteSubmitPacket>,
     phantom: PhantomData<&'write ()>,
 }
@@ -53,7 +53,7 @@ impl<'write> SpriteWriteJob<'write> {
                     .sprite_material_pass
                     .clone()
             },
-            frame_packet,
+            _frame_packet: frame_packet,
             submit_packet,
             phantom: Default::default(),
         })
@@ -61,13 +61,6 @@ impl<'write> SpriteWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for SpriteWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
@@ -82,7 +75,7 @@ impl<'write> RenderFeatureWriteJob<'write> for SpriteWriteJob<'write> {
         let command_buffer = &write_context.command_buffer;
 
         let pipeline = write_context
-            .resource_context
+            .resource_context()
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
                 Some(args.render_phase_index),

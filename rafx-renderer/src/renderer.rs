@@ -779,12 +779,14 @@ impl Renderer {
     ) {
         profiling::scope!(debug_constants.feature_name);
 
-        for (view_frame_index, view_visibility_result) in visibility_results
+        for view_visibility_result in visibility_results
             .iter()
             .filter(|result| is_relevant(result))
-            .enumerate()
         {
-            let view_frame_index = view_frame_index as ViewFrameIndex;
+            let view_frame_index = view_visibility_result
+                .view
+                .view_frame_index(feature_index)
+                .unwrap();
             if let Some(visible_render_objects) =
                 view_visibility_result.render_object_instances_per_view(feature_index)
             {

@@ -98,6 +98,17 @@ fn visit_node(
         );
     }
 
+    for &explicit_dependency in &node.explicit_dependencies {
+        visit_node(
+            graph,
+            explicit_dependency,
+            visited,
+            visiting,
+            visiting_stack,
+            ordered_list,
+        );
+    }
+
     // All our pre-requisites were visited, so it's now safe to push this node onto the
     // orderered list
     ordered_list.push(node_id);

@@ -82,12 +82,7 @@ impl<'write> PreparedRenderData<'write> {
             let sort_key_changed = Some(sort_key) != previous_node_sort_key;
 
             if feature_changed {
-                view_frame_index = Some(
-                    self.write_jobs[submit_node.feature_index() as usize]
-                        .as_ref()
-                        .unwrap()
-                        .view_frame_index(view),
-                );
+                view_frame_index = Some(view.view_frame_index(feature_index).unwrap());
             }
 
             if feature_changed || sort_key_changed {

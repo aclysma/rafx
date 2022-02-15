@@ -30,6 +30,7 @@ impl<'extract> TileLayerExtractJob<'extract> {
                 render_objects,
                 phantom_data: PhantomData,
             },
+            extract_context,
             frame_packet,
         ))
     }

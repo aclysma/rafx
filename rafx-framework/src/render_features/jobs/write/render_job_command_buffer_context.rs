@@ -1,10 +1,9 @@
 use crate::graph::{RenderGraphContext, VisitRenderpassNodeArgs};
-use crate::{DynCommandBuffer, GraphicsPipelineRenderTargetMeta, ResourceContext};
+use crate::{DynCommandBuffer, GraphicsPipelineRenderTargetMeta, RenderResources, ResourceContext};
 use rafx_api::RafxDeviceContext;
 
 pub struct RenderJobCommandBufferContext<'graph, 'write> {
-    pub device_context: RafxDeviceContext,
-    pub resource_context: ResourceContext,
+    //NOTE: render_resources is included in the graph context
     pub command_buffer: DynCommandBuffer,
     pub render_target_meta: GraphicsPipelineRenderTargetMeta,
     pub graph_context: RenderGraphContext<'graph, 'write>,
@@ -12,14 +11,11 @@ pub struct RenderJobCommandBufferContext<'graph, 'write> {
 
 impl<'graph, 'write> RenderJobCommandBufferContext<'graph, 'write> {
     pub fn new(
-        resource_context: ResourceContext,
         command_buffer: DynCommandBuffer,
         render_target_meta: GraphicsPipelineRenderTargetMeta,
         graph_context: RenderGraphContext<'graph, 'write>,
     ) -> Self {
         RenderJobCommandBufferContext {
-            device_context: resource_context.device_context().clone(),
-            resource_context,
             command_buffer,
             render_target_meta,
             graph_context,
@@ -30,10 +26,33 @@ impl<'graph, 'write> RenderJobCommandBufferContext<'graph, 'write> {
         args: &'graph VisitRenderpassNodeArgs<'graph, 'write>
     ) -> RenderJobCommandBufferContext<'graph, 'write> {
         RenderJobCommandBufferContext::new(
-            args.graph_context.resource_context().clone(),
             args.command_buffer.clone(),
             args.render_target_meta.clone(),
             args.graph_context,
         )
+    }
+
+    pub fn device_context(&self) -> &RafxDeviceContext {
+        &self.graph_context.device_context()
+    }
+
+    pub fn resource_context(&self) -> &ResourceContext {
+        &self.graph_context.resource_context()
+    }
+
+    pub fn command_buffer(&self) -> &DynCommandBuffer {
+        &self.command_buffer
+    }
+
+    pub fn render_target_meta(&self) -> &GraphicsPipelineRenderTargetMeta {
+        &self.render_target_meta
+    }
+
+    pub fn graph_context(&self) -> &RenderGraphContext<'graph, 'write> {
+        &self.graph_context
+    }
+
+    pub fn render_resources(&self) -> &RenderResources {
+        self.graph_context.render_resources()
     }
 }

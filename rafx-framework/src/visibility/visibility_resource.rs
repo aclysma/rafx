@@ -7,7 +7,7 @@ use crate::visibility::visibility_object_arc::{CullModel, VisibilityObjectArc};
 use crate::visibility::ObjectId;
 use crossbeam_channel::Sender;
 use rafx_visibility::geometry::Transform;
-use rafx_visibility::{AsyncCommand, VisibilityObject, VisibilityWorld, ZoneHandle};
+use rafx_visibility::{AsyncCommand, ModelHandle, VisibilityObject, VisibilityWorld, ZoneHandle};
 
 pub struct VisibilityObjectInfo<'a> {
     arc: VisibilityObjectArc,
@@ -29,6 +29,10 @@ impl<'a> VisibilityObjectInfo<'a> {
 
     pub fn previous_frame_transform(&self) -> Option<Transform> {
         self.obj.previous_frame_transform
+    }
+
+    pub fn model_handle(&self) -> &Option<ModelHandle> {
+        &self.obj.cull_model
     }
 }
 

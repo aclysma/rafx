@@ -3,10 +3,8 @@ use rafx::render_feature_prepare_job_predule::*;
 use super::*;
 use crate::phases::TransparentRenderPhase;
 use crate::shaders::tile_layer::tile_layer_vert;
-use rafx::framework::ResourceContext;
 
 pub struct TileLayerPrepareJob {
-    resource_context: ResourceContext,
     render_objects: TileLayerRenderObjectSet,
 }
 
@@ -18,10 +16,8 @@ impl TileLayerPrepareJob {
         render_objects: TileLayerRenderObjectSet,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
         Arc::new(PrepareJob::new(
-            Self {
-                resource_context: prepare_context.resource_context.clone(),
-                render_objects,
-            },
+            Self { render_objects },
+            prepare_context,
             frame_packet,
             submit_packet,
         ))
@@ -62,7 +58,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for TileLayerPrepareJob {
             .get_raw()
             .descriptor_set_layouts[tile_layer_vert::UNIFORM_BUFFER_DESCRIPTOR_SET_INDEX];
 
-        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
+        let mut descriptor_set_allocator =
+            context.resource_context().create_descriptor_set_allocator();
         let view_submit_packet = context.view_submit_packet();
         view_submit_packet
             .per_view_submit_data()

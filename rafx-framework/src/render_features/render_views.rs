@@ -1,12 +1,14 @@
+use crate::render_features::registry::MAX_RENDER_FEATURE_COUNT;
 use crate::render_features::{
     RenderFeature, RenderFeatureFlag, RenderFeatureFlagMask, RenderFeatureIndex, RenderFeatureMask,
-    RenderPhase, RenderPhaseIndex, RenderPhaseMask,
+    RenderPhase, RenderPhaseIndex, RenderPhaseMask, ViewFrameIndex,
 };
 use crate::visibility::ViewFrustumArc;
 use glam::{Mat4, Vec3};
 use rafx_visibility::{DepthRange, Projection};
-use std::sync::atomic::AtomicU32;
+use std::mem::MaybeUninit;
 use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicI32, AtomicU32};
 use std::sync::Arc;
 
 pub type RenderViewIndex = u32;
@@ -69,6 +71,7 @@ pub struct RenderViewInner {
     view_proj: Mat4,
     view_dir: Vec3,
     view_index: RenderViewIndex,
+    view_frame_indices: [AtomicI32; MAX_RENDER_FEATURE_COUNT as usize],
     // XY of the plane in screen coordinates, the size the framebuffer would be for 1:1
     extents: (u32, u32),
     depth_range: RenderViewDepthRange,
@@ -159,6 +162,18 @@ impl RenderViewDepthRange {
     }
 }
 
+// This creates a `[AtomicI32; MAX_RENDER_FEATURE_COUNT as usize]` where all values are -1.
+fn init_view_frame_indices() -> [AtomicI32; MAX_RENDER_FEATURE_COUNT as usize] {
+    let mut view_count_by_feature: [MaybeUninit<AtomicI32>; MAX_RENDER_FEATURE_COUNT as usize] =
+        unsafe { MaybeUninit::uninit().assume_init() };
+
+    for data in &mut view_count_by_feature {
+        data.write(AtomicI32::new(-1));
+    }
+
+    unsafe { std::mem::transmute(view_count_by_feature) }
+}
+
 /// The `Renderer` processes `RenderView`s during the execution of the `RenderGraph`. Each
 /// `RenderView` is associated with a specific `ViewFrustum` in the game world. The `RenderView`
 /// may be registered for specific `RenderFeature`s by a `RenderFeatureMask` or `RenderPhase`s by
@@ -191,7 +206,6 @@ impl RenderView {
     ) -> RenderView {
         let view_dir = Self::view_mat4_to_view_dir(&view);
 
-        log::trace!("Allocate view {} {}", debug_name, view_index);
         let inner = RenderViewInner {
             view_frustum,
             eye_position,
@@ -200,6 +214,7 @@ impl RenderView {
             view_proj: proj * view,
             view_dir,
             view_index,
+            view_frame_indices: init_view_frame_indices(),
             extents,
             depth_range,
             render_phase_mask,
@@ -244,6 +259,29 @@ impl RenderView {
 
     pub fn view_index(&self) -> RenderViewIndex {
         self.inner.view_index
+    }
+
+    pub fn set_view_frame_index(
+        &self,
+        feature_index: RenderFeatureIndex,
+        view_frame_index: ViewFrameIndex,
+    ) {
+        let old_view_frame_index = self.inner.view_frame_indices[feature_index as usize]
+            .swap(view_frame_index as i32, Ordering::Relaxed);
+        assert!(old_view_frame_index == -1);
+    }
+
+    pub fn view_frame_index(
+        &self,
+        feature_index: RenderFeatureIndex,
+    ) -> Option<ViewFrameIndex> {
+        let view_frame_index =
+            self.inner.view_frame_indices[feature_index as usize].load(Ordering::Relaxed);
+        if view_frame_index != -1 {
+            Some(view_frame_index as ViewFrameIndex)
+        } else {
+            None
+        }
     }
 
     pub fn extents(&self) -> (u32, u32) {

@@ -195,6 +195,7 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
             view_submit_packets.push(ViewSubmitPacket::new(
                 submit_node_blocks,
                 &ViewPacketSize::size_of(view_packet),
+                view.view_frame_index(frame_packet.feature_index()).unwrap(),
             ));
         }
 

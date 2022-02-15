@@ -104,6 +104,7 @@ impl RenderJobExtractAllocationContext {
 /// Holds references to resources valid for the entirety of the `extract` step as
 /// represented by the `'extract` lifetime. `RenderFeatureExtractJob`s should cache
 /// any resources needed from the `RenderJobExtractContext` during their `new` function.
+#[derive(Clone)]
 pub struct RenderJobExtractContext<'extract> {
     pub allocation_context: &'extract RenderJobExtractAllocationContext,
     pub extract_resources: &'extract ExtractResources<'extract>,

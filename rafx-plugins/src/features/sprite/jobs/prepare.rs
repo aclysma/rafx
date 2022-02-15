@@ -4,9 +4,9 @@ use super::*;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase};
 use crate::shaders::sprite::{sprite_frag, sprite_vert};
 use fnv::FnvHashMap;
-use rafx::api::{RafxBufferDef, RafxDeviceContext, RafxMemoryUsage, RafxResourceType};
+use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxResourceType};
 use rafx::base::DecimalF32;
-use rafx::framework::{ImageViewResource, ResourceArc, ResourceContext};
+use rafx::framework::{ImageViewResource, ResourceArc};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Used as static data to represent a quad
@@ -44,8 +44,6 @@ const QUAD_VERTEX_LIST: [QuadVertex; 4] = [
 const QUAD_INDEX_LIST: [u16; 6] = [0, 1, 2, 2, 1, 3];
 
 pub struct SpritePrepareJob {
-    resource_context: ResourceContext,
-    device_context: RafxDeviceContext,
     #[allow(dead_code)]
     render_objects: SpriteRenderObjectSet,
 }
@@ -58,11 +56,8 @@ impl SpritePrepareJob {
         render_objects: SpriteRenderObjectSet,
     ) -> Arc<dyn RenderFeaturePrepareJob<'prepare> + 'prepare> {
         Arc::new(PrepareJob::new(
-            Self {
-                resource_context: prepare_context.resource_context.clone(),
-                device_context: prepare_context.device_context.clone(),
-                render_objects,
-            },
+            Self { render_objects },
+            prepare_context,
             frame_packet,
             submit_packet,
         ))
@@ -79,8 +74,11 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for SpritePrepareJob {
             return;
         }
 
-        let mut descriptor_set_allocator = self.resource_context.create_descriptor_set_allocator();
-        let dyn_resource_allocator_set = self.resource_context.create_dyn_resource_allocator_set();
+        let mut descriptor_set_allocator =
+            context.resource_context().create_descriptor_set_allocator();
+        let dyn_resource_allocator_set = context
+            .resource_context()
+            .create_dyn_resource_allocator_set();
 
         let sprite_material_pass = per_frame_data.sprite_material_pass.as_ref().unwrap();
         let per_view_descriptor_set_layout = &sprite_material_pass.get_raw().descriptor_set_layouts
@@ -368,8 +366,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for SpritePrepareJob {
             let vertex_buffer_size =
                 vertex_data.len() as u64 * std::mem::size_of::<SpriteVertex>() as u64;
 
-            let vertex_buffer = self
-                .device_context
+            let vertex_buffer = context
+                .device_context()
                 .create_buffer(&RafxBufferDef {
                     size: vertex_buffer_size,
                     memory_usage: RafxMemoryUsage::CpuToGpu,
@@ -395,8 +393,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for SpritePrepareJob {
         let index_buffer = if !last_submit_node.is_none() {
             let index_buffer_size = index_data.len() as u64 * std::mem::size_of::<u16>() as u64;
 
-            let index_buffer = self
-                .device_context
+            let index_buffer = context
+                .device_context()
                 .create_buffer(&RafxBufferDef {
                     size: index_buffer_size,
                     memory_usage: RafxMemoryUsage::CpuToGpu,

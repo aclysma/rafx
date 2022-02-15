@@ -41,6 +41,7 @@ impl<'extract> MeshBasicExtractJob<'extract> {
                 depth_material,
                 render_objects,
             },
+            extract_context,
             frame_packet,
         ))
     }

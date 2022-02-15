@@ -31,7 +31,7 @@ lazy_static::lazy_static! {
 
 pub struct TextWriteJob<'write> {
     text_material_pass: Option<ResourceArc<MaterialPassResource>>,
-    frame_packet: Box<TextFramePacket>,
+    _frame_packet: Box<TextFramePacket>,
     submit_packet: Box<TextSubmitPacket>,
     phantom: PhantomData<&'write ()>,
 }
@@ -50,7 +50,7 @@ impl<'write> TextWriteJob<'write> {
                     .text_material_pass
                     .clone()
             },
-            frame_packet,
+            _frame_packet: frame_packet,
             submit_packet,
             phantom: Default::default(),
         })
@@ -58,13 +58,6 @@ impl<'write> TextWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for TextWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn on_begin_execute_graph(
         &self,
         begin_execute_graph_context: &mut RenderJobBeginExecuteGraphContext,
@@ -169,7 +162,7 @@ impl<'write> RenderFeatureWriteJob<'write> for TextWriteJob<'write> {
             let per_frame_submit_data = self.submit_packet.per_frame_submit_data().get();
             if !per_frame_submit_data.draw_call_metas.is_empty() {
                 let pipeline = write_context
-                    .resource_context
+                    .resource_context()
                     .graphics_pipeline_cache()
                     .get_or_create_graphics_pipeline(
                         Some(args.render_phase_index),

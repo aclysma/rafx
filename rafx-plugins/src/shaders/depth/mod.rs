@@ -2,4 +2,5 @@
 
 #![allow(dead_code)]
 
+pub mod depth_pyramid_comp;
 pub mod depth_vert;

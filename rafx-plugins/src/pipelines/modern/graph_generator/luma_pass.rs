@@ -193,7 +193,7 @@ pub(super) fn luma_average_histogram_pass(
 
                 enable_debug_data_collection = guard.enable_debug_data_collection;
             }
-            histogram_result.get_raw().buffer.unmap_buffer()?;
+            debug_output.get_raw().buffer.unmap_buffer()?;
         }
 
         let input_width = swapchain_extents.width;

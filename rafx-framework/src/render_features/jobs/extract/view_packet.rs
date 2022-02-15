@@ -3,6 +3,7 @@ use crate::render_features::render_features_prelude::*;
 /// Read documentation on `FramePacketData`.
 pub struct ViewPacket<FramePacketDataT: FramePacketData> {
     view: RenderView,
+    view_frame_index: ViewFrameIndex,
 
     pub(crate) per_view_data: AtomicOnceCell<FramePacketDataT::PerViewData>,
     pub(crate) render_object_instances: Vec<RenderObjectInstancePerView>,
@@ -13,9 +14,13 @@ pub struct ViewPacket<FramePacketDataT: FramePacketData> {
 }
 
 impl<FramePacketDataT: FramePacketData> ViewPacket<FramePacketDataT> {
-    pub fn new(view_packet_size: &ViewPacketSize) -> Self {
+    pub fn new(
+        view_packet_size: &ViewPacketSize,
+        view_frame_index: ViewFrameIndex,
+    ) -> Self {
         Self {
             view: view_packet_size.view.clone(),
+            view_frame_index,
             per_view_data: AtomicOnceCell::new(),
             render_object_instances: Vec::with_capacity(
                 view_packet_size.num_render_object_instances,
@@ -41,6 +46,10 @@ impl<FramePacketDataT: FramePacketData> ViewPacket<FramePacketDataT> {
         &self.per_view_data
     }
 
+    pub fn view_frame_index(&self) -> ViewFrameIndex {
+        self.view_frame_index
+    }
+
     pub fn volumes(&self) -> &Vec<ObjectId> {
         &self.volumes
     }
@@ -51,6 +60,10 @@ impl<FramePacketDataT: 'static + FramePacketData> RenderFeatureViewPacket
 {
     fn view(&self) -> &RenderView {
         &self.view
+    }
+
+    fn view_frame_index(&self) -> ViewFrameIndex {
+        self.view_frame_index
     }
 
     fn num_render_object_instances(&self) -> usize {

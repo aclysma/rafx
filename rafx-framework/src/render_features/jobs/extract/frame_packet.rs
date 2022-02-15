@@ -50,7 +50,11 @@ impl<FramePacketDataT: FramePacketData> FramePacket<FramePacketDataT> {
         let mut views = Vec::with_capacity(frame_packet_size.view_packet_sizes.len());
 
         for view_packet_size in frame_packet_size.view_packet_sizes.iter() {
-            views.push(ViewPacket::new(view_packet_size))
+            let view_frame_index = views.len() as u32;
+            view_packet_size
+                .view
+                .set_view_frame_index(feature_index, view_frame_index);
+            views.push(ViewPacket::new(view_packet_size, view_frame_index));
         }
 
         Self {
@@ -150,23 +154,6 @@ impl<FramePacketDataT: 'static + Sync + Send + FramePacketData> RenderFeatureFra
         view_index: u32,
     ) -> &mut dyn RenderFeatureViewPacket {
         self.view_packet_mut(view_index)
-    }
-
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.views
-            .iter()
-            .position(|view_packet| view_packet.view().view_index() == view.view_index())
-            .unwrap_or_else(|| {
-                panic!(
-                    "View {} with ViewIndex {} was not found in {}.",
-                    view.debug_name(),
-                    view.view_index(),
-                    std::any::type_name::<FramePacketDataT>()
-                )
-            }) as ViewFrameIndex
     }
 
     fn feature_index(&self) -> RenderFeatureIndex {

@@ -31,6 +31,7 @@ impl<'extract> ExampleExtractJob<'extract> {
                     .extract_ref(),
                 triangle_material,
             },
+            extract_context,
             frame_packet,
         ))
     }

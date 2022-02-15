@@ -153,6 +153,9 @@ pub struct RenderGraphNode {
     pub(super) buffer_modifies: Vec<RenderGraphBufferModify>,
     pub(super) buffer_copies: Vec<RenderGraphBufferCopy>,
 
+    // Used when we want to force one node to execute before this one
+    pub(super) explicit_dependencies: Vec<RenderGraphNodeId>,
+
     // Attachments are indexed by attachment index
     pub(super) color_attachments: Vec<Option<RenderGraphPassColorAttachmentInfo>>,
     pub(super) depth_attachment: Option<RenderGraphPassDepthAttachmentInfo>,
@@ -191,6 +194,7 @@ impl std::fmt::Debug for RenderGraphNode {
             .field("buffer_reads", &self.buffer_reads)
             .field("buffer_modifies", &self.buffer_modifies)
             .field("buffer_copies", &self.buffer_copies)
+            .field("explicit_dependencies", &self.explicit_dependencies)
             .field("color_attachments", &self.color_attachments)
             .field("depth_attachment", &self.depth_attachment)
             .field("resolve_attachments", &self.resolve_attachments)
@@ -233,6 +237,7 @@ impl RenderGraphNode {
             buffer_reads: Default::default(),
             buffer_modifies: Default::default(),
             buffer_copies: Default::default(),
+            explicit_dependencies: Default::default(),
             color_attachments: Default::default(),
             depth_attachment: Default::default(),
             resolve_attachments: Default::default(),

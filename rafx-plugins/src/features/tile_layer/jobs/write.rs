@@ -30,7 +30,7 @@ lazy_static::lazy_static! {
 pub struct TileLayerWriteJob<'write> {
     tile_layer_material_pass: Option<ResourceArc<MaterialPassResource>>,
     render_objects: TileLayerRenderObjectSet,
-    frame_packet: Box<TileLayerFramePacket>,
+    _frame_packet: Box<TileLayerFramePacket>,
     submit_packet: Box<TileLayerSubmitPacket>,
     phantom: PhantomData<&'write ()>,
 }
@@ -51,7 +51,7 @@ impl<'write> TileLayerWriteJob<'write> {
                     .clone()
             },
             render_objects,
-            frame_packet,
+            _frame_packet: frame_packet,
             submit_packet,
             phantom: Default::default(),
         })
@@ -59,13 +59,6 @@ impl<'write> TileLayerWriteJob<'write> {
 }
 
 impl<'write> RenderFeatureWriteJob<'write> for TileLayerWriteJob<'write> {
-    fn view_frame_index(
-        &self,
-        view: &RenderView,
-    ) -> ViewFrameIndex {
-        self.frame_packet.view_frame_index(view)
-    }
-
     fn begin_submit_node_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
@@ -80,7 +73,7 @@ impl<'write> RenderFeatureWriteJob<'write> for TileLayerWriteJob<'write> {
         let command_buffer = &write_context.command_buffer;
 
         let pipeline = write_context
-            .resource_context
+            .resource_context()
             .graphics_pipeline_cache()
             .get_or_create_graphics_pipeline(
                 Some(args.render_phase_index),
