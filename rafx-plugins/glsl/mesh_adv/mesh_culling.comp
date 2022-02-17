@@ -96,6 +96,9 @@ void main() {
         return;
     }
 
+    //
+    // Debug output
+    //
     if (config.write_debug_output) {
         uint indirect_index = config.indirect_first_command_index + draw_index;
         atomicAdd(debug_output.total_mesh_count, 1);
@@ -112,6 +115,9 @@ void main() {
     vec3 center_vs = (config.view_matrix * vec4(bs.position, 1.0)).xyz;
     float radius = bs.radius;
 
+    //
+    // If radius is -1, assume it's never culled
+    //
     if (radius < 0.0) {
         return;
     }
@@ -140,43 +146,98 @@ void main() {
     max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius,  radius, -radius));
     max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius,  radius,  radius));
 
+    //
+    // Project to NDC with perspective divide
+    //
     vec4 min_clip = config.proj_matrix * vec4(min_bounds_vs, 1.0);
     vec4 max_clip = config.proj_matrix * vec4(max_bounds_vs, 1.0);
 
-    vec3 ndc1 = min_clip.xyz / min_clip.w; //TODO: Getting UVs outsize [0,1]?
+    vec3 ndc1 = min_clip.xyz / min_clip.w;
     vec3 ndc2 = max_clip.xyz / max_clip.w;
 
+    //
+    // Re-determine min/max values
+    //
     // Projection can flip things around so that min/max is no longer min/max
     vec3 min_ndc = min(ndc1, ndc2);
     vec3 max_ndc = max(ndc1, ndc2);
 
+    //
+    // Convert NDC to UV, including flipping Y
+    //
     vec2 min_uv = (min_ndc.xy * 0.5) + 0.5;
     vec2 max_uv = (max_ndc.xy * 0.5) + 0.5;
     float temp = min_uv.y;
     min_uv.y = 1.0 - max_uv.y;
     max_uv.y = 1.0 - temp;
 
-    float width = (max_uv.x - min_uv.x) * config.viewport_width;
-    float height = (max_uv.y - min_uv.y) * config.viewport_height;
-
-    float max_dim = max(width, height);
-    uint level = 0;
-    if (max_dim >= 1.0) {
-        level = uint(ceil(log2(max_dim))) + 1;
-    }
-
-    uint indirect_index = config.indirect_first_command_index + draw_index;
-    if (level >= config.depth_mip_slice_count) {
-        // Can't cull, require a lower mip
+    //
+    // A sphere depth that clips into the screen can never be rejected, so bail early
+    //
+    if (min_ndc.z < 0.0) {
         return;
     }
 
-    //TODO: Is this the best way to compare depth? Is one sample enough? Consider a gather instead.
-    float hiz_depth = texture(sampler2D(depth_mip_slices[level], smp), (min_uv + max_uv) * 0.5).x;
-    //float sphere_depth = config.z_near / (min_bounds_vs.z - radius);
-    float sphere_depth = min_ndc.z;
+    //
+    // Linear search for the mip level where the UV coordinates cover no more than a 2x2 patch
+    //
+    min_uv = clamp(min_uv, 0, 1);
+    max_uv = clamp(max_uv, 0, 1);
 
-    if (sphere_depth > 0.0 && sphere_depth < hiz_depth) {
+    vec2 mip_slice_size;
+    ivec2 min_sample_pixel;
+    ivec2 max_sample_pixel;
+    uint mip_slice = config.depth_mip_slice_count;
+    for (int i = 0; i < config.depth_mip_slice_count; ++i) {
+        mip_slice_size = vec2(max(uvec2(1,1), uvec2(config.viewport_width>>i, config.viewport_height>>i)));
+        min_sample_pixel = ivec2(min_uv * mip_slice_size);
+        max_sample_pixel = ivec2(max_uv * mip_slice_size);
+        ivec2 pixel_dim = max_sample_pixel - min_sample_pixel;
+
+        if ((max_sample_pixel.x - min_sample_pixel.x < 2) && (max_sample_pixel.y - min_sample_pixel.y < 2)) {
+            mip_slice = i;
+            break;
+        }
+    }
+
+    //
+    // Bail if no mip satisfied the 2x2 patch size requirement
+    //
+    if (mip_slice == config.depth_mip_slice_count) {
+        return;
+    }
+
+    //
+    // Gather the 4 pixels of the patch
+    //
+    //vec2 mip_slice_size = viewport_size / float(1<<mip_slice);
+    vec2 gather_pixel = (vec2(min_sample_pixel) + vec2(max_sample_pixel))/2.0;
+    vec2 gather_uv = (gather_pixel + vec2(0.5, 0.5)) / mip_slice_size;
+    vec4 gathered = textureGather(sampler2D(depth_mip_slices[mip_slice], smp), gather_uv);
+
+    //
+    // Find minimum of all 4 pixels that are covered by the uv coordinates
+    //
+    bool use_both_samples_for_x = min_sample_pixel.x != max_sample_pixel.x;
+    bool use_both_samples_for_y = min_sample_pixel.y != max_sample_pixel.y;
+
+    float hiz_depth = gathered.w;
+    if (use_both_samples_for_x) {
+        hiz_depth = min(hiz_depth, gathered.z);
+    }
+    if (use_both_samples_for_y) {
+        hiz_depth = min(hiz_depth, gathered.x);
+    }
+    if (use_both_samples_for_x && use_both_samples_for_y) {
+        hiz_depth = min(hiz_depth, gathered.y);
+    }
+
+    //
+    // Cull if the AABB is behind all the depth buffer samples
+    //
+    float sphere_depth = max_ndc.z;
+    if (sphere_depth < hiz_depth) {
+        uint indirect_index = config.indirect_first_command_index + draw_index;
         all_indirect_commands.indirect_commands[indirect_index].instance_count = 0;
 
         if (config.write_debug_output) {

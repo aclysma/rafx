@@ -38,24 +38,31 @@ void main()
         return;
     }
 
+    //
+    // Do 2x2 gather and take minimum value
+    //
     vec2 texel_size = vec2(1.0 / config.input_width, 1.0 / config.input_height);
-    vec2 src_uv = (gl_GlobalInvocationID.xy * 2 + vec2(1, 1)) * texel_size;
+    vec2 src_uv = (gl_GlobalInvocationID.xy * 2 + vec2(0.5, 0.5)) * texel_size;
     vec4 gathered = textureGather(sampler2D(src_depth_tex, smp), src_uv);
     float min_value = min(min(gathered.x, gathered.y), min(gathered.z, gathered.w));
 
-    bool is_x_edge = gl_GlobalInvocationID.x * 2 == config.input_width;
-    bool is_y_edge = gl_GlobalInvocationID.y * 2 == config.input_height;
+    //
+    // If the source image has a dimension that doesn't divide evenly by two, then the right/bottom edges need to
+    // check an additional third row/column of pixels
+    //
+    bool is_x_edge = gl_GlobalInvocationID.x * 2 == config.input_width - 3;
+    bool is_y_edge = gl_GlobalInvocationID.y * 2 == config.input_height - 3;
 
     if (is_x_edge) {
         float a = texture(sampler2D(src_depth_tex, smp), src_uv + vec2(2, 0) * texel_size).x;
         float b = texture(sampler2D(src_depth_tex, smp), src_uv + vec2(2, 1) * texel_size).x;
-        float min_value = min(min_value, min(a, b));
+        min_value = min(min_value, min(a, b));
     }
 
     if (is_y_edge) {
         float a = texture(sampler2D(src_depth_tex, smp), src_uv + vec2(0, 2) * texel_size).x;
         float b = texture(sampler2D(src_depth_tex, smp), src_uv + vec2(1, 2) * texel_size).x;
-        float min_value = min(min_value, min(a, b));
+        min_value = min(min_value, min(a, b));
     }
 
     if (is_x_edge && is_y_edge) {
@@ -63,5 +70,8 @@ void main()
         min_value = min(min_value, a);
     }
 
+    //
+    // Write the minimum of all
+    //
     imageStore(dst_depth_tex, ivec2(gl_GlobalInvocationID.xy), vec4(min_value));
 }
