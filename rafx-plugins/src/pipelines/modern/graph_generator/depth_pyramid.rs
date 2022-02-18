@@ -41,7 +41,8 @@ fn depth_pyramid_mip_pass(
             &depth_pyramid_comp::DepthPyramidConfigUniform {
                 input_width,
                 input_height,
-                _padding0: Default::default(),
+                odd_width: ((input_width % 2) == 1) as u32,
+                odd_height: ((input_height % 2) == 1) as u32,
             },
         );
         descriptor_set.set_image(

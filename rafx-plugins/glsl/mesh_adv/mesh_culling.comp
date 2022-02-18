@@ -123,67 +123,44 @@ void main() {
     }
 
     //
-    // Find an AABB aligned to view space
-    // TODO: Optimize by doing log(n) min/max calls?
+    // Determine UV coordinates of all 8 corners of viewspace AABB around the bounding sphere. Store the min/max uv
+    // and max depth value, which we use as
     //
-    vec3 min_bounds_vs = center_vs;
-    vec3 max_bounds_vs = center_vs;
-    min_bounds_vs = min(min_bounds_vs, center_vs + vec3(-radius, -radius, -radius));
-    min_bounds_vs = min(min_bounds_vs, center_vs + vec3(-radius, -radius,  radius));
-    min_bounds_vs = min(min_bounds_vs, center_vs + vec3(-radius,  radius, -radius));
-    min_bounds_vs = min(min_bounds_vs, center_vs + vec3(-radius,  radius,  radius));
-    min_bounds_vs = min(min_bounds_vs, center_vs + vec3( radius, -radius, -radius));
-    min_bounds_vs = min(min_bounds_vs, center_vs + vec3( radius, -radius,  radius));
-    min_bounds_vs = min(min_bounds_vs, center_vs + vec3( radius,  radius, -radius));
-    min_bounds_vs = min(min_bounds_vs, center_vs + vec3( radius,  radius,  radius));
+    vec2 min_uv;
+    vec2 max_uv;
+    float max_ndc_z;
+    for (int i = 0; i < 8; ++i) {
+        vec3 corner_vs = center_vs + vec3(
+            ((i & 0x00000001) != 0 ? radius : -radius),
+            ((i & 0x00000002) != 0 ? radius : -radius),
+            ((i & 0x00000004) != 0 ? radius : -radius)
+        );
 
-    max_bounds_vs = max(max_bounds_vs, center_vs + vec3(-radius, -radius, -radius));
-    max_bounds_vs = max(max_bounds_vs, center_vs + vec3(-radius, -radius,  radius));
-    max_bounds_vs = max(max_bounds_vs, center_vs + vec3(-radius,  radius, -radius));
-    max_bounds_vs = max(max_bounds_vs, center_vs + vec3(-radius,  radius,  radius));
-    max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius, -radius, -radius));
-    max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius, -radius,  radius));
-    max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius,  radius, -radius));
-    max_bounds_vs = max(max_bounds_vs, center_vs + vec3( radius,  radius,  radius));
-
-    //
-    // Project to NDC with perspective divide
-    //
-    vec4 min_clip = config.proj_matrix * vec4(min_bounds_vs, 1.0);
-    vec4 max_clip = config.proj_matrix * vec4(max_bounds_vs, 1.0);
-
-    vec3 ndc1 = min_clip.xyz / min_clip.w;
-    vec3 ndc2 = max_clip.xyz / max_clip.w;
-
-    //
-    // Re-determine min/max values
-    //
-    // Projection can flip things around so that min/max is no longer min/max
-    vec3 min_ndc = min(ndc1, ndc2);
-    vec3 max_ndc = max(ndc1, ndc2);
-
-    //
-    // Convert NDC to UV, including flipping Y
-    //
-    vec2 min_uv = (min_ndc.xy * 0.5) + 0.5;
-    vec2 max_uv = (max_ndc.xy * 0.5) + 0.5;
-    float temp = min_uv.y;
-    min_uv.y = 1.0 - max_uv.y;
-    max_uv.y = 1.0 - temp;
-
-    //
-    // A sphere depth that clips into the screen can never be rejected, so bail early
-    //
-    if (min_ndc.z < 0.0) {
-        return;
+        vec4 corner_clip = config.proj_matrix * vec4(corner_vs, 1.0);
+        vec3 corner_ndc = corner_clip.xyz / corner_clip.w;
+        if (corner_ndc.z < 0.0) {
+            // Assume we can't cull anything that's clipping through the screen
+            return;
+        }
+        vec2 corner_uv = corner_ndc.xy * vec2(0.5, -0.5) + 0.5;
+        if (i == 0) {
+            min_uv = corner_uv;
+            max_uv = corner_uv;
+            max_ndc_z = corner_ndc.z;
+        } else {
+            min_uv = min(min_uv, corner_uv);
+            max_uv = max(max_uv, corner_uv);
+            max_ndc_z = max(max_ndc_z, corner_ndc.z);
+        }
     }
+
+    // clip UV to be on-screen
+    min_uv = clamp(min_uv, 0, 1);
+    max_uv = clamp(max_uv, 0, 1);
 
     //
     // Linear search for the mip level where the UV coordinates cover no more than a 2x2 patch
     //
-    min_uv = clamp(min_uv, 0, 1);
-    max_uv = clamp(max_uv, 0, 1);
-
     vec2 mip_slice_size;
     ivec2 min_sample_pixel;
     ivec2 max_sample_pixel;
@@ -233,10 +210,10 @@ void main() {
     }
 
     //
-    // Cull if the AABB is behind all the depth buffer samples
+    // Cull if the AABB is behind all the depth buffer samples. max_ndc_z represents the highest depth value within the
+    // bounding sphere.
     //
-    float sphere_depth = max_ndc.z;
-    if (sphere_depth < hiz_depth) {
+    if (max_ndc_z < hiz_depth) {
         uint indirect_index = config.indirect_first_command_index + draw_index;
         all_indirect_commands.indirect_commands[indirect_index].instance_count = 0;
 

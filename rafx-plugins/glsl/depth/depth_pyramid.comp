@@ -7,6 +7,8 @@ layout(set = 0, binding = 0) uniform DepthPyramidConfig
     // Size of image in pixels
     uint input_width;
     uint input_height;
+    bool odd_width;
+    bool odd_height;
 } config;
 
 // @[export]
@@ -47,25 +49,23 @@ void main()
     float min_value = min(min(gathered.x, gathered.y), min(gathered.z, gathered.w));
 
     //
-    // If the source image has a dimension that doesn't divide evenly by two, then the right/bottom edges need to
-    // check an additional third row/column of pixels
+    // In the case where we have odd source input, we actually need to do three samples. For example, a 5x5 mip
+    // becomes 2x2 in the next mip, and each pixel in the 2x2 mip actually overlaps 3 pixels in the original mip.
+    // 0 samples [0, 2.5] which is {0,1,2} and 1 samples [2.5, 5] which is {2,3,4}
     //
-    bool is_x_edge = gl_GlobalInvocationID.x * 2 == config.input_width - 3;
-    bool is_y_edge = gl_GlobalInvocationID.y * 2 == config.input_height - 3;
-
-    if (is_x_edge) {
+    if (config.odd_width) {
         float a = texture(sampler2D(src_depth_tex, smp), src_uv + vec2(2, 0) * texel_size).x;
         float b = texture(sampler2D(src_depth_tex, smp), src_uv + vec2(2, 1) * texel_size).x;
         min_value = min(min_value, min(a, b));
     }
 
-    if (is_y_edge) {
+    if (config.odd_height) {
         float a = texture(sampler2D(src_depth_tex, smp), src_uv + vec2(0, 2) * texel_size).x;
         float b = texture(sampler2D(src_depth_tex, smp), src_uv + vec2(1, 2) * texel_size).x;
         min_value = min(min_value, min(a, b));
     }
 
-    if (is_x_edge && is_y_edge) {
+    if (config.odd_width && config.odd_height) {
         float a = texture(sampler2D(src_depth_tex, smp), src_uv + vec2(2, 2) * texel_size).x;
         min_value = min(min_value, a);
     }

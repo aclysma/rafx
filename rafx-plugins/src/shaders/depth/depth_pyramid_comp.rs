@@ -13,9 +13,10 @@ use rafx::framework::{
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct DepthPyramidConfigStd140 {
-    pub input_width: u32,   // +0 (size: 4)
-    pub input_height: u32,  // +4 (size: 4)
-    pub _padding0: [u8; 8], // +8 (size: 8)
+    pub input_width: u32,  // +0 (size: 4)
+    pub input_height: u32, // +4 (size: 4)
+    pub odd_width: u32,    // +8 (size: 4)
+    pub odd_height: u32,   // +12 (size: 4)
 } // 16 bytes
 
 impl Default for DepthPyramidConfigStd140 {
@@ -23,7 +24,8 @@ impl Default for DepthPyramidConfigStd140 {
         DepthPyramidConfigStd140 {
             input_width: <u32>::default(),
             input_height: <u32>::default(),
-            _padding0: [u8::default(); 8],
+            odd_width: <u32>::default(),
+            odd_height: <u32>::default(),
         }
     }
 }
@@ -163,11 +165,17 @@ mod test {
             memoffset::offset_of!(DepthPyramidConfigStd140, input_height),
             4
         );
-        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
-        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
-            memoffset::offset_of!(DepthPyramidConfigStd140, _padding0),
+            memoffset::offset_of!(DepthPyramidConfigStd140, odd_width),
             8
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(DepthPyramidConfigStd140, odd_height),
+            12
         );
     }
 }
