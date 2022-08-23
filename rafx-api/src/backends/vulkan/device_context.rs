@@ -806,6 +806,7 @@ fn create_logical_device(
 ) -> RafxResult<ash::Device> {
     //TODO: Ideally we would set up validation layers for the logical device too.
 
+    #[allow(unused_mut)]
     let mut device_extension_names = vec![khr::Swapchain::name().as_ptr()];
 
     #[cfg(target_os = "macos")]

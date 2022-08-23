@@ -153,6 +153,7 @@ impl VkInstance {
             extension_names.push(swapchain_extension_name.as_c_str());
         }
 
+        #[allow(unused_mut)]
         let mut create_instance_flags = vk::InstanceCreateFlags::empty();
 
         // Required to support MoltenVK 1.3
