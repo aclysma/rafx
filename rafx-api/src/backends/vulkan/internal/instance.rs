@@ -153,6 +153,30 @@ impl VkInstance {
             extension_names.push(swapchain_extension_name.as_c_str());
         }
 
+        #[allow(unused_mut)]
+        let mut create_instance_flags = vk::InstanceCreateFlags::empty();
+
+        // Required to support MoltenVK 1.3
+        #[cfg(target_os = "macos")]
+        {
+            // From https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstanceCreateFlagBits.html
+            const VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR: vk::InstanceCreateFlags =
+                vk::InstanceCreateFlags::from_raw(0x00000001);
+
+            fn khr_portability_subset_extension_name() -> &'static CStr {
+                CStr::from_bytes_with_nul(b"VK_KHR_portability_enumeration\0")
+                    .expect("Wrong extension string")
+            }
+
+            let swapchain_extension_name = khr_portability_subset_extension_name();
+            if extensions.iter().any(|extension| unsafe {
+                CStr::from_ptr(extension.extension_name.as_ptr()) == swapchain_extension_name
+            }) {
+                extension_names.push(swapchain_extension_name);
+                create_instance_flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+            }
+        }
+
         if log::log_enabled!(log::Level::Debug) {
             log::debug!("Using layers: {:?}", layer_names);
             log::debug!("Using extensions: {:?}", extension_names);
@@ -165,7 +189,8 @@ impl VkInstance {
         let create_info = vk::InstanceCreateInfo::builder()
             .application_info(&appinfo)
             .enabled_layer_names(&layer_names)
-            .enabled_extension_names(&extension_names);
+            .enabled_extension_names(&extension_names)
+            .flags(create_instance_flags);
 
         log::info!("Creating vulkan instance");
         let instance: ash::Instance = unsafe { entry.create_instance(&create_info, None)? };

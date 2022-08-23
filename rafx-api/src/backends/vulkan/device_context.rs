@@ -806,20 +806,25 @@ fn create_logical_device(
 ) -> RafxResult<ash::Device> {
     //TODO: Ideally we would set up validation layers for the logical device too.
 
-    fn khr_portability_subset_extension_name() -> &'static CStr {
-        CStr::from_bytes_with_nul(b"VK_KHR_portability_subset\0").expect("Wrong extension string")
-    }
-
+    #[allow(unused_mut)]
     let mut device_extension_names = vec![khr::Swapchain::name().as_ptr()];
 
-    // Add VK_KHR_portability_subset if the extension exists (this is mandated by spec)
-    let portability_subset_extension_name = khr_portability_subset_extension_name();
-    for extension in &physical_device_info.extension_properties {
-        let extension_name = unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) };
+    #[cfg(target_os = "macos")]
+    {
+        fn khr_portability_subset_extension_name() -> &'static CStr {
+            CStr::from_bytes_with_nul(b"VK_KHR_portability_subset\0")
+                .expect("Wrong extension string")
+        }
 
-        if extension_name == portability_subset_extension_name {
-            device_extension_names.push(khr_portability_subset_extension_name().as_ptr());
-            break;
+        // Add VK_KHR_portability_subset if the extension exists (this is mandated by spec)
+        let portability_subset_extension_name = khr_portability_subset_extension_name();
+        for extension in &physical_device_info.extension_properties {
+            let extension_name = unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) };
+
+            if extension_name == portability_subset_extension_name {
+                device_extension_names.push(portability_subset_extension_name.as_ptr());
+                break;
+            }
         }
     }
 
