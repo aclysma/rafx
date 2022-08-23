@@ -811,7 +811,8 @@ fn create_logical_device(
     #[cfg(target_os = "macos")]
     {
         fn khr_portability_subset_extension_name() -> &'static CStr {
-            CStr::from_bytes_with_nul(b"VK_KHR_portability_subset\0").expect("Wrong extension string")
+            CStr::from_bytes_with_nul(b"VK_KHR_portability_subset\0")
+                .expect("Wrong extension string")
         }
 
         // Add VK_KHR_portability_subset if the extension exists (this is mandated by spec)

@@ -159,10 +159,12 @@ impl VkInstance {
         #[cfg(target_os = "macos")]
         {
             // From https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstanceCreateFlagBits.html
-            const VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR: vk::InstanceCreateFlags = vk::InstanceCreateFlags::from_raw(0x00000001);
+            const VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR: vk::InstanceCreateFlags =
+                vk::InstanceCreateFlags::from_raw(0x00000001);
 
             fn khr_portability_subset_extension_name() -> &'static CStr {
-                CStr::from_bytes_with_nul(b"VK_KHR_portability_enumeration\0").expect("Wrong extension string")
+                CStr::from_bytes_with_nul(b"VK_KHR_portability_enumeration\0")
+                    .expect("Wrong extension string")
             }
 
             let swapchain_extension_name = khr_portability_subset_extension_name();
