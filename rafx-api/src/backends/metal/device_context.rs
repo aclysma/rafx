@@ -50,6 +50,7 @@ impl RafxDeviceContextMetalInner {
     pub fn new() -> RafxResult<Self> {
         let device_info = RafxDeviceInfo {
             supports_multithreaded_usage: true,
+            supports_debug_names: false,
             // pretty sure this is consistent across macOS device (maybe not M1, not sure)
             min_uniform_buffer_offset_alignment: 256,
             // based on one of the loosest vulkan limits (intel iGPU), can't find official value

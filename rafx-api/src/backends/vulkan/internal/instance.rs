@@ -16,7 +16,7 @@ use std::sync::Arc;
 pub struct VkInstance {
     pub entry: Arc<VkEntry>,
     pub instance: ash::Instance,
-    pub debug_reporter: Option<VkDebugReporter>,
+    pub debug_reporter: Option<Arc<VkDebugReporter>>,
 }
 
 #[derive(Debug)]
@@ -209,7 +209,7 @@ impl VkInstance {
         Ok(VkInstance {
             entry: Arc::new(entry),
             instance,
-            debug_reporter,
+            debug_reporter: debug_reporter.map(Arc::new),
         })
     }
 

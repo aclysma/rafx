@@ -340,6 +340,10 @@ impl PreparedRenderGraph {
             profiling::scope!("pass", pass.debug_name().unwrap_or("unnamed"));
             log::trace!("Execute pass name: {:?}", pass.debug_name());
 
+            if let Some(name) = pass.debug_name() {
+                command_buffer.cmd_begin_debug_label(name);
+            }
+
             let node_id = pass.node();
 
             if let Some(pre_pass_barrier) = pass.pre_pass_barrier() {
@@ -433,6 +437,10 @@ impl PreparedRenderGraph {
 
                     self.visit_callback_node(node_id, args)?;
                 }
+            }
+
+            if pass.debug_name().is_some() {
+                command_buffer.cmd_end_debug_label();
             }
         }
 

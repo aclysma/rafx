@@ -83,6 +83,7 @@ impl RafxDeviceContextGles3Inner {
 
         let device_info = RafxDeviceInfo {
             supports_multithreaded_usage: false,
+            supports_debug_names: false,
             min_uniform_buffer_offset_alignment,
             min_storage_buffer_offset_alignment: pack_alignment,
             upload_buffer_texture_alignment: pack_alignment,
