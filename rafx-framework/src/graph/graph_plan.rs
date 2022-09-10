@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::*;
 use super::{RenderGraphExternalImageId, RenderGraphImageSpecification};
 use crate::graph::graph_image::{PhysicalImageId, RenderGraphImageUser, VirtualImageId};
@@ -7,7 +9,9 @@ use crate::render_features::RenderPhaseIndex;
 use crate::{BufferResource, GraphicsPipelineRenderTargetMeta};
 use crate::{ImageViewResource, ResourceArc};
 use fnv::{FnvHashMap, FnvHashSet};
-use rafx_api::{RafxFormat, RafxLoadOp, RafxResourceState, RafxSampleCount, RafxStoreOp};
+use rafx_api::{
+    RafxDebugObject, RafxFormat, RafxLoadOp, RafxResourceState, RafxSampleCount, RafxStoreOp,
+};
 
 // Recursively called to topologically sort the nodes to determine execution order. See
 // determine_node_order which kicks this off.

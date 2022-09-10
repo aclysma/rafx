@@ -20,6 +20,10 @@ pub struct RafxBufferVulkan {
 }
 
 impl RafxBufferVulkan {
+    pub fn device_context(&self) -> &RafxDeviceContextVulkan {
+        &self.device_context
+    }
+
     pub fn vk_buffer(&self) -> vk::Buffer {
         self.buffer_raw.as_ref().unwrap().buffer
     }

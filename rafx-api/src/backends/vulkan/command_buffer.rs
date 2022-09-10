@@ -1019,4 +1019,19 @@ impl RafxCommandBufferVulkan {
 
         Ok(())
     }
+
+    pub fn cmd_begin_debug_label<T: AsRef<str>>(
+        &self,
+        name: T,
+    ) {
+        if let Some(reporter) = self.device_context.debug_reporter() {
+            reporter.cmd_begin_debug_label(self, name);
+        }
+    }
+
+    pub fn cmd_end_debug_label(&self) {
+        if let Some(reporter) = self.device_context.debug_reporter() {
+            reporter.cmd_end_debug_label(self);
+        }
+    }
 }

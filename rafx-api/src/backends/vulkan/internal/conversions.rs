@@ -1,11 +1,11 @@
 use crate::{
     RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxColorClearValue, RafxColorFlags,
-    RafxCompareOp, RafxCullMode, RafxDepthStencilClearValue, RafxFillMode, RafxFilterType,
-    RafxFrontFace, RafxIndexType, RafxLoadOp, RafxMemoryUsage, RafxMipMapMode,
+    RafxCompareOp, RafxCullMode, RafxDebugObject, RafxDepthStencilClearValue, RafxFillMode,
+    RafxFilterType, RafxFrontFace, RafxIndexType, RafxLoadOp, RafxMemoryUsage, RafxMipMapMode,
     RafxPrimitiveTopology, RafxSampleCount, RafxShaderStageFlags, RafxStencilOp, RafxStoreOp,
     RafxSwapchainColorSpace, RafxVertexAttributeRate,
 };
-use ash::vk;
+use ash::vk::{self, Handle};
 
 impl Into<vk::ColorSpaceKHR> for RafxSwapchainColorSpace {
     fn into(self) -> vk::ColorSpaceKHR {
@@ -283,6 +283,24 @@ impl Into<vk::ClearValue> for RafxDepthStencilClearValue {
                 depth: self.depth,
                 stencil: self.stencil,
             },
+        }
+    }
+}
+
+impl From<RafxDebugObject<'_>> for vk::ObjectType {
+    fn from(val: RafxDebugObject<'_>) -> Self {
+        match val {
+            RafxDebugObject::Buffer(_) => vk::ObjectType::BUFFER,
+            RafxDebugObject::Texture(_) => vk::ObjectType::IMAGE,
+        }
+    }
+}
+
+impl From<RafxDebugObject<'_>> for u64 {
+    fn from(val: RafxDebugObject<'_>) -> Self {
+        match val {
+            RafxDebugObject::Buffer(buffer) => buffer.vk_buffer().unwrap().vk_buffer().as_raw(),
+            RafxDebugObject::Texture(texture) => texture.vk_texture().unwrap().vk_image().as_raw(),
         }
     }
 }

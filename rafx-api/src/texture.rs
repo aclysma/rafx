@@ -16,7 +16,7 @@ use crate::gles3::RafxTextureGles3;
 use crate::metal::RafxTextureMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxTextureVulkan;
-use crate::RafxTextureDef;
+use crate::{RafxDebugObject, RafxTextureDef};
 
 /// An image that can be used by the GPU.
 ///
@@ -65,6 +65,21 @@ impl RafxTexture {
                 ))
             ))]
             RafxTexture::Empty(inner) => inner.texture_def(),
+        }
+    }
+
+    /// Sets a name for this texture. This is useful for debugging, graphics debuggers/profilers such
+    /// as nsight graphics or renderdoc will display this texture with the given name in the list of resources.
+    pub fn set_name(
+        &self,
+        name: impl AsRef<str>,
+    ) {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxTexture::Vk(inner) => inner
+                .device_context()
+                .set_object_name(RafxDebugObject::Texture(self), name),
+            _ => {}
         }
     }
 

@@ -1080,6 +1080,28 @@ impl RafxCommandBuffer {
         }
     }
 
+    /// Begins labeling the following commands with the given name until [`cmd_end_debug_label`] is called.
+    /// This is useful for grouping together commands for use in a debugger.
+    pub fn cmd_begin_debug_label<T: AsRef<str>>(
+        &self,
+        name: T,
+    ) {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_begin_debug_label(name),
+            _ => {}
+        }
+    }
+
+    /// Ends a debug label that was started with [`cmd_begin_debug_label`].
+    pub fn cmd_end_debug_label(&self) {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_end_debug_label(),
+            _ => {}
+        }
+    }
+
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
