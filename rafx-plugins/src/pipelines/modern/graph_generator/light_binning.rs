@@ -68,7 +68,7 @@ pub(super) fn lights_bin_pass(context: &mut ModernPipelineContext) -> LightBinPa
     //
     let node = context
         .graph
-        .add_node("LightsBin", RenderGraphQueue::DefaultGraphics);
+        .add_callback_node("LightsBin", RenderGraphQueue::DefaultGraphics);
 
     let clusters_buffer =
         context
@@ -159,7 +159,7 @@ pub(super) fn lights_build_lists_pass(
 
     let node = context
         .graph
-        .add_node("LightsBuildLists", RenderGraphQueue::DefaultGraphics);
+        .add_callback_node("LightsBuildLists", RenderGraphQueue::DefaultGraphics);
 
     let input_buffer = context.graph.read_storage_buffer(
         node,

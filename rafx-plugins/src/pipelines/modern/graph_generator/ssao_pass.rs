@@ -61,7 +61,7 @@ pub(super) fn ssao_pass(
 ) -> SsaoPass {
     let node = context
         .graph
-        .add_node("SsaoPass", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("SsaoPass", RenderGraphQueue::DefaultGraphics);
 
     let depth_rt = context.graph.sample_image(
         node,

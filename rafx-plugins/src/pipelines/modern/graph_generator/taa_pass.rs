@@ -24,7 +24,7 @@ pub(super) fn taa_pass(
 ) -> TaaPass {
     let node = context
         .graph
-        .add_node("TaaPass", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("TaaPass", RenderGraphQueue::DefaultGraphics);
 
     let velocity_rt = context.graph.sample_image(
         node,

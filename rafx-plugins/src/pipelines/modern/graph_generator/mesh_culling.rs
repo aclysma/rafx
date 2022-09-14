@@ -32,7 +32,7 @@ pub(super) fn mesh_culling_pass(
 
     let node = context
         .graph
-        .add_node("MeshCulling", RenderGraphQueue::DefaultGraphics);
+        .add_callback_node("MeshCulling", RenderGraphQueue::DefaultGraphics);
 
     let depth_pyramid_mips: Vec<_> = depth_pyramid_pass
         .depth_pyramid_mips

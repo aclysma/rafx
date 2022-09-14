@@ -14,7 +14,7 @@ pub(super) struct DepthPrepass {
 pub(super) fn depth_prepass(context: &mut ModernPipelineContext) -> DepthPrepass {
     let node = context
         .graph
-        .add_node("DepthPrepass", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("DepthPrepass", RenderGraphQueue::DefaultGraphics);
 
     let depth = context.graph.create_depth_attachment(
         node,

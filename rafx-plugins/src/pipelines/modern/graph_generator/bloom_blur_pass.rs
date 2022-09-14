@@ -65,7 +65,7 @@ fn bloom_blur_internal_pass(
 ) -> RenderGraphImageUsageId {
     let node = context
         .graph
-        .add_node("BloomBlur", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("BloomBlur", RenderGraphQueue::DefaultGraphics);
     let blur_dst = context.graph.create_color_attachment(
         node,
         0,

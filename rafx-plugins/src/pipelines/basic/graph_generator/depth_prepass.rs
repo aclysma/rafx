@@ -20,7 +20,7 @@ pub(super) fn depth_prepass(context: &mut BasicPipelineContext) -> Option<DepthP
 
     let node = context
         .graph
-        .add_node("DepthPrepass", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("DepthPrepass", RenderGraphQueue::DefaultGraphics);
 
     let depth = context.graph.create_depth_attachment(
         node,

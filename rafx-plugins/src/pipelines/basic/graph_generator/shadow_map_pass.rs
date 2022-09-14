@@ -31,7 +31,7 @@ pub(super) fn shadow_map_passes(
             MeshBasicShadowMapRenderView::Single(render_view) => {
                 let shadow_map_node = context
                     .graph
-                    .add_node("create shadowmap", RenderGraphQueue::DefaultGraphics);
+                    .add_renderpass_node("create shadowmap", RenderGraphQueue::DefaultGraphics);
                 let depth_image = context.graph.create_unattached_image(
                     shadow_map_node,
                     RenderGraphImageConstraint {
@@ -50,9 +50,10 @@ pub(super) fn shadow_map_passes(
                 shadow_map_passes.push(ShadowMapImageResources::Single(shadow_map_pass.depth));
             }
             MeshBasicShadowMapRenderView::Cube(render_view) => {
-                let cube_map_node = context
-                    .graph
-                    .add_node("create cube shadowmap", RenderGraphQueue::DefaultGraphics);
+                let cube_map_node = context.graph.add_renderpass_node(
+                    "create cube shadowmap",
+                    RenderGraphQueue::DefaultGraphics,
+                );
 
                 let cube_map_xy_size = 1024;
 
@@ -103,7 +104,7 @@ fn shadow_map_pass(
 ) -> ShadowMapPass {
     let node = context
         .graph
-        .add_node("Shadow", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("Shadow", RenderGraphQueue::DefaultGraphics);
 
     let depth = context.graph.modify_depth_attachment(
         node,

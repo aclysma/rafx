@@ -11,6 +11,12 @@ pub struct RenderGraphNodeId(pub(super) usize);
 
 pub type RenderGraphNodeName = &'static str;
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum RenderGraphNodeKind {
+    Renderpass,
+    Callback,
+}
+
 #[derive(Debug, Clone)]
 pub struct RenderGraphImageCreate {
     pub image: RenderGraphImageUsageId,
@@ -135,6 +141,7 @@ impl std::fmt::Debug for RenderGraphPassResolveAttachmentInfo {
 pub struct RenderGraphNode {
     id: RenderGraphNodeId,
     pub(super) name: Option<RenderGraphNodeName>,
+    pub(super) kind: RenderGraphNodeKind,
     #[allow(dead_code)]
     pub(super) queue: RenderGraphQueue,
     pub(super) can_be_culled: bool,
@@ -222,11 +229,13 @@ impl RenderGraphNode {
     pub(super) fn new(
         id: RenderGraphNodeId,
         name: Option<RenderGraphNodeName>,
+        kind: RenderGraphNodeKind,
         queue: RenderGraphQueue,
     ) -> Self {
         RenderGraphNode {
             id,
             name,
+            kind,
             queue,
             can_be_culled: true,
             image_creates: Default::default(),

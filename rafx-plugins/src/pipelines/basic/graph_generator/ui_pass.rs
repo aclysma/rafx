@@ -17,7 +17,7 @@ pub(super) fn ui_pass(
     // This node has a single color attachment
     let node = context
         .graph
-        .add_node("Ui", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("Ui", RenderGraphQueue::DefaultGraphics);
     let color = context.graph.modify_color_attachment(
         node,
         previous_pass_color,
