@@ -1625,7 +1625,6 @@ fn build_physical_passes(
                     depth_attachment: pass_depth_attachment,
                     resolve_attachments: pass_resolve_attachments,
                     pre_pass_barrier: None,
-                    post_pass_barrier: None,
                 }));
             }
         }
@@ -2843,7 +2842,6 @@ fn create_output_passes(
                     node_id: pass.node_id,
                     attachment_images,
                     pre_pass_barrier: pass.pre_pass_barrier,
-                    post_pass_barrier: pass.post_pass_barrier,
                     debug_name,
                     color_render_targets,
                     depth_stencil_render_target,
@@ -2856,7 +2854,6 @@ fn create_output_passes(
                 let output_pass = RenderGraphOutputCallbackPass {
                     node: pass.node,
                     pre_pass_barrier: pass.pre_pass_barrier,
-                    post_pass_barrier: None,
                     debug_name,
                 };
 

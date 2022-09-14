@@ -155,7 +155,6 @@ pub struct RenderGraphRenderPass {
 
     // For when we want to do layout transitions on non-attachments
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
-    pub(super) post_pass_barrier: Option<PostpassBarrier>,
 }
 
 #[derive(Debug)]
@@ -218,7 +217,6 @@ pub struct RenderGraphDepthStencilRenderTarget {
 pub struct RenderGraphOutputRenderPass {
     pub(super) node_id: RenderGraphNodeId,
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
-    pub(super) post_pass_barrier: Option<PostpassBarrier>,
     pub(super) debug_name: Option<RenderGraphNodeName>,
     pub(super) attachment_images: Vec<PhysicalImageViewId>,
     pub(super) color_render_targets: Vec<RenderGraphColorRenderTarget>,
@@ -243,7 +241,6 @@ impl std::fmt::Debug for RenderGraphOutputRenderPass {
 pub struct RenderGraphOutputCallbackPass {
     pub(super) node: RenderGraphNodeId,
     pub(super) pre_pass_barrier: Option<PrepassBarrier>,
-    pub(super) post_pass_barrier: Option<PostpassBarrier>,
     pub(super) debug_name: Option<RenderGraphNodeName>,
 }
 
@@ -265,13 +262,6 @@ impl RenderGraphOutputPass {
         match self {
             RenderGraphOutputPass::Render(pass) => pass.pre_pass_barrier.as_ref(),
             RenderGraphOutputPass::Callback(pass) => pass.pre_pass_barrier.as_ref(),
-        }
-    }
-
-    pub fn post_pass_barrier(&self) -> Option<&PostpassBarrier> {
-        match self {
-            RenderGraphOutputPass::Render(pass) => pass.post_pass_barrier.as_ref(),
-            RenderGraphOutputPass::Callback(pass) => pass.post_pass_barrier.as_ref(),
         }
     }
 
