@@ -1090,7 +1090,7 @@ impl RafxCommandBuffer {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_begin_debug_label(name),
             #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => {}
+            RafxCommandBuffer::Metal(inner) => inner.cmd_begin_debug_label(name),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => {}
             #[cfg(feature = "rafx-gles3")]
@@ -1114,7 +1114,7 @@ impl RafxCommandBuffer {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_end_debug_label(),
             #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => {}
+            RafxCommandBuffer::Metal(inner) => inner.cmd_end_debug_label(),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => {}
             #[cfg(feature = "rafx-gles3")]

@@ -82,6 +82,13 @@ impl RafxTextureMetal {
         &self.inner.mip_level_uav_views
     }
 
+    pub fn set_debug_name(
+        &self,
+        _name: impl AsRef<str>,
+    ) {
+
+    }
+
     pub fn new(
         device_context: &RafxDeviceContextMetal,
         texture_def: &RafxTextureDef,

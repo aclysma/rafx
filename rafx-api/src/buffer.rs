@@ -229,7 +229,7 @@ impl RafxBuffer {
             #[cfg(feature = "rafx-vulkan")]
             RafxBuffer::Vk(inner) => inner.set_debug_name(name),
             #[cfg(feature = "rafx-metal")]
-            RafxBuffer::Metal(_) => {}
+            RafxBuffer::Metal(inner) => inner.set_debug_name(name),
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(_) => {}
             #[cfg(feature = "rafx-gles3")]

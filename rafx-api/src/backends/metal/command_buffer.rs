@@ -1149,4 +1149,12 @@ impl RafxCommandBufferMetal {
 
         Ok(())
     }
+
+    pub fn cmd_begin_debug_label<T: AsRef<str>>(
+        &self,
+        _name: T,
+    ) {
+    }
+
+    pub fn cmd_end_debug_label(&self) {}
 }

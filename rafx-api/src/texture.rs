@@ -78,7 +78,7 @@ impl RafxTexture {
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(inner) => inner.set_debug_name(name),
             #[cfg(feature = "rafx-metal")]
-            RafxTexture::Metal(_) => {}
+            RafxTexture::Metal(inner) => inner.set_debug_name(name),
             #[cfg(feature = "rafx-gles2")]
             RafxTexture::Gles2(_) => {}
             #[cfg(feature = "rafx-gles3")]
