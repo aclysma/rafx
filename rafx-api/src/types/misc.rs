@@ -37,10 +37,6 @@ impl Default for RafxValidationMode {
 /// indicate whether certain features are supported
 pub struct RafxDeviceInfo {
     pub supports_multithreaded_usage: bool,
-    /// Whether this device supports naming objects (i.e. `set_object_name` is not a no-op). This is
-    /// false on any backends which do not support naming, and true on vulkan if debug utils are active.
-    pub supports_debug_names: bool,
-
     pub min_uniform_buffer_offset_alignment: u32,
     pub min_storage_buffer_offset_alignment: u32,
     pub upload_buffer_texture_alignment: u32,
@@ -959,24 +955,4 @@ pub struct RafxDispatchIndirectCommand {
     pub group_count_x: u32,
     pub group_count_y: u32,
     pub group_count_z: u32,
-}
-
-/// A reference to a type which can be labeled for debugging purposes
-#[non_exhaustive]
-#[derive(Debug, Clone, Copy)]
-pub enum RafxDebugObject<'a> {
-    Buffer(&'a RafxBuffer),
-    Texture(&'a RafxTexture),
-}
-
-impl<'a> From<&'a RafxBuffer> for RafxDebugObject<'a> {
-    fn from(buffer: &'a RafxBuffer) -> Self {
-        RafxDebugObject::Buffer(buffer)
-    }
-}
-
-impl<'a> From<&'a RafxTexture> for RafxDebugObject<'a> {
-    fn from(texture: &'a RafxTexture) -> Self {
-        RafxDebugObject::Texture(texture)
-    }
 }

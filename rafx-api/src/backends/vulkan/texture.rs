@@ -3,6 +3,7 @@ use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
+use ash::vk::Handle;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -211,6 +212,20 @@ impl RafxTextureVulkan {
     // Used internally as part of the hash for creating/reusing framebuffers
     pub(crate) fn texture_id(&self) -> u32 {
         self.inner.texture_id
+    }
+
+    pub fn set_debug_name(
+        &self,
+        name: impl AsRef<str>,
+    ) {
+        if let Some(debug_reporter) = self.inner.device_context.debug_reporter() {
+            debug_reporter.set_object_debug_name(
+                &self.inner.device_context,
+                vk::ObjectType::IMAGE,
+                self.vk_image().as_raw(),
+                name,
+            );
+        }
     }
 
     pub fn is_in_initial_undefined_layout(&self) -> bool {

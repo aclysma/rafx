@@ -1089,7 +1089,22 @@ impl RafxCommandBuffer {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_begin_debug_label(name),
-            _ => {}
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => {}
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(inner) => {}
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(inner) => {}
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(_) => {}
         }
     }
 
@@ -1098,7 +1113,22 @@ impl RafxCommandBuffer {
         match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_end_debug_label(),
-            _ => {}
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => {}
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(inner) => {}
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(inner) => {}
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(_) => {}
         }
     }
 

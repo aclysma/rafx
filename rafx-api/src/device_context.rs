@@ -632,25 +632,6 @@ impl RafxDeviceContext {
         })
     }
 
-    /// Sets a name for an object. This is useful when debugging with a graphics debugger such as renderdoc
-    /// or nsight graphics.
-    ///
-    /// # Note
-    ///
-    /// Failure to set a name is not considered to be an error since it does not affect the functionality of the program.
-    /// Moreover, on platforms where this function is unsupported (whether because of rafx or the API), this function is a no-op.
-    pub fn set_object_name<'a, T: Into<RafxDebugObject<'a>>>(
-        &self,
-        object: T,
-        name: impl AsRef<str>,
-    ) {
-        match self {
-            #[cfg(feature = "rafx-vulkan")]
-            RafxDeviceContext::Vk(inner) => inner.set_object_name(object.into(), name),
-            _ => {}
-        }
-    }
-
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]

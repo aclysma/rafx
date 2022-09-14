@@ -169,7 +169,6 @@ impl RafxDeviceContextVulkanInner {
 
         let device_info = RafxDeviceInfo {
             supports_multithreaded_usage: true,
-            supports_debug_names: instance.debug_reporter.is_some(),
             min_uniform_buffer_offset_alignment: limits.min_uniform_buffer_offset_alignment as u32,
             min_storage_buffer_offset_alignment: limits.min_storage_buffer_offset_alignment as u32,
             upload_buffer_texture_alignment: limits.optimal_buffer_copy_offset_alignment as u32,
@@ -313,7 +312,7 @@ impl RafxDeviceContextVulkan {
         &self.inner.device
     }
 
-    pub fn debug_reporter(&self) -> Option<&VkDebugReporter> {
+    pub(super) fn debug_reporter(&self) -> Option<&VkDebugReporter> {
         self.inner.debug_reporter.as_deref()
     }
 
@@ -475,16 +474,6 @@ impl RafxDeviceContextVulkan {
     // ) -> RafxResult<RafxShaderModuleVulkan> {
     //     RafxShaderModuleVulkan::new_from_spv(self, spv)
     // }
-
-    pub fn set_object_name<T: AsRef<str>>(
-        &self,
-        object: RafxDebugObject,
-        name: T,
-    ) {
-        if let Some(debug_reporter) = &self.inner.debug_reporter {
-            debug_reporter.set_object_name(self, object, name);
-        }
-    }
 
     pub fn find_supported_format(
         &self,

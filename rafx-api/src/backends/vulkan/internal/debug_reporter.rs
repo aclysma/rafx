@@ -7,7 +7,6 @@ pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
 use crate::vulkan::{RafxCommandBufferVulkan, RafxDeviceContextVulkan};
-use crate::RafxDebugObject;
 
 const ERRORS_TO_IGNORE: [&str; 0] = [
     // Temporary - I suspect locally built validation on M1 mac has a bug
@@ -73,17 +72,18 @@ pub struct VkDebugReporter {
 impl VkDebugReporter {
     /// Sets a name for an object. This is useful when debugging with a graphics debugger such as renderdoc
     /// or nsight graphics.
-    pub fn set_object_name(
+    pub fn set_object_debug_name(
         &self,
         device: &RafxDeviceContextVulkan,
-        object: RafxDebugObject,
+        object_type: vk::ObjectType,
+        object_handle: u64,
         name: impl AsRef<str>,
     ) {
-        let cstring = CString::new(name.as_ref()).expect("Nul in object name");
+        let cstring = CString::new(name.as_ref()).expect("Null in object name");
 
         let name_info = vk::DebugUtilsObjectNameInfoEXT::builder()
-            .object_type(object.into())
-            .object_handle(object.into())
+            .object_type(object_type)
+            .object_handle(object_handle)
             .object_name(&cstring);
 
         unsafe {
@@ -100,7 +100,7 @@ impl VkDebugReporter {
         command_buffer: &RafxCommandBufferVulkan,
         name: T,
     ) {
-        let cstring = CString::new(name.as_ref()).expect("Nul in command buffer label");
+        let cstring = CString::new(name.as_ref()).expect("Null in command buffer label");
 
         let label_info = vk::DebugUtilsLabelEXT::builder().label_name(&cstring);
 

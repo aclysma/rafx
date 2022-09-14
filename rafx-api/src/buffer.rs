@@ -16,7 +16,7 @@ use crate::gles3::RafxBufferGles3;
 use crate::metal::RafxBufferMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxBufferVulkan;
-use crate::{RafxBufferDef, RafxDebugObject, RafxResult};
+use crate::{RafxBufferDef, RafxResult};
 
 /// Memory that can be accessed by the rendering API. It may reside in CPU or GPU memory.
 ///
@@ -221,16 +221,29 @@ impl RafxBuffer {
 
     /// Sets a name for this buffer. This is useful for debugging, graphics debuggers/profilers such
     /// as nsight graphics or renderdoc will display this buffer with the given name in the list of resources.
-    pub fn set_name(
+    pub fn set_debug_name(
         &self,
         name: impl AsRef<str>,
     ) {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxBuffer::Vk(inner) => inner
-                .device_context()
-                .set_object_name(RafxDebugObject::Buffer(self), name),
-            _ => {}
+            RafxBuffer::Vk(inner) => inner.set_debug_name(name),
+            #[cfg(feature = "rafx-metal")]
+            RafxBuffer::Metal(_) => {}
+            #[cfg(feature = "rafx-gles2")]
+            RafxBuffer::Gles2(_) => {}
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(_) => {}
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxBuffer::Empty(_) => {}
         }
     }
 
