@@ -98,6 +98,7 @@ impl MeshAdvBufferAssetTypeHandler {
                 resource_type: RafxResourceType::VERTEX_BUFFER,
                 ..Default::default()
             })?;
+        vertex_data_heap.set_debug_name("MeshAdv Vertex Data Heap");
         let vertex_data_heap = asset_manager
             .resource_manager()
             .resources()
@@ -113,6 +114,7 @@ impl MeshAdvBufferAssetTypeHandler {
                 resource_type: RafxResourceType::INDEX_BUFFER,
                 ..Default::default()
             })?;
+        index_data_heap.set_debug_name("MeshAdv Index Data Heap");
         let index_data_heap = asset_manager
             .resource_manager()
             .resources()

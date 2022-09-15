@@ -19,9 +19,9 @@ impl RafxBufferMetal {
 
     pub fn set_debug_name(
         &self,
-        _name: impl AsRef<str>,
+        name: impl AsRef<str>,
     ) {
-
+        self.metal_buffer().set_label(name.as_ref())
     }
 
     pub fn metal_buffer(&self) -> &metal_rs::BufferRef {

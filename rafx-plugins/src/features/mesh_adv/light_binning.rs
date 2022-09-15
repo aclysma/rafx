@@ -222,32 +222,32 @@ impl MeshAdvLightBinRenderResource {
         // One for CPU to write + GPU frames in flight
         let mut light_bounds_gpu_buffers = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT + 1);
         for _ in 0..=MAX_FRAMES_IN_FLIGHT {
-            light_bounds_gpu_buffers.push(resources.insert_buffer(
-                resources.device_context().create_buffer(&RafxBufferDef {
-                    size: std::mem::size_of::<lights_bin_comp::LightsInputListBuffer>() as u64,
-                    alignment: 256,
-                    memory_usage: RafxMemoryUsage::CpuToGpu,
-                    queue_type: RafxQueueType::Graphics,
-                    resource_type: RafxResourceType::BUFFER,
-                    ..Default::default()
-                })?,
-            ));
+            let buffer = resources.device_context().create_buffer(&RafxBufferDef {
+                size: std::mem::size_of::<lights_bin_comp::LightsInputListBuffer>() as u64,
+                alignment: 256,
+                memory_usage: RafxMemoryUsage::CpuToGpu,
+                queue_type: RafxQueueType::Graphics,
+                resource_type: RafxResourceType::BUFFER,
+                ..Default::default()
+            })?;
+            buffer.set_debug_name("Light Binning Lights Input List");
+            light_bounds_gpu_buffers.push(resources.insert_buffer(buffer));
         }
 
         // One per GPU frame in flight (CPU doesn't modify it)
         let mut output_gpu_buffers = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT + 1);
         for _ in 0..MAX_FRAMES_IN_FLIGHT {
-            output_gpu_buffers.push(resources.insert_buffer(
-                resources.device_context().create_buffer(&RafxBufferDef {
-                    size: std::mem::size_of::<lights_build_lists_comp::LightBuildListsOutputBuffer>(
-                    ) as u64,
-                    alignment: 256,
-                    memory_usage: RafxMemoryUsage::GpuOnly,
-                    queue_type: RafxQueueType::Graphics,
-                    resource_type: RafxResourceType::BUFFER_READ_WRITE,
-                    ..Default::default()
-                })?,
-            ));
+            let buffer = resources.device_context().create_buffer(&RafxBufferDef {
+                size: std::mem::size_of::<lights_build_lists_comp::LightBuildListsOutputBuffer>()
+                    as u64,
+                alignment: 256,
+                memory_usage: RafxMemoryUsage::GpuOnly,
+                queue_type: RafxQueueType::Graphics,
+                resource_type: RafxResourceType::BUFFER_READ_WRITE,
+                ..Default::default()
+            })?;
+            buffer.set_debug_name("Light Binning Output");
+            output_gpu_buffers.push(resources.insert_buffer(buffer));
         }
 
         Ok(MeshAdvLightBinRenderResource {
@@ -302,16 +302,18 @@ impl MeshAdvLightBinRenderResource {
 
             let allocator = resource_context.create_dyn_resource_allocator_set();
             let frustum_bounds_gpu_buffer =
-                allocator.insert_buffer(resource_context.device_context().create_buffer(
-                    &RafxBufferDef {
+                resource_context
+                    .device_context()
+                    .create_buffer(&RafxBufferDef {
                         size: std::mem::size_of::<lights_bin_comp::BinLightsConfigBuffer>() as u64,
                         alignment: 256,
                         memory_usage: RafxMemoryUsage::CpuToGpu,
                         queue_type: RafxQueueType::Graphics,
                         resource_type: RafxResourceType::BUFFER,
                         ..Default::default()
-                    },
-                )?);
+                    })?;
+            frustum_bounds_gpu_buffer.set_debug_name("Light Binning Config");
+            let frustum_bounds_gpu_buffer = allocator.insert_buffer(frustum_bounds_gpu_buffer);
 
             frustum_bounds_gpu_buffer
                 .get_raw()

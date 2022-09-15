@@ -297,6 +297,7 @@ impl FontAtlasCache {
                         mip_count,
                         ..Default::default()
                     })?;
+            texture.set_debug_name(format!("Font Atlas Texture {:?}", font));
 
             let image = dyn_resource_allocator.insert_texture(texture);
             let image_view = dyn_resource_allocator.insert_image_view(&image, None)?;

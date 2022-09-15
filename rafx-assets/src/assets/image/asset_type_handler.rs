@@ -54,6 +54,9 @@ impl AssetTypeHandler for ImageAssetTypeHandler {
             match result {
                 ImageAssetUploadOpResult::UploadComplete(load_op, result_tx, texture) => {
                     log::trace!("Uploading image {:?} complete", load_op.load_handle());
+
+                    texture.set_debug_name(&format!("Image Asset {:?}", load_op.load_handle()));
+
                     let loaded_asset = finish_load_image(asset_manager, texture);
                     crate::assets::asset_type_handler::handle_load_result(
                         load_op,

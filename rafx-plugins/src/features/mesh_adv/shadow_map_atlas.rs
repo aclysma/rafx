@@ -166,6 +166,7 @@ impl ShadowMapAtlas {
             mip_count: 1,
             sample_count: RafxSampleCount::SampleCount1,
         })?;
+        image.set_debug_name("Shadow Map Atlas");
 
         let image = resources.insert_image(image);
         let image_view = resources.get_or_create_image_view(&image, None)?;

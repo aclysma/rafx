@@ -84,9 +84,9 @@ impl RafxTextureMetal {
 
     pub fn set_debug_name(
         &self,
-        _name: impl AsRef<str>,
+        name: impl AsRef<str>,
     ) {
-
+        self.metal_texture().set_label(name.as_ref());
     }
 
     pub fn new(

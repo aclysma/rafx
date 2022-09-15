@@ -216,6 +216,7 @@ impl MaterialDB {
                     resource_type: RafxResourceType::BUFFER,
                     ..Default::default()
                 })?;
+        material_data_sbo.set_debug_name("MeshAdv Material Data");
 
         let mapped = material_data_sbo.map_buffer()?;
         let all_materials = unsafe {

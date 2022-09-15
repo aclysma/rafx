@@ -208,6 +208,7 @@ pub(super) fn generate_render_graph(
                         dimensions: RafxTextureDimensions::Dim2D,
                         ..Default::default()
                     })?;
+            taa_history_rt.set_debug_name("TAA History RT");
             let taa_history_rt = asset_manager.resources().insert_image(taa_history_rt);
             let taa_history_rt = asset_manager
                 .resources()
