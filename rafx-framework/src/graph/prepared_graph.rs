@@ -341,7 +341,7 @@ impl PreparedRenderGraph {
             log::trace!("Execute pass name: {:?}", pass.debug_name());
 
             if let Some(name) = pass.debug_name() {
-                command_buffer.cmd_begin_debug_label(name);
+                command_buffer.cmd_push_group_debug_name(name);
             }
 
             let node_id = pass.node();
@@ -440,7 +440,7 @@ impl PreparedRenderGraph {
             }
 
             if pass.debug_name().is_some() {
-                command_buffer.cmd_end_debug_label();
+                command_buffer.cmd_pop_group_debug_name();
             }
         }
 

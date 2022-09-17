@@ -1080,17 +1080,17 @@ impl RafxCommandBuffer {
         }
     }
 
-    /// Begins labeling the following commands with the given name until [`cmd_end_debug_label`] is called.
+    /// Begins labeling the following commands with the given name until [`cmd_pop_group_debug_name`] is called.
     /// This is useful for grouping together commands for use in a debugger.
-    pub fn cmd_begin_debug_label<T: AsRef<str>>(
+    pub fn cmd_push_group_debug_name<T: AsRef<str>>(
         &self,
         name: T,
     ) {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxCommandBuffer::Vk(inner) => inner.cmd_begin_debug_label(name),
+            RafxCommandBuffer::Vk(inner) => inner.cmd_push_group_debug_name(name),
             #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => inner.cmd_begin_debug_label(name),
+            RafxCommandBuffer::Metal(inner) => inner.cmd_push_group_debug_name(name),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => {}
             #[cfg(feature = "rafx-gles3")]
@@ -1108,13 +1108,13 @@ impl RafxCommandBuffer {
         }
     }
 
-    /// Ends a debug label that was started with [`cmd_begin_debug_label`].
-    pub fn cmd_end_debug_label(&self) {
+    /// Ends a debug label that was started with [`cmd_push_group_debug_name`].
+    pub fn cmd_pop_group_debug_name(&self) {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxCommandBuffer::Vk(inner) => inner.cmd_end_debug_label(),
+            RafxCommandBuffer::Vk(inner) => inner.cmd_pop_group_debug_name(),
             #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => inner.cmd_end_debug_label(),
+            RafxCommandBuffer::Metal(inner) => inner.cmd_pop_group_debug_name(),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(inner) => {}
             #[cfg(feature = "rafx-gles3")]

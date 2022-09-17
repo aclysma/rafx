@@ -66,6 +66,7 @@ impl VkInstance {
         app_name: &CString,
         require_validation_layers_present: bool,
         validation_layer_debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
+        enable_debug_names: bool,
     ) -> Result<VkInstance, VkCreateInstanceError> {
         // Determine the supported version of vulkan that's available
         let vulkan_version = match entry.try_enumerate_instance_version()? {
@@ -196,8 +197,10 @@ impl VkInstance {
         let instance: ash::Instance = unsafe { entry.create_instance(&create_info, None)? };
 
         // Setup the debug callback for the validation layer
-        let debug_reporter = if !validation_layer_debug_report_flags.is_empty() {
-            Some(Self::setup_vulkan_debug_callback(
+        let debug_reporter_required =
+            enable_debug_names || !validation_layer_debug_report_flags.is_empty();
+        let debug_reporter = if debug_reporter_required {
+            Some(Self::setup_vulkan_debug_reporter(
                 &entry,
                 &instance,
                 validation_layer_debug_report_flags,
@@ -246,7 +249,7 @@ impl VkInstance {
     }
 
     /// This is used to setup a debug callback for logging validation errors
-    fn setup_vulkan_debug_callback<E: EntryV1_0, I: InstanceV1_0>(
+    fn setup_vulkan_debug_reporter<E: EntryV1_0, I: InstanceV1_0>(
         entry: &E,
         instance: &I,
         debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,

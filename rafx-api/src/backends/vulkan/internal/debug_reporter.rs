@@ -95,7 +95,7 @@ impl VkDebugReporter {
     }
 
     /// Begins a named debug region inside a command buffer.
-    pub fn cmd_begin_debug_label<T: AsRef<str>>(
+    pub fn cmd_push_group_debug_name<T: AsRef<str>>(
         &self,
         command_buffer: &RafxCommandBufferVulkan,
         name: T,
@@ -112,7 +112,7 @@ impl VkDebugReporter {
     }
 
     /// Ends a previous named debug region inside a command buffer.
-    pub fn cmd_end_debug_label(
+    pub fn cmd_pop_group_debug_name(
         &self,
         command_buffer: &RafxCommandBufferVulkan,
     ) {

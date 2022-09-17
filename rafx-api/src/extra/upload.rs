@@ -67,7 +67,10 @@ impl RafxUploadBufferPool {
                 resource_type: RafxResourceType::BUFFER,
                 ..Default::default()
             })?;
-            buffer.set_debug_name(format!("RafxUploadBufferPool {}", i));
+            if device_context.device_info().debug_names_enabled {
+                buffer.set_debug_name(format!("RafxUploadBufferPool {}", i));
+            }
+
             unused_buffers.push(buffer);
         }
 

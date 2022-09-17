@@ -218,13 +218,15 @@ impl RafxTextureVulkan {
         &self,
         name: impl AsRef<str>,
     ) {
-        if let Some(debug_reporter) = self.inner.device_context.debug_reporter() {
-            debug_reporter.set_object_debug_name(
-                &self.inner.device_context,
-                vk::ObjectType::IMAGE,
-                self.vk_image().as_raw(),
-                name,
-            );
+        if self.inner.device_context.device_info().debug_names_enabled {
+            if let Some(debug_reporter) = self.inner.device_context.debug_reporter() {
+                debug_reporter.set_object_debug_name(
+                    &self.inner.device_context,
+                    vk::ObjectType::IMAGE,
+                    self.vk_image().as_raw(),
+                    name,
+                );
+            }
         }
     }
 

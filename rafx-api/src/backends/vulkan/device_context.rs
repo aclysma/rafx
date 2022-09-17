@@ -120,7 +120,7 @@ impl Drop for RafxDeviceContextVulkanInner {
 impl RafxDeviceContextVulkanInner {
     pub fn new(
         instance: &VkInstance,
-        physical_device_features: &Option<vk::PhysicalDeviceFeatures>,
+        vk_api_def: &RafxApiDefVulkan,
     ) -> RafxResult<Self> {
         let physical_device_type_priority = vec![
             PhysicalDeviceType::DiscreteGpu,
@@ -146,7 +146,7 @@ impl RafxDeviceContextVulkanInner {
             physical_device,
             &physical_device_info,
             &queue_requirements,
-            physical_device_features,
+            &vk_api_def.physical_device_features,
         )?;
 
         let queue_allocator = VkQueueAllocatorSet::new(
@@ -167,8 +167,14 @@ impl RafxDeviceContextVulkanInner {
 
         let limits = &physical_device_info.properties.limits;
 
+        // Debug names should be enable if explicitly opted-in and available (i.e. we created a
+        // debug reporter)
+        let debug_names_enabled =
+            vk_api_def.enable_debug_names && instance.debug_reporter.is_some();
+
         let device_info = RafxDeviceInfo {
             supports_multithreaded_usage: true,
+            debug_names_enabled,
             min_uniform_buffer_offset_alignment: limits.min_uniform_buffer_offset_alignment as u32,
             min_storage_buffer_offset_alignment: limits.min_storage_buffer_offset_alignment as u32,
             upload_buffer_texture_alignment: limits.optimal_buffer_copy_offset_alignment as u32,

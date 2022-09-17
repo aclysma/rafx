@@ -37,7 +37,7 @@ pub struct RafxCommandBufferMetalInner {
     compute_threads_per_group_x: u32,
     compute_threads_per_group_y: u32,
     compute_threads_per_group_z: u32,
-    debug_labels: Vec<String>,
+    group_debug_name_stack: Vec<String>,
 }
 
 unsafe impl Send for RafxCommandBufferMetalInner {}
@@ -123,7 +123,7 @@ impl RafxCommandBufferMetal {
             current_index_buffer_byte_offset: 0,
             current_index_buffer_type: MTLIndexType::UInt16,
             current_index_buffer_stride: 0,
-            debug_labels: Default::default(),
+            group_debug_name_stack: Default::default(),
         };
 
         Ok(RafxCommandBufferMetal {
@@ -259,8 +259,8 @@ impl RafxCommandBufferMetal {
                 .unwrap()
                 .new_render_command_encoder(descriptor);
 
-            for label in &inner.debug_labels {
-                render_encoder.push_debug_group(label);
+            for group_debug_name in &inner.group_debug_name_stack {
+                render_encoder.push_debug_group(group_debug_name);
             }
 
             inner.render_encoder = Some(render_encoder.to_owned());
@@ -468,8 +468,8 @@ impl RafxCommandBufferMetal {
                             .unwrap()
                             .new_compute_command_encoder();
 
-                        for label in &inner.debug_labels {
-                            compute_encoder.push_debug_group(label);
+                        for group_debug_name in &inner.group_debug_name_stack {
+                            compute_encoder.push_debug_group(group_debug_name);
                         }
 
                         inner.compute_encoder = Some(compute_encoder.to_owned());
@@ -1086,8 +1086,8 @@ impl RafxCommandBufferMetal {
             .unwrap()
             .new_blit_command_encoder();
 
-        for label in &inner.debug_labels {
-            encoder.push_debug_group(label);
+        for group_debug_name in &inner.group_debug_name_stack {
+            encoder.push_debug_group(group_debug_name);
         }
 
         encoder.to_owned()
@@ -1169,12 +1169,12 @@ impl RafxCommandBufferMetal {
         Ok(())
     }
 
-    pub fn cmd_begin_debug_label<T: AsRef<str>>(
+    pub fn cmd_push_group_debug_name<T: AsRef<str>>(
         &self,
         name: T,
     ) {
         let mut inner = self.inner.borrow_mut();
-        inner.debug_labels.push(name.as_ref().to_owned());
+        inner.group_debug_name_stack.push(name.as_ref().to_owned());
 
         if let Some(encoder) = &inner.render_encoder {
             encoder.push_debug_group(name.as_ref());
@@ -1185,9 +1185,9 @@ impl RafxCommandBufferMetal {
         }
     }
 
-    pub fn cmd_end_debug_label(&self) {
+    pub fn cmd_pop_group_debug_name(&self) {
         let mut inner = self.inner.borrow_mut();
-        inner.debug_labels.pop();
+        inner.group_debug_name_stack.pop();
 
         if let Some(encoder) = &inner.render_encoder {
             encoder.pop_debug_group();

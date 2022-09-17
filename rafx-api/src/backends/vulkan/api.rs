@@ -45,6 +45,9 @@ pub struct RafxApiDefVulkan {
 
     /// Override the default enabled features with a custom set of features
     pub physical_device_features: Option<vk::PhysicalDeviceFeatures>,
+
+    /// If possible, enable the tagging of vulkan objects with debug names.
+    pub enable_debug_names: bool,
     // The OS-specific layers/extensions are already included. Debug layers/extension are included
     // if enable_validation is true
     //TODO: Additional instance layer names
@@ -59,6 +62,7 @@ impl Default for RafxApiDefVulkan {
             link_method: Default::default(),
             validation_mode: Default::default(),
             physical_device_features: None,
+            enable_debug_names: false,
         }
     }
 }
@@ -121,12 +125,10 @@ impl RafxApiVulkan {
             &app_name,
             require_validation_layers_present,
             validation_layer_debug_report_flags,
+            vk_api_def.enable_debug_laels,
         )?;
 
-        let inner = Arc::new(RafxDeviceContextVulkanInner::new(
-            &instance,
-            &vk_api_def.physical_device_features,
-        )?);
+        let inner = Arc::new(RafxDeviceContextVulkanInner::new(&instance, &vk_api_def)?);
         let device_context = RafxDeviceContextVulkan::new(inner)?;
 
         Ok(RafxApiVulkan {

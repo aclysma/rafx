@@ -59,7 +59,13 @@ impl AssetTypeHandler for BufferAssetTypeHandler {
                 BufferAssetUploadOpResult::UploadComplete(load_op, result_tx, buffer) => {
                     log::trace!("Uploading buffer {:?} complete", load_op.load_handle());
 
-                    buffer.set_debug_name(&format!("Buffer Asset {:?}", load_op.load_handle()));
+                    if asset_manager
+                        .device_context()
+                        .device_info()
+                        .debug_names_enabled
+                    {
+                        buffer.set_debug_name(&format!("Buffer Asset {:?}", load_op.load_handle()));
+                    }
 
                     let loaded_asset = finish_load_buffer(asset_manager, buffer);
                     crate::assets::asset_type_handler::handle_load_result(

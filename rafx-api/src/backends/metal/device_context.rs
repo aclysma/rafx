@@ -1,8 +1,8 @@
 use crate::{
-    RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef, RafxDeviceContext,
-    RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType, RafxResourceType,
-    RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef, RafxShaderModuleDefMetal,
-    RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
+    RafxApiDefMetal, RafxBufferDef, RafxComputePipelineDef, RafxDescriptorSetArrayDef,
+    RafxDeviceContext, RafxDeviceInfo, RafxFormat, RafxGraphicsPipelineDef, RafxQueueType,
+    RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef,
+    RafxShaderModuleDefMetal, RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
@@ -47,9 +47,10 @@ impl Drop for RafxDeviceContextMetalInner {
 }
 
 impl RafxDeviceContextMetalInner {
-    pub fn new() -> RafxResult<Self> {
+    pub fn new(metal_api_def: &RafxApiDefMetal) -> RafxResult<Self> {
         let device_info = RafxDeviceInfo {
             supports_multithreaded_usage: true,
+            debug_names_enabled: metal_api_def.enable_debug_names,
             // pretty sure this is consistent across macOS device (maybe not M1, not sure)
             min_uniform_buffer_offset_alignment: 256,
             // based on one of the loosest vulkan limits (intel iGPU), can't find official value
