@@ -259,7 +259,8 @@ fn run() -> RafxResult<()> {
             //
             let mut graph_builder = RenderGraphBuilder::default();
 
-            let node = graph_builder.add_node("opaque", RenderGraphQueue::DefaultGraphics);
+            let node =
+                graph_builder.add_renderpass_node("opaque", RenderGraphQueue::DefaultGraphics);
             let color_attachment = graph_builder.create_color_attachment(
                 node,
                 0,
