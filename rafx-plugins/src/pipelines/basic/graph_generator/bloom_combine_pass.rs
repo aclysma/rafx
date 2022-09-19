@@ -31,7 +31,7 @@ pub(super) fn bloom_combine_pass(
         .clone();
     let node = context
         .graph
-        .add_node("BloomCombine", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("BloomCombine", RenderGraphQueue::DefaultGraphics);
 
     let color = context.graph.create_color_attachment(
         node,

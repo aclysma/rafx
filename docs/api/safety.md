@@ -96,7 +96,7 @@ The Render Graph Triangle example shows a simple render graph with one step.
 
 ```rust
 // Create a renderpass with a single color attachment
-let node = graph_builder.add_node("opaque", RenderGraphQueue::DefaultGraphics);
+let node = graph_builder.add_renderpass_node("opaque", RenderGraphQueue::DefaultGraphics);
 let color_attachment = graph_builder.create_color_attachment(
    node,
    0,

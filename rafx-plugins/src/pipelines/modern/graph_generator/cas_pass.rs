@@ -19,7 +19,7 @@ pub(super) fn cas_pass(
 ) -> CasPass {
     let node = context
         .graph
-        .add_node("Cas", RenderGraphQueue::DefaultGraphics);
+        .add_callback_node("Cas", RenderGraphQueue::DefaultGraphics);
 
     let src_rt = context.graph.read_storage_image(
         node,

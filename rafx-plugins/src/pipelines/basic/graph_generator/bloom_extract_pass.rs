@@ -23,7 +23,7 @@ pub(super) fn bloom_extract_pass(
 ) -> BloomExtractPass {
     let node = context
         .graph
-        .add_node("BloomExtract", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("BloomExtract", RenderGraphQueue::DefaultGraphics);
 
     let sdr_image = context.graph.create_color_attachment(
         node,

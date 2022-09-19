@@ -92,7 +92,7 @@ pub(super) fn depth_pyramid_pass(
     for dst_mip_level in 1..mip_levels {
         let node = context
             .graph
-            .add_node("DepthPyramid", RenderGraphQueue::DefaultGraphics);
+            .add_callback_node("DepthPyramid", RenderGraphQueue::DefaultGraphics);
 
         let input_width = 1.max(swapchain_extents.width >> (dst_mip_level - 1));
         let input_height = 1.max(swapchain_extents.height >> (dst_mip_level - 1));

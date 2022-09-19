@@ -434,19 +434,6 @@ impl PreparedRenderGraph {
                     self.visit_callback_node(node_id, args)?;
                 }
             }
-
-            if let Some(post_pass_barrier) = pass.post_pass_barrier() {
-                log::trace!(
-                    "postpass barriers for pass {} {:?}",
-                    pass_index,
-                    pass.debug_name()
-                );
-                self.insert_barriers(
-                    &command_buffer,
-                    &post_pass_barrier.buffer_barriers,
-                    &post_pass_barrier.image_barriers,
-                )?;
-            }
         }
 
         command_buffer.end()?;

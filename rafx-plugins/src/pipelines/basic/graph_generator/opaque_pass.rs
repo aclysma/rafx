@@ -22,7 +22,7 @@ pub(super) fn opaque_pass(
 ) -> OpaquePass {
     let node = context
         .graph
-        .add_node("Opaque", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("Opaque", RenderGraphQueue::DefaultGraphics);
 
     let color = context.graph.create_color_attachment(
         node,

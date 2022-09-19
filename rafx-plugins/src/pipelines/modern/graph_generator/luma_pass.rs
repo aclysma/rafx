@@ -24,7 +24,7 @@ pub(super) fn luma_build_histogram_pass(
 ) -> LumaBuildHistogramPass {
     let node = context
         .graph
-        .add_node("LumaBuildHistogram", RenderGraphQueue::DefaultGraphics);
+        .add_callback_node("LumaBuildHistogram", RenderGraphQueue::DefaultGraphics);
 
     let luma_histogram_data = context.graph.create_storage_buffer(
         node,
@@ -123,7 +123,7 @@ pub(super) fn luma_average_histogram_pass(
 ) -> LumaAverageHistogramPass {
     let node = context
         .graph
-        .add_node("LumaAverageHistogram", RenderGraphQueue::DefaultGraphics);
+        .add_callback_node("LumaAverageHistogram", RenderGraphQueue::DefaultGraphics);
 
     let luma_histogram_data = context.graph.read_storage_buffer(
         node,

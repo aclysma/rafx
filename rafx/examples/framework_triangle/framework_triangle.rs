@@ -227,7 +227,8 @@ fn run() -> RafxResult<()> {
             //
             let mut graph_builder = RenderGraphBuilder::default();
 
-            let node = graph_builder.add_node("opaque", RenderGraphQueue::DefaultGraphics);
+            let node =
+                graph_builder.add_renderpass_node("opaque", RenderGraphQueue::DefaultGraphics);
             let color_attachment = graph_builder.create_color_attachment(
                 node,
                 0,
@@ -248,6 +249,7 @@ fn run() -> RafxResult<()> {
             //
             let captured_vertex_layout = vertex_layout.clone();
             let captured_material_pass = material_pass.clone();
+
             graph_builder.set_renderpass_callback(node, move |args| {
                 let vertex_layout = &captured_vertex_layout;
                 let material_pass = &captured_material_pass;

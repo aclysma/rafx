@@ -17,7 +17,7 @@ pub(super) fn debug_pip_pass(
     // This node has a single color attachment
     let node = context
         .graph
-        .add_node("DebugPip", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("DebugPip", RenderGraphQueue::DefaultGraphics);
     let color = context.graph.modify_color_attachment(
         node,
         previous_pass_color,

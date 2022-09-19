@@ -228,6 +228,8 @@ impl RenderGraphBuilder {
         color_attachment_index: usize,
         color_attachment: RenderGraphPassColorAttachmentInfo,
     ) {
+        assert_eq!(self.node(node).kind, RenderGraphNodeKind::Renderpass);
+
         //TODO: Check constraint does not conflict with the matching resolve attachment, if there is one
         let node_color_attachments = &mut self.nodes[node.0].color_attachments;
         if node_color_attachments.len() <= color_attachment_index {
@@ -243,6 +245,8 @@ impl RenderGraphBuilder {
         node: RenderGraphNodeId,
         depth_attachment: RenderGraphPassDepthAttachmentInfo,
     ) {
+        assert_eq!(self.node(node).kind, RenderGraphNodeKind::Renderpass);
+
         let node_depth_attachment = &mut self.nodes[node.0].depth_attachment;
         assert!(node_depth_attachment.is_none());
         *node_depth_attachment = Some(depth_attachment);
@@ -254,6 +258,8 @@ impl RenderGraphBuilder {
         resolve_attachment_index: usize,
         resolve_attachment: RenderGraphPassResolveAttachmentInfo,
     ) {
+        assert_eq!(self.node(node).kind, RenderGraphNodeKind::Renderpass);
+
         //TODO: Check constraint is non-MSAA and is not conflicting with the matching color attachment, if there is one
         let node_resolve_attachments = &mut self.nodes[node.0].resolve_attachments;
         if node_resolve_attachments.len() <= resolve_attachment_index {
@@ -677,6 +683,7 @@ impl RenderGraphBuilder {
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
+        assert_eq!(self.node(node).kind, RenderGraphNodeKind::Renderpass);
         constraint.resource_type |= RafxResourceType::VERTEX_BUFFER;
 
         let usage = self.add_buffer_read(node, buffer, constraint);
@@ -691,6 +698,7 @@ impl RenderGraphBuilder {
         buffer: RenderGraphBufferUsageId,
         mut constraint: RenderGraphBufferConstraint,
     ) -> RenderGraphBufferUsageId {
+        assert_eq!(self.node(node).kind, RenderGraphNodeKind::Renderpass);
         constraint.resource_type |= RafxResourceType::INDEX_BUFFER;
 
         let usage = self.add_buffer_read(node, buffer, constraint);
@@ -817,7 +825,7 @@ impl RenderGraphBuilder {
             RafxLoadOp::Load => unimplemented!("RafxLoadOp::Load not supported in create_storage_buffer call. Use modify_storage_image instead."),
             RafxLoadOp::Clear => {
                 // Add a node to clear the buffer
-                let clear_node = self.add_node("create_storage_buffer_clear", self.node(node).queue);
+                let clear_node = self.add_callback_node("create_storage_buffer_clear", self.node(node).queue);
                 let cleared_buffer = self.add_buffer_create(clear_node, constraint);
                 self.node_mut(clear_node).storage_buffer_creates.push(cleared_buffer);
                 self.setup_buffer_clear_callback(clear_node, cleared_buffer);
@@ -869,7 +877,7 @@ impl RenderGraphBuilder {
             RafxLoadOp::Clear => {
                 // Add a node to clear the buffer
                 let clear_node =
-                    self.add_node("modify_storage_buffer_clear", self.node(node).queue);
+                    self.add_callback_node("modify_storage_buffer_clear", self.node(node).queue);
                 let (cleared_buffer_read, cleared_buffer_write) =
                     self.add_buffer_modify(clear_node, buffer, constraint);
                 self.node_mut(clear_node)
@@ -1144,7 +1152,7 @@ impl RenderGraphBuilder {
         dst_buffer: Option<RenderGraphBufferUsageId>,
         params: Option<RafxCmdCopyBufferToBufferParams>,
     ) -> RenderGraphBufferUsageId {
-        let node = self.add_node(name, queue);
+        let node = self.add_callback_node(name, queue);
         let src_buffer = self.read_copy_src_buffer(node, src_buffer, Default::default());
         let dst_buffer = if let Some(dst_buffer) = dst_buffer {
             self.write_copy_dst_buffer(node, dst_buffer, Default::default())
@@ -1211,7 +1219,7 @@ impl RenderGraphBuilder {
         dst_image: Option<RenderGraphImageUsageId>,
         params: Option<RafxCmdCopyTextureToTextureParams>,
     ) -> RenderGraphImageUsageId {
-        let node = self.add_node(name, queue);
+        let node = self.add_callback_node(name, queue);
 
         let array_slices = params.as_ref().map(|x| x.array_slices).flatten();
         let src_image = self.read_copy_src_image(
@@ -1301,7 +1309,7 @@ impl RenderGraphBuilder {
         dst_min_uv: glam::Vec2,
         dst_max_uv: glam::Vec2,
     ) -> RenderGraphImageUsageId {
-        let node = self.add_node(name, queue);
+        let node = self.add_renderpass_node(name, queue);
         let src_image = self.sample_image(node, src_image, Default::default(), Default::default());
         let dst_image = self.modify_color_attachment(
             node,
@@ -1333,24 +1341,43 @@ impl RenderGraphBuilder {
         dst_image
     }
 
-    // Add a node which can use resources
-    pub fn add_node(
+    pub fn add_renderpass_node(
         &mut self,
         name: RenderGraphNodeName,
         queue: RenderGraphQueue,
     ) -> RenderGraphNodeId {
+        self.add_node(name, RenderGraphNodeKind::Renderpass, queue)
+    }
+
+    pub fn add_callback_node(
+        &mut self,
+        name: RenderGraphNodeName,
+        queue: RenderGraphQueue,
+    ) -> RenderGraphNodeId {
+        self.add_node(name, RenderGraphNodeKind::Callback, queue)
+    }
+
+    // Add a node which can use resources
+    pub fn add_node(
+        &mut self,
+        name: RenderGraphNodeName,
+        kind: RenderGraphNodeKind,
+        queue: RenderGraphQueue,
+    ) -> RenderGraphNodeId {
         let node = RenderGraphNodeId(self.nodes.len());
         self.nodes
-            .push(RenderGraphNode::new(node, Some(name), queue));
+            .push(RenderGraphNode::new(node, Some(name), kind, queue));
         node
     }
 
     pub fn add_node_unnamed(
         &mut self,
+        kind: RenderGraphNodeKind,
         queue: RenderGraphQueue,
     ) -> RenderGraphNodeId {
         let node = RenderGraphNodeId(self.nodes.len());
-        self.nodes.push(RenderGraphNode::new(node, None, queue));
+        self.nodes
+            .push(RenderGraphNode::new(node, None, kind, queue));
         node
     }
 
@@ -1423,6 +1450,7 @@ impl RenderGraphBuilder {
     ) where
         CallbackFnT: Fn(VisitRenderpassNodeArgs) -> RafxResult<()> + 'static + Send,
     {
+        assert_eq!(self.node(node_id).kind, RenderGraphNodeKind::Renderpass);
         let old = self.visit_node_callbacks.insert(
             node_id,
             RenderGraphNodeVisitNodeCallback::Render(Box::new(f)),
@@ -1439,6 +1467,7 @@ impl RenderGraphBuilder {
     ) where
         CallbackFnT: Fn(VisitComputeNodeArgs) -> RafxResult<()> + 'static + Send,
     {
+        assert_eq!(self.node(node_id).kind, RenderGraphNodeKind::Callback);
         let old = self.visit_node_callbacks.insert(
             node_id,
             RenderGraphNodeVisitNodeCallback::Callback(Box::new(f)),

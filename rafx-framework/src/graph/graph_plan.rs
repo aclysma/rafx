@@ -1374,7 +1374,7 @@ fn build_physical_passes(
 ) -> Vec<RenderGraphPass> {
     #[derive(Debug)]
     enum PassNode {
-        RenderNode(RenderGraphNodeId),
+        RenderpassNode(RenderGraphNodeId),
         CallbackNode(RenderGraphNodeId),
     }
 
@@ -1382,10 +1382,9 @@ fn build_physical_passes(
     let mut pass_nodes = Vec::default();
 
     for node_id in node_execution_order {
-        let pass_node = match graph.visit_node_callbacks.get(node_id) {
-            Some(RenderGraphNodeVisitNodeCallback::Render(_)) => PassNode::RenderNode(*node_id),
-            // If no callback is registered just take the callback path but don't do a callback
-            _ => PassNode::CallbackNode(*node_id),
+        let pass_node = match graph.node(*node_id).kind {
+            RenderGraphNodeKind::Renderpass => PassNode::RenderpassNode(*node_id),
+            RenderGraphNodeKind::Callback => PassNode::CallbackNode(*node_id),
         };
         pass_nodes.push(pass_node);
     }
@@ -1437,7 +1436,7 @@ fn build_physical_passes(
                     pre_pass_barrier: Default::default(),
                 }));
             }
-            PassNode::RenderNode(renderpass_node) => {
+            PassNode::RenderpassNode(renderpass_node) => {
                 let mut renderpass_attachments = Vec::default();
 
                 log::trace!("    subpass node: {:?}", renderpass_node);
@@ -1626,7 +1625,6 @@ fn build_physical_passes(
                     depth_attachment: pass_depth_attachment,
                     resolve_attachments: pass_resolve_attachments,
                     pre_pass_barrier: None,
-                    post_pass_barrier: None,
                 }));
             }
         }
@@ -2252,11 +2250,18 @@ fn build_node_barriers(
     node_execution_order: &[RenderGraphNodeId],
     _constraints: &DetermineConstraintsResult,
     physical_resources: &AssignPhysicalResourcesResult,
+    builtin_final_node: RenderGraphNodeId,
 ) -> FnvHashMap<RenderGraphNodeId, RenderGraphNodeResourceBarriers> {
     let mut resource_barriers =
         FnvHashMap::<RenderGraphNodeId, RenderGraphNodeResourceBarriers>::default();
 
     for node_id in node_execution_order {
+        // A special final node is added to every graph to handle transitioning any output
+        // images/buffers to their final state, so break out here and handle logic for this below
+        if *node_id == builtin_final_node {
+            break;
+        }
+
         let node = graph.node(*node_id);
         let mut image_node_barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers> =
             Default::default();
@@ -2456,6 +2461,47 @@ fn build_node_barriers(
             },
         );
     }
+
+    // A special final node is added to every graph to handle transitioning any output
+    // images/buffers to their final state. We handle setting up the required barriers for that
+    // node here.
+    let _builtin_final_node = graph.node(builtin_final_node);
+    let mut final_image_node_barriers: FnvHashMap<PhysicalImageId, RenderGraphPassImageBarriers> =
+        Default::default();
+    let mut final_buffer_node_barriers: FnvHashMap<
+        PhysicalBufferId,
+        RenderGraphPassBufferBarriers,
+    > = Default::default();
+
+    for external_image in &graph.external_images {
+        if let Some(output_usage) = external_image.output_usage {
+            add_image_barrier_for_node(
+                physical_resources,
+                &mut final_image_node_barriers,
+                output_usage,
+                external_image.final_state,
+            );
+        }
+    }
+
+    for external_buffer in &graph.external_buffers {
+        if let Some(output_usage) = external_buffer.output_usage {
+            add_buffer_barrier_for_node(
+                physical_resources,
+                &mut final_buffer_node_barriers,
+                output_usage,
+                external_buffer.final_state,
+            );
+        }
+    }
+
+    resource_barriers.insert(
+        builtin_final_node,
+        RenderGraphNodeResourceBarriers {
+            image_barriers: final_image_node_barriers,
+            buffer_barriers: final_buffer_node_barriers,
+        },
+    );
 
     resource_barriers
 }
@@ -2668,56 +2714,6 @@ fn build_pass_barriers(
 
             pass.set_pre_pass_barrier(barrier);
         }
-
-        // TODO: Figure out how to handle output images
-        // TODO: This only works if no one else reads it?
-        // TODO: Do we need to do something like this for buffers?
-        log::trace!("Check for output images");
-        for external_image in &graph.external_images {
-            if let Some(output_usage) = external_image.output_usage {
-                if graph.image_version_info(output_usage).creator_node == subpass_node_id {
-                    let output_physical_image =
-                        physical_resources.image_usage_to_physical[&output_usage];
-                    log::trace!(
-                        "External image {:?} usage {:?} created by node {:?} physical image {:?}",
-                        external_image.external_image_id,
-                        output_usage,
-                        subpass_node_id,
-                        output_physical_image
-                    );
-
-                    if let RenderGraphPass::Render(pass) = pass {
-                        let mut image_barriers = vec![];
-
-                        for (attachment_index, attachment) in
-                            &mut pass.attachments.iter_mut().enumerate()
-                        {
-                            if attachment.image.unwrap() == output_physical_image {
-                                log::trace!("  attachment {}", attachment_index);
-
-                                if attachment.final_state != external_image.final_state {
-                                    image_barriers.push(PrepassImageBarrier {
-                                        image: attachment.image.unwrap(),
-                                        old_state: attachment.final_state.into(),
-                                        new_state: external_image.final_state.into(),
-                                    })
-                                }
-                            }
-                        }
-
-                        if !image_barriers.is_empty() {
-                            pass.post_pass_barrier = Some(PostpassBarrier {
-                                buffer_barriers: vec![],
-                                image_barriers,
-                            });
-                        }
-                    }
-                    //TODO: Need a 0 -> EXTERNAL dependency here?
-                }
-            }
-        }
-
-        //TODO: Need to do a dependency? Maybe by adding a flush?
     }
 }
 
@@ -2846,7 +2842,6 @@ fn create_output_passes(
                     node_id: pass.node_id,
                     attachment_images,
                     pre_pass_barrier: pass.pre_pass_barrier,
-                    post_pass_barrier: pass.post_pass_barrier,
                     debug_name,
                     color_render_targets,
                     depth_stencil_render_target,
@@ -2859,7 +2854,6 @@ fn create_output_passes(
                 let output_pass = RenderGraphOutputCallbackPass {
                     node: pass.node,
                     pre_pass_barrier: pass.pre_pass_barrier,
-                    post_pass_barrier: None,
                     debug_name,
                 };
 
@@ -3386,6 +3380,14 @@ impl RenderGraphPlan {
         log::trace!("-- Create render graph plan --");
 
         //
+        // We add an extra node that always runs at the end. This lets us use the same codepath for
+        // inserting barriers before nodes in the graph to insert barriers at the end of the graph
+        // for "output" images/buffers
+        //
+        let builtin_final_node =
+            graph.add_callback_node("BuiltinFinalNode", RenderGraphQueue::DefaultGraphics);
+
+        //
         // Walk backwards through the DAG, starting from the output images, through all the upstream
         // dependencies of those images. We are doing a depth first search. Nodes that make no
         // direct or indirect contribution to an output image will not be included. As an
@@ -3394,7 +3396,8 @@ impl RenderGraphPlan {
         //
 
         //TODO: Support to force a node to be executed/unculled
-        let node_execution_order = determine_node_order(&graph);
+        let mut node_execution_order = determine_node_order(&graph);
+        node_execution_order.push(builtin_final_node);
 
         // Print out the execution order
         log::trace!("Execution order of unculled nodes:");
@@ -3464,6 +3467,7 @@ impl RenderGraphPlan {
             &node_execution_order,
             &constraint_results,
             &assign_physical_resources_result, /*, &determine_image_layouts_result*/
+            builtin_final_node,
         );
 
         print_node_barriers(&node_barriers);

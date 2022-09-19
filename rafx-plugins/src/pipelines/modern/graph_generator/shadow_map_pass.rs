@@ -54,7 +54,7 @@ pub(super) fn shadow_map_passes(
 
     let node = context
         .graph
-        .add_node("Shadow", RenderGraphQueue::DefaultGraphics);
+        .add_renderpass_node("Shadow", RenderGraphQueue::DefaultGraphics);
 
     let clear_value = if shadow_atlas_needs_full_clear {
         Some(RafxDepthStencilClearValue {

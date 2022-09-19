@@ -32,7 +32,7 @@ let mut graph_builder = RenderGraphBuilder::default();
 let mut graph_callbacks = RenderGraphNodeCallbacks::<()>::default();
 
 // The string name is for logging/debugging purposes only
-let node = graph_builder.add_node("opaque", RenderGraphQueue::DefaultGraphics);
+let node = graph_builder.add_renderpass_node("opaque", RenderGraphQueue::DefaultGraphics);
 ```
 
 ## Adding Render Pass Attachments
