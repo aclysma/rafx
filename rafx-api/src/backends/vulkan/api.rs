@@ -125,7 +125,7 @@ impl RafxApiVulkan {
             &app_name,
             require_validation_layers_present,
             validation_layer_debug_report_flags,
-            vk_api_def.enable_debug_laels,
+            vk_api_def.enable_debug_names,
         )?;
 
         let inner = Arc::new(RafxDeviceContextVulkanInner::new(&instance, &vk_api_def)?);

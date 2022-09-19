@@ -38,6 +38,7 @@ pub struct RafxCommandBufferMetalInner {
     compute_threads_per_group_y: u32,
     compute_threads_per_group_z: u32,
     group_debug_name_stack: Vec<String>,
+    debug_names_enabled: bool,
 }
 
 unsafe impl Send for RafxCommandBufferMetalInner {}
@@ -124,6 +125,10 @@ impl RafxCommandBufferMetal {
             current_index_buffer_type: MTLIndexType::UInt16,
             current_index_buffer_stride: 0,
             group_debug_name_stack: Default::default(),
+            debug_names_enabled: command_pool
+                .device_context()
+                .device_info()
+                .debug_names_enabled,
         };
 
         Ok(RafxCommandBufferMetal {
@@ -259,8 +264,14 @@ impl RafxCommandBufferMetal {
                 .unwrap()
                 .new_render_command_encoder(descriptor);
 
-            for group_debug_name in &inner.group_debug_name_stack {
-                render_encoder.push_debug_group(group_debug_name);
+            if inner.debug_names_enabled {
+                for group_debug_name in &inner.group_debug_name_stack {
+                    render_encoder.push_debug_group(group_debug_name);
+                }
+
+                if let Some(label) = inner.group_debug_name_stack.last() {
+                    render_encoder.set_label(label);
+                }
             }
 
             inner.render_encoder = Some(render_encoder.to_owned());
@@ -468,8 +479,14 @@ impl RafxCommandBufferMetal {
                             .unwrap()
                             .new_compute_command_encoder();
 
-                        for group_debug_name in &inner.group_debug_name_stack {
-                            compute_encoder.push_debug_group(group_debug_name);
+                        if inner.debug_names_enabled {
+                            for group_debug_name in &inner.group_debug_name_stack {
+                                compute_encoder.push_debug_group(group_debug_name);
+                            }
+
+                            if let Some(label) = inner.group_debug_name_stack.last() {
+                                compute_encoder.set_label(label);
+                            }
                         }
 
                         inner.compute_encoder = Some(compute_encoder.to_owned());
@@ -1086,8 +1103,14 @@ impl RafxCommandBufferMetal {
             .unwrap()
             .new_blit_command_encoder();
 
-        for group_debug_name in &inner.group_debug_name_stack {
-            encoder.push_debug_group(group_debug_name);
+        if inner.debug_names_enabled {
+            for group_debug_name in &inner.group_debug_name_stack {
+                encoder.push_debug_group(group_debug_name);
+            }
+
+            if let Some(label) = inner.group_debug_name_stack.last() {
+                encoder.set_label(label);
+            }
         }
 
         encoder.to_owned()
@@ -1176,12 +1199,14 @@ impl RafxCommandBufferMetal {
         let mut inner = self.inner.borrow_mut();
         inner.group_debug_name_stack.push(name.as_ref().to_owned());
 
-        if let Some(encoder) = &inner.render_encoder {
-            encoder.push_debug_group(name.as_ref());
-        } else if let Some(encoder) = &inner.compute_encoder {
-            encoder.push_debug_group(name.as_ref());
-        } else if let Some(encoder) = &inner.blit_encoder {
-            encoder.push_debug_group(name.as_ref());
+        if inner.debug_names_enabled {
+            if let Some(encoder) = &inner.render_encoder {
+                encoder.push_debug_group(name.as_ref());
+            } else if let Some(encoder) = &inner.compute_encoder {
+                encoder.push_debug_group(name.as_ref());
+            } else if let Some(encoder) = &inner.blit_encoder {
+                encoder.push_debug_group(name.as_ref());
+            }
         }
     }
 
@@ -1189,12 +1214,14 @@ impl RafxCommandBufferMetal {
         let mut inner = self.inner.borrow_mut();
         inner.group_debug_name_stack.pop();
 
-        if let Some(encoder) = &inner.render_encoder {
-            encoder.pop_debug_group();
-        } else if let Some(encoder) = &inner.compute_encoder {
-            encoder.pop_debug_group();
-        } else if let Some(encoder) = &inner.blit_encoder {
-            encoder.pop_debug_group();
+        if inner.debug_names_enabled {
+            if let Some(encoder) = &inner.render_encoder {
+                encoder.pop_debug_group();
+            } else if let Some(encoder) = &inner.compute_encoder {
+                encoder.pop_debug_group();
+            } else if let Some(encoder) = &inner.blit_encoder {
+                encoder.pop_debug_group();
+            }
         }
     }
 }
