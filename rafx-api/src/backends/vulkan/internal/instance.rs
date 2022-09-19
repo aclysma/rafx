@@ -113,6 +113,11 @@ impl VkInstance {
         let mut layer_names = vec![];
         let mut extension_names = ash_window::enumerate_required_extensions(window)?;
 
+        let debug_utils_extension_available = extensions.iter().any(|extension|
+            unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) } == DebugUtils::name()
+        );
+
+        let mut use_debug_utils_extension = debug_utils_extension_available && enable_debug_names;
         if !validation_layer_debug_report_flags.is_empty() {
             // Find the best validation layer that's available
             let best_validation_layer = VkInstance::find_best_validation_layer(&layers);
@@ -125,33 +130,31 @@ impl VkInstance {
                 }
             }
 
-            let debug_extension = DebugUtils::name();
-            let has_debug_extension = extensions.iter().any(|extension| unsafe {
-                debug_extension == CStr::from_ptr(extension.extension_name.as_ptr())
-            });
-
-            if !has_debug_extension {
+            if !debug_utils_extension_available {
                 if require_validation_layers_present {
-                    log::error!("Could not find the debug extension. Check that the vulkan SDK has been installed or disable validation.");
+                    log::error!("Could not find the DebugUtils extension. Check that the vulkan SDK has been installed or disable validation.");
                     return Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT.into());
                 } else {
-                    log::warn!("Could not find the debug extension. Check that the vulkan SDK has been installed or disable validation.");
+                    log::warn!("Could not find the DebugUtils extension. Check that the vulkan SDK has been installed or disable validation.");
                 }
             }
 
             if let Some(best_validation_layer) = best_validation_layer {
-                if has_debug_extension {
+                if debug_utils_extension_available {
                     layer_names.push(best_validation_layer);
-                    extension_names.push(DebugUtils::name());
+                    use_debug_utils_extension |= true;
                 }
             }
         }
 
-        let swapchain_extension_name = CString::new("VK_EXT_swapchain_colorspace").unwrap();
-        if extensions.iter().any(|extension| unsafe {
-            CStr::from_ptr(extension.extension_name.as_ptr()) == swapchain_extension_name.as_c_str()
-        }) {
-            extension_names.push(swapchain_extension_name.as_c_str());
+        if use_debug_utils_extension {
+            extension_names.push(DebugUtils::name());
+        }
+
+        if extensions.iter().any(|extension|
+             unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) } == vk::ExtSwapchainColorspaceFn::name()
+        ) {
+            extension_names.push(vk::ExtSwapchainColorspaceFn::name());
         }
 
         #[allow(unused_mut)]
@@ -197,9 +200,7 @@ impl VkInstance {
         let instance: ash::Instance = unsafe { entry.create_instance(&create_info, None)? };
 
         // Setup the debug callback for the validation layer
-        let debug_reporter_required =
-            enable_debug_names || !validation_layer_debug_report_flags.is_empty();
-        let debug_reporter = if debug_reporter_required {
+        let debug_reporter = if use_debug_utils_extension {
             Some(Self::setup_vulkan_debug_reporter(
                 &entry,
                 &instance,

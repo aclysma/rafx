@@ -24,7 +24,7 @@ use std::sync::Arc;
 use rafx::api::metal::RafxApiDefMetal;
 
 #[cfg(feature = "rafx-vulkan")]
-use rafx::api::vulkan::RafxApiVulkan;
+use rafx::api::vulkan::RafxApiDefVulkan;
 
 #[cfg(feature = "basic-pipeline")]
 use rafx_plugins::assets::mesh_basic::MeshBasicAssetTypeRendererPlugin;
@@ -116,7 +116,7 @@ pub fn rendering_init(
             options.physical_device_features = Some(physical_device_features);
         }
 
-        api_def.vk_options = options;
+        api_def.vk_options = Some(options);
     }
 
     let rafx_api = unsafe { rafx::api::RafxApi::new(window, &api_def)? };
