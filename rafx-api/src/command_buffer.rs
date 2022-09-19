@@ -1092,9 +1092,9 @@ impl RafxCommandBuffer {
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_push_group_debug_name(name),
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandBuffer::Gles2(inner) => {}
+            RafxCommandBuffer::Gles2(_) => {}
             #[cfg(feature = "rafx-gles3")]
-            RafxCommandBuffer::Gles3(inner) => {}
+            RafxCommandBuffer::Gles3(_) => {}
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
@@ -1116,9 +1116,9 @@ impl RafxCommandBuffer {
             #[cfg(feature = "rafx-metal")]
             RafxCommandBuffer::Metal(inner) => inner.cmd_pop_group_debug_name(),
             #[cfg(feature = "rafx-gles2")]
-            RafxCommandBuffer::Gles2(inner) => {}
+            RafxCommandBuffer::Gles2(_) => {}
             #[cfg(feature = "rafx-gles3")]
-            RafxCommandBuffer::Gles3(inner) => {}
+            RafxCommandBuffer::Gles3(_) => {}
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
