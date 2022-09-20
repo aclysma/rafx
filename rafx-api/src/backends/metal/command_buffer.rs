@@ -1192,9 +1192,9 @@ impl RafxCommandBufferMetal {
         Ok(())
     }
 
-    pub fn cmd_push_group_debug_name<T: AsRef<str>>(
+    pub fn cmd_push_group_debug_name(
         &self,
-        name: T,
+        name: impl AsRef<str>,
     ) {
         let mut inner = self.inner.borrow_mut();
         inner.group_debug_name_stack.push(name.as_ref().to_owned());

@@ -1082,15 +1082,15 @@ impl RafxCommandBuffer {
 
     /// Begins labeling the following commands with the given name until [`cmd_pop_group_debug_name`] is called.
     /// This is useful for grouping together commands for use in a debugger.
-    pub fn cmd_push_group_debug_name<T: AsRef<str>>(
+    pub fn cmd_push_group_debug_name(
         &self,
-        name: T,
+        _name: impl AsRef<str>,
     ) {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxCommandBuffer::Vk(inner) => inner.cmd_push_group_debug_name(name),
+            RafxCommandBuffer::Vk(inner) => inner.cmd_push_group_debug_name(_name),
             #[cfg(feature = "rafx-metal")]
-            RafxCommandBuffer::Metal(inner) => inner.cmd_push_group_debug_name(name),
+            RafxCommandBuffer::Metal(inner) => inner.cmd_push_group_debug_name(_name),
             #[cfg(feature = "rafx-gles2")]
             RafxCommandBuffer::Gles2(_) => {}
             #[cfg(feature = "rafx-gles3")]

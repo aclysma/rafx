@@ -223,13 +223,13 @@ impl RafxBuffer {
     /// as nsight graphics or renderdoc will display this buffer with the given name in the list of resources.
     pub fn set_debug_name(
         &self,
-        name: impl AsRef<str>,
+        _name: impl AsRef<str>,
     ) {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxBuffer::Vk(inner) => inner.set_debug_name(name),
+            RafxBuffer::Vk(inner) => inner.set_debug_name(_name),
             #[cfg(feature = "rafx-metal")]
-            RafxBuffer::Metal(inner) => inner.set_debug_name(name),
+            RafxBuffer::Metal(inner) => inner.set_debug_name(_name),
             #[cfg(feature = "rafx-gles2")]
             RafxBuffer::Gles2(_) => {}
             #[cfg(feature = "rafx-gles3")]

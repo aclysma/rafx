@@ -72,13 +72,13 @@ impl RafxTexture {
     /// as nsight graphics or renderdoc will display this texture with the given name in the list of resources.
     pub fn set_debug_name(
         &self,
-        name: impl AsRef<str>,
+        _name: impl AsRef<str>,
     ) {
         match self {
             #[cfg(feature = "rafx-vulkan")]
-            RafxTexture::Vk(inner) => inner.set_debug_name(name),
+            RafxTexture::Vk(inner) => inner.set_debug_name(_name),
             #[cfg(feature = "rafx-metal")]
-            RafxTexture::Metal(inner) => inner.set_debug_name(name),
+            RafxTexture::Metal(inner) => inner.set_debug_name(_name),
             #[cfg(feature = "rafx-gles2")]
             RafxTexture::Gles2(_) => {}
             #[cfg(feature = "rafx-gles3")]

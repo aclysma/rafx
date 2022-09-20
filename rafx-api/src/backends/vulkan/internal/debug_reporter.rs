@@ -95,10 +95,10 @@ impl VkDebugReporter {
     }
 
     /// Begins a named debug region inside a command buffer.
-    pub fn cmd_push_group_debug_name<T: AsRef<str>>(
+    pub fn cmd_push_group_debug_name(
         &self,
         command_buffer: &RafxCommandBufferVulkan,
-        name: T,
+        name: impl AsRef<str>,
     ) {
         let cstring = CString::new(name.as_ref()).expect("Null in command buffer label");
 
