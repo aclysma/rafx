@@ -1,5 +1,8 @@
 use legion::Resources;
-use rafx::api::{RafxApi, RafxApiDef, RafxDeviceContext, RafxResult, RafxSwapchainHelper};
+use rafx::api::{
+    RafxApi, RafxApiDef, RafxDeviceContext, RafxResult, RafxSwapchainColorSpace, RafxSwapchainDef,
+    RafxSwapchainHelper,
+};
 use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
 use rafx::framework::visibility::VisibilityResource;
@@ -178,12 +181,18 @@ pub fn rendering_init(
         )
     }?;
 
+    let swapchain_def = RafxSwapchainDef {
+        height: window_height,
+        width: window_width,
+        enable_vsync: true,
+        color_space_priority: vec![RafxSwapchainColorSpace::Srgb],
+    };
+
     let swapchain_helper = SwapchainHandler::create_swapchain(
         &mut renderer_builder_result.asset_manager,
         &mut renderer_builder_result.renderer,
         window,
-        window_width,
-        window_height,
+        &swapchain_def,
     )?;
 
     resources.insert(rafx_api.device_context());

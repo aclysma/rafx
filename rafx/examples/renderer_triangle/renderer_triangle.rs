@@ -132,12 +132,17 @@ fn run() -> RafxResult<()> {
         }?;
 
         let (width, height) = sdl2_window.vulkan_drawable_size();
+        let swapchain_def = RafxSwapchainDef {
+            width,
+            height,
+            enable_vsync: true,
+            color_space_priority: vec![RafxSwapchainColorSpace::Srgb],
+        };
         let swapchain_helper = SwapchainHandler::create_swapchain(
             &mut renderer_builder_result.asset_manager,
             &mut renderer_builder_result.renderer,
             sdl2_window,
-            width,
-            height,
+            &swapchain_def,
         )?;
 
         resources.insert(api.device_context());

@@ -385,7 +385,7 @@ fn process_glsl_shader(
     // change and cause spurious compile errors just because a line of code gets commented out in
     // the shader. (In the future we may want to generate the API but make it a noop.)
     //
-    let mut compiler = shaderc::Compiler::new().unwrap();
+    let compiler = shaderc::Compiler::new().unwrap();
 
     log::trace!("{:?}: compile unoptimized", glsl_file);
     let unoptimized_compile_spirv_result = {
