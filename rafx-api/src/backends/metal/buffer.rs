@@ -3,7 +3,7 @@ use crate::{RafxBufferDef, RafxMemoryUsage, RafxResourceType, RafxResult};
 
 #[derive(Debug)]
 pub struct RafxBufferMetal {
-    _device_context: RafxDeviceContextMetal,
+    device_context: RafxDeviceContextMetal,
     buffer_def: RafxBufferDef,
     buffer: metal_rs::Buffer,
 }
@@ -21,7 +21,9 @@ impl RafxBufferMetal {
         &self,
         name: impl AsRef<str>,
     ) {
-        self.metal_buffer().set_label(name.as_ref())
+        if self.device_context.device_info().debug_names_enabled {
+            self.metal_buffer().set_label(name.as_ref())
+        }
     }
 
     pub fn metal_buffer(&self) -> &metal_rs::BufferRef {
@@ -104,7 +106,7 @@ impl RafxBufferMetal {
         );
 
         Ok(RafxBufferMetal {
-            _device_context: device_context.clone(),
+            device_context: device_context.clone(),
             buffer_def: buffer_def.clone(),
             buffer,
         })

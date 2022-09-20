@@ -243,7 +243,7 @@ impl RafxBuffer {
                     feature = "rafx-gles3"
                 ))
             ))]
-            RafxBuffer::Empty(_) => {}
+            RafxBuffer::Empty(inner) => inner.set_debug_name(_name),
         }
     }
 

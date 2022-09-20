@@ -1104,7 +1104,7 @@ impl RafxCommandBuffer {
                     feature = "rafx-gles3"
                 ))
             ))]
-            RafxCommandBuffer::Empty(_) => {}
+            RafxCommandBuffer::Empty(inner) => inner.cmd_push_group_debug_name(_name),
         }
     }
 
@@ -1128,7 +1128,7 @@ impl RafxCommandBuffer {
                     feature = "rafx-gles3"
                 ))
             ))]
-            RafxCommandBuffer::Empty(_) => {}
+            RafxCommandBuffer::Empty(inner) => inner.cmd_pop_group_debug_name(),
         }
     }
 

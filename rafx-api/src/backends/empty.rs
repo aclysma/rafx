@@ -47,6 +47,7 @@ impl RafxDeviceContextEmpty {
 pub struct RafxBufferEmpty;
 impl RafxBufferEmpty {
     pub fn buffer_def(&self) -> &RafxBufferDef { unimplemented!() }
+    pub fn set_debug_name(&self, name: impl AsRef<str>) { unimplemented!() }
     pub fn map_buffer(&self) -> RafxResult<*mut u8> { unimplemented!() }
     pub fn unmap_buffer(&self) -> RafxResult<()> { unimplemented!() }
     pub fn mapped_memory(&self) -> Option<*mut u8> { unimplemented!() }
@@ -59,6 +60,7 @@ impl RafxBufferEmpty {
 pub struct RafxTextureEmpty;
 impl RafxTextureEmpty {
     pub fn texture_def(&self) -> &RafxTextureDef { unimplemented!() }
+    pub fn set_debug_name(&self, name: impl AsRef<str>) { unimplemented!() }
 }
 
 #[derive(Clone, Debug)]
@@ -164,6 +166,9 @@ impl RafxCommandBufferEmpty {
     pub fn cmd_copy_buffer_to_buffer(&self, src_buffer: &RafxBufferEmpty, dst_buffer: &RafxBufferEmpty, params: &RafxCmdCopyBufferToBufferParams) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_copy_buffer_to_texture(&self, src_buffer: &RafxBufferEmpty, dst_texture: &RafxTextureEmpty, params: &RafxCmdCopyBufferToTextureParams) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_copy_texture_to_texture(&self, src_texture: &RafxTextureEmpty, dst_texture: &RafxTextureEmpty, params: &RafxCmdCopyTextureToTextureParams) -> RafxResult<()> { unimplemented!() }
+
+    pub fn cmd_push_group_debug_name(&self, name: impl AsRef<str>) { unimplemented!() }
+    pub fn cmd_pop_group_debug_name(&self) { unimplemented!() }
 }
 
 //

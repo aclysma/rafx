@@ -1197,9 +1197,9 @@ impl RafxCommandBufferMetal {
         name: impl AsRef<str>,
     ) {
         let mut inner = self.inner.borrow_mut();
-        inner.group_debug_name_stack.push(name.as_ref().to_owned());
-
         if inner.debug_names_enabled {
+            inner.group_debug_name_stack.push(name.as_ref().to_owned());
+
             if let Some(encoder) = &inner.render_encoder {
                 encoder.push_debug_group(name.as_ref());
             } else if let Some(encoder) = &inner.compute_encoder {
@@ -1212,9 +1212,9 @@ impl RafxCommandBufferMetal {
 
     pub fn cmd_pop_group_debug_name(&self) {
         let mut inner = self.inner.borrow_mut();
-        inner.group_debug_name_stack.pop();
-
         if inner.debug_names_enabled {
+            inner.group_debug_name_stack.pop();
+
             if let Some(encoder) = &inner.render_encoder {
                 encoder.pop_debug_group();
             } else if let Some(encoder) = &inner.compute_encoder {

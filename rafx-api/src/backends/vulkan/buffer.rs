@@ -50,7 +50,7 @@ impl RafxBufferVulkan {
         if self.device_context.device_info().debug_names_enabled {
             if let Some(debug_reporter) = self.device_context.debug_reporter() {
                 debug_reporter.set_object_debug_name(
-                    &self.device_context,
+                    self.device_context.device().handle(),
                     vk::ObjectType::BUFFER,
                     self.vk_buffer().as_raw(),
                     name,

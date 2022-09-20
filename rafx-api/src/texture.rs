@@ -92,7 +92,7 @@ impl RafxTexture {
                     feature = "rafx-gles3"
                 ))
             ))]
-            RafxTexture::Empty(_) => {}
+            RafxTexture::Empty(inner) => inner.set_debug_name(_name),
         }
     }
 

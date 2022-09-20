@@ -6,8 +6,6 @@ use ash::extensions::ext::DebugUtils;
 pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
-use crate::vulkan::{RafxCommandBufferVulkan, RafxDeviceContextVulkan};
-
 const ERRORS_TO_IGNORE: [&str; 0] = [
     // Temporary - I suspect locally built validation on M1 mac has a bug
     //"VUID-VkWriteDescriptorSet-descriptorType-00332",
@@ -74,7 +72,7 @@ impl VkDebugReporter {
     /// or nsight graphics.
     pub fn set_object_debug_name(
         &self,
-        device: &RafxDeviceContextVulkan,
+        device: vk::Device,
         object_type: vk::ObjectType,
         object_handle: u64,
         name: impl AsRef<str>,
@@ -90,14 +88,14 @@ impl VkDebugReporter {
             // failure to set the name is not fatal/considered an error since it otherwise has no impact on the program.
             let _ = self
                 .debug_report_loader
-                .debug_utils_set_object_name(device.device().handle(), &name_info);
+                .debug_utils_set_object_name(device, &name_info);
         }
     }
 
     /// Begins a named debug region inside a command buffer.
     pub fn cmd_push_group_debug_name(
         &self,
-        command_buffer: &RafxCommandBufferVulkan,
+        command_buffer: vk::CommandBuffer,
         name: impl AsRef<str>,
     ) {
         let cstring = CString::new(name.as_ref()).expect("Null in command buffer label");
@@ -107,19 +105,19 @@ impl VkDebugReporter {
         unsafe {
             let _ = self
                 .debug_report_loader
-                .cmd_begin_debug_utils_label(command_buffer.vk_command_buffer(), &label_info);
+                .cmd_begin_debug_utils_label(command_buffer, &label_info);
         }
     }
 
     /// Ends a previous named debug region inside a command buffer.
     pub fn cmd_pop_group_debug_name(
         &self,
-        command_buffer: &RafxCommandBufferVulkan,
+        command_buffer: vk::CommandBuffer,
     ) {
         unsafe {
             let _ = self
                 .debug_report_loader
-                .cmd_end_debug_utils_label(command_buffer.vk_command_buffer());
+                .cmd_end_debug_utils_label(command_buffer);
         }
     }
 }

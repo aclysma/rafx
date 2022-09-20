@@ -221,7 +221,7 @@ impl RafxTextureVulkan {
         if self.inner.device_context.device_info().debug_names_enabled {
             if let Some(debug_reporter) = self.inner.device_context.debug_reporter() {
                 debug_reporter.set_object_debug_name(
-                    &self.inner.device_context,
+                    self.inner.device_context.device().handle(),
                     vk::ObjectType::IMAGE,
                     self.vk_image().as_raw(),
                     name,
