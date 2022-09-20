@@ -1141,7 +1141,7 @@ mod test {
         crate::parse_declarations::ParseDeclarationsResult,
     ) {
         // Compile it
-        let mut compiler = shaderc::Compiler::new().unwrap();
+        let compiler = shaderc::Compiler::new().unwrap();
         let result = compiler
             .compile_into_spirv(
                 &shader_code,
