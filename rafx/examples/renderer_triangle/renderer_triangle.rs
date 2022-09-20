@@ -142,8 +142,7 @@ fn run() -> RafxResult<()> {
             &mut renderer_builder_result.asset_manager,
             &mut renderer_builder_result.renderer,
             sdl2_window,
-            width,
-            height,
+            &swapchain_def,
         )?;
 
         resources.insert(api.device_context());
