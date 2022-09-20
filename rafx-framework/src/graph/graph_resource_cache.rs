@@ -119,6 +119,14 @@ impl RenderGraphCacheInner {
                 cached_buffer.keep_until_frame = keep_until_frame;
                 *next_buffer_index += 1;
 
+                if device_context.device_info().debug_names_enabled {
+                    cached_buffer
+                        .buffer
+                        .get_raw()
+                        .buffer
+                        .set_debug_name(&format!("RenderGraph Buffer {:?}", id));
+                }
+
                 buffer_resources.insert(id, cached_buffer.buffer.clone());
             } else {
                 // No unused buffer available, create one
@@ -130,6 +138,9 @@ impl RenderGraphCacheInner {
                     //initial_state: key.specification.initial_state,
                     ..Default::default()
                 })?;
+                if device_context.device_info().debug_names_enabled {
+                    buffer.set_debug_name(&format!("RenderGraph Buffer {:?}", id));
+                }
                 let buffer = resources.insert_buffer(buffer);
 
                 log::trace!(
@@ -207,6 +218,13 @@ impl RenderGraphCacheInner {
                 cached_image.keep_until_frame = keep_until_frame;
                 *next_image_index += 1;
 
+                if device_context.device_info().debug_names_enabled {
+                    cached_image
+                        .image
+                        .get_raw()
+                        .image
+                        .set_debug_name(&format!("RenderGraph Image {:?}", id));
+                }
                 image_resources.insert(id, cached_image.image.clone());
             } else {
                 // No unused image available, create one
@@ -221,6 +239,9 @@ impl RenderGraphCacheInner {
                     resource_type: specification.resource_type,
                     dimensions: Default::default(),
                 })?;
+                if device_context.device_info().debug_names_enabled {
+                    image.set_debug_name(&format!("RenderGraph Image {:?}", id));
+                }
                 let image = resources.insert_image(image);
 
                 log::trace!(

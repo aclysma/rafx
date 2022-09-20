@@ -6,7 +6,10 @@ use crate::metal::{RafxDeviceContextMetal, RafxDeviceContextMetalInner};
 
 /// Metal-specific configuration
 #[derive(Default)]
-pub struct RafxApiDefMetal {}
+pub struct RafxApiDefMetal {
+    /// Enable the tagging of vulkan objects with debug names.
+    pub enable_debug_names: bool,
+}
 
 pub struct RafxApiMetal {
     device_context: Option<RafxDeviceContextMetal>,
@@ -31,9 +34,9 @@ impl RafxApiMetal {
     pub unsafe fn new(
         _window: &dyn HasRawWindowHandle,
         _api_def: &RafxApiDef,
-        _metal_api_def: &RafxApiDefMetal,
+        metal_api_def: &RafxApiDefMetal,
     ) -> RafxResult<Self> {
-        let inner = Arc::new(RafxDeviceContextMetalInner::new()?);
+        let inner = Arc::new(RafxDeviceContextMetalInner::new(metal_api_def)?);
         let device_context = RafxDeviceContextMetal::new(inner)?;
 
         Ok(RafxApiMetal {

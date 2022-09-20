@@ -59,7 +59,7 @@ impl RafxUploadBufferPool {
         let (upload_buffer_released_tx, upload_buffer_released_rx) = crossbeam_channel::unbounded();
         let mut unused_buffers = Vec::with_capacity(buffer_count as usize);
 
-        for _ in 0..buffer_count {
+        for i in 0..buffer_count {
             let buffer = device_context.create_buffer(&RafxBufferDef {
                 size: buffer_size,
                 memory_usage: RafxMemoryUsage::CpuToGpu,
@@ -67,6 +67,10 @@ impl RafxUploadBufferPool {
                 resource_type: RafxResourceType::BUFFER,
                 ..Default::default()
             })?;
+            if device_context.device_info().debug_names_enabled {
+                buffer.set_debug_name(format!("RafxUploadBufferPool {}", i));
+            }
+
             unused_buffers.push(buffer);
         }
 
@@ -254,13 +258,15 @@ impl RafxUpload {
         let buffer = if let Some(buffer_pool) = buffer_pool {
             UploadBuffer::Pooled(buffer_pool.take(buffer_size)?)
         } else {
-            UploadBuffer::NonPooled(device_context.create_buffer(&RafxBufferDef {
+            let buffer = device_context.create_buffer(&RafxBufferDef {
                 size: buffer_size,
                 memory_usage: RafxMemoryUsage::CpuToGpu,
                 queue_type: RafxQueueType::Transfer,
                 resource_type: RafxResourceType::BUFFER,
                 ..Default::default()
-            })?)
+            })?;
+            buffer.set_debug_name("RafxUpload Non-Pooled Buffer");
+            UploadBuffer::NonPooled(buffer)
         };
 
         let (buffer_begin, buffer_end, buffer_write_pointer) = unsafe {

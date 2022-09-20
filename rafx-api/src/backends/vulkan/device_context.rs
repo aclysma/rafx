@@ -88,6 +88,7 @@ pub struct RafxDeviceContextVulkanInner {
     instance: ash::Instance,
     physical_device: vk::PhysicalDevice,
     physical_device_info: PhysicalDeviceInfo,
+    debug_reporter: Option<Arc<VkDebugReporter>>,
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
@@ -119,7 +120,7 @@ impl Drop for RafxDeviceContextVulkanInner {
 impl RafxDeviceContextVulkanInner {
     pub fn new(
         instance: &VkInstance,
-        physical_device_features: &Option<vk::PhysicalDeviceFeatures>,
+        vk_api_def: &RafxApiDefVulkan,
     ) -> RafxResult<Self> {
         let physical_device_type_priority = vec![
             PhysicalDeviceType::DiscreteGpu,
@@ -145,7 +146,7 @@ impl RafxDeviceContextVulkanInner {
             physical_device,
             &physical_device_info,
             &queue_requirements,
-            physical_device_features,
+            &vk_api_def.physical_device_features,
         )?;
 
         let queue_allocator = VkQueueAllocatorSet::new(
@@ -166,8 +167,14 @@ impl RafxDeviceContextVulkanInner {
 
         let limits = &physical_device_info.properties.limits;
 
+        // Debug names should be enable if explicitly opted-in and available (i.e. we created a
+        // debug reporter)
+        let debug_names_enabled =
+            vk_api_def.enable_debug_names && instance.debug_reporter.is_some();
+
         let device_info = RafxDeviceInfo {
             supports_multithreaded_usage: true,
+            debug_names_enabled,
             min_uniform_buffer_offset_alignment: limits.min_uniform_buffer_offset_alignment as u32,
             min_storage_buffer_offset_alignment: limits.min_storage_buffer_offset_alignment as u32,
             upload_buffer_texture_alignment: limits.optimal_buffer_copy_offset_alignment as u32,
@@ -202,6 +209,7 @@ impl RafxDeviceContextVulkanInner {
             device: logical_device,
             allocator: ManuallyDrop::new(Mutex::new(allocator)),
             destroyed: AtomicBool::new(false),
+            debug_reporter: instance.debug_reporter.clone(),
 
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
@@ -308,6 +316,10 @@ impl RafxDeviceContextVulkan {
 
     pub fn device(&self) -> &ash::Device {
         &self.inner.device
+    }
+
+    pub(super) fn debug_reporter(&self) -> Option<&VkDebugReporter> {
+        self.inner.debug_reporter.as_deref()
     }
 
     pub fn physical_device(&self) -> vk::PhysicalDevice {

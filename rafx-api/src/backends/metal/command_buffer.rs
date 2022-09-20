@@ -13,8 +13,8 @@ use crate::{
 };
 use fnv::FnvHashSet;
 use metal_rs::{
-    MTLBlitOption, MTLIndexType, MTLOrigin, MTLPrimitiveType, MTLRenderStages, MTLResourceUsage,
-    MTLScissorRect, MTLSize, MTLViewport,
+    BlitCommandEncoder, MTLBlitOption, MTLIndexType, MTLOrigin, MTLPrimitiveType, MTLRenderStages,
+    MTLResourceUsage, MTLScissorRect, MTLSize, MTLViewport,
 };
 use rafx_base::trust_cell::TrustCell;
 
@@ -37,6 +37,8 @@ pub struct RafxCommandBufferMetalInner {
     compute_threads_per_group_x: u32,
     compute_threads_per_group_y: u32,
     compute_threads_per_group_z: u32,
+    group_debug_name_stack: Vec<String>,
+    debug_names_enabled: bool,
 }
 
 unsafe impl Send for RafxCommandBufferMetalInner {}
@@ -122,6 +124,11 @@ impl RafxCommandBufferMetal {
             current_index_buffer_byte_offset: 0,
             current_index_buffer_type: MTLIndexType::UInt16,
             current_index_buffer_stride: 0,
+            group_debug_name_stack: Default::default(),
+            debug_names_enabled: command_pool
+                .device_context()
+                .device_info()
+                .debug_names_enabled,
         };
 
         Ok(RafxCommandBufferMetal {
@@ -251,8 +258,22 @@ impl RafxCommandBufferMetal {
 
             // end encoders
             Self::do_end_current_encoders(&self.queue, &mut *inner, false)?;
-            let cmd_buffer = inner.command_buffer.as_ref().unwrap();
-            let render_encoder = cmd_buffer.new_render_command_encoder(descriptor);
+            let render_encoder = inner
+                .command_buffer
+                .as_ref()
+                .unwrap()
+                .new_render_command_encoder(descriptor);
+
+            if inner.debug_names_enabled {
+                for group_debug_name in &inner.group_debug_name_stack {
+                    render_encoder.push_debug_group(group_debug_name);
+                }
+
+                if let Some(label) = inner.group_debug_name_stack.last() {
+                    render_encoder.set_label(label);
+                }
+            }
+
             inner.render_encoder = Some(render_encoder.to_owned());
             self.wait_for_barriers(&*inner)?;
             // set heaps?
@@ -457,6 +478,17 @@ impl RafxCommandBufferMetal {
                             .as_ref()
                             .unwrap()
                             .new_compute_command_encoder();
+
+                        if inner.debug_names_enabled {
+                            for group_debug_name in &inner.group_debug_name_stack {
+                                compute_encoder.push_debug_group(group_debug_name);
+                            }
+
+                            if let Some(label) = inner.group_debug_name_stack.last() {
+                                compute_encoder.set_label(label);
+                            }
+                        }
+
                         inner.compute_encoder = Some(compute_encoder.to_owned());
                     }
 
@@ -976,12 +1008,9 @@ impl RafxCommandBufferMetal {
                 let result: RafxResult<&metal_rs::BlitCommandEncoderRef> =
                     objc::rc::autoreleasepool(|| {
                         Self::do_end_current_encoders(&self.queue, &mut *inner, false)?;
-                        let encoder = inner
-                            .command_buffer
-                            .as_ref()
-                            .unwrap()
-                            .new_blit_command_encoder();
-                        inner.blit_encoder = Some(encoder.to_owned());
+                        let encoder = Self::create_blit_command_encoder(&mut *inner);
+
+                        inner.blit_encoder = Some(encoder);
                         Ok(inner.blit_encoder.as_ref().unwrap().as_ref())
                     });
                 result?
@@ -1012,12 +1041,8 @@ impl RafxCommandBufferMetal {
                 let result: RafxResult<&metal_rs::BlitCommandEncoderRef> =
                     objc::rc::autoreleasepool(|| {
                         Self::do_end_current_encoders(&self.queue, &mut *inner, false)?;
-                        let encoder = inner
-                            .command_buffer
-                            .as_ref()
-                            .unwrap()
-                            .new_blit_command_encoder();
-                        inner.blit_encoder = Some(encoder.to_owned());
+                        let encoder = Self::create_blit_command_encoder(&mut *inner);
+                        inner.blit_encoder = Some(encoder);
                         Ok(inner.blit_encoder.as_ref().unwrap().as_ref())
                     });
                 result?
@@ -1071,6 +1096,26 @@ impl RafxCommandBufferMetal {
         Ok(())
     }
 
+    fn create_blit_command_encoder(inner: &mut RafxCommandBufferMetalInner) -> BlitCommandEncoder {
+        let encoder = inner
+            .command_buffer
+            .as_ref()
+            .unwrap()
+            .new_blit_command_encoder();
+
+        if inner.debug_names_enabled {
+            for group_debug_name in &inner.group_debug_name_stack {
+                encoder.push_debug_group(group_debug_name);
+            }
+
+            if let Some(label) = inner.group_debug_name_stack.last() {
+                encoder.set_label(label);
+            }
+        }
+
+        encoder.to_owned()
+    }
+
     pub fn cmd_copy_texture_to_texture(
         &self,
         src_texture: &RafxTextureMetal,
@@ -1085,11 +1130,8 @@ impl RafxCommandBufferMetal {
                 let result: RafxResult<&metal_rs::BlitCommandEncoderRef> =
                     objc::rc::autoreleasepool(|| {
                         Self::do_end_current_encoders(&self.queue, &mut *inner, false)?;
-                        let encoder = inner
-                            .command_buffer
-                            .as_ref()
-                            .unwrap()
-                            .new_blit_command_encoder();
+                        let encoder = Self::create_blit_command_encoder(&mut *inner);
+
                         inner.blit_encoder = Some(encoder.to_owned());
                         Ok(inner.blit_encoder.as_ref().unwrap().as_ref())
                     });
@@ -1148,5 +1190,38 @@ impl RafxCommandBufferMetal {
         }
 
         Ok(())
+    }
+
+    pub fn cmd_push_group_debug_name(
+        &self,
+        name: impl AsRef<str>,
+    ) {
+        let mut inner = self.inner.borrow_mut();
+        if inner.debug_names_enabled {
+            inner.group_debug_name_stack.push(name.as_ref().to_owned());
+
+            if let Some(encoder) = &inner.render_encoder {
+                encoder.push_debug_group(name.as_ref());
+            } else if let Some(encoder) = &inner.compute_encoder {
+                encoder.push_debug_group(name.as_ref());
+            } else if let Some(encoder) = &inner.blit_encoder {
+                encoder.push_debug_group(name.as_ref());
+            }
+        }
+    }
+
+    pub fn cmd_pop_group_debug_name(&self) {
+        let mut inner = self.inner.borrow_mut();
+        if inner.debug_names_enabled {
+            inner.group_debug_name_stack.pop();
+
+            if let Some(encoder) = &inner.render_encoder {
+                encoder.pop_debug_group();
+            } else if let Some(encoder) = &inner.compute_encoder {
+                encoder.pop_debug_group();
+            } else if let Some(encoder) = &inner.blit_encoder {
+                encoder.pop_debug_group();
+            }
+        }
     }
 }

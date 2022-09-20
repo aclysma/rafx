@@ -302,6 +302,7 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
                     format: RafxFormat::UNDEFINED,
                     always_mapped: false,
                 })?;
+        tonemap_histogram_result.set_debug_name("Tonemap Histogram Result");
 
         let tonemap_histogram_result = asset_manager
             .resource_manager()
@@ -309,7 +310,7 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
             .insert_buffer(tonemap_histogram_result);
 
         let mut tonemap_debug_output = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT + 1);
-        for _ in 0..=MAX_FRAMES_IN_FLIGHT {
+        for i in 0..=MAX_FRAMES_IN_FLIGHT {
             let tonemap_debug_output_buffer =
                 asset_manager
                     .device_context()
@@ -324,6 +325,8 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
                         format: RafxFormat::UNDEFINED,
                         always_mapped: false,
                     })?;
+            tonemap_debug_output_buffer
+                .set_debug_name(format!("Tonemap Debug Output Buffer {}", i));
             tonemap_debug_output.push(
                 asset_manager
                     .resource_manager()
@@ -333,7 +336,7 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
         }
 
         let mut mesh_culling_debug_output = Vec::with_capacity(MAX_FRAMES_IN_FLIGHT + 1);
-        for _ in 0..=MAX_FRAMES_IN_FLIGHT {
+        for i in 0..=MAX_FRAMES_IN_FLIGHT {
             let mesh_culling_debug_output_buffer =
                 asset_manager
                     .device_context()
@@ -347,6 +350,8 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
                         format: RafxFormat::UNDEFINED,
                         always_mapped: false,
                     })?;
+            mesh_culling_debug_output_buffer
+                .set_debug_name(format!("Mesh Culling Debug Output {}", i));
             mesh_culling_debug_output.push(
                 asset_manager
                     .resource_manager()

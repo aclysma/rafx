@@ -2,6 +2,7 @@ use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
 use ash::version::DeviceV1_0;
 use ash::vk;
+use ash::vk::Handle;
 
 #[derive(Clone, Debug)]
 pub struct RafxBufferRaw {
@@ -40,6 +41,22 @@ impl RafxBufferVulkan {
 
     pub fn buffer_def(&self) -> &RafxBufferDef {
         &self.buffer_def
+    }
+
+    pub fn set_debug_name(
+        &self,
+        name: impl AsRef<str>,
+    ) {
+        if self.device_context.device_info().debug_names_enabled {
+            if let Some(debug_reporter) = self.device_context.debug_reporter() {
+                debug_reporter.set_object_debug_name(
+                    self.device_context.device().handle(),
+                    vk::ObjectType::BUFFER,
+                    self.vk_buffer().as_raw(),
+                    name,
+                );
+            }
+        }
     }
 
     pub fn map_buffer(&self) -> RafxResult<*mut u8> {

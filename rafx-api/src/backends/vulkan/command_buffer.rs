@@ -1019,4 +1019,23 @@ impl RafxCommandBufferVulkan {
 
         Ok(())
     }
+
+    pub fn cmd_push_group_debug_name(
+        &self,
+        name: impl AsRef<str>,
+    ) {
+        if self.device_context.device_info().debug_names_enabled {
+            if let Some(reporter) = self.device_context.debug_reporter() {
+                reporter.cmd_push_group_debug_name(self.vk_command_buffer(), name);
+            }
+        }
+    }
+
+    pub fn cmd_pop_group_debug_name(&self) {
+        if self.device_context.device_info().debug_names_enabled {
+            if let Some(reporter) = self.device_context.debug_reporter() {
+                reporter.cmd_pop_group_debug_name(self.vk_command_buffer());
+            }
+        }
+    }
 }

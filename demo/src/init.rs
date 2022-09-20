@@ -20,6 +20,12 @@ use rafx_plugins::features::tile_layer::TileLayerRendererPlugin;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
+#[cfg(feature = "rafx-metal")]
+use rafx::api::metal::RafxApiDefMetal;
+
+#[cfg(feature = "rafx-vulkan")]
+use rafx::api::vulkan::RafxApiDefVulkan;
+
 #[cfg(feature = "basic-pipeline")]
 use rafx_plugins::assets::mesh_basic::MeshBasicAssetTypeRendererPlugin;
 #[cfg(feature = "basic-pipeline")]
@@ -78,26 +84,39 @@ pub fn rendering_init(
     #[allow(unused_mut)]
     let mut api_def = RafxApiDef::default();
 
-    // For vulkan on the modern pipeline, we need to enable shader_clip_distance. The default-enabled
-    // options in rafx-api are fine for the basic pipeline
-    #[cfg(all(not(feature = "basic-pipeline"), feature = "rafx-vulkan"))]
+    // Turn on debug names for the demo
+    #[cfg(feature = "rafx-metal")]
     {
-        let physical_device_features = rafx::api::ash::vk::PhysicalDeviceFeatures::builder()
-            .sampler_anisotropy(true)
-            .sample_rate_shading(true)
-            // Used for debug drawing lines/points
-            .fill_mode_non_solid(true)
-            // Used for user clipping in shadow atlas generation
-            .shader_clip_distance(true)
-            // Used for indirect draw
-            .multi_draw_indirect(true)
-            .draw_indirect_first_instance(true)
-            .build();
+        let mut options = RafxApiDefMetal::default();
+        options.enable_debug_names = true;
+        api_def.metal_options = Some(options);
+    }
 
-        api_def.vk_options = Some(rafx::api::RafxApiDefVulkan {
-            physical_device_features: Some(physical_device_features),
-            ..Default::default()
-        });
+    #[cfg(feature = "rafx-vulkan")]
+    {
+        let mut options = RafxApiDefVulkan::default();
+        options.enable_debug_names = true;
+
+        // For vulkan on the modern pipeline, we need to enable shader_clip_distance. The default-enabled
+        // options in rafx-api are fine for the basic pipeline
+        #[cfg(not(feature = "basic-pipeline"))]
+        {
+            let physical_device_features = rafx::api::ash::vk::PhysicalDeviceFeatures::builder()
+                .sampler_anisotropy(true)
+                .sample_rate_shading(true)
+                // Used for debug drawing lines/points
+                .fill_mode_non_solid(true)
+                // Used for user clipping in shadow atlas generation
+                .shader_clip_distance(true)
+                // Used for indirect draw
+                .multi_draw_indirect(true)
+                .draw_indirect_first_instance(true)
+                .build();
+
+            options.physical_device_features = Some(physical_device_features);
+        }
+
+        api_def.vk_options = Some(options);
     }
 
     let rafx_api = unsafe { rafx::api::RafxApi::new(window, &api_def)? };

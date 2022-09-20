@@ -1080,6 +1080,58 @@ impl RafxCommandBuffer {
         }
     }
 
+    /// Begins labeling the following commands with the given name until [`cmd_pop_group_debug_name`] is called.
+    /// This is useful for grouping together commands for use in a debugger.
+    pub fn cmd_push_group_debug_name(
+        &self,
+        _name: impl AsRef<str>,
+    ) {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_push_group_debug_name(_name),
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => inner.cmd_push_group_debug_name(_name),
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(_) => {}
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(_) => {}
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(inner) => inner.cmd_push_group_debug_name(_name),
+        }
+    }
+
+    /// Ends a debug label that was started with [`cmd_push_group_debug_name`].
+    pub fn cmd_pop_group_debug_name(&self) {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(inner) => inner.cmd_pop_group_debug_name(),
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => inner.cmd_pop_group_debug_name(),
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(_) => {}
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(_) => {}
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(inner) => inner.cmd_pop_group_debug_name(),
+        }
+    }
+
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]

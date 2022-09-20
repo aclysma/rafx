@@ -219,6 +219,34 @@ impl RafxBuffer {
         }
     }
 
+    /// Sets a name for this buffer. This is useful for debugging, graphics debuggers/profilers such
+    /// as nsight graphics or renderdoc will display this buffer with the given name in the list of resources.
+    pub fn set_debug_name(
+        &self,
+        _name: impl AsRef<str>,
+    ) {
+        match self {
+            #[cfg(feature = "rafx-vulkan")]
+            RafxBuffer::Vk(inner) => inner.set_debug_name(_name),
+            #[cfg(feature = "rafx-metal")]
+            RafxBuffer::Metal(inner) => inner.set_debug_name(_name),
+            #[cfg(feature = "rafx-gles2")]
+            RafxBuffer::Gles2(_) => {}
+            #[cfg(feature = "rafx-gles3")]
+            RafxBuffer::Gles3(_) => {}
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxBuffer::Empty(inner) => inner.set_debug_name(_name),
+        }
+    }
+
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
