@@ -87,19 +87,19 @@ impl RafxSwapchainMetal {
     ) -> RafxResult<RafxSwapchainMetal> {
         let (window, _view, layer) = match raw_window_handle.raw_window_handle() {
             #[cfg(target_os = "macos")]
-            raw_window_handle::RawWindowHandle::MacOS(handle) => unsafe {
+            raw_window_handle::RawWindowHandle::AppKit(handle) => unsafe {
                 (
                     handle.ns_window,
                     handle.ns_view,
-                    raw_window_metal::macos::metal_layer_from_handle(handle),
+                    raw_window_metal::appkit::metal_layer_from_handle(handle),
                 )
             },
             #[cfg(target_os = "ios")]
-            raw_window_handle::RawWindowHandle::IOS(handle) => unsafe {
+            raw_window_handle::RawWindowHandle::UiKIt(handle) => unsafe {
                 (
                     handle.ns_window,
                     handle.ns_view,
-                    raw_window_metal::ios::metal_layer_from_handle(handle),
+                    raw_window_metal::uikit::metal_layer_from_handle(handle),
                 )
             },
             _ => return Err("Cannot create RafxSurfaceMetal on this operating system".into()),

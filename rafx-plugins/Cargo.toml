@@ -24,7 +24,7 @@ rectangle-pack = "0.2.0"
 
 # Egui
 egui = { version = "0.15", features = ["default_fonts"], optional = true }
-winit = { version = "0.24", optional = true }
+winit = { version = "0.27", optional = true }
 
 # Animation
 serde_json = "1.0"

@@ -1,6 +1,5 @@
 use super::internal::*;
 use crate::*;
-use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::mem::ManuallyDrop;
@@ -82,7 +81,7 @@ pub struct RafxDeviceContextVulkanInner {
     pub(crate) dedicated_present_queue_lock: Mutex<()>,
 
     device: ash::Device,
-    allocator: ManuallyDrop<Mutex<gpu_allocator::VulkanAllocator>>,
+    allocator: ManuallyDrop<Mutex<gpu_allocator::vulkan::Allocator>>,
     destroyed: AtomicBool,
     entry: Arc<VkEntry>,
     instance: ash::Instance,
@@ -155,7 +154,7 @@ impl RafxDeviceContextVulkanInner {
             queue_requirements,
         );
 
-        let allocator_create_info = gpu_allocator::VulkanAllocatorCreateDesc {
+        let allocator_create_info = gpu_allocator::vulkan::AllocatorCreateDesc {
             physical_device,
             device: logical_device.clone(),
             instance: instance.instance.clone(),
@@ -163,7 +162,7 @@ impl RafxDeviceContextVulkanInner {
             buffer_device_address: false, // Should check BufferDeviceAddressFeatures first
         };
 
-        let allocator = gpu_allocator::VulkanAllocator::new(&allocator_create_info);
+        let allocator = gpu_allocator::vulkan::Allocator::new(&allocator_create_info)?;
 
         let limits = &physical_device_info.properties.limits;
 
@@ -334,7 +333,7 @@ impl RafxDeviceContextVulkan {
         &self.physical_device_info().properties.limits
     }
 
-    pub fn allocator(&self) -> &Mutex<gpu_allocator::VulkanAllocator> {
+    pub fn allocator(&self) -> &Mutex<gpu_allocator::vulkan::Allocator> {
         &self.inner.allocator
     }
 
@@ -602,9 +601,9 @@ fn choose_physical_device(
 fn vk_version_to_string(version: u32) -> String {
     format!(
         "{}.{}.{}",
-        vk::version_major(version),
-        vk::version_minor(version),
-        vk::version_patch(version)
+        vk::api_version_major(version),
+        vk::api_version_minor(version),
+        vk::api_version_patch(version)
     )
 }
 

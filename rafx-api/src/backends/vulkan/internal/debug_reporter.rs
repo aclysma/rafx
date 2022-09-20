@@ -3,7 +3,6 @@ use std::os::raw::c_void;
 
 use ash::extensions::ext::DebugUtils;
 
-pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
 const ERRORS_TO_IGNORE: [&str; 0] = [

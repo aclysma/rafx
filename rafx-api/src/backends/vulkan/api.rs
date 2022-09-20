@@ -100,15 +100,16 @@ impl RafxApiVulkan {
         let link_method = vk_api_def.link_method;
         let app_name = vk_api_def.app_name.clone();
 
+        const ENABLE_ALL_MESSAGES: vk::DebugUtilsMessageSeverityFlagsEXT =
+            vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE;
+
         let (require_validation_layers_present, validation_layer_debug_report_flags) =
             match vk_api_def.validation_mode {
                 RafxValidationMode::Disabled => {
                     (false, vk::DebugUtilsMessageSeverityFlagsEXT::empty())
                 }
-                RafxValidationMode::EnabledIfAvailable => {
-                    (false, vk::DebugUtilsMessageSeverityFlagsEXT::all())
-                }
-                RafxValidationMode::Enabled => (true, vk::DebugUtilsMessageSeverityFlagsEXT::all()),
+                RafxValidationMode::EnabledIfAvailable => (false, ENABLE_ALL_MESSAGES),
+                RafxValidationMode::Enabled => (true, ENABLE_ALL_MESSAGES),
             };
 
         log::info!("Validation mode: {:?}", vk_api_def.validation_mode);

@@ -1,6 +1,5 @@
 use crate::vulkan::RafxDeviceContextVulkan;
 use crate::RafxResult;
-use ash::version::DeviceV1_0;
 use ash::vk;
 use std::sync::atomic::{AtomicBool, Ordering};
 

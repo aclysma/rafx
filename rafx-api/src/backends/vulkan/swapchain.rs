@@ -1,7 +1,6 @@
 use crate::vulkan::{
     RafxDeviceContextVulkan, RafxFenceVulkan, RafxRawImageVulkan, RafxSemaphoreVulkan, VkEntry,
 };
-use ash::version::DeviceV1_0;
 use ash::vk;
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
@@ -139,7 +138,7 @@ impl RafxSwapchainVulkan {
         // Get the surface, needed to select the best queue family
         let surface = unsafe {
             ash_window::create_surface(
-                &*device_context.entry(),
+                &*device_context.entry().entry(),
                 device_context.instance(),
                 raw_window_handle,
                 None,
