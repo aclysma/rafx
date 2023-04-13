@@ -172,7 +172,7 @@ impl VkQueueAllocator {
             == VkQueueAllocationStrategy::ShareFirstQueueInFamily
         {
             // Just wipe out anything that gets returned to us. We don't need these notifications.
-            while let Ok(_) = self.drop_rx.try_recv() {
+            for _ in self.drop_rx.try_recv() {
                 // Not needed, all of these are instance of available_queues[0]
             }
 
@@ -180,7 +180,7 @@ impl VkQueueAllocator {
             Some(self.create_queue(device_context, self.available_queues[0].clone()))
         } else {
             // If we are notified of a queue no longer in use, return it to the pool
-            while let Ok(free_queue_index) = self.drop_rx.try_recv() {
+            for free_queue_index in self.drop_rx.try_recv() {
                 self.available_queues.push(free_queue_index);
             }
 
