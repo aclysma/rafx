@@ -32,19 +32,22 @@ layout (location = 6) out mat3 out_model_view;
 //layout (location = 8) out mat3 out_model_view;
 layout (location = 9) flat out uint out_instance_index;
 
+invariant gl_Position;
+
 void pbr_main() {
     // draw_data_index push constant can be replaced by gl_DrawID
+    // WARNING: The operations that contribute to computing gl_Position must be kept in EXACT sync with other places to
+    // ensure deterministic values are generated between depth prepass and rendering
     DrawData draw_data = all_draw_data.draw_data[gl_InstanceIndex];
     mat4 model_matrix = all_transforms.transforms[draw_data.transform_index].model_matrix;
 
     mat4 model_view_proj = per_view_data.view_proj * model_matrix;
-    mat4 model_view = per_view_data.view * model_matrix;
 
     vec4 position_clip = model_view_proj * vec4(in_pos, 1.0);
-    vec2 viewport_size = vec2(per_view_data.viewport_width, per_view_data.viewport_height);
-    position_clip = add_jitter(position_clip, per_view_data.jitter_amount);
+    gl_Position = add_jitter(position_clip, per_view_data.jitter_amount);
 
-    gl_Position = position_clip;
+    vec2 viewport_size = vec2(per_view_data.viewport_width, per_view_data.viewport_height);
+    mat4 model_view = per_view_data.view * model_matrix;
     out_position_vs = (model_view * vec4(in_pos, 1.0)).xyz;
 
     // This can be skipped if just using rotation/uniform scale. Required for non-uniform scale/shear

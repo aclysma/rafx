@@ -534,7 +534,7 @@ fn process_glsl_shader(
         let mut msl_ast =
             spirv_cross::spirv::Ast::<spirv_cross::msl::Target>::parse(&spirv_cross_module)?;
         let mut spirv_cross_msl_options = spirv_cross::msl::CompilerOptions::default();
-        spirv_cross_msl_options.version = spirv_cross::msl::Version::V2_0;
+        spirv_cross_msl_options.version = spirv_cross::msl::Version::V2_1;
         spirv_cross_msl_options.enable_argument_buffers = true;
         spirv_cross_msl_options.force_active_argument_buffer_resources = true;
         //TODO: Add equivalent to --msl-no-clip-distance-user-varying
