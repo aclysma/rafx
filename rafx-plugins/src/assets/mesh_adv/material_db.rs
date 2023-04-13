@@ -273,7 +273,7 @@ impl MaterialDB {
     }
 
     pub fn update(&mut self) {
-        for key in self.drop_rx.try_recv() {
+        for key in self.drop_rx.try_iter() {
             Self::do_remove_material(
                 key,
                 &mut self.material_entries,
