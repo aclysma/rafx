@@ -142,7 +142,7 @@ impl VkInstance {
             if extensions.iter().any(|extension| unsafe {
                 CStr::from_ptr(extension.extension_name.as_ptr()) == swapchain_extension_name
             }) {
-                extension_names.push(swapchain_extension_name);
+                extension_names.push(swapchain_extension_name.as_ptr() as *const i8);
                 create_instance_flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
             }
         }
