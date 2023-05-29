@@ -11,9 +11,9 @@ jobs:
       fail-fast: false
       matrix:
         toolchain: [stable, beta]
-        os: [windows-2019, ubuntu-20.04, macos-10.15]
+        os: [windows-2019, ubuntu-20.04, macos-11]
         exclude:
-          - os: macos-10.15
+          - os: macos-11
             toolchain: beta
           - os: windows-2019
             toolchain: beta
