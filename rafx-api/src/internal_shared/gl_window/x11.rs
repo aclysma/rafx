@@ -1,7 +1,9 @@
 use std::ffi::{c_void, CString};
 use std::os::raw::{c_int, c_ulong};
 
-use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle};
+use raw_window_handle::{
+    HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
+};
 
 use x11::glx;
 use x11::xlib;
@@ -59,12 +61,12 @@ impl GlContext {
                 return Err(GlError::InvalidWindowHandle);
             };
 
-        let window_handle =
-            if let RawDisplayHandle::Xlib(window_handle) = window.raw_window_handle() {
-                window_handle
-            } else {
-                return Err(GlError::InvalidWindowHandle);
-            };
+        let window_handle = if let RawWindowHandle::Xlib(window_handle) = window.raw_window_handle()
+        {
+            window_handle
+        } else {
+            return Err(GlError::InvalidWindowHandle);
+        };
 
         if display_handle.display.is_null() {
             return Err(GlError::InvalidWindowHandle);
