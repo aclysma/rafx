@@ -41,11 +41,11 @@ ron = "0.6"
 profiling = "1.0.1"
 stats_alloc = { version = "0.1.8", optional = true }
 bevy_tasks = "0.5.0"
-raw-window-handle = "0.3.3"
+raw-window-handle = "0.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.6"
-winit = { version = "0.24" }
+winit = { version = "0.28" }
 
 [features]
 default = [

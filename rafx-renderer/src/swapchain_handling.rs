@@ -2,7 +2,7 @@ use super::swapchain_render_resource::SwapchainRenderResource;
 use super::Renderer;
 use rafx_api::raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use rafx_api::{
-    RafxDeviceContext, RafxExtents2D, RafxPresentableFrame, RafxQueue, RafxResult, RafxSwapchain,
+    RafxDeviceContext, RafxExtents2D, RafxPresentableFrame, RafxResult, RafxSwapchain,
     RafxSwapchainDef, RafxSwapchainEventListener, RafxSwapchainHelper,
 };
 use rafx_assets::AssetManager;
@@ -20,13 +20,16 @@ impl<'a> SwapchainHandler<'a> {
         renderer: &mut Renderer,
         display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
-        present_queue: &RafxQueue,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainHelper> {
         let swapchain_helper = {
             let device_context = asset_manager.device_context().clone();
-            let swapchain =
-                device_context.create_swapchain(display, window, present_queue, swapchain_def)?;
+            let swapchain = device_context.create_swapchain(
+                display,
+                window,
+                renderer.graphics_queue(),
+                swapchain_def,
+            )?;
 
             let mut lifetime_listener = SwapchainHandler {
                 asset_manager,

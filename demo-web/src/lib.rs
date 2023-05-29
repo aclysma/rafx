@@ -22,7 +22,7 @@ pub fn update_loop(
     // Create the api
     //
     log::trace!("Creating the API");
-    let api = unsafe { RafxApi::new(&window, &Default::default())? };
+    let api = unsafe { RafxApi::new(&window, &window, &Default::default())? };
 
     // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
     // clean shutdown.
@@ -31,12 +31,23 @@ pub fn update_loop(
         let device_context = api.device_context();
 
         //
+        // Allocate a graphics queue. By default, there is just one graphics queue and it is shared.
+        // There currently is no API for customizing this but the code would be easy to adapt to act
+        // differently. Most recommendations I've seen are to just use one graphics queue. (The
+        // rendering hardware is shared among them)
+        //
+        log::trace!("Creating graphics queue");
+        let graphics_queue = device_context.create_queue(RafxQueueType::Graphics)?;
+
+        //
         // Create a swapchain
         //
         log::trace!("Creating swapchain");
         let window_size = window.inner_size();
         let swapchain = device_context.create_swapchain(
             &window,
+            &window,
+            &graphics_queue,
             &RafxSwapchainDef {
                 width: window_size.width,
                 height: window_size.height,
@@ -54,15 +65,6 @@ pub fn update_loop(
         //
         log::trace!("Creating swapchain helper");
         let mut swapchain_helper = RafxSwapchainHelper::new(&device_context, swapchain, None)?;
-
-        //
-        // Allocate a graphics queue. By default, there is just one graphics queue and it is shared.
-        // There currently is no API for customizing this but the code would be easy to adapt to act
-        // differently. Most recommendations I've seen are to just use one graphics queue. (The
-        // rendering hardware is shared among them)
-        //
-        log::trace!("Creating graphics queue");
-        let graphics_queue = device_context.create_queue(RafxQueueType::Graphics)?;
 
         //
         // Some default data we can render

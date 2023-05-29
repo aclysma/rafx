@@ -166,6 +166,7 @@ impl DemoApp {
             &mut resources,
             asset_source,
             window,
+            window,
             physical_size.width,
             physical_size.height,
         )?;

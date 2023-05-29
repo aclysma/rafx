@@ -245,7 +245,7 @@ impl RafxDeviceContext {
     /// Create a swapchain
     pub fn create_swapchain(
         &self,
-        raw_display_handle: &dyn HasRawDisplayHandle,
+        _raw_display_handle: &dyn HasRawDisplayHandle,
         raw_window_handle: &dyn HasRawWindowHandle,
         _present_queue: &RafxQueue,
         swapchain_def: &RafxSwapchainDef,
@@ -253,7 +253,7 @@ impl RafxDeviceContext {
         Ok(match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxDeviceContext::Vk(inner) => RafxSwapchain::Vk(inner.create_swapchain(
-                raw_display_handle,
+                _raw_display_handle,
                 raw_window_handle,
                 swapchain_def,
             )?),
