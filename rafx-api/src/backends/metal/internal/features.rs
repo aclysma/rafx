@@ -254,6 +254,20 @@ fn pixel_format_capabilities(
         MTLPixelFormat::BGRA10_XR_SRGB => feature_set.bgra10_xr_srgb_capabilities(),
         MTLPixelFormat::BGR10_XR => feature_set.bgr10_xr_capabilities(),
         MTLPixelFormat::BGR10_XR_SRGB => feature_set.bgr10_xr_srgb_capabilities(),
+        MTLPixelFormat::ASTC_4x4_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_5x4_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_5x5_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_6x5_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_6x6_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_8x5_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_8x6_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_8x8_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_10x5_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_10x6_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_10x8_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_10x10_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_12x10_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_12x12_HDR => feature_set.astc_pixel_formats_capabilities(),
     }
 }
 

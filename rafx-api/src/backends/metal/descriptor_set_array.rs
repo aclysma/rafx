@@ -4,7 +4,7 @@ use crate::{
     RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult, RafxRootSignature,
     RafxTextureBindType,
 };
-use foreign_types_shared::ForeignTypeRef;
+use metal_rs::foreign_types::ForeignTypeRef;
 use metal_rs::{MTLResource, MTLResourceUsage};
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
