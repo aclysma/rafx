@@ -1,7 +1,7 @@
 use std::ffi::{c_void, CString, OsStr};
 use std::os::windows::ffi::OsStrExt;
 
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle, RawWindowHandle};
 
 use winapi::shared::minwindef::HMODULE;
 use winapi::shared::windef::{HDC, HGLRC, HWND};
@@ -74,11 +74,12 @@ pub struct GlContext {
 
 impl GlContext {
     pub fn create(
-        parent: &dyn HasRawWindowHandle,
+        _display: &dyn HasRawDisplayHandle,
+        window: &dyn HasRawWindowHandle,
         config: GlConfig,
         shared_context: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
-        let handle = if let RawWindowHandle::Win32(handle) = parent.raw_window_handle() {
+        let handle = if let RawWindowHandle::Win32(handle) = window.raw_window_handle() {
             handle
         } else {
             return Err(GlError::InvalidWindowHandle);

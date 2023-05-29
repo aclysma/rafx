@@ -1,4 +1,4 @@
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
 use std::ffi::c_void;
 use std::marker::PhantomData;
@@ -76,11 +76,12 @@ pub struct GlContext {
 
 impl GlContext {
     pub fn create(
-        parent: &dyn HasRawWindowHandle,
+        display: &dyn HasRawDisplayHandle,
+        window: &dyn HasRawWindowHandle,
         config: GlConfig,
         share: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
-        platform::GlContext::create(parent, config, share.map(|x| &x.context)).map(|context| {
+        platform::GlContext::create(display, window, config, share.map(|x| &x.context)).map(|context| {
             GlContext {
                 context,
                 phantom: PhantomData,

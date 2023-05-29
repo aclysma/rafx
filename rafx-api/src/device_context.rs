@@ -245,7 +245,7 @@ impl RafxDeviceContext {
     /// Create a swapchain
     pub fn create_swapchain(
         &self,
-        _raw_display_handle: &dyn HasRawDisplayHandle,
+        raw_display_handle: &dyn HasRawDisplayHandle,
         raw_window_handle: &dyn HasRawWindowHandle,
         _present_queue: &RafxQueue,
         swapchain_def: &RafxSwapchainDef,
@@ -253,21 +253,21 @@ impl RafxDeviceContext {
         Ok(match self {
             #[cfg(feature = "rafx-vulkan")]
             RafxDeviceContext::Vk(inner) => RafxSwapchain::Vk(inner.create_swapchain(
-                _raw_display_handle,
+                raw_display_handle,
                 raw_window_handle,
                 swapchain_def,
             )?),
             #[cfg(feature = "rafx-metal")]
             RafxDeviceContext::Metal(inner) => {
-                RafxSwapchain::Metal(inner.create_swapchain(raw_window_handle, swapchain_def)?)
+                RafxSwapchain::Metal(inner.create_swapchain(raw_display_handle, raw_window_handle, swapchain_def)?)
             }
             #[cfg(feature = "rafx-gles2")]
             RafxDeviceContext::Gles2(inner) => {
-                RafxSwapchain::Gles2(inner.create_swapchain(raw_window_handle, swapchain_def)?)
+                RafxSwapchain::Gles2(inner.create_swapchain(raw_display_handle, raw_window_handle, swapchain_def)?)
             }
             #[cfg(feature = "rafx-gles3")]
             RafxDeviceContext::Gles3(inner) => {
-                RafxSwapchain::Gles3(inner.create_swapchain(raw_window_handle, swapchain_def)?)
+                RafxSwapchain::Gles3(inner.create_swapchain(raw_display_handle, raw_window_handle, swapchain_def)?)
             }
             #[cfg(any(
                 feature = "rafx-empty",

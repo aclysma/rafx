@@ -66,6 +66,7 @@ impl PartialEq for GlContext {
 
 impl GlContext {
     pub fn new(
+        display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
         share: Option<&GlContext>,
     ) -> RafxResult<Self> {
@@ -98,7 +99,7 @@ impl GlContext {
             .dyn_into::<WebGlRenderingContext>()
             .unwrap();
 
-        let window_hash = super::calculate_window_hash(window);
+        let window_hash = super::calculate_window_hash(display, window);
 
         let mut extensions = FnvHashSet::default();
 

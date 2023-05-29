@@ -5,7 +5,7 @@ use crate::{
     RafxSwapchainColorSpace, RafxSwapchainDef, RafxSwapchainImage, RafxTexture, RafxTextureDef,
     RafxTextureDimensions,
 };
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::sync::Arc;
 
 const SWAPCHAIN_IMAGE_COUNT: u32 = 3;
@@ -45,12 +45,13 @@ impl RafxSwapchainGles2 {
 
     pub fn new(
         device_context: &RafxDeviceContextGles2,
+        raw_display_handle: &dyn HasRawDisplayHandle,
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainGles2> {
         let surface_context = device_context
             .gl_context_manager()
-            .create_surface_context(raw_window_handle)?;
+            .create_surface_context(raw_display_handle, raw_window_handle)?;
 
         if !swapchain_def
             .color_space_priority

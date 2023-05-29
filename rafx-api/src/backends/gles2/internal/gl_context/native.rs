@@ -9,7 +9,7 @@ use crate::gles2::{
 use crate::internal_shared::gl_window;
 use crate::{RafxError, RafxResult};
 use fnv::FnvHashSet;
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::ffi::{CStr, CString};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -110,10 +110,11 @@ impl Drop for GlContext {
 
 impl GlContext {
     pub fn new(
+        display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
         share: Option<&GlContext>,
     ) -> RafxResult<Self> {
-        let window_hash = super::calculate_window_hash(window);
+        let window_hash = super::calculate_window_hash(display, window);
 
         let enable_debug = true;
 
@@ -123,7 +124,7 @@ impl GlContext {
         config.use_debug_context = enable_debug;
 
         let context =
-            gl_window::GlContext::create(window, config, share.map(|x| x.context())).unwrap();
+            gl_window::GlContext::create(display, window, config, share.map(|x| x.context())).unwrap();
         context.make_current();
         let gles2 = Gles2::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 

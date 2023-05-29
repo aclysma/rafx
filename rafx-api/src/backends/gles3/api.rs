@@ -1,5 +1,5 @@
 use crate::{RafxApiDef, RafxResult};
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::sync::Arc;
 
 use crate::gles3::{RafxDeviceContextGles3, RafxDeviceContextGles3Inner};
@@ -26,11 +26,12 @@ impl RafxApiGles3 {
     }
 
     pub fn new(
+        display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
         _api_def: &RafxApiDef,
         gl_api_def: &RafxApiDefGles3,
     ) -> RafxResult<Self> {
-        let inner = Arc::new(RafxDeviceContextGles3Inner::new(window, gl_api_def)?);
+        let inner = Arc::new(RafxDeviceContextGles3Inner::new(display, window, gl_api_def)?);
         let device_context = RafxDeviceContextGles3::new(inner)?;
 
         Ok(RafxApiGles3 {

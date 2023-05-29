@@ -28,11 +28,12 @@ pub struct GlContext {
 
 impl GlContext {
     pub fn create(
-        parent: &dyn HasRawWindowHandle,
+        display: &dyn HasRawDisplayHandle,
+        window: &dyn HasRawWindowHandle,
         config: GlConfig,
         shared_context: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
-        let handle = if let RawWindowHandle::MacOS(handle) = parent.raw_window_handle() {
+        let handle = if let RawWindowHandle::MacOS(handle) = window.raw_window_handle() {
             handle
         } else {
             return Err(GlError::InvalidWindowHandle);

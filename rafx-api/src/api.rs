@@ -77,12 +77,12 @@ impl RafxApi {
 
         #[cfg(feature = "rafx-gles3")]
         {
-            return RafxApi::new_gles3(_window, _api_def);
+            return RafxApi::new_gles3(_display, _window, _api_def);
         }
 
         #[cfg(feature = "rafx-gles2")]
         {
-            return RafxApi::new_gles2(_window, _api_def);
+            return RafxApi::new_gles2(_display, _window, _api_def);
         }
 
         return Err("Rafx was compiled with no backend feature flag. Use on of the following features: rafx-metal, rafx-vulkan, rafx-gles2")?;
@@ -138,10 +138,12 @@ impl RafxApi {
     /// behavior on the CPU for reasons other than interacting with the GPU.
     #[cfg(feature = "rafx-gles2")]
     pub unsafe fn new_gles2(
+        display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Gles2(RafxApiGles2::new(
+            display,
             window,
             api_def,
             &api_def
@@ -160,10 +162,12 @@ impl RafxApi {
     /// behavior on the CPU for reasons other than interacting with the GPU.
     #[cfg(feature = "rafx-gles3")]
     pub unsafe fn new_gles3(
+        display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Gles3(RafxApiGles3::new(
+            display,
             window,
             api_def,
             &api_def

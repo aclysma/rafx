@@ -1,6 +1,6 @@
 use crate::gles2::GlContext;
 use crate::RafxResult;
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::sync::{Arc, Mutex};
 
 pub struct GlContextManager {
@@ -9,8 +9,8 @@ pub struct GlContextManager {
 }
 
 impl GlContextManager {
-    pub fn new(window: &dyn HasRawWindowHandle) -> RafxResult<GlContextManager> {
-        let main_context = Arc::new(GlContext::new(window, None)?);
+    pub fn new(display: &dyn HasRawDisplayHandle, window: &dyn HasRawWindowHandle) -> RafxResult<GlContextManager> {
+        let main_context = Arc::new(GlContext::new(display, window, None)?);
         main_context.make_current();
 
         Ok(GlContextManager {
@@ -55,12 +55,13 @@ impl GlContextManager {
     //   returned context was torn down completely
     pub fn create_surface_context(
         &self,
+        display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
     ) -> RafxResult<Arc<GlContext>> {
-        if self.main_context.window_hash() == super::gl_context::calculate_window_hash(window) {
+        if self.main_context.window_hash() == super::gl_context::calculate_window_hash(display, window) {
             Ok(self.main_context.clone())
         } else {
-            Ok(Arc::new(GlContext::new(window, Some(&*self.main_context))?))
+            Ok(Arc::new(GlContext::new(display, window, Some(&*self.main_context))?))
         }
     }
 }

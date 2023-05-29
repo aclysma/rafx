@@ -4,7 +4,7 @@ use crate::{
     RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef,
     RafxShaderModuleDefMetal, RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::sync::Arc;
 
 use crate::metal::features::MetalFeatures;
@@ -210,10 +210,11 @@ impl RafxDeviceContextMetal {
 
     pub fn create_swapchain(
         &self,
+        raw_display_handle: &dyn HasRawDisplayHandle,
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainMetal> {
-        RafxSwapchainMetal::new(self, raw_window_handle, swapchain_def)
+        RafxSwapchainMetal::new(self, raw_display_handle, raw_window_handle, swapchain_def)
     }
 
     pub fn wait_for_fences(
