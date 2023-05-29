@@ -26,7 +26,13 @@ fn run() -> RafxResult<()> {
     // considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
     // behavior on the CPU for reasons other than interacting with the GPU.
     //
-    let mut api = unsafe { RafxApi::new(&sdl2_systems.window, &Default::default())? };
+    let mut api = unsafe {
+        RafxApi::new(
+            &sdl2_systems.window,
+            &sdl2_systems.window,
+            &Default::default(),
+        )?
+    };
 
     // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
     // clean shutdown.
@@ -35,11 +41,21 @@ fn run() -> RafxResult<()> {
         let device_context = api.device_context();
 
         //
+        // Allocate a graphics queue. By default, there is just one graphics queue and it is shared.
+        // There currently is no API for customizing this but the code would be easy to adapt to act
+        // differently. Most recommendations I've seen are to just use one graphics queue. (The
+        // rendering hardware is shared among them)
+        //
+        let graphics_queue = device_context.create_queue(RafxQueueType::Graphics)?;
+
+        //
         // Create a swapchain
         //
         let (window_width, window_height) = sdl2_systems.window.drawable_size();
         let swapchain = device_context.create_swapchain(
             &sdl2_systems.window,
+            &sdl2_systems.window,
+            &graphics_queue,
             &RafxSwapchainDef {
                 width: window_width,
                 height: window_height,
@@ -56,14 +72,6 @@ fn run() -> RafxResult<()> {
         // as necessary.
         //
         let mut swapchain_helper = RafxSwapchainHelper::new(&device_context, swapchain, None)?;
-
-        //
-        // Allocate a graphics queue. By default, there is just one graphics queue and it is shared.
-        // There currently is no API for customizing this but the code would be easy to adapt to act
-        // differently. Most recommendations I've seen are to just use one graphics queue. (The
-        // rendering hardware is shared among them)
-        //
-        let graphics_queue = device_context.create_queue(RafxQueueType::Graphics)?;
 
         //
         // Some default data we can render

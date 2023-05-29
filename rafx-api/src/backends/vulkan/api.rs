@@ -1,6 +1,6 @@
 use super::internal::*;
 use ash::vk;
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::HasRawDisplayHandle;
 use std::sync::Arc;
 
 use crate::vulkan::{RafxDeviceContextVulkan, RafxDeviceContextVulkanInner};
@@ -93,22 +93,24 @@ impl RafxApiVulkan {
     /// be considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
     /// behavior on the CPU for reasons other than interacting with the GPU.
     pub unsafe fn new(
-        window: &dyn HasRawWindowHandle,
+        display: &dyn HasRawDisplayHandle,
         _api_def: &RafxApiDef,
         vk_api_def: &RafxApiDefVulkan,
     ) -> RafxResult<Self> {
         let link_method = vk_api_def.link_method;
         let app_name = vk_api_def.app_name.clone();
 
+        let all_severity_flags = vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE
+            | vk::DebugUtilsMessageSeverityFlagsEXT::INFO
+            | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
+            | vk::DebugUtilsMessageSeverityFlagsEXT::ERROR;
         let (require_validation_layers_present, validation_layer_debug_report_flags) =
             match vk_api_def.validation_mode {
                 RafxValidationMode::Disabled => {
                     (false, vk::DebugUtilsMessageSeverityFlagsEXT::empty())
                 }
-                RafxValidationMode::EnabledIfAvailable => {
-                    (false, vk::DebugUtilsMessageSeverityFlagsEXT::all())
-                }
-                RafxValidationMode::Enabled => (true, vk::DebugUtilsMessageSeverityFlagsEXT::all()),
+                RafxValidationMode::EnabledIfAvailable => (false, all_severity_flags),
+                RafxValidationMode::Enabled => (true, all_severity_flags),
             };
 
         log::info!("Validation mode: {:?}", vk_api_def.validation_mode);
@@ -121,7 +123,7 @@ impl RafxApiVulkan {
 
         let instance = VkInstance::new(
             entry,
-            window,
+            display,
             &app_name,
             require_validation_layers_present,
             validation_layer_debug_report_flags,

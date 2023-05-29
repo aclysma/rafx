@@ -1,7 +1,6 @@
 use crate::types::RafxTextureDimensions;
 use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
-use ash::version::DeviceV1_0;
 use ash::vk;
 use ash::vk::Handle;
 use std::hash::{Hash, Hasher};
@@ -14,7 +13,7 @@ use std::sync::Arc;
 #[derive(Debug)]
 pub struct RafxRawImageVulkan {
     pub image: vk::Image,
-    pub allocation: Option<gpu_allocator::SubAllocation>,
+    pub allocation: Option<gpu_allocator::vulkan::Allocation>,
 }
 
 impl RafxRawImageVulkan {
@@ -152,7 +151,7 @@ impl RafxTextureVulkan {
         self.inner.image.image
     }
 
-    pub fn vk_allocation(&self) -> &Option<gpu_allocator::SubAllocation> {
+    pub fn vk_allocation(&self) -> &Option<gpu_allocator::vulkan::Allocation> {
         &self.inner.image.allocation
     }
 
@@ -342,11 +341,12 @@ impl RafxTextureVulkan {
 
             let memory_requirements = unsafe { device.get_image_memory_requirements(image) };
             let allocation = device_context.allocator().lock().unwrap().allocate(
-                &gpu_allocator::AllocationCreateDesc {
+                &gpu_allocator::vulkan::AllocationCreateDesc {
                     name: "",
                     requirements: memory_requirements,
                     location: gpu_allocator::MemoryLocation::GpuOnly,
                     linear: false, // because we use vk::ImageTiling::OPTIMAL
+                    allocation_scheme: gpu_allocator::vulkan::AllocationScheme::GpuAllocatorManaged,
                 },
             )?;
 

@@ -3,7 +3,6 @@ use std::os::raw::c_void;
 
 use ash::extensions::ext::DebugUtils;
 
-pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
 const ERRORS_TO_IGNORE: [&str; 0] = [
@@ -88,7 +87,7 @@ impl VkDebugReporter {
             // failure to set the name is not fatal/considered an error since it otherwise has no impact on the program.
             let _ = self
                 .debug_report_loader
-                .debug_utils_set_object_name(device, &name_info);
+                .set_debug_utils_object_name(device, &name_info);
         }
     }
 

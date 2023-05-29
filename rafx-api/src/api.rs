@@ -17,7 +17,7 @@ use crate::metal::RafxApiMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxApiVulkan;
 use crate::*;
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
 /// Primary entry point to using the API. Use the `new_*` functions to initialize the desired
 /// backend.
@@ -61,6 +61,7 @@ impl RafxApi {
     /// behavior on the CPU for reasons other than interacting with the GPU.
     #[allow(unreachable_code)]
     pub unsafe fn new(
+        _display: &dyn HasRawDisplayHandle,
         _window: &dyn HasRawWindowHandle,
         _api_def: &RafxApiDef,
     ) -> RafxResult<Self> {
@@ -71,7 +72,7 @@ impl RafxApi {
 
         #[cfg(feature = "rafx-vulkan")]
         {
-            return RafxApi::new_vulkan(_window, _api_def);
+            return RafxApi::new_vulkan(_display, _api_def);
         }
 
         #[cfg(feature = "rafx-gles3")]
@@ -96,11 +97,11 @@ impl RafxApi {
     /// behavior on the CPU for reasons other than interacting with the GPU.
     #[cfg(feature = "rafx-vulkan")]
     pub unsafe fn new_vulkan(
-        window: &dyn HasRawWindowHandle,
+        display: &dyn HasRawDisplayHandle,
         api_def: &RafxApiDef,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Vk(RafxApiVulkan::new(
-            window,
+            display,
             api_def,
             &api_def.vk_options.as_ref().unwrap_or(&Default::default()),
         )?))

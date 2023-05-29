@@ -78,7 +78,7 @@ impl GlContext {
         config: GlConfig,
         shared_context: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
-        let handle = if let RawWindowHandle::Windows(handle) = parent.raw_window_handle() {
+        let handle = if let RawWindowHandle::Win32(handle) = parent.raw_window_handle() {
             handle
         } else {
             return Err(GlError::InvalidWindowHandle);

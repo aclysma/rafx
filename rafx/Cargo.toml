@@ -24,8 +24,8 @@ log = "0.4"
 env_logger = "0.6"
 legion = { version = "0.4.0", default-features = false }
 # SDL2 crate release 0.35.2 only builds with latest macOS. 0.35.1 supports at least as old as macOS 10.15
-sdl2 = { version = ">=0.34, <0.35.2", features = ["raw-window-handle", "bundled", "static-link"] }
-sdl2-sys = ">=0.34, <0.35.2"
+sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2.git", features = ["raw-window-handle", "bundled", "static-link"] }
+sdl2-sys = { git = "https://github.com/Rust-SDL2/rust-sdl2.git" }
 ash = "0.32"
 glam = "0.13.1"
 profiling = "1.0.1"

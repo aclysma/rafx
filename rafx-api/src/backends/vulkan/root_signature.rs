@@ -1,6 +1,5 @@
 use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
-use ash::version::DeviceV1_0;
 use ash::vk;
 use fnv::FnvHashMap;
 use std::sync::Arc;
