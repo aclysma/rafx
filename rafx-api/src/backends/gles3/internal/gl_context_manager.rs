@@ -11,7 +11,7 @@ pub struct GlContextManager {
 impl GlContextManager {
     pub fn new(
         display: &dyn HasRawDisplayHandle,
-        window: &dyn HasRawWindowHandle
+        window: &dyn HasRawWindowHandle,
     ) -> RafxResult<GlContextManager> {
         let main_context = Arc::new(GlContext::new(display, window, None)?);
         main_context.make_current();
@@ -61,10 +61,16 @@ impl GlContextManager {
         display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
     ) -> RafxResult<Arc<GlContext>> {
-        if self.main_context.window_hash() == super::gl_context::calculate_window_hash(display, window) {
+        if self.main_context.window_hash()
+            == super::gl_context::calculate_window_hash(display, window)
+        {
             Ok(self.main_context.clone())
         } else {
-            Ok(Arc::new(GlContext::new(display, window, Some(&*self.main_context))?))
+            Ok(Arc::new(GlContext::new(
+                display,
+                window,
+                Some(&*self.main_context),
+            )?))
         }
     }
 }

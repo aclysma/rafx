@@ -81,12 +81,12 @@ impl GlContext {
         config: GlConfig,
         share: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
-        platform::GlContext::create(display, window, config, share.map(|x| &x.context)).map(|context| {
-            GlContext {
+        platform::GlContext::create(display, window, config, share.map(|x| &x.context)).map(
+            |context| GlContext {
                 context,
                 phantom: PhantomData,
-            }
-        })
+            },
+        )
     }
 
     pub fn make_current(&self) {

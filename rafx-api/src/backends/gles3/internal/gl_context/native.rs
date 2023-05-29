@@ -127,7 +127,8 @@ impl GlContext {
         config.use_debug_context = enable_debug;
 
         let context =
-            gl_window::GlContext::create(display, window, config, share.map(|x| x.context())).unwrap();
+            gl_window::GlContext::create(display, window, config, share.map(|x| x.context()))
+                .unwrap();
         context.make_current();
         let gles3 = Gles3::load_with(|symbol| context.get_proc_address(symbol) as *const _);
 

@@ -52,17 +52,19 @@ impl GlContext {
         config: GlConfig,
         shared_context: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
-        let display_handle = if let RawDisplayHandle::Xlib(display_handle) = display.raw_display_handle() {
-            display_handle
-        } else {
-            return Err(GlError::InvalidWindowHandle);
-        };
+        let display_handle =
+            if let RawDisplayHandle::Xlib(display_handle) = display.raw_display_handle() {
+                display_handle
+            } else {
+                return Err(GlError::InvalidWindowHandle);
+            };
 
-        let window_handle = if let RawDisplayHandle::Xlib(window_handle) = window.raw_window_handle() {
-            window_handle
-        } else {
-            return Err(GlError::InvalidWindowHandle);
-        };
+        let window_handle =
+            if let RawDisplayHandle::Xlib(window_handle) = window.raw_window_handle() {
+                window_handle
+            } else {
+                return Err(GlError::InvalidWindowHandle);
+            };
 
         if display_handle.display.is_null() {
             return Err(GlError::InvalidWindowHandle);

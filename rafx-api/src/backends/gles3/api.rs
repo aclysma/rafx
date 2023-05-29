@@ -31,7 +31,9 @@ impl RafxApiGles3 {
         _api_def: &RafxApiDef,
         gl_api_def: &RafxApiDefGles3,
     ) -> RafxResult<Self> {
-        let inner = Arc::new(RafxDeviceContextGles3Inner::new(display, window, gl_api_def)?);
+        let inner = Arc::new(RafxDeviceContextGles3Inner::new(
+            display, window, gl_api_def,
+        )?);
         let device_context = RafxDeviceContextGles3::new(inner)?;
 
         Ok(RafxApiGles3 {
