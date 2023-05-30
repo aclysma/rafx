@@ -510,7 +510,11 @@ impl RafxCommandBufferMetal {
     ) {
         if let Some(render_encoder) = &inner.render_encoder {
             for attachment in &inner.render_targets_to_make_readable {
-                render_encoder.use_resource(attachment.metal_texture(), MTLResourceUsage::Read);
+                render_encoder.use_resource_at(
+                    attachment.metal_texture(),
+                    MTLResourceUsage::Read,
+                    MTLRenderStages::all(),
+                );
             }
 
             inner.render_targets_to_make_readable.clear();

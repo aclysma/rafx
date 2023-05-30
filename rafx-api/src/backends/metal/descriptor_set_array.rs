@@ -5,7 +5,7 @@ use crate::{
     RafxTextureBindType,
 };
 use metal_rs::foreign_types::ForeignTypeRef;
-use metal_rs::{MTLResource, MTLResourceUsage};
+use metal_rs::{MTLRenderStages, MTLResource, MTLResourceUsage};
 use rafx_base::trust_cell::TrustCell;
 use std::sync::Arc;
 
@@ -74,7 +74,11 @@ impl ArgumentBufferData {
         for (&ptr, &usage) in ptrs[first_ptr..last_ptr].iter().zip(&*self.resource_usages) {
             unsafe {
                 if !ptr.is_null() {
-                    encoder.use_resource(&metal_rs::ResourceRef::from_ptr(ptr), usage);
+                    encoder.use_resource_at(
+                        &metal_rs::ResourceRef::from_ptr(ptr),
+                        usage,
+                        MTLRenderStages::all(),
+                    );
                 }
             }
         }
