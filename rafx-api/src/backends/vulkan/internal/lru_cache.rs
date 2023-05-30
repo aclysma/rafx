@@ -40,7 +40,7 @@ impl<T: Clone> LruCache<T> {
         //
         let value = match self.entries.entry(hash) {
             Entry::Occupied(mut x) => {
-                let mut entry = x.get_mut();
+                let entry = x.get_mut();
                 entry.last_usage = self.next_usage_index;
                 entry.value.clone()
             }
