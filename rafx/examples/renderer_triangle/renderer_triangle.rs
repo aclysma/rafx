@@ -80,7 +80,13 @@ fn run() -> RafxResult<()> {
     // considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
     // behavior on the CPU for reasons other than interacting with the GPU.
     //
-    let api = unsafe { RafxApi::new(&sdl2_systems.window, &Default::default())? };
+    let api = unsafe {
+        RafxApi::new(
+            &sdl2_systems.window,
+            &sdl2_systems.window,
+            &Default::default(),
+        )?
+    };
     let mut resources = Resources::default();
     resources.insert(TimeState::new());
 
@@ -141,6 +147,7 @@ fn run() -> RafxResult<()> {
         let swapchain_helper = SwapchainHandler::create_swapchain(
             &mut renderer_builder_result.asset_manager,
             &mut renderer_builder_result.renderer,
+            sdl2_window,
             sdl2_window,
             &swapchain_def,
         )?;

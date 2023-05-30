@@ -6,7 +6,7 @@ use crate::gles2::{
 };
 use crate::{RafxError, RafxResult};
 use fnv::{FnvHashMap, FnvHashSet};
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::ffi::{CStr, CString};
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
@@ -66,6 +66,7 @@ impl PartialEq for GlContext {
 
 impl GlContext {
     pub fn new(
+        display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
         share: Option<&GlContext>,
     ) -> RafxResult<Self> {
@@ -98,7 +99,7 @@ impl GlContext {
             .dyn_into::<WebGlRenderingContext>()
             .unwrap();
 
-        let window_hash = super::calculate_window_hash(window);
+        let window_hash = super::calculate_window_hash(display, window);
 
         let mut extensions = FnvHashSet::default();
 

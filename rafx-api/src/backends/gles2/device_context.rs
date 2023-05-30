@@ -4,7 +4,7 @@ use crate::{
     RafxResourceType, RafxResult, RafxRootSignatureDef, RafxSampleCount, RafxSamplerDef,
     RafxShaderModuleDefGles2, RafxShaderStageDef, RafxSwapchainDef, RafxTextureDef,
 };
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::sync::Arc;
 
 use crate::gles2::{
@@ -55,11 +55,12 @@ impl Drop for RafxDeviceContextGles2Inner {
 
 impl RafxDeviceContextGles2Inner {
     pub fn new(
+        display: &dyn HasRawDisplayHandle,
         window: &dyn HasRawWindowHandle,
         gl_api_def: &RafxApiDefGles2,
     ) -> RafxResult<Self> {
         log::debug!("Initializing GL backend");
-        let gl_context_manager = super::internal::GlContextManager::new(window)?;
+        let gl_context_manager = super::internal::GlContextManager::new(display, window)?;
         // GL requires a window for initialization
         let gl_context = gl_context_manager.main_context().clone();
 
@@ -236,10 +237,11 @@ impl RafxDeviceContextGles2 {
 
     pub fn create_swapchain(
         &self,
+        raw_display_handle: &dyn HasRawDisplayHandle,
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainGles2> {
-        RafxSwapchainGles2::new(self, raw_window_handle, swapchain_def)
+        RafxSwapchainGles2::new(self, raw_display_handle, raw_window_handle, swapchain_def)
     }
 
     pub fn wait_for_fences(

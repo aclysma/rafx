@@ -8,7 +8,7 @@ use crate::{
 };
 use core_graphics_types::geometry::CGSize;
 use rafx_base::trust_cell::TrustCell;
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
 const SWAPCHAIN_IMAGE_COUNT: u32 = 3;
 
@@ -82,16 +82,17 @@ impl RafxSwapchainMetal {
 
     pub fn new(
         device_context: &RafxDeviceContextMetal,
+        _raw_display_handle: &dyn HasRawDisplayHandle,
         raw_window_handle: &dyn HasRawWindowHandle,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainMetal> {
         let (window, _view, layer) = match raw_window_handle.raw_window_handle() {
             #[cfg(target_os = "macos")]
-            raw_window_handle::RawWindowHandle::MacOS(handle) => unsafe {
+            raw_window_handle::RawWindowHandle::AppKit(handle) => unsafe {
                 (
                     handle.ns_window,
                     handle.ns_view,
-                    raw_window_metal::macos::metal_layer_from_handle(handle),
+                    raw_window_metal::appkit::metal_layer_from_handle(handle),
                 )
             },
             #[cfg(target_os = "ios")]

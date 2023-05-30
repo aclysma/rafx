@@ -20,7 +20,7 @@ use rafx_plugins::features::skybox::SkyboxRendererPlugin;
 use rafx_plugins::features::sprite::SpriteRendererPlugin;
 use rafx_plugins::features::text::TextRendererPlugin;
 use rafx_plugins::features::tile_layer::TileLayerRendererPlugin;
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::sync::Arc;
 
 #[cfg(feature = "rafx-metal")]
@@ -46,6 +46,7 @@ use rafx_plugins::pipelines::modern::ModernPipelineRendererPlugin;
 pub fn rendering_init(
     resources: &mut Resources,
     asset_source: AssetSource,
+    display: &dyn HasRawDisplayHandle,
     window: &dyn HasRawWindowHandle,
     window_width: u32,
     window_height: u32,
@@ -122,7 +123,7 @@ pub fn rendering_init(
         api_def.vk_options = Some(options);
     }
 
-    let rafx_api = unsafe { rafx::api::RafxApi::new(window, &api_def)? };
+    let rafx_api = unsafe { rafx::api::RafxApi::new(display, window, &api_def)? };
 
     let allow_use_render_thread = if cfg!(feature = "stats_alloc") {
         false
@@ -191,6 +192,7 @@ pub fn rendering_init(
     let swapchain_helper = SwapchainHandler::create_swapchain(
         &mut renderer_builder_result.asset_manager,
         &mut renderer_builder_result.renderer,
+        display,
         window,
         &swapchain_def,
     )?;

@@ -1,6 +1,4 @@
 #[cfg(feature = "rafx-vulkan")]
-use crate::vulkan::VkCreateInstanceError;
-#[cfg(feature = "rafx-vulkan")]
 use ash::vk;
 use std::sync::Arc;
 
@@ -15,8 +13,6 @@ pub enum RafxError {
     VkError(vk::Result),
     #[cfg(feature = "rafx-vulkan")]
     VkLoadingError(Arc<ash::LoadingError>),
-    #[cfg(feature = "rafx-vulkan")]
-    VkCreateInstanceError(Arc<VkCreateInstanceError>),
     #[cfg(feature = "rafx-vulkan")]
     AllocationError(Arc<gpu_allocator::AllocationError>),
     #[cfg(any(feature = "rafx-gles2", feature = "rafx-gles3"))]
@@ -33,8 +29,6 @@ impl std::error::Error for RafxError {
             RafxError::VkError(ref e) => Some(e),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkLoadingError(ref e) => Some(&**e),
-            #[cfg(feature = "rafx-vulkan")]
-            RafxError::VkCreateInstanceError(ref e) => Some(&**e),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::AllocationError(ref e) => Some(&**e),
             #[cfg(any(feature = "rafx-gles2", feature = "rafx-gles3"))]
@@ -55,8 +49,6 @@ impl core::fmt::Display for RafxError {
             RafxError::VkError(ref e) => e.fmt(fmt),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::VkLoadingError(ref e) => e.fmt(fmt),
-            #[cfg(feature = "rafx-vulkan")]
-            RafxError::VkCreateInstanceError(ref e) => e.fmt(fmt),
             #[cfg(feature = "rafx-vulkan")]
             RafxError::AllocationError(ref e) => e.fmt(fmt),
             #[cfg(any(feature = "rafx-gles2", feature = "rafx-gles3"))]
@@ -94,13 +86,6 @@ impl From<vk::Result> for RafxError {
 impl From<ash::LoadingError> for RafxError {
     fn from(result: ash::LoadingError) -> Self {
         RafxError::VkLoadingError(Arc::new(result))
-    }
-}
-
-#[cfg(feature = "rafx-vulkan")]
-impl From<VkCreateInstanceError> for RafxError {
-    fn from(result: VkCreateInstanceError) -> Self {
-        RafxError::VkCreateInstanceError(Arc::new(result))
     }
 }
 

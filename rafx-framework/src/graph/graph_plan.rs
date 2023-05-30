@@ -1481,7 +1481,7 @@ fn build_physical_passes(
                         pass_color_attachments[color_attachment_index] =
                             Some(pass_attachment_index);
 
-                        let mut attachment = &mut renderpass_attachments[pass_attachment_index];
+                        let attachment = &mut renderpass_attachments[pass_attachment_index];
                         if is_first_usage {
                             // Check if we load or clear
                             if color_attachment.clear_color_value.is_some() {
@@ -1534,7 +1534,7 @@ fn build_physical_passes(
                             Some(pass_attachment_index);
 
                         assert!(is_first_usage); // Not sure if this assert is valid
-                        let mut attachment = &mut renderpass_attachments[pass_attachment_index];
+                        let attachment = &mut renderpass_attachments[pass_attachment_index];
                         attachment.format = specification.format.into();
                         attachment.samples = specification.samples.into();
 
@@ -1570,7 +1570,7 @@ fn build_physical_passes(
                     );
                     pass_depth_attachment = Some(pass_attachment_index);
 
-                    let mut attachment = &mut renderpass_attachments[pass_attachment_index];
+                    let attachment = &mut renderpass_attachments[pass_attachment_index];
                     if is_first_usage {
                         // Check if we load or clear
                         //TODO: Support load_op for stencil

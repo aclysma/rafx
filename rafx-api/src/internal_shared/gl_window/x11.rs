@@ -1,7 +1,9 @@
 use std::ffi::{c_void, CString};
 use std::os::raw::{c_int, c_ulong};
 
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{
+    HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
+};
 
 use x11::glx;
 use x11::xlib;
@@ -47,23 +49,32 @@ pub struct GlContext {
 
 impl GlContext {
     pub fn create(
-        parent: &dyn HasRawWindowHandle,
+        display: &dyn HasRawDisplayHandle,
+        window: &dyn HasRawWindowHandle,
         config: GlConfig,
         shared_context: Option<&GlContext>,
     ) -> Result<GlContext, GlError> {
-        let handle = if let RawWindowHandle::Xlib(handle) = parent.raw_window_handle() {
-            handle
+        let display_handle =
+            if let RawDisplayHandle::Xlib(display_handle) = display.raw_display_handle() {
+                display_handle
+            } else {
+                return Err(GlError::InvalidWindowHandle);
+            };
+
+        let window_handle = if let RawWindowHandle::Xlib(window_handle) = window.raw_window_handle()
+        {
+            window_handle
         } else {
             return Err(GlError::InvalidWindowHandle);
         };
 
-        if handle.display.is_null() {
+        if display_handle.display.is_null() {
             return Err(GlError::InvalidWindowHandle);
         }
 
         let prev_callback = unsafe { xlib::XSetErrorHandler(Some(err_handler)) };
 
-        let display = handle.display as *mut xlib::_XDisplay;
+        let display = display_handle.display as *mut xlib::_XDisplay;
 
         let screen = unsafe { xlib::XDefaultScreen(display) };
 
@@ -145,8 +156,8 @@ impl GlContext {
         }
 
         unsafe {
-            glx::glXMakeCurrent(display, handle.window, context);
-            glXSwapIntervalEXT(display, handle.window, config.vsync as i32);
+            glx::glXMakeCurrent(display, window_handle.window, context);
+            glXSwapIntervalEXT(display, window_handle.window, config.vsync as i32);
             glx::glXMakeCurrent(display, 0, std::ptr::null_mut());
         }
 
@@ -155,7 +166,7 @@ impl GlContext {
         }
 
         Ok(GlContext {
-            window: handle.window,
+            window: window_handle.window,
             display,
             context,
         })

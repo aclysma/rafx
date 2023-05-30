@@ -12,6 +12,7 @@ use crate::{
     RafxVertexBufferBinding,
 };
 use fnv::FnvHashSet;
+use metal_rs::foreign_types::{ForeignType, ForeignTypeRef};
 use metal_rs::{
     BlitCommandEncoder, MTLBlitOption, MTLIndexType, MTLOrigin, MTLPrimitiveType, MTLRenderStages,
     MTLResourceUsage, MTLScissorRect, MTLSize, MTLViewport,
@@ -52,8 +53,6 @@ pub struct RafxCommandBufferMetal {
 
 impl RafxCommandBufferMetal {
     pub fn metal_command_buffer(&self) -> Option<&metal_rs::CommandBufferRef> {
-        use foreign_types_shared::ForeignType;
-        use foreign_types_shared::ForeignTypeRef;
         let ptr = self
             .inner
             .borrow()
@@ -64,8 +63,6 @@ impl RafxCommandBufferMetal {
     }
 
     pub fn metal_render_encoder(&self) -> Option<&metal_rs::RenderCommandEncoderRef> {
-        use foreign_types_shared::ForeignType;
-        use foreign_types_shared::ForeignTypeRef;
         let ptr = self
             .inner
             .borrow()
@@ -76,8 +73,6 @@ impl RafxCommandBufferMetal {
     }
 
     pub fn metal_compute_encoder(&self) -> Option<&metal_rs::ComputeCommandEncoderRef> {
-        use foreign_types_shared::ForeignType;
-        use foreign_types_shared::ForeignTypeRef;
         let ptr = self
             .inner
             .borrow()
@@ -88,8 +83,6 @@ impl RafxCommandBufferMetal {
     }
 
     pub fn metal_blit_encoder(&self) -> Option<&metal_rs::BlitCommandEncoderRef> {
-        use foreign_types_shared::ForeignType;
-        use foreign_types_shared::ForeignTypeRef;
         let ptr = self
             .inner
             .borrow()
@@ -517,7 +510,11 @@ impl RafxCommandBufferMetal {
     ) {
         if let Some(render_encoder) = &inner.render_encoder {
             for attachment in &inner.render_targets_to_make_readable {
-                render_encoder.use_resource(attachment.metal_texture(), MTLResourceUsage::Read);
+                render_encoder.use_resource_at(
+                    attachment.metal_texture(),
+                    MTLResourceUsage::Read,
+                    MTLRenderStages::all(),
+                );
             }
 
             inner.render_targets_to_make_readable.clear();

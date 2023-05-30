@@ -14,12 +14,16 @@ pub use web::*;
 pub mod gles2_bindings;
 
 use fnv::FnvHasher;
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::ffi::CString;
 use std::hash::{Hash, Hasher};
 
-pub fn calculate_window_hash(window: &dyn HasRawWindowHandle) -> WindowHash {
+pub fn calculate_window_hash(
+    display: &dyn HasRawDisplayHandle,
+    window: &dyn HasRawWindowHandle,
+) -> WindowHash {
     let mut hasher = FnvHasher::default();
+    display.raw_display_handle().hash(&mut hasher);
     window.raw_window_handle().hash(&mut hasher);
     WindowHash(hasher.finish())
 }

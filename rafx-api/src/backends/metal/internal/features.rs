@@ -1,24 +1,5 @@
-use metal_rs::{MTLArgumentBuffersTier, MTLFeatureSet, MTLPixelFormat};
-
-// More up to date than published metal-rs has
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum MTLGPUFamily {
-    Common1 = 3001,
-    Common2 = 3002,
-    Common3 = 3003,
-    Apple1 = 1001,
-    Apple2 = 1002,
-    Apple3 = 1003,
-    Apple4 = 1004,
-    Apple5 = 1005,
-    Apple6 = 1006,
-    Apple7 = 1007,
-    Apple8 = 1008,
-    Mac1 = 2001,
-    Mac2 = 2002,
-    MacCatalyst1 = 4001,
-    MacCatalyst2 = 4002,
-}
+#[allow(deprecated)]
+use metal_rs::{MTLArgumentBuffersTier, MTLFeatureSet, MTLGPUFamily, MTLPixelFormat};
 
 mod extra_ffi {
     use objc::runtime::{NO, YES};
@@ -60,6 +41,7 @@ const GPU_FAMILIES_COMMON: [MTLGPUFamily; 3] = [
     MTLGPUFamily::Common1,
 ];
 
+#[allow(deprecated)]
 const FEATURE_SETS_IOS: [MTLFeatureSet; 17] = [
     MTLFeatureSet::iOS_GPUFamily5_v1,
     MTLFeatureSet::iOS_GPUFamily4_v2,
@@ -80,6 +62,7 @@ const FEATURE_SETS_IOS: [MTLFeatureSet; 17] = [
     MTLFeatureSet::iOS_GPUFamily1_v1,
 ];
 
+#[allow(deprecated)]
 const FEATURE_SETS_TVOS: [MTLFeatureSet; 6] = [
     MTLFeatureSet::tvOS_GPUFamily2_v2,
     MTLFeatureSet::tvOS_GPUFamily2_v1,
@@ -89,6 +72,7 @@ const FEATURE_SETS_TVOS: [MTLFeatureSet; 6] = [
     MTLFeatureSet::tvOS_GPUFamily1_v1,
 ];
 
+#[allow(deprecated)]
 const FEATURE_SETS_MACOS: [MTLFeatureSet; 5] = [
     MTLFeatureSet::macOS_GPUFamily2_v1,
     MTLFeatureSet::macOS_GPUFamily1_v4,
@@ -110,6 +94,7 @@ fn find_supported_family(
     return None;
 }
 
+#[allow(deprecated)]
 fn find_supported_feature_set(
     device: &metal_rs::DeviceRef,
     feature_sets: &[MTLFeatureSet],
@@ -123,6 +108,7 @@ fn find_supported_feature_set(
     return None;
 }
 
+#[allow(deprecated)]
 fn pixel_format_capabilities(
     feature_set: MTLFeatureSet,
     pixel_format: MTLPixelFormat,
@@ -254,9 +240,24 @@ fn pixel_format_capabilities(
         MTLPixelFormat::BGRA10_XR_SRGB => feature_set.bgra10_xr_srgb_capabilities(),
         MTLPixelFormat::BGR10_XR => feature_set.bgr10_xr_capabilities(),
         MTLPixelFormat::BGR10_XR_SRGB => feature_set.bgr10_xr_srgb_capabilities(),
+        MTLPixelFormat::ASTC_4x4_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_5x4_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_5x5_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_6x5_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_6x6_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_8x5_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_8x6_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_8x8_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_10x5_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_10x6_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_10x8_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_10x10_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_12x10_HDR => feature_set.astc_pixel_formats_capabilities(),
+        MTLPixelFormat::ASTC_12x12_HDR => feature_set.astc_pixel_formats_capabilities(),
     }
 }
 
+#[allow(deprecated)]
 #[derive(Debug)]
 pub struct MetalFeatures {
     pub device_name: String,

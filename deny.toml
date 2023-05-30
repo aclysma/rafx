@@ -197,4 +197,5 @@ allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = [
     "https://github.com/amethyst/distill.git",
     "https://github.com/aclysma/distill.git",
+    "https://github.com/aclysma/rust-sdl2.git"
 ]

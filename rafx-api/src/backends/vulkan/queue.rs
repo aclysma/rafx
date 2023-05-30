@@ -4,7 +4,6 @@ use crate::vulkan::{
     RafxSemaphoreVulkan, RafxSwapchainVulkan,
 };
 use crate::*;
-use ash::version::DeviceV1_0;
 use ash::vk;
 
 #[derive(Clone, Debug)]

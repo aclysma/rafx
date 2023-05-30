@@ -1,15 +1,14 @@
 use std::ffi::{CStr, CString};
 
 use ash::prelude::VkResult;
-pub use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
 
 //use super::VkEntry;
-use crate::vulkan::VkCreateInstanceError::VkError;
 use crate::vulkan::{VkDebugReporter, VkEntry};
+use crate::{RafxError, RafxResult};
 use ash::extensions::ext::DebugUtils;
 use ash::vk::DebugUtilsMessageTypeFlagsEXT;
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::HasRawDisplayHandle;
 use std::sync::Arc;
 
 /// Create one of these at startup. It never gets lost/destroyed.
@@ -19,82 +18,45 @@ pub struct VkInstance {
     pub debug_reporter: Option<Arc<VkDebugReporter>>,
 }
 
-#[derive(Debug)]
-pub enum VkCreateInstanceError {
-    InstanceError(ash::InstanceError),
-    VkError(vk::Result),
-}
-
-impl std::error::Error for VkCreateInstanceError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match *self {
-            VkCreateInstanceError::InstanceError(ref e) => Some(e),
-            VkCreateInstanceError::VkError(ref e) => Some(e),
-        }
-    }
-}
-
-impl core::fmt::Display for VkCreateInstanceError {
-    fn fmt(
-        &self,
-        fmt: &mut core::fmt::Formatter,
-    ) -> core::fmt::Result {
-        match *self {
-            VkCreateInstanceError::InstanceError(ref e) => e.fmt(fmt),
-            VkCreateInstanceError::VkError(ref e) => e.fmt(fmt),
-        }
-    }
-}
-
-impl From<ash::InstanceError> for VkCreateInstanceError {
-    fn from(result: ash::InstanceError) -> Self {
-        VkCreateInstanceError::InstanceError(result)
-    }
-}
-
-impl From<vk::Result> for VkCreateInstanceError {
-    fn from(result: vk::Result) -> Self {
-        VkCreateInstanceError::VkError(result)
-    }
-}
-
 impl VkInstance {
     /// Creates a vulkan instance.
     pub fn new(
         entry: VkEntry,
-        window: &dyn HasRawWindowHandle,
+        display: &dyn HasRawDisplayHandle,
         app_name: &CString,
         require_validation_layers_present: bool,
         validation_layer_debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
         enable_debug_names: bool,
-    ) -> Result<VkInstance, VkCreateInstanceError> {
+    ) -> RafxResult<VkInstance> {
         // Determine the supported version of vulkan that's available
-        let vulkan_version = match entry.try_enumerate_instance_version()? {
+        let vulkan_version = match entry.entry().try_enumerate_instance_version()? {
             // Vulkan 1.1+
             Some(version) => version,
             // Vulkan 1.0
-            None => vk::make_version(1, 0, 0),
+            None => vk::make_api_version(0, 1, 0, 0),
         };
 
         let vulkan_version_tuple = (
-            vk::version_major(vulkan_version),
-            vk::version_minor(vulkan_version),
-            vk::version_patch(vulkan_version),
+            vk::api_version_major(vulkan_version),
+            vk::api_version_minor(vulkan_version),
+            vk::api_version_patch(vulkan_version),
         );
 
         log::info!("Found Vulkan version: {:?}", vulkan_version_tuple);
 
         // Only need 1.1 for negative y viewport support, which is also possible to get out of an
         // extension, but at this point I think 1.1 is a reasonable minimum expectation
-        let minimum_version = vk::make_version(1, 1, 0);
+        let minimum_version = vk::make_api_version(0, 1, 1, 0);
         if vulkan_version < minimum_version {
-            return Err(VkError(vk::Result::ERROR_INCOMPATIBLE_DRIVER));
+            return Err(RafxError::VkError(vk::Result::ERROR_INCOMPATIBLE_DRIVER))?;
         }
 
         // Get the available layers/extensions
-        let layers = entry.enumerate_instance_layer_properties()?;
+        let layers = entry.entry().enumerate_instance_layer_properties()?;
         log::debug!("Available Layers: {:#?}", layers);
-        let extensions = entry.enumerate_instance_extension_properties()?;
+        let extensions = entry
+            .entry()
+            .enumerate_instance_extension_properties(None)?;
         log::debug!("Available Extensions: {:#?}", extensions);
 
         // Expected to be 1.1.0 or 1.0.0 depeneding on what we found in try_enumerate_instance_version
@@ -111,7 +73,11 @@ impl VkInstance {
             .api_version(vulkan_version);
 
         let mut layer_names = vec![];
-        let mut extension_names = ash_window::enumerate_required_extensions(window)?;
+        let mut extension_names: Vec<_> =
+            ash_window::enumerate_required_extensions(display.raw_display_handle())?
+                .iter()
+                .copied()
+                .collect();
 
         let debug_utils_extension_available = extensions.iter().any(|extension|
             unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) } == DebugUtils::name()
@@ -148,13 +114,13 @@ impl VkInstance {
         }
 
         if use_debug_utils_extension {
-            extension_names.push(DebugUtils::name());
+            extension_names.push(DebugUtils::name().as_ptr());
         }
 
         if extensions.iter().any(|extension|
              unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) } == vk::ExtSwapchainColorspaceFn::name()
         ) {
-            extension_names.push(vk::ExtSwapchainColorspaceFn::name());
+            extension_names.push(vk::ExtSwapchainColorspaceFn::name().as_ptr());
         }
 
         #[allow(unused_mut)]
@@ -176,7 +142,7 @@ impl VkInstance {
             if extensions.iter().any(|extension| unsafe {
                 CStr::from_ptr(extension.extension_name.as_ptr()) == swapchain_extension_name
             }) {
-                extension_names.push(swapchain_extension_name);
+                extension_names.push(swapchain_extension_name.as_ptr() as *const i8);
                 create_instance_flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
             }
         }
@@ -187,7 +153,7 @@ impl VkInstance {
         }
 
         let layer_names: Vec<_> = layer_names.iter().map(|x| x.as_ptr()).collect();
-        let extension_names: Vec<_> = extension_names.iter().map(|x| x.as_ptr()).collect();
+        //let extension_names: Vec<_> = extension_names.iter().map(|&x| x).collect();
 
         // Create the instance
         let create_info = vk::InstanceCreateInfo::builder()
@@ -197,12 +163,12 @@ impl VkInstance {
             .flags(create_instance_flags);
 
         log::info!("Creating vulkan instance");
-        let instance: ash::Instance = unsafe { entry.create_instance(&create_info, None)? };
+        let instance: ash::Instance = unsafe { entry.entry().create_instance(&create_info, None)? };
 
         // Setup the debug callback for the validation layer
         let debug_reporter = if use_debug_utils_extension {
             Some(Self::setup_vulkan_debug_reporter(
-                &entry,
+                &entry.entry(),
                 &instance,
                 validation_layer_debug_report_flags,
             )?)
@@ -250,15 +216,19 @@ impl VkInstance {
     }
 
     /// This is used to setup a debug callback for logging validation errors
-    fn setup_vulkan_debug_reporter<E: EntryV1_0, I: InstanceV1_0>(
-        entry: &E,
-        instance: &I,
+    fn setup_vulkan_debug_reporter(
+        entry: &ash::Entry,
+        instance: &ash::Instance,
         debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
     ) -> VkResult<VkDebugReporter> {
         log::info!("Seting up vulkan debug callback");
         let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
             .message_severity(debug_report_flags)
-            .message_type(DebugUtilsMessageTypeFlagsEXT::all())
+            .message_type(
+                DebugUtilsMessageTypeFlagsEXT::GENERAL
+                    | DebugUtilsMessageTypeFlagsEXT::VALIDATION
+                    | DebugUtilsMessageTypeFlagsEXT::PERFORMANCE,
+            )
             .pfn_user_callback(Some(super::debug_reporter::vulkan_debug_callback));
 
         let debug_report_loader = ash::extensions::ext::DebugUtils::new(entry, instance);

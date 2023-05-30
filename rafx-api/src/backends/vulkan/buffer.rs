@@ -1,13 +1,12 @@
 use crate::vulkan::RafxDeviceContextVulkan;
 use crate::*;
-use ash::version::DeviceV1_0;
 use ash::vk;
 use ash::vk::Handle;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct RafxBufferRaw {
     pub buffer: vk::Buffer,
-    pub allocation: gpu_allocator::SubAllocation,
+    pub allocation: gpu_allocator::vulkan::Allocation,
 }
 
 #[derive(Debug)]
@@ -149,11 +148,12 @@ impl RafxBufferVulkan {
         let requirements = unsafe { device.get_buffer_memory_requirements(buffer) };
 
         let allocation = device_context.allocator().lock().unwrap().allocate(
-            &gpu_allocator::AllocationCreateDesc {
+            &gpu_allocator::vulkan::AllocationCreateDesc {
                 name: "",
                 linear: true,
                 location: buffer_def.memory_usage.into(),
                 requirements,
+                allocation_scheme: gpu_allocator::vulkan::AllocationScheme::GpuAllocatorManaged,
             },
         )?;
 

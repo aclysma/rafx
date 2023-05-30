@@ -89,7 +89,7 @@ impl super::TestScene for TaaTestScene {
         {
             let time_state = resources.get::<TimeState>().unwrap();
             let mut query = <Write<DirectionalLightComponent>>::query();
-            for mut light in query.iter_mut(world) {
+            for light in query.iter_mut(world) {
                 const LIGHT_XY_DISTANCE: f32 = 50.0;
                 const LIGHT_Z: f32 = 50.0;
                 const LIGHT_ROTATE_SPEED: f32 = 0.0;
