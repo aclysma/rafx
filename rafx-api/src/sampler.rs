@@ -1,6 +1,9 @@
+#[cfg(feature = "rafx-dx12")]
+use crate::dx12::RafxSamplerDx12;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -22,6 +25,8 @@ use crate::vulkan::RafxSamplerVulkan;
 /// Samplers must not be dropped if they are in use by the GPU
 #[derive(Debug, Clone)]
 pub enum RafxSampler {
+    #[cfg(feature = "rafx-dx12")]
+    Dx12(RafxSamplerDx12),
     #[cfg(feature = "rafx-vulkan")]
     Vk(RafxSamplerVulkan),
     #[cfg(feature = "rafx-metal")]
@@ -33,6 +38,7 @@ pub enum RafxSampler {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -43,11 +49,42 @@ pub enum RafxSampler {
 }
 
 impl RafxSampler {
+    /// Get the underlying dx12 API object. This provides access to any internally created
+    /// vulkan objects.
+    #[cfg(feature = "rafx-dx12")]
+    pub fn dx12_sampler(&self) -> Option<&RafxSamplerDx12> {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxSampler::Dx12(inner) => Some(inner),
+            #[cfg(feature = "rafx-vulkan")]
+            RafxSampler::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxSampler::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxSampler::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxSampler::Gles3(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxSampler::Empty(_) => None,
+        }
+    }
+
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
     pub fn vk_sampler(&self) -> Option<&RafxSamplerVulkan> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxSampler::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
@@ -59,6 +96,7 @@ impl RafxSampler {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -74,6 +112,8 @@ impl RafxSampler {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_sampler(&self) -> Option<&RafxSamplerMetal> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxSampler::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -85,6 +125,7 @@ impl RafxSampler {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -100,6 +141,8 @@ impl RafxSampler {
     #[cfg(feature = "rafx-gles2")]
     pub fn gles2_sampler(&self) -> Option<&RafxSamplerGles2> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxSampler::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -111,6 +154,7 @@ impl RafxSampler {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -126,6 +170,8 @@ impl RafxSampler {
     #[cfg(feature = "rafx-gles3")]
     pub fn gles3_sampler(&self) -> Option<&RafxSamplerGles3> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxSampler::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -137,6 +183,7 @@ impl RafxSampler {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -152,6 +199,7 @@ impl RafxSampler {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -160,6 +208,8 @@ impl RafxSampler {
     ))]
     pub fn empty_sampler(&self) -> Option<&RafxSamplerEmpty> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxSampler::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxSampler::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -171,6 +221,7 @@ impl RafxSampler {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",

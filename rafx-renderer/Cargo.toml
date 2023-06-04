@@ -13,6 +13,7 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 
 [features]
 rafx-empty = ["rafx-assets/rafx-empty"]
+rafx-dx12 = ["rafx-assets/rafx-dx12"]
 rafx-vulkan = ["rafx-assets/rafx-vulkan"]
 rafx-metal = ["rafx-assets/rafx-metal"]
 rafx-gles2 = ["rafx-assets/rafx-gles2"]

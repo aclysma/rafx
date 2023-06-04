@@ -105,34 +105,12 @@ impl BuiltinPipelines {
         buffer: &ResourceArc<BufferResource>,
         fill_value: u32,
     ) -> RafxResult<()> {
-        let mut descriptor_set_allocator = resource_context.create_descriptor_set_allocator();
-
-        command_buffer.cmd_bind_pipeline(&*self.util_fill_buffer_pipeline.get_raw().pipeline)?;
-
-        let mut descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
-            &self
-                .util_fill_buffer_pipeline
-                .get_raw()
-                .descriptor_set_layouts[0],
-        )?;
         let buffer_bytes_div_by_four: u32 = (buffer.get_raw().buffer.buffer_def().size / 4) as u32;
-
-        use crate::shaders::util_fill_buffer_comp as fill_shader;
-        descriptor_set.set_buffer_data(
-            fill_shader::CONFIG_DESCRIPTOR_BINDING_INDEX as _,
-            &fill_shader::ClearBufferConfigUniform {
-                buffer_bytes_div_by_four,
-                fill_value,
-                ..Default::default()
-            },
-        );
-        descriptor_set.set_buffer(fill_shader::DATA_DESCRIPTOR_BINDING_INDEX as _, buffer);
-        descriptor_set.flush(&mut descriptor_set_allocator)?;
-        descriptor_set_allocator.flush_changes()?;
-        descriptor_set.bind(&command_buffer)?;
 
         // Keep in sync with group size in the shader
         const GROUP_SIZE_X: u32 = 64;
+
+        // We need at least this many groups
         let num_workgroups = buffer_bytes_div_by_four / GROUP_SIZE_X;
 
         let (group_count_x, group_count_y) = if num_workgroups <= 1 {
@@ -156,6 +134,32 @@ impl BuiltinPipelines {
                 (group_count_isqrt, group_count_isqrt)
             }
         };
+
+        let mut descriptor_set_allocator = resource_context.create_descriptor_set_allocator();
+
+        command_buffer.cmd_bind_pipeline(&*self.util_fill_buffer_pipeline.get_raw().pipeline)?;
+
+        let mut descriptor_set = descriptor_set_allocator.create_dyn_descriptor_set_uninitialized(
+            &self
+                .util_fill_buffer_pipeline
+                .get_raw()
+                .descriptor_set_layouts[0],
+        )?;
+
+        use crate::shaders::util_fill_buffer_comp as fill_shader;
+        descriptor_set.set_buffer_data(
+            fill_shader::CONFIG_DESCRIPTOR_BINDING_INDEX as _,
+            &fill_shader::ClearBufferConfigUniform {
+                buffer_bytes_div_by_four,
+                fill_value,
+                num_workgroups_x: group_count_x,
+                ..Default::default()
+            },
+        );
+        descriptor_set.set_buffer(fill_shader::DATA_DESCRIPTOR_BINDING_INDEX as _, buffer);
+        descriptor_set.flush(&mut descriptor_set_allocator)?;
+        descriptor_set_allocator.flush_changes()?;
+        descriptor_set.bind(&command_buffer)?;
 
         command_buffer.cmd_dispatch(group_count_x, group_count_y, 1)
     }

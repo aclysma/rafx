@@ -230,6 +230,11 @@ pub use raw_window_handle;
 //
 // Backends
 //
+#[cfg(feature = "rafx-dx12")]
+pub use backends::dx12;
+#[cfg(feature = "rafx-dx12")]
+pub use backends::dx12::RafxApiDefDx12;
+
 #[cfg(feature = "rafx-metal")]
 pub use backends::metal;
 #[cfg(feature = "rafx-metal")]
@@ -253,6 +258,7 @@ pub use backends::gles3::RafxApiDefGles3;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -303,6 +309,7 @@ mod texture;
 pub const MAX_DESCRIPTOR_SET_LAYOUTS: usize = 4;
 /// The maximum number of simultaneously attached render targets
 // In sync with RafxBlendStateTargets
+// Also coupled to d3d12 API D3D12_GRAPHICS_PIPELINE_STATE_DESC
 pub const MAX_RENDER_TARGET_ATTACHMENTS: usize = 8;
 // Vulkan guarantees up to 16
 pub const MAX_VERTEX_INPUT_BINDINGS: usize = 16;

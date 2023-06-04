@@ -28,6 +28,7 @@ pub(crate) struct DescriptorInfo {
     // --- vulkan-specific ---
     // The index to the first descriptor in the flattened list of all descriptors in the layout
     // none for immutable samplers, which have no update data
+    //TODO: I think we don't create DescriptorInfo for immutable samplers? So this is never none.
     pub(crate) update_data_offset_in_set: Option<u32>,
     pub(crate) has_immutable_sampler: bool,
 
@@ -121,13 +122,15 @@ impl RafxRootSignatureVulkan {
         for (stage_index, s) in ALL_SHADER_STAGE_FLAGS.iter().enumerate() {
             if s.intersects(stage) {
                 let s_descriptor_index = self.inner.push_constant_descriptors[stage_index];
-                if let Some(found_descriptor) = found_descriptor {
-                    if found_descriptor != s_descriptor_index {
-                        // The caller passed multiple stages and they do not use the same push constant descriptor
-                        return None;
+                if s_descriptor_index.is_some() {
+                    if let Some(found_descriptor) = found_descriptor {
+                        if found_descriptor != s_descriptor_index {
+                            // The caller passed multiple stages and they do not use the same push constant descriptor
+                            return None;
+                        }
+                    } else {
+                        found_descriptor = Some(s_descriptor_index);
                     }
-                } else {
-                    found_descriptor = Some(s_descriptor_index);
                 }
             }
         }

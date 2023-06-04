@@ -23,7 +23,7 @@ impl RafxDeviceContextEmpty {
     pub fn create_queue(&self, queue_type: RafxQueueType) -> RafxResult<RafxQueueEmpty> { unimplemented!(); }
     pub fn create_fence(&self) -> RafxResult<RafxFenceEmpty> { unimplemented!(); }
     pub fn create_semaphore(&self) -> RafxResult<RafxSemaphoreEmpty> { unimplemented!(); }
-    pub fn create_swapchain(&self, raw_window_handle: &dyn HasRawWindowHandle, swapchain_def: &RafxSwapchainDef) -> RafxResult<RafxSwapchainEmpty> { unimplemented!(); }
+    pub fn create_swapchain(&self, raw_window_handle: &dyn HasRawWindowHandle, swapchain_def: &RafxSwapchainDef, present_queue: &RafxQueue) -> RafxResult<RafxSwapchainEmpty> { unimplemented!(); }
     pub fn create_sampler(&self, sampler_def: &RafxSamplerDef) -> RafxResult<RafxSamplerEmpty> { unimplemented!(); }
     pub fn create_texture(&self, texture_def: &RafxTextureDef) -> RafxResult<RafxTextureEmpty> { unimplemented!(); }
     pub fn create_buffer(&self, buffer_def: &RafxBufferDef) -> RafxResult<RafxBufferEmpty> { unimplemented!(); }

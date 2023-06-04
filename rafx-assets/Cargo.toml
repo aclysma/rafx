@@ -19,6 +19,7 @@ categories = [
 
 [features]
 rafx-empty = ["rafx-framework/rafx-empty"]
+rafx-dx12 = ["rafx-framework/rafx-dx12"]
 rafx-vulkan = ["rafx-framework/rafx-vulkan"]
 rafx-metal = ["rafx-framework/rafx-metal"]
 rafx-gles2 = ["rafx-framework/rafx-gles2"]

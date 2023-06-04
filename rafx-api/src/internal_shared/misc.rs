@@ -1,15 +1,17 @@
 #[cfg(any(
+    feature = "rafx-dx12",
     feature = "rafx-metal",
     feature = "rafx-vulkan",
     feature = "rafx-gles2",
     feature = "rafx-gles3"
 ))]
 use crate::{
-    RafxImmutableSamplerKey, RafxImmutableSamplers, RafxPipelineType, RafxResult,
+    RafxImmutableSamplerKey, RafxImmutableSamplers, RafxMemoryUsage, RafxPipelineType, RafxResult,
     RafxRootSignatureDef, RafxShaderResource, RafxShaderStageFlags,
 };
 
 #[cfg(any(
+    feature = "rafx-dx12",
     feature = "rafx-metal",
     feature = "rafx-vulkan",
     feature = "rafx-gles2",
@@ -19,6 +21,7 @@ pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
     std::sync::atomic::AtomicU32::new(1);
 
 #[cfg(any(
+    feature = "rafx-dx12",
     feature = "rafx-metal",
     feature = "rafx-vulkan",
     feature = "rafx-gles2",
@@ -26,7 +29,22 @@ pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
 ))]
 use fnv::FnvHashMap;
 
+#[cfg(any(feature = "rafx-dx12", feature = "rafx-vulkan",))]
+impl Into<gpu_allocator::MemoryLocation> for RafxMemoryUsage {
+    fn into(self) -> gpu_allocator::MemoryLocation {
+        use gpu_allocator::MemoryLocation;
+        match self {
+            RafxMemoryUsage::Unknown => MemoryLocation::Unknown,
+            RafxMemoryUsage::GpuOnly => MemoryLocation::GpuOnly,
+            RafxMemoryUsage::CpuOnly => MemoryLocation::CpuToGpu,
+            RafxMemoryUsage::CpuToGpu => MemoryLocation::CpuToGpu,
+            RafxMemoryUsage::GpuToCpu => MemoryLocation::GpuToCpu,
+        }
+    }
+}
+
 #[cfg(any(
+    feature = "rafx-dx12",
     feature = "rafx-metal",
     feature = "rafx-vulkan",
     feature = "rafx-gles2",
@@ -59,6 +77,7 @@ pub(crate) fn find_immutable_sampler_index(
 }
 
 #[cfg(any(
+    feature = "rafx-dx12",
     feature = "rafx-metal",
     feature = "rafx-vulkan",
     feature = "rafx-gles2",
@@ -213,6 +232,7 @@ pub(crate) fn merge_resources<'a>(
 }
 
 #[cfg(any(
+    feature = "rafx-dx12",
     feature = "rafx-metal",
     feature = "rafx-vulkan",
     feature = "rafx-gles2",

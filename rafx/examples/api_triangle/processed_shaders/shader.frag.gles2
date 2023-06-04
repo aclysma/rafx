@@ -9,10 +9,17 @@ struct UniformData_UniformBlock
 
 uniform UniformData_UniformBlock UniformData;
 
+struct PushConstantData
+{
+    highp vec4 uniform_color;
+};
+
+uniform PushConstantData pc_data;
+
 varying highp vec4 interface_var_0;
 
 void main()
 {
-    gl_FragData[0] = UniformData.uniform_color;
+    gl_FragData[0] = pc_data.uniform_color;
 }
 

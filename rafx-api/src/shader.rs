@@ -1,6 +1,9 @@
+#[cfg(feature = "rafx-dx12")]
+use crate::dx12::RafxShaderDx12;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -21,6 +24,8 @@ use crate::RafxPipelineReflection;
 /// Represents one or more shader stages, producing an entire "program" to execute on the GPU
 #[derive(Clone, Debug)]
 pub enum RafxShader {
+    #[cfg(feature = "rafx-dx12")]
+    Dx12(RafxShaderDx12),
     #[cfg(feature = "rafx-vulkan")]
     Vk(RafxShaderVulkan),
     #[cfg(feature = "rafx-metal")]
@@ -32,6 +37,7 @@ pub enum RafxShader {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -44,6 +50,8 @@ pub enum RafxShader {
 impl RafxShader {
     pub fn pipeline_reflection(&self) -> &RafxPipelineReflection {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxShader::Dx12(inner) => inner.pipeline_reflection(),
             #[cfg(feature = "rafx-vulkan")]
             RafxShader::Vk(inner) => inner.pipeline_reflection(),
             #[cfg(feature = "rafx-metal")]
@@ -55,6 +63,7 @@ impl RafxShader {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -67,9 +76,40 @@ impl RafxShader {
 
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
+    #[cfg(feature = "rafx-dx12")]
+    pub fn dx12_shader(&self) -> Option<&RafxShaderDx12> {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxShader::Dx12(inner) => Some(inner),
+            #[cfg(feature = "rafx-vulkan")]
+            RafxShader::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxShader::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxShader::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxShader::Gles3(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxShader::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
     pub fn vk_shader(&self) -> Option<&RafxShaderVulkan> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxShader::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxShader::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
@@ -81,6 +121,7 @@ impl RafxShader {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -96,6 +137,8 @@ impl RafxShader {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_shader(&self) -> Option<&RafxShaderMetal> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxShader::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxShader::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -107,6 +150,7 @@ impl RafxShader {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -122,6 +166,8 @@ impl RafxShader {
     #[cfg(feature = "rafx-gles2")]
     pub fn gles2_shader(&self) -> Option<&RafxShaderGles2> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxShader::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxShader::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -133,6 +179,7 @@ impl RafxShader {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -148,6 +195,8 @@ impl RafxShader {
     #[cfg(feature = "rafx-gles3")]
     pub fn gles3_shader(&self) -> Option<&RafxShaderGles3> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxShader::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxShader::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -159,6 +208,7 @@ impl RafxShader {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -172,6 +222,8 @@ impl RafxShader {
     #[cfg(feature = "rafx-metal")]
     pub fn empty_shader(&self) -> Option<&RafxShaderMetal> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxShader::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxShader::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -183,6 +235,7 @@ impl RafxShader {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",

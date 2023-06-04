@@ -1,6 +1,9 @@
+#[cfg(feature = "rafx-dx12")]
+use crate::dx12::RafxTextureDx12;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -23,6 +26,8 @@ use crate::RafxTextureDef;
 /// Textures must not be dropped if they are in use by the GPU.
 #[derive(Clone, Debug)]
 pub enum RafxTexture {
+    #[cfg(feature = "rafx-dx12")]
+    Dx12(RafxTextureDx12),
     #[cfg(feature = "rafx-vulkan")]
     Vk(RafxTextureVulkan),
     #[cfg(feature = "rafx-metal")]
@@ -34,6 +39,7 @@ pub enum RafxTexture {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -47,6 +53,8 @@ impl RafxTexture {
     /// Return the metadata used to create the texture
     pub fn texture_def(&self) -> &RafxTextureDef {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxTexture::Dx12(inner) => inner.texture_def(),
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(inner) => inner.texture_def(),
             #[cfg(feature = "rafx-metal")]
@@ -58,6 +66,7 @@ impl RafxTexture {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -75,6 +84,8 @@ impl RafxTexture {
         _name: impl AsRef<str>,
     ) {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxTexture::Dx12(inner) => inner.set_debug_name(_name),
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(inner) => inner.set_debug_name(_name),
             #[cfg(feature = "rafx-metal")]
@@ -86,6 +97,7 @@ impl RafxTexture {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -98,9 +110,40 @@ impl RafxTexture {
 
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
+    #[cfg(feature = "rafx-dx12")]
+    pub fn dx12_texture(&self) -> Option<&RafxTextureDx12> {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxTexture::Dx12(inner) => Some(inner),
+            #[cfg(feature = "rafx-vulkan")]
+            RafxTexture::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxTexture::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxTexture::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxTexture::Gles3(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxTexture::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
     pub fn vk_texture(&self) -> Option<&RafxTextureVulkan> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxTexture::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
@@ -112,6 +155,7 @@ impl RafxTexture {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -127,6 +171,8 @@ impl RafxTexture {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_texture(&self) -> Option<&RafxTextureMetal> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxTexture::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -138,6 +184,7 @@ impl RafxTexture {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -153,6 +200,8 @@ impl RafxTexture {
     #[cfg(feature = "rafx-gles2")]
     pub fn gles2_texture(&self) -> Option<&RafxTextureGles2> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxTexture::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -164,6 +213,7 @@ impl RafxTexture {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -179,6 +229,8 @@ impl RafxTexture {
     #[cfg(feature = "rafx-gles3")]
     pub fn gles3_texture(&self) -> Option<&RafxTextureGles3> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxTexture::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -190,6 +242,7 @@ impl RafxTexture {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -205,6 +258,7 @@ impl RafxTexture {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -213,6 +267,8 @@ impl RafxTexture {
     ))]
     pub fn empty_texture(&self) -> Option<&RafxTextureEmpty> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxTexture::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxTexture::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -224,6 +280,7 @@ impl RafxTexture {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",

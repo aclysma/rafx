@@ -239,6 +239,7 @@ impl RafxDeviceContextGles2 {
         &self,
         raw_display_handle: &dyn HasRawDisplayHandle,
         raw_window_handle: &dyn HasRawWindowHandle,
+        _present_queue: &RafxQueueGles2,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainGles2> {
         RafxSwapchainGles2::new(self, raw_display_handle, raw_window_handle, swapchain_def)

@@ -1,6 +1,7 @@
 use log::LevelFilter;
 
 use rafx::api::*;
+use rafx_api::raw_window_handle::HasRawWindowHandle;
 use std::path::Path;
 
 const WINDOW_WIDTH: u32 = 900;
@@ -149,6 +150,7 @@ fn run() -> RafxResult<()> {
 
         let vert_shader_package = load_shader_packages(
             &processed_shaders_base_path,
+            "shader.vert.hlsl",
             "shader.vert.metal",
             "shader.vert.spv",
             "shader.vert.gles2",
@@ -157,6 +159,7 @@ fn run() -> RafxResult<()> {
 
         let frag_shader_package = load_shader_packages(
             &processed_shaders_base_path,
+            "shader.frag.hlsl",
             "shader.frag.metal",
             "shader.frag.spv",
             "shader.frag.gles2",
@@ -181,8 +184,26 @@ fn run() -> RafxResult<()> {
             set_index: 0,
             binding: 0,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
+            dx12_space: Some(0),
+            dx12_reg: Some(0),
             gles_name: Some("UniformData".to_string()),
             gles2_uniform_members: vec![RafxGlUniformMember::new("UniformData.uniform_color", 0)],
+            ..Default::default()
+        };
+
+        let color_root_constant_resource = RafxShaderResource {
+            name: Some("pc_data".to_string()),
+            set_index: u32::MAX,
+            binding: u32::MAX,
+            resource_type: RafxResourceType::ROOT_CONSTANT,
+            dx12_space: Some(1),
+            dx12_reg: Some(0),
+            size_in_bytes: 16,
+            gles_name: Some("PushConstantData".to_string()),
+            gles2_uniform_members: vec![RafxGlUniformMember::new(
+                "PushConstantData.uniform_color",
+                0,
+            )],
             ..Default::default()
         };
 
@@ -192,7 +213,10 @@ fn run() -> RafxResult<()> {
                 entry_point_name: "main".to_string(),
                 shader_stage: RafxShaderStageFlags::VERTEX,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource.clone()],
+                resources: vec![
+                    color_shader_resource.clone(),
+                    color_root_constant_resource.clone(),
+                ],
             },
         };
 
@@ -202,7 +226,7 @@ fn run() -> RafxResult<()> {
                 entry_point_name: "main".to_string(),
                 shader_stage: RafxShaderStageFlags::FRAGMENT,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource],
+                resources: vec![color_shader_resource, color_root_constant_resource],
             },
         };
 
@@ -257,6 +281,7 @@ fn run() -> RafxResult<()> {
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
+                    hlsl_semantic: "POSITION".to_string(),
                     gl_attribute_name: Some("pos".to_string()),
                 },
                 RafxVertexLayoutAttribute {
@@ -264,6 +289,7 @@ fn run() -> RafxResult<()> {
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
+                    hlsl_semantic: "COLOR".to_string(),
                     gl_attribute_name: Some("in_color".to_string()),
                 },
             ],
@@ -272,6 +298,8 @@ fn run() -> RafxResult<()> {
                 rate: RafxVertexAttributeRate::Vertex,
             }],
         };
+
+        println!("PIPELINE_COLOR_FORMAT {:?}", swapchain_helper.format());
 
         let pipeline = device_context.create_graphics_pipeline(&RafxGraphicsPipelineDef {
             shader: &shader,
@@ -297,7 +325,10 @@ fn run() -> RafxResult<()> {
             .event_pump()
             .expect("Could not create sdl event pump");
 
+        let mut frame_index = -1;
         'running: loop {
+            frame_index += 1;
+            println!("start frame {}", frame_index);
             if !process_input(&mut event_pump) {
                 break 'running;
             }
@@ -325,6 +356,7 @@ fn run() -> RafxResult<()> {
             //
             // Use the command pool/buffer assigned to this frame
             //
+            //println!("use cmd_pool {}", presentable_frame.rotating_frame_index());
             let cmd_pool = &mut command_pools[presentable_frame.rotating_frame_index()];
             let cmd_buffer = &command_buffers[presentable_frame.rotating_frame_index()];
             let vertex_buffer = &vertex_buffers[presentable_frame.rotating_frame_index()];
@@ -334,14 +366,14 @@ fn run() -> RafxResult<()> {
             // Update the buffers
             //
             vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
-            uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
+            //uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
             //
             // Record the command buffer. For now just transition it between layouts
             //
             cmd_pool.reset_command_pool()?;
-            cmd_buffer.begin()?;
 
+            cmd_buffer.begin()?;
             // Put it into a layout where we can draw on it
             cmd_buffer.cmd_resource_barrier(
                 &[],
@@ -351,6 +383,8 @@ fn run() -> RafxResult<()> {
                     RafxResourceState::RENDER_TARGET,
                 )],
             )?;
+
+            println!("texture_def {:?}", swapchain_texture.texture_def());
 
             cmd_buffer.cmd_begin_render_pass(
                 &[RafxColorRenderTargetBinding {
@@ -381,12 +415,18 @@ fn run() -> RafxResult<()> {
                 &descriptor_set_array,
                 presentable_frame.rotating_frame_index() as u32,
             )?;
+            cmd_buffer.cmd_bind_push_constant(
+                &root_signature,
+                root_signature
+                    .find_push_constant_descriptor(RafxShaderStageFlags::FRAGMENT)
+                    .unwrap(),
+                &uniform_data,
+            )?;
             cmd_buffer.cmd_draw(3, 0)?;
-
-            // Put it into a layout where we can present it
 
             cmd_buffer.cmd_end_render_pass()?;
 
+            // Put it into a layout where we can present it
             cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[RafxTextureBarrier::state_transition(
@@ -400,7 +440,8 @@ fn run() -> RafxResult<()> {
             //
             // Present the image
             //
-            presentable_frame.present(&graphics_queue, &[&cmd_buffer])?;
+            let result = presentable_frame.present(&graphics_queue, &[&cmd_buffer]);
+            result.unwrap();
         }
 
         // Wait for all GPU work to complete before destroying resources it is using
@@ -481,12 +522,20 @@ fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
 // example, we'll just hard-code constructing this package.
 fn load_shader_packages(
     _base_path: &Path,
+    _dx12_src_file: &str,
     _metal_src_file: &str,
     _vk_spv_file: &str,
     _gles2_src_file: &str,
     _gles3_src_file: &str,
 ) -> RafxResult<RafxShaderPackage> {
     let mut _package = RafxShaderPackage::default();
+
+    #[cfg(feature = "rafx-dx12")]
+    {
+        let dx12_path = _base_path.join(_dx12_src_file);
+        let dx12_src = std::fs::read_to_string(dx12_path)?;
+        _package.dx12 = Some(RafxShaderPackageDx12::HlslSrc(dx12_src));
+    }
 
     #[cfg(feature = "rafx-metal")]
     {

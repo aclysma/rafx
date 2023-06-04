@@ -1,6 +1,9 @@
+#[cfg(feature = "rafx-dx12")]
+use crate::dx12::RafxApiDx12;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -16,6 +19,7 @@ use crate::gles3::RafxApiGles3;
 use crate::metal::RafxApiMetal;
 #[cfg(feature = "rafx-vulkan")]
 use crate::vulkan::RafxApiVulkan;
+
 use crate::*;
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
@@ -31,6 +35,8 @@ use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 /// initialized. These contexts and all other objects created through them must be dropped before
 /// dropping `RafxApi` or calling `RafxApi::destroy()`.
 pub enum RafxApi {
+    #[cfg(feature = "rafx-dx12")]
+    Dx12(RafxApiDx12),
     #[cfg(feature = "rafx-vulkan")]
     Vk(RafxApiVulkan),
     #[cfg(feature = "rafx-metal")]
@@ -42,6 +48,7 @@ pub enum RafxApi {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -70,9 +77,14 @@ impl RafxApi {
             return RafxApi::new_metal(_window, _api_def);
         }
 
+        #[cfg(feature = "rafx-dx12")]
+        {
+            return RafxApi::new_dx12(_window, _api_def);
+        }
+
         #[cfg(feature = "rafx-vulkan")]
         {
-            return RafxApi::new_vulkan(_display, _api_def);
+            return RafxApi::new_vulkan(_display, _window, _api_def);
         }
 
         #[cfg(feature = "rafx-gles3")]
@@ -88,6 +100,25 @@ impl RafxApi {
         return Err("Rafx was compiled with no backend feature flag. Use on of the following features: rafx-metal, rafx-vulkan, rafx-gles2")?;
     }
 
+    /// Initialize a device using dx12
+    ///
+    /// # Safety
+    ///
+    /// GPU programming is fundamentally unsafe, so all rafx APIs that interact with the GPU should
+    /// be considered unsafe. However, rafx APIs are only gated by unsafe if they can cause undefined
+    /// behavior on the CPU for reasons other than interacting with the GPU.
+    #[cfg(feature = "rafx-dx12")]
+    pub unsafe fn new_dx12(
+        window: &dyn HasRawWindowHandle,
+        api_def: &RafxApiDef,
+    ) -> RafxResult<Self> {
+        Ok(RafxApi::Dx12(RafxApiDx12::new(
+            window,
+            api_def,
+            &api_def.dx12_options.as_ref().unwrap_or(&Default::default()),
+        )?))
+    }
+
     /// Initialize a device using vulkan
     ///
     /// # Safety
@@ -98,16 +129,18 @@ impl RafxApi {
     #[cfg(feature = "rafx-vulkan")]
     pub unsafe fn new_vulkan(
         display: &dyn HasRawDisplayHandle,
+        window: &dyn HasRawWindowHandle,
         api_def: &RafxApiDef,
     ) -> RafxResult<Self> {
         Ok(RafxApi::Vk(RafxApiVulkan::new(
             display,
+            window,
             api_def,
             &api_def.vk_options.as_ref().unwrap_or(&Default::default()),
         )?))
     }
 
-    /// Initialize a device using vulkan
+    /// Initialize a device using metal
     ///
     /// # Safety
     ///
@@ -188,6 +221,8 @@ impl RafxApi {
     /// and generally all APIs on the device context itself are thread-safe.
     pub fn device_context(&self) -> RafxDeviceContext {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxApi::Dx12(inner) => RafxDeviceContext::Dx12(inner.device_context().clone()),
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
             #[cfg(feature = "rafx-metal")]
@@ -199,6 +234,7 @@ impl RafxApi {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -216,6 +252,8 @@ impl RafxApi {
     /// it is not necessary to call this function explicitly.
     pub fn destroy(&mut self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxApi::Dx12(inner) => inner.destroy(),
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(inner) => inner.destroy(),
             #[cfg(feature = "rafx-metal")]
@@ -227,6 +265,7 @@ impl RafxApi {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -239,9 +278,40 @@ impl RafxApi {
 
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
+    #[cfg(feature = "rafx-dx12")]
+    pub fn dx12_api(&self) -> Option<&RafxApiDx12> {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxApi::Dx12(inner) => Some(inner),
+            #[cfg(feature = "rafx-vulkan")]
+            RafxApi::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxApi::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxApi::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxApi::Gles3(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxApi::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
     pub fn vk_api(&self) -> Option<&RafxApiVulkan> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxApi::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
@@ -253,6 +323,7 @@ impl RafxApi {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -268,6 +339,8 @@ impl RafxApi {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_api(&self) -> Option<&RafxApiMetal> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxApi::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -279,6 +352,7 @@ impl RafxApi {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -294,6 +368,8 @@ impl RafxApi {
     #[cfg(feature = "rafx-gles2")]
     pub fn gles2_api(&self) -> Option<&RafxApiGles2> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxApi::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -305,6 +381,7 @@ impl RafxApi {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -320,6 +397,8 @@ impl RafxApi {
     #[cfg(feature = "rafx-gles3")]
     pub fn gles3_api(&self) -> Option<&RafxApiGles3> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxApi::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -331,6 +410,7 @@ impl RafxApi {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -346,6 +426,7 @@ impl RafxApi {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -354,6 +435,8 @@ impl RafxApi {
     ))]
     pub fn empty_api(&self) -> Option<&RafxApiEmpty> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxApi::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxApi::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -365,6 +448,7 @@ impl RafxApi {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",

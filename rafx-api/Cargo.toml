@@ -36,6 +36,10 @@ gpu-allocator = { version = "0.22.0", default_features = false, optional = true 
 ash = { version = "0.37", optional = true }
 ash-window = { version = "0.12", optional = true }
 
+# dx12
+windows = { version = "0.44", optional=true, features = ["Win32_Foundation", "Win32_Graphics_Dxgi_Common", "Win32_Security", "Win32_System", "Win32_System_Threading", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D12", "Win32_Graphics_Dxgi", "Win32_Graphics_Direct3D_Dxc"] }
+hassle-rs = { version = "0.10.0", optional=true }
+
 # metal
 [target.'cfg(target_os="macos")'.dependencies]
 metal_rs = { package = "metal", version = "0.25", optional = true }
@@ -72,6 +76,7 @@ web-sys = { version = "0.3.4", features = ["Document", "Element", "HtmlCanvasEle
 [features]
 default = []
 rafx-empty = []
+rafx-dx12 = ["windows", "gpu-allocator", "gpu-allocator/d3d12", "hassle-rs"]
 rafx-vulkan = ["ash", "gpu-allocator", "gpu-allocator/vulkan", "ash-window"]
 rafx-metal = ["metal_rs", "objc", "raw-window-metal", "cocoa-foundation", "dispatch", "foreign-types-shared", "block", "core-graphics-types", "core-graphics", "core-foundation", "cocoa"]
 rafx-gles2 = ["winapi", "cocoa", "objc", "core-foundation", "x11"]

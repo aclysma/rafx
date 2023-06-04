@@ -6,4 +6,5 @@ cargo run --package rafx-shader-processor -- \
 --cooked-shaders-path assets/rafx-plugins/shaders \
 --metal-generated-src-path processed_shaders/msl \
 --package-vk \
+--package-dx12 \
 --package-metal && cargo fmt && cargo test --package rafx-plugins

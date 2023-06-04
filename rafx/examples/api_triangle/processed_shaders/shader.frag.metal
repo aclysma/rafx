@@ -3,6 +3,11 @@
 
 using namespace metal;
 
+struct PushConstantData
+{
+    float4 uniform_color;
+};
+
 struct UniformData
 {
     float4 uniform_color;
@@ -18,10 +23,10 @@ struct main0_out
     float4 out_color [[color(0)]];
 };
 
-fragment main0_out main0(constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]])
+fragment main0_out main0(constant spvDescriptorSetBuffer0& spvDescriptorSet0 [[buffer(0)]], constant PushConstantData& pc_data [[buffer(1)]])
 {
     main0_out out = {};
-    out.out_color = (*spvDescriptorSet0.uniform_data).uniform_color;
+    out.out_color = pc_data.uniform_color;
     return out;
 }
 

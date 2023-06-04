@@ -212,6 +212,7 @@ impl RafxDeviceContextMetal {
         &self,
         raw_display_handle: &dyn HasRawDisplayHandle,
         raw_window_handle: &dyn HasRawWindowHandle,
+        _present_queue: &RafxQueueMetal,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainMetal> {
         RafxSwapchainMetal::new(self, raw_display_handle, raw_window_handle, swapchain_def)

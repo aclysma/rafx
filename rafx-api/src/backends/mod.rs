@@ -1,3 +1,6 @@
+#[cfg(feature = "rafx-dx12")]
+pub mod dx12;
+
 #[cfg(feature = "rafx-metal")]
 pub mod metal;
 
@@ -13,6 +16,7 @@ pub mod gles3;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",

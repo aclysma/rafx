@@ -383,6 +383,7 @@ impl RafxDeviceContextVulkan {
         &self,
         raw_display_handle: &dyn HasRawDisplayHandle,
         raw_window_handle: &dyn HasRawWindowHandle,
+        _present_queue: &RafxQueueVulkan,
         swapchain_def: &RafxSwapchainDef,
     ) -> RafxResult<RafxSwapchainVulkan> {
         RafxSwapchainVulkan::new(self, raw_display_handle, raw_window_handle, swapchain_def)

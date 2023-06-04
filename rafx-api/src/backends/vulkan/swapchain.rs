@@ -764,11 +764,7 @@ impl RafxSwapchainVulkanInstance {
         ];
 
         let mut dedicated_present_queue = None;
-        if device_context
-            .queue_family_indices()
-            .graphics_queue_family_index
-            != present_queue_family_index
-        {
+        if queue_families[0] != queue_families[1] {
             swapchain_create_info = swapchain_create_info
                 .image_sharing_mode(vk::SharingMode::CONCURRENT)
                 .queue_family_indices(&queue_families);

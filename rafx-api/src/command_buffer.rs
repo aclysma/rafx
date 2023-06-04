@@ -1,6 +1,9 @@
+#[cfg(feature = "rafx-dx12")]
+use crate::dx12::RafxCommandBufferDx12;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -47,6 +50,9 @@ use crate::{
 /// reuse.
 #[derive(Debug)]
 pub enum RafxCommandBuffer {
+    #[cfg(feature = "rafx-dx12")]
+    Dx12(RafxCommandBufferDx12),
+
     #[cfg(feature = "rafx-vulkan")]
     Vk(RafxCommandBufferVulkan),
 
@@ -62,6 +68,7 @@ pub enum RafxCommandBuffer {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -76,6 +83,8 @@ impl RafxCommandBuffer {
     /// allocated or if the pool has been reset since it was last written
     pub fn begin(&self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.begin(),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.begin(),
             #[cfg(feature = "rafx-metal")]
@@ -87,6 +96,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -101,6 +111,8 @@ impl RafxCommandBuffer {
     /// to the GPU
     pub fn end(&self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.end(),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.end(),
             #[cfg(feature = "rafx-metal")]
@@ -112,6 +124,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -130,6 +143,8 @@ impl RafxCommandBuffer {
     /// buffer is reset, this command buffer will not be available for use again.
     pub fn return_to_pool(&self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.return_to_pool(),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.return_to_pool(),
             #[cfg(feature = "rafx-metal")]
@@ -141,6 +156,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -162,6 +178,10 @@ impl RafxCommandBuffer {
         depth_target: Option<RafxDepthStencilRenderTargetBinding>,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => {
+                inner.cmd_begin_render_pass(color_targets, depth_target)
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => {
                 inner.cmd_begin_render_pass(color_targets, depth_target)
@@ -181,6 +201,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -196,6 +217,8 @@ impl RafxCommandBuffer {
     /// Finish the renderpass.
     pub fn cmd_end_render_pass(&self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_end_render_pass(),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_end_render_pass(),
             #[cfg(feature = "rafx-metal")]
@@ -207,6 +230,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -230,6 +254,10 @@ impl RafxCommandBuffer {
         depth_max: f32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => {
+                inner.cmd_set_viewport(x, y, width, height, depth_min, depth_max)
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => {
                 inner.cmd_set_viewport(x, y, width, height, depth_min, depth_max)
@@ -249,6 +277,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -272,6 +301,8 @@ impl RafxCommandBuffer {
         height: u32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_set_scissor(x, y, width, height),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_set_scissor(x, y, width, height),
             #[cfg(feature = "rafx-metal")]
@@ -283,6 +314,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -302,6 +334,8 @@ impl RafxCommandBuffer {
         value: u32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_set_stencil_reference_value(value),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_set_stencil_reference_value(value),
             #[cfg(feature = "rafx-metal")]
@@ -313,6 +347,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -330,6 +365,10 @@ impl RafxCommandBuffer {
         pipeline: &RafxPipeline,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => {
+                inner.cmd_bind_pipeline(pipeline.dx12_pipeline().unwrap())
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => {
                 inner.cmd_bind_pipeline(pipeline.vk_pipeline().unwrap())
@@ -349,6 +388,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -371,6 +411,10 @@ impl RafxCommandBuffer {
         bindings: &[RafxVertexBufferBinding],
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => {
+                inner.cmd_bind_vertex_buffers(first_binding, bindings)
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_bind_vertex_buffers(first_binding, bindings),
             #[cfg(feature = "rafx-metal")]
@@ -388,6 +432,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -409,6 +454,8 @@ impl RafxCommandBuffer {
         binding: &RafxIndexBufferBinding,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_bind_index_buffer(binding),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_bind_index_buffer(binding),
             #[cfg(feature = "rafx-metal")]
@@ -420,6 +467,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -439,6 +487,11 @@ impl RafxCommandBuffer {
         index: u32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_bind_descriptor_set(
+                descriptor_set_array.dx12_descriptor_set_array().unwrap(),
+                index,
+            ),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_bind_descriptor_set(
                 descriptor_set_array.vk_descriptor_set_array().unwrap(),
@@ -462,6 +515,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -486,6 +540,12 @@ impl RafxCommandBuffer {
         descriptor_set_handle: &RafxDescriptorSetHandle,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_bind_descriptor_set_handle(
+                root_signature.dx12_root_signature().unwrap(),
+                set_index,
+                descriptor_set_handle.dx12_descriptor_set_handle().unwrap(),
+            ),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_bind_descriptor_set_handle(
                 root_signature.vk_root_signature().unwrap(),
@@ -513,6 +573,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -537,6 +598,12 @@ impl RafxCommandBuffer {
         data: &T,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_bind_push_constant(
+                root_signature.dx12_root_signature().unwrap(),
+                descriptor_index,
+                data,
+            ),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_bind_push_constant(
                 root_signature.vk_root_signature().unwrap(),
@@ -566,6 +633,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -587,6 +655,8 @@ impl RafxCommandBuffer {
         first_vertex: u32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_draw(vertex_count, first_vertex),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_draw(vertex_count, first_vertex),
             #[cfg(feature = "rafx-metal")]
@@ -598,6 +668,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -617,6 +688,10 @@ impl RafxCommandBuffer {
         first_instance: u32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => {
+                inner.cmd_draw_instanced(vertex_count, first_vertex, instance_count, first_instance)
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => {
                 inner.cmd_draw_instanced(vertex_count, first_vertex, instance_count, first_instance)
@@ -636,6 +711,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -659,6 +735,10 @@ impl RafxCommandBuffer {
         vertex_offset: i32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => {
+                inner.cmd_draw_indexed(index_count, first_index, vertex_offset)
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => {
                 inner.cmd_draw_indexed(index_count, first_index, vertex_offset)
@@ -678,6 +758,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -700,6 +781,14 @@ impl RafxCommandBuffer {
         vertex_offset: i32, // value added to the vertex index before indexing into the vertex buffer
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_draw_indexed_instanced(
+                index_count,
+                first_index,
+                instance_count,
+                first_instance,
+                vertex_offset,
+            ),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_draw_indexed_instanced(
                 index_count,
@@ -735,6 +824,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -758,6 +848,12 @@ impl RafxCommandBuffer {
         draw_count: u32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_draw_indirect(
+                indirect_buffer.dx12_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count,
+            ),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_draw_indirect(
                 indirect_buffer.vk_buffer().unwrap(),
@@ -787,6 +883,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -808,6 +905,12 @@ impl RafxCommandBuffer {
         draw_count: u32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_draw_indexed_indirect(
+                indirect_buffer.dx12_buffer().unwrap(),
+                indirect_buffer_offset_in_bytes,
+                draw_count,
+            ),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_draw_indexed_indirect(
                 indirect_buffer.vk_buffer().unwrap(),
@@ -837,6 +940,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -859,6 +963,10 @@ impl RafxCommandBuffer {
         group_count_z: u32,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => {
+                inner.cmd_dispatch(group_count_x, group_count_y, group_count_z)
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => {
                 inner.cmd_dispatch(group_count_x, group_count_y, group_count_z)
@@ -878,6 +986,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -897,6 +1006,10 @@ impl RafxCommandBuffer {
         texture_barriers: &[RafxTextureBarrier],
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => {
+                inner.cmd_resource_barrier(buffer_barriers, texture_barriers)
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => {
                 inner.cmd_resource_barrier(buffer_barriers, texture_barriers)
@@ -916,6 +1029,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -937,6 +1051,12 @@ impl RafxCommandBuffer {
         params: &RafxCmdCopyBufferToBufferParams,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_copy_buffer_to_buffer(
+                src_buffer.dx12_buffer().unwrap(),
+                dst_buffer.dx12_buffer().unwrap(),
+                params,
+            ),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_copy_buffer_to_buffer(
                 src_buffer.vk_buffer().unwrap(),
@@ -964,6 +1084,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -987,6 +1108,12 @@ impl RafxCommandBuffer {
         params: &RafxCmdCopyBufferToTextureParams,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_copy_buffer_to_texture(
+                src_buffer.dx12_buffer().unwrap(),
+                dst_texture.dx12_texture().unwrap(),
+                params,
+            ),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_copy_buffer_to_texture(
                 src_buffer.vk_buffer().unwrap(),
@@ -1014,6 +1141,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -1037,6 +1165,12 @@ impl RafxCommandBuffer {
         params: &RafxCmdCopyTextureToTextureParams,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_copy_texture_to_texture(
+                src_texture.dx12_texture().unwrap(),
+                dst_texture.dx12_texture().unwrap(),
+                params,
+            ),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_copy_texture_to_texture(
                 src_texture.vk_texture().unwrap(),
@@ -1066,6 +1200,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -1087,6 +1222,8 @@ impl RafxCommandBuffer {
         _name: impl AsRef<str>,
     ) {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_push_group_debug_name(_name),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_push_group_debug_name(_name),
             #[cfg(feature = "rafx-metal")]
@@ -1098,6 +1235,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -1111,6 +1249,8 @@ impl RafxCommandBuffer {
     /// Ends a debug label that was started with [`cmd_push_group_debug_name`].
     pub fn cmd_pop_group_debug_name(&self) {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => inner.cmd_pop_group_debug_name(),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => inner.cmd_pop_group_debug_name(),
             #[cfg(feature = "rafx-metal")]
@@ -1122,6 +1262,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -1134,9 +1275,40 @@ impl RafxCommandBuffer {
 
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
+    #[cfg(feature = "rafx-dx12")]
+    pub fn dx12_command_buffer(&self) -> Option<&RafxCommandBufferDx12> {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => Some(inner),
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
     pub fn vk_command_buffer(&self) -> Option<&RafxCommandBufferVulkan> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
@@ -1148,6 +1320,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -1163,6 +1336,8 @@ impl RafxCommandBuffer {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_command_buffer(&self) -> Option<&RafxCommandBufferMetal> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -1174,6 +1349,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -1189,6 +1365,8 @@ impl RafxCommandBuffer {
     #[cfg(feature = "rafx-gles2")]
     pub fn gles2_command_buffer(&self) -> Option<&RafxCommandBufferGles2> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -1200,6 +1378,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -1215,6 +1394,8 @@ impl RafxCommandBuffer {
     #[cfg(feature = "rafx-gles3")]
     pub fn gles3_command_buffer(&self) -> Option<&RafxCommandBufferGles3> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -1226,6 +1407,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -1241,6 +1423,7 @@ impl RafxCommandBuffer {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -1249,6 +1432,8 @@ impl RafxCommandBuffer {
     ))]
     pub fn empty_command_buffer(&self) -> Option<&RafxCommandBufferEmpty> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandBuffer::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -1260,6 +1445,7 @@ impl RafxCommandBuffer {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",

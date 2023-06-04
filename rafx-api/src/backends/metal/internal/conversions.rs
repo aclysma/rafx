@@ -49,13 +49,7 @@ impl Into<MTLSamplerMipFilter> for RafxMipMapMode {
 
 impl Into<NSUInteger> for RafxSampleCount {
     fn into(self) -> NSUInteger {
-        match self {
-            RafxSampleCount::SampleCount1 => 1,
-            RafxSampleCount::SampleCount2 => 2,
-            RafxSampleCount::SampleCount4 => 4,
-            RafxSampleCount::SampleCount8 => 8,
-            RafxSampleCount::SampleCount16 => 16,
-        }
+        self.as_u32() as NSUInteger
     }
 }
 

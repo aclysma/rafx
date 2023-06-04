@@ -29,6 +29,17 @@ pub enum RafxShaderPackageGles3 {
 /// used to initialize a shader module GPU object
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub enum RafxShaderPackageDx12 {
+    /// Raw uncompiled source code. Will be compiled at runtime.
+    HlslSrc(String),
+    // DXIL compiles from dxc
+    //Dxil(Vec<u8>)
+}
+
+/// Metal-specific shader package. Can be used to create a RafxShaderModuleDef, which in turn is
+/// used to initialize a shader module GPU object
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxShaderPackageMetal {
     /// Raw uncompiled source code. Will be compiled at runtime.
     Src(String),
@@ -64,6 +75,7 @@ pub enum RafxShaderPackageEmpty {
 pub struct RafxShaderPackage {
     pub gles2: Option<RafxShaderPackageGles2>,
     pub gles3: Option<RafxShaderPackageGles3>,
+    pub dx12: Option<RafxShaderPackageDx12>,
     pub metal: Option<RafxShaderPackageMetal>,
     pub vk: Option<RafxShaderPackageVulkan>,
 }
@@ -89,6 +101,20 @@ impl RafxShaderPackage {
         if let Some(gl) = self.gles3.as_ref() {
             Some(match gl {
                 RafxShaderPackageGles3::Src(src) => RafxShaderModuleDefGles3::GlSrc(src),
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Create a shader module def for use with a dx12 RafxDevice. Returns none if the package does
+    /// not contain data necessary for metal
+    #[cfg(feature = "rafx-dx12")]
+    pub fn dx12_module_def(&self) -> Option<RafxShaderModuleDefDx12> {
+        if let Some(dx12) = self.dx12.as_ref() {
+            Some(match dx12 {
+                RafxShaderPackageDx12::HlslSrc(src) => RafxShaderModuleDefDx12::HlslSrc(src),
+                //RafxShaderPackageDx12::Dxil(dxil) => RafxShaderModuleDefDx12::Dxil(dxil.as_slice()),
             })
         } else {
             None
@@ -131,6 +157,7 @@ impl RafxShaderPackage {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -148,6 +175,8 @@ impl RafxShaderPackage {
             gles2: self.gles2_module_def(),
             #[cfg(feature = "rafx-gles3")]
             gles3: self.gles3_module_def(),
+            #[cfg(feature = "rafx-dx12")]
+            dx12: self.dx12_module_def(),
             #[cfg(feature = "rafx-metal")]
             metal: self.metal_module_def(),
             #[cfg(feature = "rafx-vulkan")]
@@ -155,6 +184,7 @@ impl RafxShaderPackage {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -191,6 +221,18 @@ pub enum RafxShaderModuleDefGles3<'a> {
 ///
 /// This enum may be populated manually or created from a RafxShaderPackage.
 #[derive(Copy, Clone, Hash)]
+#[cfg(feature = "rafx-dx12")]
+pub enum RafxShaderModuleDefDx12<'a> {
+    /// HLSL source code
+    HlslSrc(&'a str),
+    // Compiled DXIL from dxc
+    //Dxil(&'a [u8]),
+}
+
+/// Used to create a RafxShaderModule
+///
+/// This enum may be populated manually or created from a RafxShaderPackage.
+#[derive(Copy, Clone, Hash)]
 #[cfg(feature = "rafx-metal")]
 pub enum RafxShaderModuleDefMetal<'a> {
     /// Metal source code
@@ -214,6 +256,7 @@ pub enum RafxShaderModuleDefVulkan<'a> {
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -235,6 +278,8 @@ pub struct RafxShaderModuleDef<'a> {
     pub gles2: Option<RafxShaderModuleDefGles2<'a>>,
     #[cfg(feature = "rafx-gles3")]
     pub gles3: Option<RafxShaderModuleDefGles3<'a>>,
+    #[cfg(feature = "rafx-dx12")]
+    pub dx12: Option<RafxShaderModuleDefDx12<'a>>,
     #[cfg(feature = "rafx-metal")]
     pub metal: Option<RafxShaderModuleDefMetal<'a>>,
     #[cfg(feature = "rafx-vulkan")]
@@ -242,6 +287,7 @@ pub struct RafxShaderModuleDef<'a> {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
