@@ -3,11 +3,6 @@ cbuffer UniformData : register(b0, space0)
     float4 uniform_data_uniform_color : packoffset(c0);
 };
 
-cbuffer PushConstantData : register(b0, space1)
-{
-    float4 pc_data_uniform_color : packoffset(c0);
-};
-
 
 static float4 out_color;
 static float4 in_color;
@@ -24,7 +19,7 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    out_color = pc_data_uniform_color;
+    out_color = uniform_data_uniform_color;
 }
 
 SPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)

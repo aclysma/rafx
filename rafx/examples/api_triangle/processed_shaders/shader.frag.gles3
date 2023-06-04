@@ -7,18 +7,11 @@ layout(std140) uniform UniformData
     highp vec4 uniform_color;
 } uniform_data;
 
-struct PushConstantData
-{
-    highp vec4 uniform_color;
-};
-
-uniform PushConstantData pc_data;
-
 layout(location = 0) out highp vec4 out_color;
 in highp vec4 interface_var_0;
 
 void main()
 {
-    out_color = pc_data.uniform_color;
+    out_color = uniform_data.uniform_color;
 }
 

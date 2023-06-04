@@ -332,9 +332,10 @@ impl RafxDeviceContext {
                 ))
             ))]
             RafxDeviceContext::Empty(inner) => RafxSwapchain::Empty(inner.create_swapchain(
+                raw_display_handle,
                 raw_window_handle,
-                swapchain_def,
                 present_queue,
+                swapchain_def,
             )?),
         })
     }

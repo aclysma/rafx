@@ -1,7 +1,6 @@
 use log::LevelFilter;
 
 use rafx::api::*;
-use rafx_api::raw_window_handle::HasRawWindowHandle;
 use std::path::Path;
 
 const WINDOW_WIDTH: u32 = 900;
@@ -191,32 +190,13 @@ fn run() -> RafxResult<()> {
             ..Default::default()
         };
 
-        let color_root_constant_resource = RafxShaderResource {
-            name: Some("pc_data".to_string()),
-            set_index: u32::MAX,
-            binding: u32::MAX,
-            resource_type: RafxResourceType::ROOT_CONSTANT,
-            dx12_space: Some(1),
-            dx12_reg: Some(0),
-            size_in_bytes: 16,
-            gles_name: Some("PushConstantData".to_string()),
-            gles2_uniform_members: vec![RafxGlUniformMember::new(
-                "PushConstantData.uniform_color",
-                0,
-            )],
-            ..Default::default()
-        };
-
         let vert_shader_stage_def = RafxShaderStageDef {
             shader_module: vert_shader_module,
             reflection: RafxShaderStageReflection {
                 entry_point_name: "main".to_string(),
                 shader_stage: RafxShaderStageFlags::VERTEX,
                 compute_threads_per_group: None,
-                resources: vec![
-                    color_shader_resource.clone(),
-                    color_root_constant_resource.clone(),
-                ],
+                resources: vec![color_shader_resource.clone()],
             },
         };
 
@@ -226,7 +206,7 @@ fn run() -> RafxResult<()> {
                 entry_point_name: "main".to_string(),
                 shader_stage: RafxShaderStageFlags::FRAGMENT,
                 compute_threads_per_group: None,
-                resources: vec![color_shader_resource, color_root_constant_resource],
+                resources: vec![color_shader_resource],
             },
         };
 
@@ -299,8 +279,6 @@ fn run() -> RafxResult<()> {
             }],
         };
 
-        println!("PIPELINE_COLOR_FORMAT {:?}", swapchain_helper.format());
-
         let pipeline = device_context.create_graphics_pipeline(&RafxGraphicsPipelineDef {
             shader: &shader,
             root_signature: &root_signature,
@@ -325,10 +303,7 @@ fn run() -> RafxResult<()> {
             .event_pump()
             .expect("Could not create sdl event pump");
 
-        let mut frame_index = -1;
         'running: loop {
-            frame_index += 1;
-            println!("start frame {}", frame_index);
             if !process_input(&mut event_pump) {
                 break 'running;
             }
@@ -356,7 +331,6 @@ fn run() -> RafxResult<()> {
             //
             // Use the command pool/buffer assigned to this frame
             //
-            //println!("use cmd_pool {}", presentable_frame.rotating_frame_index());
             let cmd_pool = &mut command_pools[presentable_frame.rotating_frame_index()];
             let cmd_buffer = &command_buffers[presentable_frame.rotating_frame_index()];
             let vertex_buffer = &vertex_buffers[presentable_frame.rotating_frame_index()];
@@ -366,7 +340,7 @@ fn run() -> RafxResult<()> {
             // Update the buffers
             //
             vertex_buffer.copy_to_host_visible_buffer(&vertex_data)?;
-            //uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
+            uniform_buffer.copy_to_host_visible_buffer(&uniform_data)?;
 
             //
             // Record the command buffer. For now just transition it between layouts
@@ -383,8 +357,6 @@ fn run() -> RafxResult<()> {
                     RafxResourceState::RENDER_TARGET,
                 )],
             )?;
-
-            println!("texture_def {:?}", swapchain_texture.texture_def());
 
             cmd_buffer.cmd_begin_render_pass(
                 &[RafxColorRenderTargetBinding {
@@ -414,13 +386,6 @@ fn run() -> RafxResult<()> {
             cmd_buffer.cmd_bind_descriptor_set(
                 &descriptor_set_array,
                 presentable_frame.rotating_frame_index() as u32,
-            )?;
-            cmd_buffer.cmd_bind_push_constant(
-                &root_signature,
-                root_signature
-                    .find_push_constant_descriptor(RafxShaderStageFlags::FRAGMENT)
-                    .unwrap(),
-                &uniform_data,
             )?;
             cmd_buffer.cmd_draw(3, 0)?;
 
