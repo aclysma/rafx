@@ -6,7 +6,7 @@
     feature = "rafx-gles3"
 ))]
 use crate::{
-    RafxImmutableSamplerKey, RafxImmutableSamplers, RafxMemoryUsage, RafxPipelineType, RafxResult,
+    RafxImmutableSamplerKey, RafxImmutableSamplers, RafxPipelineType, RafxResult,
     RafxRootSignatureDef, RafxShaderResource, RafxShaderStageFlags,
 };
 
@@ -30,8 +30,9 @@ pub(crate) static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 =
 use fnv::FnvHashMap;
 
 #[cfg(any(feature = "rafx-dx12", feature = "rafx-vulkan",))]
-impl Into<gpu_allocator::MemoryLocation> for RafxMemoryUsage {
+impl Into<gpu_allocator::MemoryLocation> for crate::RafxMemoryUsage {
     fn into(self) -> gpu_allocator::MemoryLocation {
+        use crate::RafxMemoryUsage;
         use gpu_allocator::MemoryLocation;
         match self {
             RafxMemoryUsage::Unknown => MemoryLocation::Unknown,
