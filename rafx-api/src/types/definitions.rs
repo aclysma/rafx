@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Default)]
 pub struct RafxApiDef {
     // Don't have anything that's universal across APIs to add here yet
+    #[cfg(feature = "rafx-dx12")]
+    pub dx12_options: Option<crate::RafxApiDefDx12>,
     #[cfg(feature = "rafx-metal")]
     pub metal_options: Option<crate::RafxApiDefMetal>,
     #[cfg(feature = "rafx-vulkan")]
@@ -435,6 +437,8 @@ pub struct RafxVertexLayoutAttribute {
     /// The byte offset of the attribute within the buffer
     pub byte_offset: u32,
 
+    /// HLSL-style semantic name for this attribute
+    pub hlsl_semantic: String,
     /// name of the attribute in the shader, only required for GL
     pub gl_attribute_name: Option<String>,
 }

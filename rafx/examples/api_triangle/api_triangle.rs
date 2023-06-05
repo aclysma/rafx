@@ -149,6 +149,7 @@ fn run() -> RafxResult<()> {
 
         let vert_shader_package = load_shader_packages(
             &processed_shaders_base_path,
+            "shader.vert.hlsl",
             "shader.vert.metal",
             "shader.vert.spv",
             "shader.vert.gles2",
@@ -157,6 +158,7 @@ fn run() -> RafxResult<()> {
 
         let frag_shader_package = load_shader_packages(
             &processed_shaders_base_path,
+            "shader.frag.hlsl",
             "shader.frag.metal",
             "shader.frag.spv",
             "shader.frag.gles2",
@@ -181,6 +183,8 @@ fn run() -> RafxResult<()> {
             set_index: 0,
             binding: 0,
             resource_type: RafxResourceType::UNIFORM_BUFFER,
+            dx12_space: Some(0),
+            dx12_reg: Some(0),
             gles_name: Some("UniformData".to_string()),
             gles2_uniform_members: vec![RafxGlUniformMember::new("UniformData.uniform_color", 0)],
             ..Default::default()
@@ -257,6 +261,7 @@ fn run() -> RafxResult<()> {
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
+                    hlsl_semantic: "POSITION".to_string(),
                     gl_attribute_name: Some("pos".to_string()),
                 },
                 RafxVertexLayoutAttribute {
@@ -264,6 +269,7 @@ fn run() -> RafxResult<()> {
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
+                    hlsl_semantic: "COLOR".to_string(),
                     gl_attribute_name: Some("in_color".to_string()),
                 },
             ],
@@ -340,8 +346,8 @@ fn run() -> RafxResult<()> {
             // Record the command buffer. For now just transition it between layouts
             //
             cmd_pool.reset_command_pool()?;
-            cmd_buffer.begin()?;
 
+            cmd_buffer.begin()?;
             // Put it into a layout where we can draw on it
             cmd_buffer.cmd_resource_barrier(
                 &[],
@@ -383,10 +389,9 @@ fn run() -> RafxResult<()> {
             )?;
             cmd_buffer.cmd_draw(3, 0)?;
 
-            // Put it into a layout where we can present it
-
             cmd_buffer.cmd_end_render_pass()?;
 
+            // Put it into a layout where we can present it
             cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[RafxTextureBarrier::state_transition(
@@ -400,7 +405,8 @@ fn run() -> RafxResult<()> {
             //
             // Present the image
             //
-            presentable_frame.present(&graphics_queue, &[&cmd_buffer])?;
+            let result = presentable_frame.present(&graphics_queue, &[&cmd_buffer]);
+            result.unwrap();
         }
 
         // Wait for all GPU work to complete before destroying resources it is using
@@ -481,12 +487,20 @@ fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
 // example, we'll just hard-code constructing this package.
 fn load_shader_packages(
     _base_path: &Path,
+    _dx12_src_file: &str,
     _metal_src_file: &str,
     _vk_spv_file: &str,
     _gles2_src_file: &str,
     _gles3_src_file: &str,
 ) -> RafxResult<RafxShaderPackage> {
     let mut _package = RafxShaderPackage::default();
+
+    #[cfg(feature = "rafx-dx12")]
+    {
+        let dx12_path = _base_path.join(_dx12_src_file);
+        let dx12_src = std::fs::read_to_string(dx12_path)?;
+        _package.dx12 = Some(RafxShaderPackageDx12::HlslSrc(dx12_src));
+    }
 
     #[cfg(feature = "rafx-metal")]
     {

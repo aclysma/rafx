@@ -1,6 +1,9 @@
+#[cfg(feature = "rafx-dx12")]
+use crate::dx12::RafxRootSignatureDx12;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -24,6 +27,8 @@ use crate::{RafxDescriptorIndex, RafxPipelineType, RafxShaderStageFlags};
 /// reflection.
 #[derive(Clone, Debug)]
 pub enum RafxRootSignature {
+    #[cfg(feature = "rafx-dx12")]
+    Dx12(RafxRootSignatureDx12),
     #[cfg(feature = "rafx-vulkan")]
     Vk(RafxRootSignatureVulkan),
     #[cfg(feature = "rafx-metal")]
@@ -35,6 +40,7 @@ pub enum RafxRootSignature {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -48,6 +54,8 @@ impl RafxRootSignature {
     /// Returns what kind of pipeline this is
     pub fn pipeline_type(&self) -> RafxPipelineType {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(inner) => inner.pipeline_type(),
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(inner) => inner.pipeline_type(),
             #[cfg(feature = "rafx-metal")]
@@ -59,6 +67,7 @@ impl RafxRootSignature {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -74,6 +83,8 @@ impl RafxRootSignature {
         name: &str,
     ) -> Option<RafxDescriptorIndex> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(inner) => inner.find_descriptor_by_name(name),
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(inner) => inner.find_descriptor_by_name(name),
             #[cfg(feature = "rafx-metal")]
@@ -85,6 +96,7 @@ impl RafxRootSignature {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -101,6 +113,8 @@ impl RafxRootSignature {
         binding: u32,
     ) -> Option<RafxDescriptorIndex> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(inner) => inner.find_descriptor_by_binding(set_index, binding),
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(inner) => inner.find_descriptor_by_binding(set_index, binding),
             #[cfg(feature = "rafx-metal")]
@@ -112,6 +126,7 @@ impl RafxRootSignature {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -127,6 +142,8 @@ impl RafxRootSignature {
         stage: RafxShaderStageFlags,
     ) -> Option<RafxDescriptorIndex> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(inner) => inner.find_push_constant_descriptor(stage),
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(inner) => inner.find_push_constant_descriptor(stage),
             #[cfg(feature = "rafx-metal")]
@@ -144,6 +161,7 @@ impl RafxRootSignature {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -156,9 +174,40 @@ impl RafxRootSignature {
 
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
+    #[cfg(feature = "rafx-dx12")]
+    pub fn dx12_root_signature(&self) -> Option<&RafxRootSignatureDx12> {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(inner) => Some(inner),
+            #[cfg(feature = "rafx-vulkan")]
+            RafxRootSignature::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxRootSignature::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxRootSignature::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxRootSignature::Gles3(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxRootSignature::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
     pub fn vk_root_signature(&self) -> Option<&RafxRootSignatureVulkan> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
@@ -170,6 +219,7 @@ impl RafxRootSignature {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -185,6 +235,8 @@ impl RafxRootSignature {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_root_signature(&self) -> Option<&RafxRootSignatureMetal> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -196,6 +248,7 @@ impl RafxRootSignature {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -211,6 +264,8 @@ impl RafxRootSignature {
     #[cfg(feature = "rafx-gles2")]
     pub fn gles2_root_signature(&self) -> Option<&RafxRootSignatureGles2> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -222,6 +277,7 @@ impl RafxRootSignature {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -237,6 +293,8 @@ impl RafxRootSignature {
     #[cfg(feature = "rafx-gles3")]
     pub fn gles3_root_signature(&self) -> Option<&RafxRootSignatureGles3> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -248,6 +306,7 @@ impl RafxRootSignature {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -263,6 +322,7 @@ impl RafxRootSignature {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -271,6 +331,8 @@ impl RafxRootSignature {
     ))]
     pub fn empty_root_signature(&self) -> Option<&RafxRootSignatureEmpty> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxRootSignature::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxRootSignature::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -282,6 +344,7 @@ impl RafxRootSignature {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",

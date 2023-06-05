@@ -1,6 +1,9 @@
+#[cfg(feature = "rafx-dx12")]
+use crate::dx12::RafxQueueDx12;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -35,6 +38,8 @@ use crate::{
 /// the same underlying queue every time.
 #[derive(Clone, Debug)]
 pub enum RafxQueue {
+    #[cfg(feature = "rafx-dx12")]
+    Dx12(RafxQueueDx12),
     #[cfg(feature = "rafx-vulkan")]
     Vk(RafxQueueVulkan),
     #[cfg(feature = "rafx-metal")]
@@ -46,6 +51,7 @@ pub enum RafxQueue {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -58,6 +64,8 @@ pub enum RafxQueue {
 impl RafxQueue {
     pub fn device_context(&self) -> RafxDeviceContext {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(inner) => RafxDeviceContext::Dx12(inner.device_context().clone()),
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
             #[cfg(feature = "rafx-metal")]
@@ -69,6 +77,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -83,6 +92,8 @@ impl RafxQueue {
     /// command pool is associated with
     pub fn queue_id(&self) -> u32 {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(inner) => inner.queue_id(),
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => inner.queue_id(),
             #[cfg(feature = "rafx-metal")]
@@ -94,6 +105,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -107,6 +119,8 @@ impl RafxQueue {
     /// Get the type of queue that this is
     pub fn queue_type(&self) -> RafxQueueType {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(inner) => inner.queue_type(),
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => inner.queue_type(),
             #[cfg(feature = "rafx-metal")]
@@ -118,6 +132,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -134,6 +149,10 @@ impl RafxQueue {
         command_pool_def: &RafxCommandPoolDef,
     ) -> RafxResult<RafxCommandPool> {
         Ok(match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(inner) => {
+                RafxCommandPool::Dx12(inner.create_command_pool(command_pool_def)?)
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => {
                 RafxCommandPool::Vk(inner.create_command_pool(command_pool_def)?)
@@ -153,6 +172,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -178,6 +198,27 @@ impl RafxQueue {
         signal_fence: Option<&RafxFence>,
     ) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(inner) => {
+                let command_buffers: Vec<_> = command_buffers
+                    .iter()
+                    .map(|x| x.dx12_command_buffer().unwrap())
+                    .collect();
+                let wait_semaphores: Vec<_> = wait_semaphores
+                    .iter()
+                    .map(|x| x.dx12_semaphore().unwrap())
+                    .collect();
+                let signal_semaphores: Vec<_> = signal_semaphores
+                    .iter()
+                    .map(|x| x.dx12_semaphore().unwrap())
+                    .collect();
+                inner.submit(
+                    &command_buffers,
+                    &wait_semaphores,
+                    &signal_semaphores,
+                    signal_fence.map(|x| x.dx12_fence().unwrap()),
+                )
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => {
                 let command_buffers: Vec<_> = command_buffers
@@ -265,6 +306,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -304,6 +346,18 @@ impl RafxQueue {
         image_index: u32,
     ) -> RafxResult<RafxPresentSuccessResult> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(inner) => {
+                let wait_semaphores: Vec<_> = wait_semaphores
+                    .iter()
+                    .map(|x| x.dx12_semaphore().unwrap())
+                    .collect();
+                inner.present(
+                    swapchain.dx12_swapchain().unwrap(),
+                    &wait_semaphores,
+                    image_index,
+                )
+            }
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => {
                 let wait_semaphores: Vec<_> = wait_semaphores
@@ -355,6 +409,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -378,6 +433,8 @@ impl RafxQueue {
     /// Wait until all work submitted to this queue is completed
     pub fn wait_for_queue_idle(&self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(inner) => inner.wait_for_queue_idle(),
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => inner.wait_for_queue_idle(),
             #[cfg(feature = "rafx-metal")]
@@ -389,6 +446,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -401,9 +459,40 @@ impl RafxQueue {
 
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
+    #[cfg(feature = "rafx-dx12")]
+    pub fn dx12_queue(&self) -> Option<&RafxQueueDx12> {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(inner) => Some(inner),
+            #[cfg(feature = "rafx-vulkan")]
+            RafxQueue::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxQueue::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxQueue::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxQueue::Gles3(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxQueue::Empty(_) => None,
+        }
+    }
+
+    /// Get the underlying vulkan API object. This provides access to any internally created
+    /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
     pub fn vk_queue(&self) -> Option<&RafxQueueVulkan> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
@@ -415,6 +504,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -430,6 +520,8 @@ impl RafxQueue {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_queue(&self) -> Option<&RafxQueueMetal> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -441,6 +533,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -456,6 +549,8 @@ impl RafxQueue {
     #[cfg(feature = "rafx-gles2")]
     pub fn gles2_queue(&self) -> Option<&RafxQueueGles2> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -467,6 +562,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -482,6 +578,8 @@ impl RafxQueue {
     #[cfg(feature = "rafx-gles3")]
     pub fn gles3_queue(&self) -> Option<&RafxQueueGles3> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -493,6 +591,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -508,6 +607,7 @@ impl RafxQueue {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -516,6 +616,8 @@ impl RafxQueue {
     ))]
     pub fn empty_queue(&self) -> Option<&RafxQueueEmpty> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxQueue::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxQueue::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -527,6 +629,7 @@ impl RafxQueue {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",

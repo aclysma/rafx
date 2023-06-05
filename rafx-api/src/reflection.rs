@@ -54,6 +54,14 @@ pub struct RafxShaderResource {
     //pub texture_dimensions: Option<RafxTextureDimension>,
     // metal stuff?
 
+    //TODO: Generate MSL buffer IDs offline rather than when creating root signature?
+    // What we do now works but requires shader's argument buffer assignments to be assigned in a
+    // very specific way. Would be better if user could provide the argument buffer ID
+
+    // HLSL-specific binding info
+    pub dx12_reg: Option<u32>,
+    pub dx12_space: Option<u32>,
+
     // Required for GL ES (2.0/3.0) only. Other APIs use set_index and binding. (Rafx shader processor
     // can produce this metadata automatically)
     pub gles_name: Option<String>,
@@ -82,6 +90,8 @@ impl Default for RafxShaderResource {
             size_in_bytes: 0,
             used_in_shader_stages: Default::default(),
             name: None,
+            dx12_reg: None,
+            dx12_space: None,
             gles_name: None,
             gles_sampler_name: None,
             gles2_uniform_members: Vec::default(),
@@ -212,6 +222,20 @@ impl RafxShaderResource {
         if self.gles_name != other.gles_name {
             Err(format!(
                 "Pass is using shaders in different stages with different gles2_name (set={} binding={})",
+                self.set_index, self.binding
+            ))?;
+        }
+
+        if self.dx12_reg != other.dx12_reg {
+            Err(format!(
+                "Pass is using shaders in different stages with different dx12_reg (set={} binding={})",
+                self.set_index, self.binding
+            ))?;
+        }
+
+        if self.dx12_space != other.dx12_space {
+            Err(format!(
+                "Pass is using shaders in different stages with different dx12_space (set={} binding={})",
                 self.set_index, self.binding
             ))?;
         }

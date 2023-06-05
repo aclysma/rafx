@@ -155,6 +155,8 @@ where
         gles_name: Some(gles_name),
         gles_sampler_name: None, // This is set later if necessary when we cross compile GLES 2.0 src by set_gl_sampler_name
         gles2_uniform_members: gl_uniform_members,
+        dx12_space: Some(set),
+        dx12_reg: Some(binding),
     };
 
     resource.validate()?;
@@ -271,6 +273,9 @@ where
         RafxResourceType::UNIFORM_BUFFER,
         stage_flags,
     )?;
+    //TODO: I am current forcing all storage buffers to be UAVs
+    // - This causes storage buffers to fail to bind because in code they are just a BUFFER
+
     get_reflected_bindings(
         builtin_types,
         user_types,
@@ -326,26 +331,34 @@ where
     Ok(bindings)
 }
 
-//NOTE: There are special set/binding pairs to control assignment of arg buffers themselves,
-// push constant buffers, etc. For example:
-//
-//     ResourceBindingLocation { desc_set: 0, binding: !3u32, stage: ExecutionModel::Vertex}
-//
-// Will force descriptor set 0 to be [[buffer(n)]] where n is the value of ResourceBinding::buffer_id
+fn shader_stage_to_execution_model(
+    stages: RafxShaderStageFlags
+) -> Vec<spirv_cross::spirv::ExecutionModel> {
+    let mut out = vec![];
+    if stages.intersects(RafxShaderStageFlags::VERTEX) {
+        out.push(ExecutionModel::Vertex)
+    }
+    if stages.intersects(RafxShaderStageFlags::FRAGMENT) {
+        out.push(ExecutionModel::Fragment)
+    }
+    if stages.intersects(RafxShaderStageFlags::COMPUTE) {
+        out.push(ExecutionModel::GlCompute)
+    }
+    if stages.intersects(RafxShaderStageFlags::TESSELLATION_CONTROL) {
+        out.push(ExecutionModel::TessellationControl)
+    }
+    if stages.intersects(RafxShaderStageFlags::TESSELLATION_EVALUATION) {
+        out.push(ExecutionModel::TessellationEvaluation)
+    }
+    out
+}
 
-//TODO: Exclude MSL constexpr samplers?
-pub(crate) fn msl_assign_argument_buffer_ids(
+pub(crate) fn get_sorted_bindings_for_all_entry_points(
     entry_points: &[ReflectedEntryPoint]
-) -> RafxResult<BTreeMap<ResourceBindingLocation, ResourceBinding>> {
+) -> RafxResult<Vec<RafxShaderResource>> {
     let mut all_resources_lookup = FnvHashMap::<(u32, u32), RafxShaderResource>::default();
-    let mut push_constant_stages = RafxShaderStageFlags::empty();
     for entry_point in entry_points {
         for resource in &entry_point.rafx_api_reflection.resources {
-            if resource.resource_type == RafxResourceType::ROOT_CONSTANT {
-                push_constant_stages |= resource.used_in_shader_stages;
-                continue;
-            }
-
             let key = (resource.set_index, resource.binding);
             if let Some(old) = all_resources_lookup.get_mut(&key) {
                 if resource.resource_type != old.resource_type {
@@ -373,42 +386,113 @@ pub(crate) fn msl_assign_argument_buffer_ids(
         }
     }
 
-    let mut resources: Vec<_> = all_resources_lookup.values().collect();
+    let mut resources: Vec<_> = all_resources_lookup.values().cloned().collect();
     resources.sort_by(|lhs, rhs| lhs.binding.cmp(&rhs.binding));
 
-    fn shader_stage_to_execution_model(
-        stages: RafxShaderStageFlags
-    ) -> Vec<spirv_cross::spirv::ExecutionModel> {
-        let mut out = vec![];
-        if stages.intersects(RafxShaderStageFlags::VERTEX) {
-            out.push(ExecutionModel::Vertex)
+    Ok(resources)
+}
+
+pub(crate) fn get_hlsl_register_assignments(
+    entry_points: &[ReflectedEntryPoint]
+) -> RafxResult<Vec<spirv_cross::hlsl::HlslResourceBinding>> {
+    let mut bindings = vec![];
+
+    let resources = get_sorted_bindings_for_all_entry_points(entry_points)?;
+
+    let mut max_space_index = -1;
+    for resource in resources {
+        let execution_models = shader_stage_to_execution_model(resource.used_in_shader_stages);
+        if resource.resource_type != RafxResourceType::ROOT_CONSTANT {
+            let space_register = spirv_cross::hlsl::HlslResourceBindingSpaceRegister {
+                register_space: resource.dx12_space.unwrap(),
+                register_binding: resource.dx12_reg.unwrap(),
+            };
+            max_space_index = max_space_index.max(space_register.register_space as i32);
+            for execution_model in execution_models {
+                bindings.push(spirv_cross::hlsl::HlslResourceBinding {
+                    desc_set: resource.set_index,
+                    binding: resource.binding,
+                    stage: execution_model,
+                    cbv: space_register,
+                    uav: space_register,
+                    srv: space_register,
+                    sampler: space_register,
+                })
+            }
         }
-        if stages.intersects(RafxShaderStageFlags::FRAGMENT) {
-            out.push(ExecutionModel::Fragment)
-        }
-        if stages.intersects(RafxShaderStageFlags::COMPUTE) {
-            out.push(ExecutionModel::GlCompute)
-        }
-        if stages.intersects(RafxShaderStageFlags::TESSELLATION_CONTROL) {
-            out.push(ExecutionModel::TessellationControl)
-        }
-        if stages.intersects(RafxShaderStageFlags::TESSELLATION_EVALUATION) {
-            out.push(ExecutionModel::TessellationEvaluation)
-        }
-        out
     }
 
-    // If we update this constant, update the arrays in this function
-    assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
+    //
+    // If we have a push constant, we need to add an assignment for the same binding to all relevant stages
+    //
+    let push_constant_space_index = (max_space_index + 1) as u32;
+    let mut push_constant_stages = RafxShaderStageFlags::empty();
+    for entry_point in entry_points {
+        for resource in &entry_point.rafx_api_reflection.resources {
+            if resource.resource_type == RafxResourceType::ROOT_CONSTANT {
+                assert_eq!(resource.dx12_space, Some(push_constant_space_index));
+                push_constant_stages |= resource.used_in_shader_stages;
+            }
+        }
+    }
 
-    let mut next_msl_argument_buffer_id = [0, 0, 0, 0];
+    if !push_constant_stages.is_empty() {
+        let push_constant_execution_models = shader_stage_to_execution_model(push_constant_stages);
+        let space_register = spirv_cross::hlsl::HlslResourceBindingSpaceRegister {
+            register_space: push_constant_space_index,
+            register_binding: 0,
+        };
+        for execution_model in push_constant_execution_models {
+            bindings.push(spirv_cross::hlsl::HlslResourceBinding {
+                desc_set: !0,
+                binding: 0,
+                stage: execution_model,
+                cbv: space_register,
+                uav: space_register,
+                srv: space_register,
+                sampler: space_register,
+            })
+        }
+    }
+
+    Ok(bindings)
+}
+
+//NOTE: There are special set/binding pairs to control assignment of arg buffers themselves,
+// push constant buffers, etc. For example:
+//
+//     ResourceBindingLocation { desc_set: 0, binding: !3u32, stage: ExecutionModel::Vertex}
+//
+// Will force descriptor set 0 to be [[buffer(n)]] where n is the value of ResourceBinding::buffer_id
+//TODO: Exclude MSL constexpr samplers?
+pub(crate) fn msl_assign_argument_buffer_ids(
+    entry_points: &[ReflectedEntryPoint]
+) -> RafxResult<BTreeMap<ResourceBindingLocation, ResourceBinding>> {
+    let resources = get_sorted_bindings_for_all_entry_points(entry_points)?;
 
     let mut argument_buffer_assignments =
         BTreeMap::<ResourceBindingLocation, ResourceBinding>::default();
 
+    // If we update this constant, update the arrays in this function
+    assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
+
+    //
+    // Assign unique buffer indexes for each resource in the set, sequentially and taking into account
+    // that some entries take multiple "slots."
+    //
+    // Recently changed to re-use the dx12 assignment logic as it's essentially the same
+    //
+    let mut next_msl_argument_buffer_id = [0, 0, 0, 0];
     let mut max_set_index = -1;
     for resource in resources {
+        if resource.resource_type == RafxResourceType::ROOT_CONSTANT {
+            continue;
+        }
+
         let msl_argument_buffer_id = next_msl_argument_buffer_id[resource.set_index as usize];
+        //TODO: Maybe we get rid of assigning MSL values here
+        assert_eq!(Some(msl_argument_buffer_id), resource.dx12_reg);
+        assert_eq!(Some(resource.set_index), resource.dx12_space);
         next_msl_argument_buffer_id[resource.set_index as usize] +=
             resource.element_count_normalized();
         max_set_index = max_set_index.max(resource.set_index as i32);
@@ -431,8 +515,21 @@ pub(crate) fn msl_assign_argument_buffer_ids(
         }
     }
 
+    //
+    // If we have a push constant, we need to add an assignment for the same binding to all relevant stages
+    //
+    let push_constant_set_index = (max_set_index + 1) as u32;
+    let mut push_constant_stages = RafxShaderStageFlags::empty();
+    for entry_point in entry_points {
+        for resource in &entry_point.rafx_api_reflection.resources {
+            if resource.resource_type == RafxResourceType::ROOT_CONSTANT {
+                assert_eq!(Some(push_constant_set_index), resource.dx12_space);
+                push_constant_stages |= resource.used_in_shader_stages;
+            }
+        }
+    }
+
     if !push_constant_stages.is_empty() {
-        let push_constant_set_index = (max_set_index + 1) as u32;
         let push_constant_execution_models = shader_stage_to_execution_model(push_constant_stages);
         for execution_model in push_constant_execution_models {
             argument_buffer_assignments.insert(
@@ -543,8 +640,7 @@ fn msl_create_sampler_data(
 }
 
 pub(crate) fn msl_const_samplers(
-    entry_points: &[ReflectedEntryPoint],
-    //msl_argument_buffer_assignments: &BTreeMap::<ResourceBindingLocation, ResourceBinding>,
+    entry_points: &[ReflectedEntryPoint]
 ) -> RafxResult<BTreeMap<SamplerLocation, SamplerData>> {
     let mut immutable_samplers = BTreeMap::<SamplerLocation, SamplerData>::default();
 
@@ -662,6 +758,8 @@ fn generate_gl_uniform_members(
 
 pub struct ShaderProcessorRefectionData {
     pub reflection: Vec<ReflectedEntryPoint>,
+    pub hlsl_register_assignments: Vec<spirv_cross::hlsl::HlslResourceBinding>,
+    pub hlsl_vertex_attribute_remaps: Vec<spirv_cross::hlsl::HlslVertexAttributeRemap>,
     pub msl_argument_buffer_assignments: BTreeMap<ResourceBindingLocation, ResourceBinding>,
     pub msl_const_samplers: BTreeMap<SamplerLocation, SamplerData>,
 }
@@ -726,7 +824,7 @@ where
             .get_shader_resources()
             .map_err(|_x| "could not get resources from reflection data")?;
 
-        let dsc_bindings = get_all_reflected_bindings(
+        let mut dsc_bindings = get_all_reflected_bindings(
             builtin_types,
             user_types,
             &shader_resources,
@@ -734,6 +832,45 @@ where
             declarations,
             stage_flags,
         )?;
+
+        //TODO: Assign dx12 values?
+        //TODO: Assign MSL values?
+        //TODO: This might not work because we need to merge resources between stages
+
+        dsc_bindings.sort_by(|lhs, rhs| {
+            if lhs.resource.set_index != rhs.resource.set_index {
+                lhs.resource.set_index.cmp(&rhs.resource.set_index)
+            } else {
+                lhs.resource.binding.cmp(&rhs.resource.binding)
+            }
+        });
+
+        // If we update this constant, update the arrays in this function
+        assert_eq!(MAX_DESCRIPTOR_SET_LAYOUTS, 4);
+
+        let mut next_dx12_register = [0, 0, 0, 0];
+
+        let mut max_set_index = -1;
+        for binding in &mut dsc_bindings {
+            if binding
+                .resource
+                .resource_type
+                .intersects(RafxResourceType::ROOT_CONSTANT)
+            {
+                continue;
+            }
+
+            max_set_index = max_set_index.max(binding.resource.set_index as i32);
+
+            let dx12_register = next_dx12_register[binding.resource.set_index as usize];
+            next_dx12_register[binding.resource.set_index as usize] +=
+                binding.resource.element_count_normalized();
+
+            binding.resource.dx12_space = Some(binding.resource.set_index);
+            binding.resource.dx12_reg = Some(dx12_register);
+        }
+
+        let push_constant_dx12_space = max_set_index + 1;
 
         // stage inputs
         // stage outputs
@@ -760,7 +897,7 @@ where
             }
         }
 
-        //TODO: This is using a list of push constants but I don't think multiple are allowed within
+        //TODO: This is using a list of push constants but GLSL disallows multiple within
         // the same file
         for push_constant in &shader_resources.push_constant_buffers {
             let declared_size = ast.get_declared_struct_size(push_constant.type_id).unwrap();
@@ -772,6 +909,8 @@ where
                 name: Some(push_constant.name.clone()),
                 set_index: u32::MAX,
                 binding: u32::MAX,
+                dx12_space: Some(push_constant_dx12_space as u32),
+                dx12_reg: Some(0),
                 ..Default::default()
             };
             resource.validate()?;
@@ -800,7 +939,7 @@ where
                     .map(|x| x.0.clone());
 
                 let semantic = if require_semantics {
-                    semantic.clone().ok_or_else(|| format!("No semantic annotation for vertex input '{}'. All vertex inputs must have a semantic annotation if generating rust code and/or cooked shaders.", name))?
+                    semantic.clone().ok_or_else(|| format!("No semantic annotation for vertex input '{}'. All vertex inputs must have a semantic annotation if generating rust code, HLSL, and/or cooked shaders.", name))?
                 } else {
                     "".to_string()
                 };
@@ -848,12 +987,26 @@ where
         });
     }
 
+    let hlsl_register_assignments = get_hlsl_register_assignments(&reflected_entry_points)?;
+
     let msl_argument_buffer_assignments = msl_assign_argument_buffer_ids(&reflected_entry_points)?;
 
     let msl_const_samplers = msl_const_samplers(&reflected_entry_points)?;
 
+    let mut hlsl_vertex_attribute_remaps = Vec::default();
+    for entry_point in &reflected_entry_points {
+        for vi in &entry_point.vertex_inputs {
+            hlsl_vertex_attribute_remaps.push(spirv_cross::hlsl::HlslVertexAttributeRemap {
+                location: vi.location,
+                semantic: vi.semantic.clone(),
+            });
+        }
+    }
+
     Ok(ShaderProcessorRefectionData {
         reflection: reflected_entry_points,
+        hlsl_register_assignments,
+        hlsl_vertex_attribute_remaps,
         msl_argument_buffer_assignments,
         msl_const_samplers,
     })

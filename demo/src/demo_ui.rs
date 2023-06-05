@@ -59,7 +59,7 @@ pub struct RenderOptions {
 impl RenderOptions {
     pub fn default_2d() -> Self {
         RenderOptions {
-            anti_alias_method: AntiAliasMethod::Msaa4x,
+            anti_alias_method: AntiAliasMethod::None,
             enable_hdr: false,
             #[cfg(not(feature = "basic-pipeline"))]
             enable_ssao: false,

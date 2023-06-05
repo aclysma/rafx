@@ -8,4 +8,5 @@ cargo run --package rafx-shader-processor -- ^
 --cooked-shaders-path cooked_shaders ^
 --package-vk ^
 --package-metal ^
+--package-dx12 ^
 --for-rafx-framework-crate && cargo fmt && cargo test --package rafx-plugins

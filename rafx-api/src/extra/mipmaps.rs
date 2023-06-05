@@ -1,5 +1,7 @@
 use crate::{RafxCommandBuffer, RafxResult, RafxTexture};
 
+#[cfg(feature = "rafx-dx12")]
+use crate::dx12::RafxCommandBufferDx12;
 #[cfg(feature = "rafx-gles2")]
 use crate::gles2::RafxCommandBufferGles2;
 #[cfg(feature = "rafx-gles3")]
@@ -32,6 +34,8 @@ pub fn generate_mipmaps(
     _texture: &RafxTexture,
 ) -> RafxResult<()> {
     match command_buffer {
+        #[cfg(feature = "rafx-dx12")]
+        RafxCommandBuffer::Dx12(inner) => generate_mipmaps_dx12(inner, _texture),
         #[cfg(feature = "rafx-vulkan")]
         RafxCommandBuffer::Vk(inner) => generate_mipmaps_vk(inner, _texture),
         #[cfg(feature = "rafx-metal")]
@@ -43,6 +47,7 @@ pub fn generate_mipmaps(
         #[cfg(any(
             feature = "rafx-empty",
             not(any(
+                feature = "rafx-dx12",
                 feature = "rafx-metal",
                 feature = "rafx-vulkan",
                 feature = "rafx-gles2",
@@ -103,6 +108,22 @@ fn generate_mipmaps_gles3(
     gl_context.gl_bind_texture(target, texture_id)?;
     gl_context.gl_generate_mipmap(target)?;
     gl_context.gl_bind_texture(target, NONE_TEXTURE)?;
+    Ok(())
+}
+
+#[cfg(feature = "rafx-dx12")]
+fn generate_mipmaps_dx12(
+    command_buffer: &RafxCommandBufferDx12,
+    texture: &RafxTexture,
+) -> RafxResult<()> {
+    //TODO: IMPLEMENT ME
+    //unimplemented!()
+    // let mip_level_count = texture.texture_def().mip_count;
+    //
+    // for layer in 0..texture.texture_def().array_length {
+    //     do_generate_mipmaps_vk(command_buffer, texture, layer, mip_level_count)?;
+    // }
+
     Ok(())
 }
 

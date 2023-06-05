@@ -3,12 +3,11 @@ use std::ffi::{CStr, CString};
 use ash::prelude::VkResult;
 use ash::vk;
 
-//use super::VkEntry;
 use crate::vulkan::{VkDebugReporter, VkEntry};
 use crate::{RafxError, RafxResult};
 use ash::extensions::ext::DebugUtils;
 use ash::vk::DebugUtilsMessageTypeFlagsEXT;
-use raw_window_handle::HasRawDisplayHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::sync::Arc;
 
 /// Create one of these at startup. It never gets lost/destroyed.
@@ -23,6 +22,7 @@ impl VkInstance {
     pub fn new(
         entry: VkEntry,
         display: &dyn HasRawDisplayHandle,
+        _window: &dyn HasRawWindowHandle,
         app_name: &CString,
         require_validation_layers_present: bool,
         validation_layer_debug_report_flags: vk::DebugUtilsMessageSeverityFlagsEXT,
@@ -90,7 +90,7 @@ impl VkInstance {
             if best_validation_layer.is_none() {
                 if require_validation_layers_present {
                     log::error!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
-                    return Err(vk::Result::ERROR_LAYER_NOT_PRESENT.into());
+                    return Err(RafxError::ValidationRequiredButUnavailable);
                 } else {
                     log::warn!("Could not find an appropriate validation layer. Check that the vulkan SDK has been installed or disable validation.");
                 }
@@ -99,7 +99,7 @@ impl VkInstance {
             if !debug_utils_extension_available {
                 if require_validation_layers_present {
                     log::error!("Could not find the DebugUtils extension. Check that the vulkan SDK has been installed or disable validation.");
-                    return Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT.into());
+                    return Err(RafxError::ValidationRequiredButUnavailable);
                 } else {
                     log::warn!("Could not find the DebugUtils extension. Check that the vulkan SDK has been installed or disable validation.");
                 }

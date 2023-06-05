@@ -12,18 +12,11 @@ use crate::{
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct BufferStd430 {
-    pub data: [u32; 0], // +0 (size: 0)
-} // 0 bytes
-
-pub type BufferBuffer = BufferStd430;
-
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
 pub struct ClearBufferConfigStd140 {
     pub buffer_bytes_div_by_four: u32, // +0 (size: 4)
     pub fill_value: u32,               // +4 (size: 4)
-    pub _padding0: [u8; 8],            // +8 (size: 8)
+    pub num_workgroups_x: u32,         // +8 (size: 4)
+    pub _padding0: [u8; 4],            // +12 (size: 4)
 } // 16 bytes
 
 impl Default for ClearBufferConfigStd140 {
@@ -31,7 +24,8 @@ impl Default for ClearBufferConfigStd140 {
         ClearBufferConfigStd140 {
             buffer_bytes_div_by_four: <u32>::default(),
             fill_value: <u32>::default(),
-            _padding0: [u8::default(); 8],
+            num_workgroups_x: <u32>::default(),
+            _padding0: [u8::default(); 4],
         }
     }
 }
@@ -45,7 +39,6 @@ pub const DATA_DESCRIPTOR_BINDING_INDEX: usize = 1;
 
 pub struct DescriptorSet0Args<'a> {
     pub config: &'a ClearBufferConfigUniform,
-    pub data: &'a BufferBuffer,
 }
 
 impl<'a> DescriptorSetInitializer<'a> for DescriptorSet0Args<'a> {
@@ -77,7 +70,6 @@ impl<'a> DescriptorSetWriter<'a> for DescriptorSet0Args<'a> {
         args: Self,
     ) {
         descriptor_set.set_buffer_data(CONFIG_DESCRIPTOR_BINDING_INDEX as u32, args.config);
-        descriptor_set.set_buffer_data(DATA_DESCRIPTOR_BINDING_INDEX as u32, args.data);
     }
 }
 
@@ -89,7 +81,6 @@ impl DescriptorSet0 {
         args: DescriptorSet0Args,
     ) {
         descriptor_set.set_buffer_data(CONFIG_DESCRIPTOR_BINDING_INDEX as u32, args.config);
-        descriptor_set.set_buffer_data(DATA_DESCRIPTOR_BINDING_INDEX as u32, args.data);
     }
 
     pub fn set_args(
@@ -97,7 +88,6 @@ impl DescriptorSet0 {
         args: DescriptorSet0Args,
     ) {
         self.set_config(args.config);
-        self.set_data(args.data);
     }
 
     pub fn set_config(
@@ -106,14 +96,6 @@ impl DescriptorSet0 {
     ) {
         self.0
             .set_buffer_data(CONFIG_DESCRIPTOR_BINDING_INDEX as u32, config);
-    }
-
-    pub fn set_data(
-        &mut self,
-        data: &BufferBuffer,
-    ) {
-        self.0
-            .set_buffer_data(DATA_DESCRIPTOR_BINDING_INDEX as u32, data);
     }
 
     pub fn flush(
@@ -127,14 +109,6 @@ impl DescriptorSet0 {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn test_struct_buffer_std430() {
-        assert_eq!(std::mem::size_of::<BufferStd430>(), 0);
-        assert_eq!(std::mem::size_of::<[u32; 0]>(), 0);
-        assert_eq!(std::mem::align_of::<[u32; 0]>(), 4);
-        assert_eq!(memoffset::offset_of!(BufferStd430, data), 0);
-    }
 
     #[test]
     fn test_struct_clear_buffer_config_std140() {
@@ -151,8 +125,17 @@ mod test {
             memoffset::offset_of!(ClearBufferConfigStd140, fill_value),
             4
         );
-        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
-        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
-        assert_eq!(memoffset::offset_of!(ClearBufferConfigStd140, _padding0), 8);
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(
+            memoffset::offset_of!(ClearBufferConfigStd140, num_workgroups_x),
+            8
+        );
+        assert_eq!(std::mem::size_of::<[u8; 4]>(), 4);
+        assert_eq!(std::mem::align_of::<[u8; 4]>(), 1);
+        assert_eq!(
+            memoffset::offset_of!(ClearBufferConfigStd140, _padding0),
+            12
+        );
     }
 }

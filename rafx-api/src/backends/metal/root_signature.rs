@@ -132,13 +132,15 @@ impl RafxRootSignatureMetal {
         for (stage_index, s) in ALL_SHADER_STAGE_FLAGS.iter().enumerate() {
             if s.intersects(stage) {
                 let s_descriptor_index = self.inner.push_constant_descriptors[stage_index];
-                if let Some(found_descriptor) = found_descriptor {
-                    if found_descriptor != s_descriptor_index {
-                        // The caller passed multiple stages and they do not use the same push constant descriptor
-                        return None;
+                if s_descriptor_index.is_some() {
+                    if let Some(found_descriptor) = found_descriptor {
+                        if found_descriptor != s_descriptor_index {
+                            // The caller passed multiple stages and they do not use the same push constant descriptor
+                            return None;
+                        }
+                    } else {
+                        found_descriptor = Some(s_descriptor_index);
                     }
-                } else {
-                    found_descriptor = Some(s_descriptor_index);
                 }
             }
         }

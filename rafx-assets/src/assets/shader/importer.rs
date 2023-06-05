@@ -69,6 +69,7 @@ impl Importer for ShaderImporterSpv {
 
         // The hash is used in some places identify the shader
         let shader_package = RafxShaderPackage {
+            dx12: None,
             metal: None,
             vk: Some(RafxShaderPackageVulkan::SpvBytes(spv_bytes)),
             gles2: None,

@@ -1,6 +1,6 @@
 use super::internal::*;
 use ash::vk;
-use raw_window_handle::HasRawDisplayHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::sync::Arc;
 
 use crate::vulkan::{RafxDeviceContextVulkan, RafxDeviceContextVulkanInner};
@@ -94,6 +94,7 @@ impl RafxApiVulkan {
     /// behavior on the CPU for reasons other than interacting with the GPU.
     pub unsafe fn new(
         display: &dyn HasRawDisplayHandle,
+        window: &dyn HasRawWindowHandle,
         _api_def: &RafxApiDef,
         vk_api_def: &RafxApiDefVulkan,
     ) -> RafxResult<Self> {
@@ -124,6 +125,7 @@ impl RafxApiVulkan {
         let instance = VkInstance::new(
             entry,
             display,
+            window,
             &app_name,
             require_validation_layers_present,
             validation_layer_debug_report_flags,

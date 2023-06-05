@@ -1,6 +1,9 @@
+#[cfg(feature = "rafx-dx12")]
+use crate::dx12::RafxFenceDx12;
 #[cfg(any(
     feature = "rafx-empty",
     not(any(
+        feature = "rafx-dx12",
         feature = "rafx-metal",
         feature = "rafx-vulkan",
         feature = "rafx-gles2",
@@ -31,6 +34,8 @@ use crate::{RafxFenceStatus, RafxResult};
 ///
 /// Fences must not be dropped if they are in use by the GPU.
 pub enum RafxFence {
+    #[cfg(feature = "rafx-dx12")]
+    Dx12(RafxFenceDx12),
     #[cfg(feature = "rafx-vulkan")]
     Vk(RafxFenceVulkan),
     #[cfg(feature = "rafx-metal")]
@@ -42,6 +47,7 @@ pub enum RafxFence {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -59,6 +65,8 @@ impl RafxFence {
     /// fence is submitted again.
     pub fn get_fence_status(&self) -> RafxResult<RafxFenceStatus> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxFence::Dx12(inner) => inner.get_fence_status(),
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(inner) => inner.get_fence_status(),
             #[cfg(feature = "rafx-metal")]
@@ -70,6 +78,7 @@ impl RafxFence {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -83,6 +92,8 @@ impl RafxFence {
     /// Wait for the fence to be signaled as complete by the GPU
     pub fn wait(&self) -> RafxResult<()> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxFence::Dx12(inner) => inner.wait(),
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(inner) => inner.wait(),
             #[cfg(feature = "rafx-metal")]
@@ -94,6 +105,7 @@ impl RafxFence {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -104,11 +116,42 @@ impl RafxFence {
         }
     }
 
+    /// Get the underlying dx12 API object. This provides access to any internally created
+    /// dx12 objects.
+    #[cfg(feature = "rafx-dx12")]
+    pub fn dx12_fence(&self) -> Option<&RafxFenceDx12> {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxFence::Dx12(inner) => Some(inner),
+            #[cfg(feature = "rafx-vulkan")]
+            RafxFence::Vk(_) => None,
+            #[cfg(feature = "rafx-metal")]
+            RafxFence::Metal(_) => None,
+            #[cfg(feature = "rafx-gles2")]
+            RafxFence::Gles2(_) => None,
+            #[cfg(feature = "rafx-gles3")]
+            RafxFence::Gles3(_) => None,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxFence::Empty(_) => None,
+        }
+    }
+
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
     #[cfg(feature = "rafx-vulkan")]
     pub fn vk_fence(&self) -> Option<&RafxFenceVulkan> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxFence::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(inner) => Some(inner),
             #[cfg(feature = "rafx-metal")]
@@ -120,6 +163,7 @@ impl RafxFence {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -135,6 +179,8 @@ impl RafxFence {
     #[cfg(feature = "rafx-metal")]
     pub fn metal_fence(&self) -> Option<&RafxFenceMetal> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxFence::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -146,6 +192,7 @@ impl RafxFence {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -161,6 +208,8 @@ impl RafxFence {
     #[cfg(feature = "rafx-gles2")]
     pub fn gles2_fence(&self) -> Option<&RafxFenceGles2> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxFence::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -172,6 +221,7 @@ impl RafxFence {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -187,6 +237,8 @@ impl RafxFence {
     #[cfg(feature = "rafx-gles3")]
     pub fn gles3_fence(&self) -> Option<&RafxFenceGles3> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxFence::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -198,6 +250,7 @@ impl RafxFence {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",
@@ -213,6 +266,7 @@ impl RafxFence {
     #[cfg(any(
         feature = "rafx-empty",
         not(any(
+            feature = "rafx-dx12",
             feature = "rafx-metal",
             feature = "rafx-vulkan",
             feature = "rafx-gles2",
@@ -221,6 +275,8 @@ impl RafxFence {
     ))]
     pub fn empty_fence(&self) -> Option<&RafxFenceEmpty> {
         match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxFence::Dx12(_) => None,
             #[cfg(feature = "rafx-vulkan")]
             RafxFence::Vk(_) => None,
             #[cfg(feature = "rafx-metal")]
@@ -232,6 +288,7 @@ impl RafxFence {
             #[cfg(any(
                 feature = "rafx-empty",
                 not(any(
+                    feature = "rafx-dx12",
                     feature = "rafx-metal",
                     feature = "rafx-vulkan",
                     feature = "rafx-gles2",

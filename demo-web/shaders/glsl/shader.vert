@@ -4,7 +4,10 @@ layout (set = 0, binding = 0) uniform PerViewData {
     mat4 mvp;
 } uniform_data;
 
+// @[semantic("POSITION")]
 layout (location = 0) in vec2 pos;
+
+// @[semantic("TEXCOORD")]
 layout (location = 1) in vec2 in_uv;
 
 layout (location = 0) out vec2 out_uv;

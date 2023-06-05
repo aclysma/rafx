@@ -1,9 +1,9 @@
 use crate::{
     RafxAddressMode, RafxBlendFactor, RafxBlendOp, RafxColorClearValue, RafxColorFlags,
     RafxCompareOp, RafxCullMode, RafxDepthStencilClearValue, RafxFillMode, RafxFilterType,
-    RafxFrontFace, RafxIndexType, RafxLoadOp, RafxMemoryUsage, RafxMipMapMode,
-    RafxPrimitiveTopology, RafxSampleCount, RafxShaderStageFlags, RafxStencilOp, RafxStoreOp,
-    RafxSwapchainColorSpace, RafxVertexAttributeRate,
+    RafxFrontFace, RafxIndexType, RafxLoadOp, RafxMipMapMode, RafxPrimitiveTopology,
+    RafxSampleCount, RafxShaderStageFlags, RafxStencilOp, RafxStoreOp, RafxSwapchainColorSpace,
+    RafxVertexAttributeRate,
 };
 use ash::vk;
 
@@ -47,19 +47,6 @@ impl Into<vk::ColorComponentFlags> for RafxColorFlags {
             flags |= vk::ColorComponentFlags::A
         }
         flags
-    }
-}
-
-impl Into<gpu_allocator::MemoryLocation> for RafxMemoryUsage {
-    fn into(self) -> gpu_allocator::MemoryLocation {
-        use gpu_allocator::MemoryLocation;
-        match self {
-            RafxMemoryUsage::Unknown => MemoryLocation::Unknown,
-            RafxMemoryUsage::GpuOnly => MemoryLocation::GpuOnly,
-            RafxMemoryUsage::CpuOnly => MemoryLocation::CpuToGpu,
-            RafxMemoryUsage::CpuToGpu => MemoryLocation::CpuToGpu,
-            RafxMemoryUsage::GpuToCpu => MemoryLocation::GpuToCpu,
-        }
     }
 }
 

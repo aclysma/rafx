@@ -336,6 +336,7 @@ pub fn update_loop(
                     buffer_index: 0,
                     location: 0,
                     byte_offset: 0,
+                    hlsl_semantic: "POSITION".to_string(),
                     gl_attribute_name: Some("pos".to_string()),
                 },
                 RafxVertexLayoutAttribute {
@@ -343,6 +344,7 @@ pub fn update_loop(
                     buffer_index: 0,
                     location: 1,
                     byte_offset: 8,
+                    hlsl_semantic: "TEXCOORD".to_string(),
                     gl_attribute_name: Some("in_uv".to_string()),
                 },
             ],

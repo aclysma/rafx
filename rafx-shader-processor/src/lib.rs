@@ -48,6 +48,8 @@ pub struct ShaderProcessorArgs {
     pub spv_file: Option<PathBuf>,
     #[structopt(name = "rs-file", long, parse(from_os_str))]
     pub rs_file: Option<PathBuf>,
+    #[structopt(name = "dx12-generated-src-file", long, parse(from_os_str))]
+    pub dx12_generated_src_file: Option<PathBuf>,
     #[structopt(name = "metal-generated-src-file", long, parse(from_os_str))]
     pub metal_generated_src_file: Option<PathBuf>,
     #[structopt(name = "gles2-generated-src-file", long, parse(from_os_str))]
@@ -68,6 +70,8 @@ pub struct ShaderProcessorArgs {
     pub rs_lib_path: Option<PathBuf>,
     #[structopt(name = "rs-mod-path", long, parse(from_os_str))]
     pub rs_mod_path: Option<PathBuf>,
+    #[structopt(name = "dx12-generated-src-path", long, parse(from_os_str))]
+    pub dx12_generated_src_path: Option<PathBuf>,
     #[structopt(name = "metal-generated-src-path", long, parse(from_os_str))]
     pub metal_generated_src_path: Option<PathBuf>,
     #[structopt(name = "gles2-generated-src-path", long, parse(from_os_str))]
@@ -88,6 +92,8 @@ pub struct ShaderProcessorArgs {
 
     #[structopt(name = "package-vk", long)]
     pub package_vk: bool,
+    #[structopt(name = "package-dx12", long)]
+    pub package_dx12: bool,
     #[structopt(name = "package-metal", long)]
     pub package_metal: bool,
     #[structopt(name = "package-gles2", long)]
@@ -141,6 +147,7 @@ pub fn run(args: &ShaderProcessorArgs) -> Result<(), Box<dyn Error>> {
             glsl_file,
             args.spv_file.as_ref(),
             &rs_file_option,
+            args.dx12_generated_src_path.as_ref(),
             args.metal_generated_src_file.as_ref(),
             args.gles2_generated_src_file.as_ref(),
             args.gles3_generated_src_file.as_ref(),
@@ -209,6 +216,12 @@ fn process_directory(
             .as_ref()
             .map(|x| x.join(outfile_prefix).join(spv_name));
 
+        let dx12_src_name = format!("{}.hlsl", file_name);
+        let dx12_generated_src_path = args
+            .dx12_generated_src_path
+            .as_ref()
+            .map(|x| x.join(outfile_prefix).join(dx12_src_name));
+
         let metal_src_name = format!("{}.metal", file_name);
         let metal_generated_src_path = args
             .metal_generated_src_path
@@ -247,6 +260,7 @@ fn process_directory(
             glsl_file.path(),
             spv_path.as_ref(),
             &rs_file_option,
+            dx12_generated_src_path.as_ref(),
             metal_generated_src_path.as_ref(),
             gles2_generated_src_path.as_ref(),
             gles3_generated_src_path.as_ref(),
@@ -337,6 +351,7 @@ fn process_glsl_shader(
     glsl_file: &Path,
     spv_file: Option<&PathBuf>,
     rs_file: &Option<RsFileOption>,
+    dx12_generated_src_file: Option<&PathBuf>,
     metal_generated_src_file: Option<&PathBuf>,
     gles2_generated_src_file: Option<&PathBuf>,
     gles3_generated_src_file: Option<&PathBuf>,
@@ -348,6 +363,7 @@ fn process_glsl_shader(
     log::trace!("glsl: {:?}", glsl_file);
     log::trace!("spv: {:?}", spv_file);
     log::trace!("rs: {:?}", rs_file);
+    log::trace!("dx12: {:?}", dx12_generated_src_file);
     log::trace!("metal: {:?}", metal_generated_src_file);
     log::trace!("gles2: {:?}", gles2_generated_src_file);
     log::trace!("gles3: {:?}", gles3_generated_src_file);
@@ -355,22 +371,24 @@ fn process_glsl_shader(
     log::trace!("shader kind: {:?}", shader_kind);
 
     let package_vk = (args.package_all || args.package_vk) && cooked_shader_file.is_some();
+    let package_dx12 = (args.package_all || args.package_dx12) && cooked_shader_file.is_some();
     let package_metal = (args.package_all || args.package_metal) && cooked_shader_file.is_some();
     let package_gles2 = (args.package_all || args.package_gles2) && cooked_shader_file.is_some();
     let package_gles3 = (args.package_all || args.package_gles3) && cooked_shader_file.is_some();
 
     log::trace!(
-        "package VK: {} Metal: {} GLES2: {} GLES3: {}",
+        "package VK: {} dx12: {} Metal: {} GLES2: {} GLES3: {}",
         package_vk,
+        package_dx12,
         package_metal,
         package_gles2,
         package_gles3
     );
 
     if cooked_shader_file.is_some()
-        && !(package_vk || package_metal || package_gles2 || package_gles3)
+        && !(package_vk || package_dx12 || package_metal || package_gles2 || package_gles3)
     {
-        Err("A cooked shader file or path was specified but no shader types are specified to package. Pass --package-vk, --package-metal, --package-gles2, --package-gles3, or --package-all")?;
+        Err("A cooked shader file or path was specified but no shader types are specified to package. Pass --package-vk, --package-dx12, --package-metal, --package-gles2, --package-gles3, or --package-all")?;
     }
 
     let code = std::fs::read_to_string(&glsl_file)?;
@@ -447,11 +465,12 @@ fn process_glsl_shader(
 
     let mut reflected_data = if rs_file.is_some()
         || cooked_shader_file.is_some()
+        || dx12_generated_src_file.is_some()
         || metal_generated_src_file.is_some()
         || gles2_generated_src_file.is_some()
     {
         log::trace!("{:?}: generate reflection data", glsl_file);
-        let require_semantics = cooked_shader_file.is_some();
+        let require_semantics = cooked_shader_file.is_some() || dx12_generated_src_file.is_some();
         Some(reflect::reflect_data(
             &builtin_types,
             &user_types,
@@ -525,6 +544,41 @@ fn process_glsl_shader(
     } else {
         log::trace!("{:?}: do not recompile optimized", glsl_file);
         unoptimized_compile_spirv_result.as_binary_u8().to_vec()
+    };
+
+    let dx12_src = if let Some(src) = try_load_override_src(glsl_file, ".hlsl")? {
+        Some(src)
+    } else if dx12_generated_src_file.is_some() || package_dx12 {
+        log::trace!("{:?}: create dx12 hlsl", glsl_file);
+        let mut hlsl_ast =
+            spirv_cross::spirv::Ast::<spirv_cross::hlsl::Target>::parse(&spirv_cross_module)?;
+        let mut spirv_cross_hlsl_options = spirv_cross::hlsl::CompilerOptions::default();
+        spirv_cross_hlsl_options.shader_model = spirv_cross::hlsl::ShaderModel::V6_0;
+        spirv_cross_hlsl_options.flatten_matrix_vertex_input_semantics = true;
+        spirv_cross_hlsl_options.force_storage_buffer_as_uav = true;
+
+        for assignment in &reflected_data.as_ref().unwrap().hlsl_register_assignments {
+            hlsl_ast.add_resource_binding(assignment)?;
+        }
+
+        for remap in &reflected_data
+            .as_ref()
+            .unwrap()
+            .hlsl_vertex_attribute_remaps
+        {
+            // We require semantics to produce HLSL, an error should be thrown earlier if they are missing
+            assert!(!remap.semantic.is_empty());
+            if !remap.semantic.is_empty() {
+                hlsl_ast.add_vertex_attribute_remap(remap)?;
+            }
+        }
+
+        hlsl_ast.set_compiler_options(&spirv_cross_hlsl_options)?;
+
+        let dx12_src = hlsl_ast.compile()?;
+        Some(dx12_src)
+    } else {
+        None
     };
 
     let metal_src = if let Some(src) = try_load_override_src(glsl_file, ".metal")? {
@@ -624,6 +678,12 @@ fn process_glsl_shader(
     let cooked_shader = if cooked_shader_file.is_some() {
         let output_spv = if package_vk { Some(&output_spv) } else { None };
 
+        let dx12_src = if package_dx12 {
+            Some(dx12_src.as_ref().unwrap().clone())
+        } else {
+            None
+        };
+
         let metal_src = if package_metal {
             Some(metal_src.as_ref().unwrap().clone())
         } else {
@@ -645,9 +705,11 @@ fn process_glsl_shader(
         Some(cook::cook_shader(
             &reflected_data.as_ref().unwrap().reflection,
             output_spv,
+            dx12_src,
             metal_src,
             gles2_src,
             gles3_src,
+            Some(glsl_file.file_name().unwrap().to_string_lossy().to_string()),
         )?)
     } else {
         None
@@ -662,6 +724,10 @@ fn process_glsl_shader(
 
     if let Some(rs_file) = &rs_file {
         write_output_file(&rs_file.path, rust_code.unwrap())?;
+    }
+
+    if let Some(dx12_generated_src_file) = &dx12_generated_src_file {
+        write_output_file(dx12_generated_src_file, dx12_src.unwrap())?;
     }
 
     if let Some(metal_generated_src_file) = &metal_generated_src_file {

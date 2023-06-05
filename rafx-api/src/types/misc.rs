@@ -7,7 +7,7 @@ use std::hash::{Hash, Hasher};
 
 /// Controls if validation is enabled or not. The requirements/behaviors of validation is
 /// API-specific.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RafxValidationMode {
     /// Do not enable validation. Even if validation is turned on through external means, do not
     /// intentionally fail initialization
@@ -167,6 +167,29 @@ pub enum RafxSampleCount {
 impl Default for RafxSampleCount {
     fn default() -> Self {
         RafxSampleCount::SampleCount1
+    }
+}
+
+impl RafxSampleCount {
+    pub fn from_u32(samples: u32) -> Self {
+        match samples {
+            1 => RafxSampleCount::SampleCount1,
+            2 => RafxSampleCount::SampleCount2,
+            4 => RafxSampleCount::SampleCount4,
+            8 => RafxSampleCount::SampleCount8,
+            16 => RafxSampleCount::SampleCount16,
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn as_u32(self) -> u32 {
+        match self {
+            RafxSampleCount::SampleCount1 => 1,
+            RafxSampleCount::SampleCount2 => 2,
+            RafxSampleCount::SampleCount4 => 4,
+            RafxSampleCount::SampleCount8 => 8,
+            RafxSampleCount::SampleCount16 => 16,
+        }
     }
 }
 
@@ -346,8 +369,8 @@ bitflags::bitflags! {
 /// Contains all the individual stages
 pub const ALL_SHADER_STAGE_FLAGS: [RafxShaderStageFlags; 6] = [
     RafxShaderStageFlags::VERTEX,
-    RafxShaderStageFlags::TESSELLATION_CONTROL,
-    RafxShaderStageFlags::TESSELLATION_EVALUATION,
+    RafxShaderStageFlags::TESSELLATION_CONTROL, // dx12 hull shader
+    RafxShaderStageFlags::TESSELLATION_EVALUATION, // dx12 domain shader
     RafxShaderStageFlags::GEOMETRY,
     RafxShaderStageFlags::FRAGMENT,
     RafxShaderStageFlags::COMPUTE,
@@ -660,6 +683,7 @@ impl Hash for RafxDepthStencilClearValue {
 }
 
 /// Determines if a barrier is transferring a resource from one queue to another.
+#[derive(Debug, Copy, Clone)]
 pub enum RafxBarrierQueueTransition {
     /// No queue transition will take place
     None,
