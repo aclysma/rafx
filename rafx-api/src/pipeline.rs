@@ -131,7 +131,7 @@ impl RafxPipeline {
             #[cfg(feature = "rafx-metal")]
             // Not possible to set after creation, recommend providing debug_name on pipeline
             // creation via RafxGraphicsPipelineDef/RafxComputePipelineDef
-            RafxPipeline::Metal(inner) => {}
+            RafxPipeline::Metal(_) => {}
             #[cfg(feature = "rafx-gles2")]
             RafxPipeline::Gles2(_) => {}
             #[cfg(feature = "rafx-gles3")]
