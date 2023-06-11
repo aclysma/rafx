@@ -290,6 +290,7 @@ fn run() -> RafxResult<()> {
             sample_count: RafxSampleCount::SampleCount1,
             depth_stencil_format: None,
             primitive_topology: RafxPrimitiveTopology::TriangleList,
+            debug_name: None,
         })?;
 
         let start_time = std::time::Instant::now();

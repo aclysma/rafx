@@ -59,7 +59,6 @@ impl RafxPipelineDx12 {
                 self.pipeline
                     .SetName(windows::core::PCWSTR::from_raw(utf16.as_ptr()))
                     .unwrap();
-                //TODO: Also set on allocation, views, etc?
             }
         }
     }
@@ -298,13 +297,19 @@ impl RafxPipelineDx12 {
 
         let topology = pipeline_def.primitive_topology.into();
 
-        Ok(RafxPipelineDx12 {
+        let pipeline = RafxPipelineDx12 {
             root_signature: pipeline_def.root_signature.clone(),
             pipeline_type: pipeline_def.root_signature.pipeline_type(),
             pipeline,
             topology,
             vertex_buffer_strides,
-        })
+        };
+
+        if let Some(debug_name) = pipeline_def.debug_name {
+            pipeline.set_debug_name(debug_name)
+        }
+
+        Ok(pipeline)
     }
 
     pub fn new_compute_pipeline(
@@ -367,12 +372,18 @@ impl RafxPipelineDx12 {
                 .CreateComputePipelineState(&pipeline_state_desc)?
         };
 
-        Ok(RafxPipelineDx12 {
+        let pipeline = RafxPipelineDx12 {
             root_signature: pipeline_def.root_signature.clone(),
             pipeline_type: pipeline_def.root_signature.pipeline_type(),
             pipeline,
             topology: d3d::D3D_PRIMITIVE_TOPOLOGY_UNDEFINED,
             vertex_buffer_strides: [0; crate::MAX_VERTEX_INPUT_BINDINGS],
-        })
+        };
+
+        if let Some(debug_name) = pipeline_def.debug_name {
+            pipeline.set_debug_name(debug_name)
+        }
+
+        Ok(pipeline)
     }
 }

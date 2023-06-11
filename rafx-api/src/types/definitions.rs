@@ -668,7 +668,7 @@ pub struct RafxGraphicsPipelineDef<'a> {
     pub color_formats: &'a [RafxFormat],
     pub depth_stencil_format: Option<RafxFormat>,
     pub sample_count: RafxSampleCount,
-    //indirect_commands_enable: bool
+    pub debug_name: Option<&'a str>,
 }
 
 /// Used to create a `RafxPipeline` for compute operations
@@ -676,6 +676,7 @@ pub struct RafxGraphicsPipelineDef<'a> {
 pub struct RafxComputePipelineDef<'a> {
     pub shader: &'a RafxShader,
     pub root_signature: &'a RafxRootSignature,
+    pub debug_name: Option<&'a str>,
 }
 
 /// Used to create a `RafxDescriptorSetArray`

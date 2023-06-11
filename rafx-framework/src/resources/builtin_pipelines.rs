@@ -61,7 +61,11 @@ impl BuiltinPipelines {
             )))
             .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
 
-        super::cooked_shader::load_compute_pipeline(&util_fill_buffer, resources, "main")
+        super::cooked_shader::load_compute_pipeline_from_package(
+            &util_fill_buffer,
+            resources,
+            "main",
+        )
     }
 
     fn create_util_blit_image_pass(
@@ -93,11 +97,12 @@ impl BuiltinPipelines {
             .blend_state
             .render_target_blend_states = vec![RafxBlendStateRenderTarget::default_alpha_enabled()];
 
-        super::cooked_shader::load_material_pass(
+        super::cooked_shader::load_material_pass_from_packages(
             resources,
             &[&util_blit_image_vert, &util_blit_image_frag],
             &["main", "main"],
             Arc::new(util_blit_image_fixed_function_state),
+            Some("util_blit_image"),
         )
     }
 

@@ -90,7 +90,7 @@ impl Importer for MeshAdvBlenderMaterialImporter {
 
         let material_handle = make_handle_from_str("680c6edd-8bed-407b-aea0-d0f6056093d6")?;
 
-        let shadow_method = match json_format.shadow_method.as_ref().map(|x| x.as_str()) {
+        let shadow_method = match json_format.shadow_method.as_deref() {
             None => MeshAdvShadowMethod::Opaque,
             Some("NONE") => MeshAdvShadowMethod::None,
             Some("OPAQUE") => MeshAdvShadowMethod::Opaque,
@@ -98,7 +98,7 @@ impl Importer for MeshAdvBlenderMaterialImporter {
                                    //"HASHED" => MeshAdvShadowMethod::AlphaStochastic
         };
 
-        let blend_method = match json_format.blend_method.as_ref().map(|x| x.as_str()) {
+        let blend_method = match json_format.blend_method.as_deref() {
             None => MeshAdvBlendMethod::Opaque,
             Some("OPAQUE") => MeshAdvBlendMethod::Opaque,
             Some("CLIP") => MeshAdvBlendMethod::AlphaClip,

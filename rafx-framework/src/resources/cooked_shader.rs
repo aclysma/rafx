@@ -5,7 +5,7 @@ use crate::{
 use rafx_api::{RafxHashedShaderPackage, RafxResult};
 use std::sync::Arc;
 
-pub fn load_compute_pipeline(
+pub fn load_compute_pipeline_from_package(
     shader_package: &RafxHashedShaderPackage,
     resources: &ResourceLookupSet,
     entry_name: &str,
@@ -28,14 +28,19 @@ pub fn load_compute_pipeline(
     let shader_module =
         resources.get_or_create_shader_module_from_hashed_package(shader_package)?;
     let reflected_shader = ReflectedShader::new(resources, &[shader_module], &[entry_point])?;
-    reflected_shader.load_compute_pipeline(resources)
+
+    reflected_shader.load_compute_pipeline(
+        resources,
+        shader_package.shader_package().debug_name.as_deref(),
+    )
 }
 
-pub fn load_material_pass(
+pub fn load_material_pass_from_packages(
     resources: &ResourceLookupSet,
     cooked_shader_packages: &[&RafxHashedShaderPackage],
     entry_names: &[&str],
     fixed_function_state: Arc<FixedFunctionState>,
+    debug_name: Option<&str>,
 ) -> RafxResult<ResourceArc<MaterialPassResource>> {
     assert_eq!(cooked_shader_packages.len(), entry_names.len());
     let mut shader_modules = Vec::with_capacity(cooked_shader_packages.len());
@@ -60,5 +65,5 @@ pub fn load_material_pass(
     }
 
     let reflected_shader = ReflectedShader::new(resources, &shader_modules, &entry_points)?;
-    reflected_shader.load_material_pass(resources, fixed_function_state)
+    reflected_shader.load_material_pass(resources, fixed_function_state, debug_name)
 }

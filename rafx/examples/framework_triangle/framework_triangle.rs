@@ -139,11 +139,12 @@ fn run() -> RafxResult<()> {
         });
 
         // Create the material pass (which can later be used to create a graphics pipeline)
-        let material_pass = rafx_framework::cooked_shader::load_material_pass(
+        let material_pass = rafx_framework::cooked_shader::load_material_pass_from_packages(
             resource_context.resources(),
             &[&cooked_vertex_shader_stage, &cooked_fragment_shader_stage],
             &["main", "main"],
             fixed_function_state,
+            None,
         )?;
 
         // It's good practice to register materials with the render phase they will be used in. This

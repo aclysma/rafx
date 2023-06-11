@@ -100,19 +100,20 @@ impl RafxIndexedIndirectCommandSignature {
         _shader_flags: RafxShaderStageFlags,
     ) -> RafxResult<Self> {
         #[cfg(feature = "rafx-dx12")]
-        if let Some(root_signature) = _root_signature.dx12_root_signature() {
-            let descriptor = root_signature.find_push_constant_descriptor(_shader_flags).ok_or_else(|| crate::RafxError::StringError(format!(
+        if let Some(root_signature_dx12) = root_signature.dx12_root_signature() {
+            let descriptor = root_signature_dx12.find_push_constant_descriptor(_shader_flags).ok_or_else(|| crate::RafxError::StringError(format!(
                 "Tried to create a RafxIndexedIndirectCommandSignature for shader flags {:?} but no push constants were found",
                 _shader_flags
             )))?;
 
             let command_signature = create_indirect_draw_with_push_constant_command_signature(
-                root_signature.device_context().d3d12_device(),
-                root_signature.dx12_root_signature(),
+                root_signature_dx12.device_context().d3d12_device(),
+                root_signature_dx12.dx12_root_signature(),
                 true,
             )?;
 
             return Ok(RafxIndexedIndirectCommandSignature {
+                _root_signature: root_signature.clone(),
                 dx12_indirect_command_signature: Some(command_signature),
             });
         }
