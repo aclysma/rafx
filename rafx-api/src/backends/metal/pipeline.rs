@@ -86,6 +86,12 @@ impl RafxPipelineMetal {
     ) -> RafxResult<Self> {
         let pipeline = metal_rs::RenderPipelineDescriptor::new();
 
+        if device_context.device_info().debug_names_enabled {
+            if let Some(debug_name) = pipeline_def.debug_name {
+                pipeline.set_label(debug_name);
+            }
+        }
+
         let mut vertex_function = None;
         let mut fragment_function = None;
 
@@ -128,7 +134,7 @@ impl RafxPipelineMetal {
         let vertex_function = vertex_function.ok_or("Could not find vertex function")?;
 
         pipeline.set_vertex_function(Some(vertex_function.as_ref()));
-        pipeline.set_fragment_function(fragment_function.as_ref().map(|x| x.as_ref()));
+        pipeline.set_fragment_function(fragment_function.as_deref());
         pipeline.set_sample_count(pipeline_def.sample_count.into());
 
         let vertex_descriptor = metal_rs::VertexDescriptor::new();
@@ -259,9 +265,19 @@ impl RafxPipelineMetal {
 
         let compute_function = compute_function.ok_or("Could not find compute function")?;
 
+        let pipeline = metal_rs::ComputePipelineDescriptor::new();
+
+        if device_context.device_info().debug_names_enabled {
+            if let Some(debug_name) = pipeline_def.debug_name {
+                pipeline.set_label(debug_name);
+            }
+        }
+
+        pipeline.set_compute_function(Some(compute_function.as_ref()));
+
         let pipeline = device_context
             .device()
-            .new_compute_pipeline_state_with_function(compute_function.as_ref())?;
+            .new_compute_pipeline_state(pipeline.as_ref())?;
 
         let compute_encoder_info = PipelineComputeEncoderInfo {
             compute_threads_per_group: compute_threads_per_group.unwrap(),

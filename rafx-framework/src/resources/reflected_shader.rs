@@ -240,6 +240,7 @@ impl ReflectedShader {
         &self,
         resources: &ResourceLookupSet,
         fixed_function_state: Arc<FixedFunctionState>,
+        debug_name: Option<&str>,
     ) -> RafxResult<ResourceArc<MaterialPassResource>> {
         let vertex_inputs = self
             .metadata
@@ -289,6 +290,7 @@ impl ReflectedShader {
             descriptor_set_layouts,
             fixed_function_state,
             vertex_inputs.clone(),
+            debug_name,
         )
     }
 
@@ -297,12 +299,8 @@ impl ReflectedShader {
         resources: &ResourceLookupSet,
         //shader_module: &ResourceArc<ShaderModuleResource>,
         //entry_point: &ReflectedEntryPoint,
+        debug_name: Option<&str>,
     ) -> RafxResult<ResourceArc<ComputePipelineResource>> {
-        // let shader = resources
-        //     .get_or_create_shader(&[shader_module.clone()], &[&entry_point])?;
-
-        //let reflected_shader = ReflectedShader::new(&[entry_point])?;
-
         let (immutable_rafx_sampler_keys, immutable_rafx_sampler_lists) =
             ReflectedShader::create_immutable_samplers(
                 resources,
@@ -371,6 +369,7 @@ impl ReflectedShader {
             &self.shader,
             &root_signature,
             descriptor_set_layouts,
+            debug_name,
         )
     }
 }

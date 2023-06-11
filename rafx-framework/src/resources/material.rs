@@ -58,6 +58,7 @@ pub struct MaterialPass {
 impl MaterialPass {
     pub fn new(
         resource_context: &ResourceContext,
+        debug_name: Option<&str>,
         fixed_function_state: Arc<FixedFunctionState>,
         shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
         entry_points: &[&RafxReflectedEntryPoint],
@@ -65,8 +66,11 @@ impl MaterialPass {
         let reflected_shader =
             ReflectedShader::new(resource_context.resources(), &shader_modules, entry_points)?;
 
-        let material_pass = reflected_shader
-            .load_material_pass(resource_context.resources(), fixed_function_state)?;
+        let material_pass = reflected_shader.load_material_pass(
+            resource_context.resources(),
+            fixed_function_state,
+            debug_name,
+        )?;
 
         let vertex_inputs = reflected_shader
             .metadata

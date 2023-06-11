@@ -65,8 +65,10 @@ impl DefaultAssetTypeLoadHandler<ComputePipelineAssetData, ComputePipelineAsset>
             &[shader_module.shader_module.clone()],
             &[&reflection_data],
         )?;
-
-        let compute_pipeline = reflected_shader.load_compute_pipeline(asset_manager.resources())?;
+        let shader_module_resource = shader_module.shader_module.get_raw();
+        let debug_name = shader_module_resource.shader_package.debug_name.as_deref();
+        let compute_pipeline =
+            reflected_shader.load_compute_pipeline(asset_manager.resources(), debug_name)?;
 
         Ok(ComputePipelineAsset { compute_pipeline })
     }

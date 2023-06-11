@@ -365,6 +365,7 @@ pub fn update_loop(
             sample_count: RafxSampleCount::SampleCount1,
             depth_stencil_format: None,
             primitive_topology: RafxPrimitiveTopology::TriangleList,
+            debug_name: None,
         })?;
 
         log::trace!("Starting event loop");

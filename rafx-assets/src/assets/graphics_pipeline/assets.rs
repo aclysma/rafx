@@ -241,6 +241,7 @@ impl MaterialPassData {
         let resource_context = asset_manager.resource_manager().resource_context();
         let material_pass = MaterialPass::new(
             &resource_context,
+            self.name.as_deref(),
             fixed_function_state,
             shader_modules,
             &entry_points,

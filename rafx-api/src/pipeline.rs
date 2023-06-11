@@ -114,6 +114,42 @@ impl RafxPipeline {
         }
     }
 
+    /// Sets a name for this pipeline. This is useful for debugging, graphics debuggers/profilers such
+    /// as nsight graphics or renderdoc will display this pipeline with the given name in the list of resources.
+    ///
+    /// WARNING: Metal doesn't support specifying debug names after pipeline creation, so it's better
+    /// to provide a debug_name in RafxGraphicsPipelineDef/RafxComputePipelineDef
+    pub fn set_debug_name(
+        &self,
+        _name: impl AsRef<str>,
+    ) {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxPipeline::Dx12(inner) => inner.set_debug_name(_name),
+            #[cfg(feature = "rafx-vulkan")]
+            RafxPipeline::Vk(inner) => inner.set_debug_name(_name),
+            #[cfg(feature = "rafx-metal")]
+            // Not possible to set after creation, recommend providing debug_name on pipeline
+            // creation via RafxGraphicsPipelineDef/RafxComputePipelineDef
+            RafxPipeline::Metal(inner) => {}
+            #[cfg(feature = "rafx-gles2")]
+            RafxPipeline::Gles2(_) => {}
+            #[cfg(feature = "rafx-gles3")]
+            RafxPipeline::Gles3(_) => {}
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxPipeline::Empty(inner) => inner.set_debug_name(_name),
+        }
+    }
+
     /// Get the underlying vulkan API object. This provides access to any internally created
     /// vulkan objects.
     #[cfg(feature = "rafx-dx12")]

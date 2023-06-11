@@ -41,6 +41,28 @@ impl RafxPipelineVulkan {
         self.pipeline
     }
 
+    pub fn set_debug_name(
+        &self,
+        name: impl AsRef<str>,
+    ) {
+        use ash::vk::Handle;
+        let device_context = self
+            .root_signature
+            .vk_root_signature()
+            .unwrap()
+            .device_context();
+        if device_context.device_info().debug_names_enabled {
+            if let Some(debug_reporter) = device_context.debug_reporter() {
+                debug_reporter.set_object_debug_name(
+                    device_context.device().handle(),
+                    vk::ObjectType::PIPELINE,
+                    self.vk_pipeline().as_raw(),
+                    name,
+                );
+            }
+        }
+    }
+
     pub fn new_graphics_pipeline(
         device_context: &RafxDeviceContextVulkan,
         pipeline_def: &RafxGraphicsPipelineDef,
@@ -208,11 +230,17 @@ impl RafxPipelineVulkan {
             }
         }?[0];
 
-        Ok(RafxPipelineVulkan {
+        let pipeline = RafxPipelineVulkan {
             pipeline_type: RafxPipelineType::Graphics,
             pipeline,
             root_signature: pipeline_def.root_signature.clone(),
-        })
+        };
+
+        if let Some(debug_name) = pipeline_def.debug_name {
+            pipeline.set_debug_name(debug_name)
+        }
+
+        Ok(pipeline)
     }
 
     pub fn new_compute_pipeline(
@@ -266,10 +294,16 @@ impl RafxPipelineVulkan {
             }
         }?[0];
 
-        Ok(RafxPipelineVulkan {
+        let pipeline = RafxPipelineVulkan {
             pipeline_type: RafxPipelineType::Compute,
             pipeline,
             root_signature: pipeline_def.root_signature.clone(),
-        })
+        };
+
+        if let Some(debug_name) = pipeline_def.debug_name {
+            pipeline.set_debug_name(debug_name)
+        }
+
+        Ok(pipeline)
     }
 }

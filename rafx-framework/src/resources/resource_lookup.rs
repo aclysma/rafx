@@ -553,6 +553,7 @@ pub struct MaterialPassResource {
     pub descriptor_set_layouts: Arc<Vec<ResourceArc<DescriptorSetLayoutResource>>>,
     pub fixed_function_state: Arc<FixedFunctionState>,
     pub vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
+    pub debug_name: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -934,6 +935,7 @@ impl ResourceLookupSet {
         descriptor_sets: Vec<ResourceArc<DescriptorSetLayoutResource>>,
         fixed_function_state: Arc<FixedFunctionState>,
         vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
+        debug_name: Option<&str>,
     ) -> RafxResult<ResourceArc<MaterialPassResource>> {
         let descriptor_set_hashes: Vec<_> = descriptor_sets
             .iter()
@@ -952,6 +954,7 @@ impl ResourceLookupSet {
             .material_passes
             .get_or_create(&material_pass_key, || {
                 log::trace!("Creating material pass\n{:#?}", material_pass_key);
+                let debug_name = debug_name.map(|x| format!("MaterialPass {}", x));
                 let resource = MaterialPassResource {
                     material_pass_key: material_pass_key.clone(),
                     root_signature,
@@ -959,6 +962,7 @@ impl ResourceLookupSet {
                     shader,
                     fixed_function_state,
                     vertex_inputs,
+                    debug_name,
                 };
                 Ok(resource)
             })
@@ -984,6 +988,11 @@ impl ResourceLookupSet {
             .graphics_pipelines
             .get_or_create(&pipeline_key, || {
                 log::trace!("Creating graphics pipeline\n{:#?}", pipeline_key);
+                let debug_name = material_pass
+                    .get_raw()
+                    .debug_name
+                    .as_ref()
+                    .map(|x| format!("RafxGraphicsPipeline {}", x));
 
                 let fixed_function_state = &material_pass.get_raw().fixed_function_state;
                 let pipeline = self.inner.device_context.create_graphics_pipeline(
@@ -1006,6 +1015,7 @@ impl ResourceLookupSet {
                         color_formats: &render_target_meta.color_formats(),
                         depth_stencil_format: render_target_meta.depth_stencil_format(),
                         sample_count: render_target_meta.sample_count(),
+                        debug_name: debug_name.as_deref(),
                     },
                 )?;
 
@@ -1023,6 +1033,7 @@ impl ResourceLookupSet {
         shader: &ResourceArc<ShaderResource>,
         root_signature: &ResourceArc<RootSignatureResource>,
         descriptor_set_layouts: Vec<ResourceArc<DescriptorSetLayoutResource>>,
+        debug_name: Option<&str>,
     ) -> RafxResult<ResourceArc<ComputePipelineResource>> {
         let descriptor_set_hashes: Vec<_> = descriptor_set_layouts
             .iter()
@@ -1039,12 +1050,14 @@ impl ResourceLookupSet {
             .compute_pipelines
             .get_or_create(&pipeline_key, || {
                 log::trace!("Creating compute pipeline\n{:#?}", pipeline_key);
+                let debug_name = debug_name.map(|x| format!("RafxComputePipeline {}", x));
                 let rafx_pipeline =
                     self.inner
                         .device_context
                         .create_compute_pipeline(&RafxComputePipelineDef {
                             root_signature: &root_signature.get_raw().root_signature,
                             shader: &shader.get_raw().shader,
+                            debug_name: debug_name.as_deref(),
                         })?;
                 log::trace!("Created compute pipeline {:?}", rafx_pipeline);
 

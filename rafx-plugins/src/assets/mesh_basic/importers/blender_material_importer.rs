@@ -96,7 +96,7 @@ impl Importer for MeshBasicBlenderMaterialImporter {
 
         let null_image_handle = make_handle_from_str("fc937369-cad2-4a00-bf42-5968f1210784")?;
 
-        let shadow_method = match json_format.shadow_method.as_ref().map(|x| x.as_str()) {
+        let shadow_method = match json_format.shadow_method.as_deref() {
             None => MeshBasicShadowMethod::Opaque,
             Some("NONE") => MeshBasicShadowMethod::None,
             Some("OPAQUE") => MeshBasicShadowMethod::Opaque,
@@ -104,7 +104,7 @@ impl Importer for MeshBasicBlenderMaterialImporter {
                                    //"HASHED" => MeshBasicShadowMethod::AlphaStochastic
         };
 
-        let blend_method = match json_format.blend_method.as_ref().map(|x| x.as_str()) {
+        let blend_method = match json_format.blend_method.as_deref() {
             None => MeshBasicBlendMethod::Opaque,
             Some("OPAQUE") => MeshBasicBlendMethod::Opaque,
             Some("CLIP") => MeshBasicBlendMethod::AlphaClip,
