@@ -1265,6 +1265,5 @@ vec4 pbr_main() {
     //out_color = vec4(vec3(ambient_factor), 1.0);
     //out_color = vec4(in_uv.x, in_uv.y, 0.0, 1.0);
 
-
     return out_color;
 }

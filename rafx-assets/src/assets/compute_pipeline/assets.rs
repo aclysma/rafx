@@ -47,7 +47,10 @@ impl DefaultAssetTypeLoadHandler<ComputePipelineAssetData, ComputePipelineAsset>
         //
         // Find the reflection data in the shader module for the given entry point
         //
-        let reflection_data = shader_module.reflection_data.get(&asset_data.entry_name);
+        let reflection_data = shader_module.find_reflection_data(
+            &asset_data.entry_name,
+            asset_manager.device_context().api_type(),
+        );
         let reflection_data = reflection_data.ok_or_else(|| {
             let error_message = format!(
                 "Load Compute Shader Failed - Pass refers to entry point named {}, but no matching reflection data was found",
@@ -62,6 +65,7 @@ impl DefaultAssetTypeLoadHandler<ComputePipelineAssetData, ComputePipelineAsset>
             &[shader_module.shader_module.clone()],
             &[&reflection_data],
         )?;
+
         let compute_pipeline = reflected_shader.load_compute_pipeline(asset_manager.resources())?;
 
         Ok(ComputePipelineAsset { compute_pipeline })

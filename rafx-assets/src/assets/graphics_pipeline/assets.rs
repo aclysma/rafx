@@ -206,7 +206,8 @@ impl MaterialPassData {
             let shader_asset = asset_manager.latest_asset(&stage.shader_module).unwrap();
             shader_modules.push(shader_asset.shader_module.clone());
 
-            let reflection_data = shader_asset.reflection_data.get(&stage.entry_name);
+            let reflection_data = shader_asset
+                .find_reflection_data(&stage.entry_name, asset_manager.device_context().api_type());
             let reflection_data = reflection_data.ok_or_else(|| {
                 let error_message = format!(
                     "Load Material Failed - Pass refers to entry point named {}, but no matching reflection data was found",

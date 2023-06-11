@@ -1,9 +1,9 @@
 use crate::{
     DescriptorSetWriteSet, FixedFunctionState, MaterialPassResource, MaterialPassVertexInput,
-    RafxResult, ReflectedEntryPoint, ReflectedShader, ResourceArc, ResourceContext,
-    ShaderModuleResource, SlotNameLookup,
+    RafxResult, ReflectedShader, ResourceArc, ResourceContext, ShaderModuleResource,
+    SlotNameLookup,
 };
-use rafx_api::RafxShaderStageFlags;
+use rafx_api::{RafxReflectedEntryPoint, RafxShaderStageFlags};
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -60,7 +60,7 @@ impl MaterialPass {
         resource_context: &ResourceContext,
         fixed_function_state: Arc<FixedFunctionState>,
         shader_modules: Vec<ResourceArc<ShaderModuleResource>>,
-        entry_points: &[&ReflectedEntryPoint],
+        entry_points: &[&RafxReflectedEntryPoint],
     ) -> RafxResult<MaterialPass> {
         let reflected_shader =
             ReflectedShader::new(resource_context.resources(), &shader_modules, entry_points)?;

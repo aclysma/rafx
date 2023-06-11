@@ -1,16 +1,13 @@
-use rafx_framework::reflected_shader::{
-    ReflectedDescriptorSetLayout, ReflectedDescriptorSetLayoutBinding, ReflectedEntryPoint,
-    ReflectedVertexInput,
-};
-
 use crate::shader_types::{
     element_count, generate_struct, MemoryLayout, TypeAlignmentInfo, UserType,
 };
 use fnv::FnvHashMap;
 use rafx_api::{
     RafxAddressMode, RafxCompareOp, RafxFilterType, RafxGlUniformMember, RafxMipMapMode,
-    RafxResourceType, RafxResult, RafxSamplerDef, RafxShaderResource, RafxShaderStageFlags,
-    RafxShaderStageReflection, MAX_DESCRIPTOR_SET_LAYOUTS,
+    RafxReflectedDescriptorSetLayout, RafxReflectedDescriptorSetLayoutBinding,
+    RafxReflectedEntryPoint, RafxReflectedVertexInput, RafxResourceType, RafxResult,
+    RafxSamplerDef, RafxShaderResource, RafxShaderStageFlags, RafxShaderStageReflection,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use spirv_cross::msl::{ResourceBinding, ResourceBindingLocation, SamplerData, SamplerLocation};
 use spirv_cross::spirv::{ExecutionModel, Type};
@@ -172,7 +169,7 @@ fn get_reflected_binding<TargetT>(
     resource: &spirv_cross::spirv::Resource,
     resource_type: RafxResourceType,
     stage_flags: RafxShaderStageFlags,
-) -> RafxResult<ReflectedDescriptorSetLayoutBinding>
+) -> RafxResult<RafxReflectedDescriptorSetLayoutBinding>
 where
     TargetT: spirv_cross::spirv::Target,
     spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Parse<TargetT>,
@@ -212,7 +209,7 @@ where
             None
         };
 
-    Ok(ReflectedDescriptorSetLayoutBinding {
+    Ok(RafxReflectedDescriptorSetLayoutBinding {
         resource: rafx_resource,
         internal_buffer_per_descriptor_size,
         immutable_samplers,
@@ -222,7 +219,7 @@ where
 fn get_reflected_bindings<TargetT>(
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
     user_types: &FnvHashMap<String, UserType>,
-    descriptors: &mut Vec<ReflectedDescriptorSetLayoutBinding>,
+    descriptors: &mut Vec<RafxReflectedDescriptorSetLayoutBinding>,
     ast: &spirv_cross::spirv::Ast<TargetT>,
     declarations: &super::parse_declarations::ParseDeclarationsResult,
     resources: &[spirv_cross::spirv::Resource],
@@ -256,7 +253,7 @@ fn get_all_reflected_bindings<TargetT>(
     ast: &spirv_cross::spirv::Ast<TargetT>,
     declarations: &super::parse_declarations::ParseDeclarationsResult,
     stage_flags: RafxShaderStageFlags,
-) -> RafxResult<Vec<ReflectedDescriptorSetLayoutBinding>>
+) -> RafxResult<Vec<RafxReflectedDescriptorSetLayoutBinding>>
 where
     TargetT: spirv_cross::spirv::Target,
     spirv_cross::spirv::Ast<TargetT>: spirv_cross::spirv::Parse<TargetT>,
@@ -354,7 +351,7 @@ fn shader_stage_to_execution_model(
 }
 
 pub(crate) fn get_sorted_bindings_for_all_entry_points(
-    entry_points: &[ReflectedEntryPoint]
+    entry_points: &[RafxReflectedEntryPoint]
 ) -> RafxResult<Vec<RafxShaderResource>> {
     let mut all_resources_lookup = FnvHashMap::<(u32, u32), RafxShaderResource>::default();
     for entry_point in entry_points {
@@ -393,7 +390,7 @@ pub(crate) fn get_sorted_bindings_for_all_entry_points(
 }
 
 pub(crate) fn get_hlsl_register_assignments(
-    entry_points: &[ReflectedEntryPoint]
+    entry_points: &[RafxReflectedEntryPoint]
 ) -> RafxResult<Vec<spirv_cross::hlsl::HlslResourceBinding>> {
     let mut bindings = vec![];
 
@@ -466,7 +463,7 @@ pub(crate) fn get_hlsl_register_assignments(
 // Will force descriptor set 0 to be [[buffer(n)]] where n is the value of ResourceBinding::buffer_id
 //TODO: Exclude MSL constexpr samplers?
 pub(crate) fn msl_assign_argument_buffer_ids(
-    entry_points: &[ReflectedEntryPoint]
+    entry_points: &[RafxReflectedEntryPoint]
 ) -> RafxResult<BTreeMap<ResourceBindingLocation, ResourceBinding>> {
     let resources = get_sorted_bindings_for_all_entry_points(entry_points)?;
 
@@ -640,7 +637,7 @@ fn msl_create_sampler_data(
 }
 
 pub(crate) fn msl_const_samplers(
-    entry_points: &[ReflectedEntryPoint]
+    entry_points: &[RafxReflectedEntryPoint]
 ) -> RafxResult<BTreeMap<SamplerLocation, SamplerData>> {
     let mut immutable_samplers = BTreeMap::<SamplerLocation, SamplerData>::default();
 
@@ -757,7 +754,7 @@ fn generate_gl_uniform_members(
 }
 
 pub struct ShaderProcessorRefectionData {
-    pub reflection: Vec<ReflectedEntryPoint>,
+    pub reflection: Vec<RafxReflectedEntryPoint>,
     pub hlsl_register_assignments: Vec<spirv_cross::hlsl::HlslResourceBinding>,
     pub hlsl_vertex_attribute_remaps: Vec<spirv_cross::hlsl::HlslVertexAttributeRemap>,
     pub msl_argument_buffer_assignments: BTreeMap<ResourceBindingLocation, ResourceBinding>,
@@ -878,7 +875,7 @@ where
         // atomic counters
         // push constant buffers
 
-        let mut descriptor_set_layouts: Vec<Option<ReflectedDescriptorSetLayout>> = vec![];
+        let mut descriptor_set_layouts: Vec<Option<RafxReflectedDescriptorSetLayout>> = vec![];
         let mut rafx_bindings = Vec::default();
         for binding in dsc_bindings {
             rafx_bindings.push(binding.resource.clone());
@@ -890,7 +887,7 @@ where
             match &mut descriptor_set_layouts[binding.resource.set_index as usize] {
                 Some(x) => x.bindings.push(binding),
                 x @ None => {
-                    *x = Some(ReflectedDescriptorSetLayout {
+                    *x = Some(RafxReflectedDescriptorSetLayout {
                         bindings: vec![binding],
                     })
                 }
@@ -947,14 +944,14 @@ where
                 // TODO(dvd): Might need other special type handling here.
                 if parsed_binding.parsed.type_name == "mat4" {
                     for index in 0..4 {
-                        dsc_vertex_inputs.push(ReflectedVertexInput {
+                        dsc_vertex_inputs.push(RafxReflectedVertexInput {
                             name: name.clone(),
                             semantic: format!("{}{}", semantic, index),
                             location: location + index,
                         });
                     }
                 } else {
-                    dsc_vertex_inputs.push(ReflectedVertexInput {
+                    dsc_vertex_inputs.push(RafxReflectedVertexInput {
                         name: name.clone(),
                         semantic,
                         location,
@@ -980,7 +977,7 @@ where
             ]),
         };
 
-        reflected_entry_points.push(ReflectedEntryPoint {
+        reflected_entry_points.push(RafxReflectedEntryPoint {
             descriptor_set_layouts,
             vertex_inputs: dsc_vertex_inputs,
             rafx_api_reflection: rafx_reflection,

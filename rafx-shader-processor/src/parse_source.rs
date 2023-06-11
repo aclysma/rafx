@@ -1,4 +1,4 @@
-use fnv::FnvHashSet;
+use fnv::{FnvHashMap, FnvHashSet};
 use std::collections::VecDeque;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
@@ -174,7 +174,7 @@ pub(crate) fn try_consume_literal(
     position: &mut usize,
     literal: &str,
 ) -> Option<()> {
-    if is_string_at_position(code, *position, literal) {
+    if is_string_at_position(code, *position, literal, true) {
         *position += literal.len();
         Some(())
     } else {
@@ -195,6 +195,7 @@ pub(crate) fn is_string_at_position(
     code: &[char],
     position: usize,
     s: &str,
+    allow_alphanumeric_after_string: bool,
 ) -> bool {
     if code.len() < s.len() + position {
         return false;
@@ -203,6 +204,15 @@ pub(crate) fn is_string_at_position(
     for (index, c) in s.to_string().chars().into_iter().enumerate() {
         if code[position + index] != c {
             return false;
+        }
+    }
+
+    // Used to ignore a token like a variable name "const0" appearing to be a "const" keyword
+    if !allow_alphanumeric_after_string {
+        if let Some(c) = code.get(position + s.len()) {
+            if c.is_alphanumeric() || *c == '_' {
+                return false;
+            }
         }
     }
 
@@ -222,6 +232,8 @@ fn remove_line_continuations(code: &[char]) -> Vec<char> {
                     for _ in 0..=consecutive_whitespace_character_count {
                         result.pop();
                     }
+
+                    //TODO: Insert a space? This would potentially join tokens across lines as currently written
 
                     consecutive_whitespace_character_count = 0;
                 } else {
@@ -387,6 +399,280 @@ fn try_parse_include(
     code: &[char],
     mut position: usize,
 ) -> Option<ParseIncludeResult> {
+    assert!(position < code.len());
+    assert_eq!(code[position], '#');
+
+    // Find start and end of current line
+    let line_range = range_of_line_at_position(code, position);
+
+    let first_char = next_non_whitespace(code, line_range.start);
+    assert_eq!(position, first_char);
+
+    // Consume the #
+    position += 1;
+
+    // Try to find the "include" after the #
+    position = next_non_whitespace(code, position);
+    if try_consume_literal(code, &mut position, "include").is_some() {
+        skip_whitespace(code, &mut position);
+
+        match code[position] {
+            '"' => {
+                let end = next_char(code, position + 1, '"');
+                assert!(end < line_range.end);
+                let as_str = characters_to_string(&code[(position + 1)..end]);
+                Some(ParseIncludeResult {
+                    end_position: line_range.end,
+                    include_type: IncludeType::Relative,
+                    path: as_str.into(),
+                })
+            }
+            '<' => {
+                let end = next_char(code, position + 1, '>');
+                assert!(end < line_range.end);
+                let as_str = characters_to_string(&code[(position + 1)..end]);
+                Some(ParseIncludeResult {
+                    end_position: line_range.end,
+                    include_type: IncludeType::Standard,
+                    path: as_str.into(),
+                })
+            }
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
+#[derive(Debug)]
+struct ParseDefineResult {
+    _end_position: usize,
+    symbol: String,
+    value: String,
+}
+
+fn try_parse_define(
+    code: &[char],
+    mut position: usize,
+) -> Option<ParseDefineResult> {
+    assert!(position < code.len());
+    assert_eq!(code[position], '#');
+
+    // Find start and end of current line
+    let line_range = range_of_line_at_position(code, position);
+
+    let first_char = next_non_whitespace(code, line_range.start);
+    assert_eq!(position, first_char);
+
+    // Consume the #
+    position += 1;
+
+    // Try to find the "include" after the #
+    position = next_non_whitespace(code, position);
+    if try_consume_literal(code, &mut position, "define").is_some() {
+        skip_whitespace(code, &mut position);
+
+        let symbol = try_consume_identifier(code, &mut position).unwrap();
+
+        if position < code.len() && code[position] == '(' {
+            // it's a macro, we ignore it
+            None
+        } else {
+            skip_whitespace(code, &mut position);
+            if position >= line_range.end {
+                // We are defining it as ""
+                Some(ParseDefineResult {
+                    _end_position: line_range.end,
+                    symbol,
+                    value: "".to_string(),
+                })
+            } else {
+                // It's a substitution
+                let value = characters_to_string(&code[position..line_range.end])
+                    .trim()
+                    .to_string();
+                Some(ParseDefineResult {
+                    _end_position: line_range.end,
+                    symbol,
+                    value,
+                })
+            }
+        }
+    } else {
+        None
+    }
+}
+
+#[derive(Debug)]
+struct ParsePrecompileDirectiveWithSymbolResult {
+    end_position: usize,
+    symbol: String,
+}
+
+fn try_parse_precompile_directive_with_symbol(
+    directive_name: &str,
+    code: &[char],
+    mut position: usize,
+) -> Option<ParsePrecompileDirectiveWithSymbolResult> {
+    assert!(position < code.len());
+    assert_eq!(code[position], '#');
+
+    // Find start and end of current line
+    let line_range = range_of_line_at_position(code, position);
+
+    let first_char = next_non_whitespace(code, line_range.start);
+    assert_eq!(position, first_char);
+
+    // Consume the #
+    position += 1;
+
+    // Try to find the "include" after the #
+    position = next_non_whitespace(code, position);
+    if try_consume_literal(code, &mut position, directive_name).is_some() {
+        skip_whitespace(code, &mut position);
+
+        let symbol = try_consume_identifier(code, &mut position).unwrap();
+
+        if position > line_range.end {
+            None
+        } else {
+            Some(ParsePrecompileDirectiveWithSymbolResult {
+                end_position: line_range.end,
+                symbol,
+            })
+        }
+    } else {
+        None
+    }
+}
+
+#[derive(Debug)]
+struct ParseUndefResult {
+    _end_position: usize,
+    symbol: String,
+}
+
+fn try_parse_undef(
+    code: &[char],
+    position: usize,
+) -> Option<ParseUndefResult> {
+    let result = try_parse_precompile_directive_with_symbol("undef", code, position);
+    result.map(|x| ParseUndefResult {
+        _end_position: x.end_position,
+        symbol: x.symbol,
+    })
+}
+
+#[derive(Debug)]
+struct ParseIfdefResult {
+    _end_position: usize,
+    symbol: String,
+}
+
+fn try_parse_ifdef(
+    code: &[char],
+    position: usize,
+) -> Option<ParseIfdefResult> {
+    let result = try_parse_precompile_directive_with_symbol("ifdef", code, position);
+    result.map(|x| ParseIfdefResult {
+        _end_position: x.end_position,
+        symbol: x.symbol,
+    })
+}
+
+#[derive(PartialEq, Debug)]
+struct ParseIfndefResult {
+    end_position: usize,
+    symbol: String,
+}
+
+fn try_parse_ifndef(
+    code: &[char],
+    position: usize,
+) -> Option<ParseIfndefResult> {
+    let result = try_parse_precompile_directive_with_symbol("ifndef", code, position);
+    result.map(|x| ParseIfndefResult {
+        end_position: x.end_position,
+        symbol: x.symbol,
+    })
+}
+
+#[derive(Debug)]
+struct ParsePrecompileDirectiveWithoutSymbolResult {
+    end_position: usize,
+}
+
+fn try_parse_precompile_directive_without_symbol(
+    directive_name: &str,
+    code: &[char],
+    mut position: usize,
+) -> Option<ParsePrecompileDirectiveWithoutSymbolResult> {
+    assert!(position < code.len());
+    assert_eq!(code[position], '#');
+
+    // Find start and end of current line
+    let line_range = range_of_line_at_position(code, position);
+
+    let first_char = next_non_whitespace(code, line_range.start);
+    assert_eq!(position, first_char);
+
+    // Consume the #
+    position += 1;
+
+    // Try to find the "include" after the #
+    position = next_non_whitespace(code, position);
+    if try_consume_literal(code, &mut position, directive_name).is_some() {
+        if position > line_range.end {
+            None
+        } else {
+            Some(ParsePrecompileDirectiveWithoutSymbolResult {
+                end_position: line_range.end,
+            })
+        }
+    } else {
+        None
+    }
+}
+
+#[derive(PartialEq, Debug)]
+struct ParseElseResult {
+    end_position: usize,
+}
+
+fn try_parse_else(
+    code: &[char],
+    position: usize,
+) -> Option<ParseElseResult> {
+    let result = try_parse_precompile_directive_without_symbol("else", code, position);
+    result.map(|x| ParseElseResult {
+        end_position: x.end_position,
+    })
+}
+#[derive(PartialEq, Debug)]
+struct ParseEndifResult {
+    end_position: usize,
+}
+
+fn try_parse_endif(
+    code: &[char],
+    position: usize,
+) -> Option<ParseEndifResult> {
+    let result = try_parse_precompile_directive_without_symbol("endif", code, position);
+    result.map(|x| ParseEndifResult {
+        end_position: x.end_position,
+    })
+}
+
+#[derive(Debug, PartialEq)]
+struct ConsumePreprocessorDirectiveResult {
+    end_position: usize,
+    directive_name: String,
+}
+
+fn try_consume_preprocessor_directive(
+    code: &[char],
+    position: usize,
+) -> Option<ConsumePreprocessorDirectiveResult> {
     if position >= code.len() {
         return None;
     }
@@ -404,63 +690,16 @@ fn try_parse_include(
         // We found non-whitespace in front of the #, bail
         None
     } else {
-        // Consume the #
-        position += 1;
+        let identifier_begin = next_non_whitespace(code, position + 1);
+        let identifier_end = next_non_identifer(code, identifier_begin);
+        let directive_name = characters_to_string(&code[identifier_begin..identifier_end]);
 
-        // Try to find the "include" after the #
-        position = next_non_whitespace(code, position);
-        if try_consume_literal(code, &mut position, "include").is_some() {
-            skip_whitespace(code, &mut position);
-
-            match code[position] {
-                '"' => {
-                    let end = next_char(code, position + 1, '"');
-                    let as_str = characters_to_string(&code[(position + 1)..end]);
-                    Some(ParseIncludeResult {
-                        end_position: line_range.end,
-                        include_type: IncludeType::Relative,
-                        path: as_str.into(),
-                    })
-                }
-                '<' => {
-                    let end = next_char(code, position + 1, '>');
-                    let as_str = characters_to_string(&code[(position + 1)..end]);
-                    Some(ParseIncludeResult {
-                        end_position: line_range.end,
-                        include_type: IncludeType::Standard,
-                        path: as_str.into(),
-                    })
-                }
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
-}
-
-fn try_consume_preprocessor_directive(
-    code: &[char],
-    position: usize,
-) -> Option<usize> {
-    assert!(position < code.len());
-
-    if code[position] != '#' {
-        // Quick early out, we only do detection if we are at the start of a # directive
-        return None;
-    }
-
-    // Find start and end of current line
-    let line_range = range_of_line_at_position(code, position);
-
-    let first_char = next_non_whitespace(code, line_range.start);
-    if position != first_char {
-        // We found non-whitespace in front of the #, bail
-        None
-    } else {
         //println!("preprocessor directive at {:?}", line_range);
         //print_range(code, &line_range);
-        Some(line_range.end)
+        Some(ConsumePreprocessorDirectiveResult {
+            end_position: line_range.end,
+            directive_name,
+        })
     }
 }
 
@@ -469,9 +708,9 @@ fn try_consume_declaration(
     position: usize,
 ) -> Option<usize> {
     assert!(position < code.len());
-    if !is_string_at_position(code, position, "layout")
-        && !is_string_at_position(code, position, "struct")
-        && !is_string_at_position(code, position, "const")
+    if !is_string_at_position(code, position, "layout", false)
+        && !is_string_at_position(code, position, "struct", false)
+        && !is_string_at_position(code, position, "const", false)
     {
         return None;
     }
@@ -623,7 +862,146 @@ pub struct ShaderText {
     pub declarations: Vec<DeclarationText>,
 }
 
-pub fn parse_glsl(file_path: &Path) -> Result<ShaderText, String> {
+#[derive(Copy, Clone)]
+pub(crate) enum IfdefStackElement {
+    ActiveIfdef,
+    InactiveIfdef,
+    ActiveElse,
+    InactiveElse,
+}
+
+impl IfdefStackElement {
+    fn is_active(self) -> bool {
+        match self {
+            IfdefStackElement::ActiveIfdef => true,
+            IfdefStackElement::InactiveIfdef => false,
+            IfdefStackElement::ActiveElse => true,
+            IfdefStackElement::InactiveElse => false,
+        }
+    }
+}
+
+#[derive(Default)]
+struct IfdefStack {
+    stack: Vec<IfdefStackElement>,
+    inactive_element_count: u32,
+}
+
+impl IfdefStack {
+    pub fn push(
+        &mut self,
+        element: IfdefStackElement,
+    ) {
+        if !element.is_active() {
+            self.inactive_element_count += 1;
+        }
+
+        self.stack.push(element);
+    }
+
+    pub fn pop(&mut self) -> Option<IfdefStackElement> {
+        let element = self.stack.pop();
+        if let Some(element) = element {
+            if !element.is_active() {
+                self.inactive_element_count -= 1;
+            }
+        }
+
+        element
+    }
+
+    pub fn all_elements_are_active(&self) -> bool {
+        self.inactive_element_count == 0
+    }
+}
+
+#[derive(Default)]
+pub struct PreprocessorState {
+    defines: FnvHashMap<String, String>,
+    ifdef_stack: IfdefStack,
+}
+
+impl PreprocessorState {
+    // For setting state directly
+    pub fn add_define(
+        &mut self,
+        symbol: String,
+        value: String,
+    ) {
+        self.defines.insert(symbol, value);
+    }
+
+    pub fn is_emitting_code(&self) -> bool {
+        self.ifdef_stack.all_elements_are_active()
+    }
+
+    // Handle functions for parsing code
+    pub fn handle_define(
+        &mut self,
+        symbol: String,
+        value: String,
+    ) {
+        self.defines.insert(symbol, value);
+    }
+
+    pub fn handle_undef(
+        &mut self,
+        symbol: String,
+    ) {
+        self.defines.remove(&symbol);
+    }
+
+    pub fn handle_if(&mut self) {
+        // We don't support parsing these so just assume it passes
+        self.ifdef_stack.push(IfdefStackElement::ActiveIfdef);
+    }
+
+    pub fn handle_ifdef(
+        &mut self,
+        symbol: &str,
+    ) {
+        if self.defines.contains_key(symbol) {
+            self.ifdef_stack.push(IfdefStackElement::ActiveIfdef);
+        } else {
+            self.ifdef_stack.push(IfdefStackElement::InactiveIfdef);
+        }
+    }
+
+    pub fn handle_ifndef(
+        &mut self,
+        symbol: &str,
+    ) {
+        if !self.defines.contains_key(symbol) {
+            self.ifdef_stack.push(IfdefStackElement::ActiveIfdef);
+        } else {
+            self.ifdef_stack.push(IfdefStackElement::InactiveIfdef);
+        }
+    }
+
+    pub fn handle_else(&mut self) {
+        // TODO: throw for unwrap, means we have an else with no matching if
+        let last_value = self.ifdef_stack.pop().unwrap();
+
+        let next_stack_element = match last_value {
+            IfdefStackElement::ActiveIfdef => IfdefStackElement::InactiveElse,
+            IfdefStackElement::InactiveIfdef => IfdefStackElement::ActiveElse,
+            _ => unimplemented!(), // TODO: throw for unwrap, means we have an else with no matching if
+        };
+
+        self.ifdef_stack.push(next_stack_element);
+    }
+
+    pub fn handle_endif(&mut self) {
+        //TODO: Throw error for unwrap, means we have endif with no matching if
+        self.ifdef_stack.pop().unwrap();
+    }
+}
+
+pub fn parse_glsl_src(
+    file_path: &Path,
+    content: &str,
+    preprocessor_state: &mut PreprocessorState,
+) -> Result<ShaderText, String> {
     let first_file = FileToProcess {
         path: file_path.to_path_buf(),
         include_type: IncludeType::Relative,
@@ -635,18 +1013,23 @@ pub fn parse_glsl(file_path: &Path) -> Result<ShaderText, String> {
     included_files.insert(file_path.to_path_buf());
     let mut declarations = Vec::default();
 
-    let content = std::fs::read_to_string(file_path)
-        .map_err(|e| format!("Could not read file {:?}: {:?}", file_path, e))?;
     let code: Vec<char> = content.chars().collect();
-    parse_shader_source_text(&first_file, &mut declarations, &mut included_files, &code)?;
+    parse_shader_source_text(
+        &first_file,
+        &mut declarations,
+        &mut included_files,
+        preprocessor_state,
+        &code,
+    )?;
 
     Ok(ShaderText { declarations })
 }
 
-pub fn parse_shader_source_recursive(
+fn parse_shader_source_recursive(
     file_to_process: &FileToProcess,
     declarations: &mut Vec<DeclarationText>,
     included_files: &mut FnvHashSet<PathBuf>,
+    preprocessor_state: &mut PreprocessorState,
 ) -> Result<(), String> {
     log::trace!("parse_shader_source_recursive {:?}", file_to_process);
     let resolved_include = super::include_impl(
@@ -665,13 +1048,20 @@ pub fn parse_shader_source_recursive(
     let mut resolved_file_paths = file_to_process.clone();
     resolved_file_paths.path = resolved_include.resolved_path;
     let code: Vec<char> = resolved_include.content.chars().collect();
-    parse_shader_source_text(&resolved_file_paths, declarations, included_files, &code)
+    parse_shader_source_text(
+        &resolved_file_paths,
+        declarations,
+        included_files,
+        preprocessor_state,
+        &code,
+    )
 }
 
 pub(crate) fn parse_shader_source_text(
     file_to_process: &FileToProcess,
     declarations: &mut Vec<DeclarationText>,
     included_files: &mut FnvHashSet<PathBuf>,
+    preprocessor_state: &mut PreprocessorState,
     code: &Vec<char>,
 ) -> Result<(), String> {
     let code = remove_line_continuations(&code);
@@ -689,24 +1079,93 @@ pub(crate) fn parse_shader_source_text(
     while position < code.len() {
         //println!("Skip forward to non-whitespace char at {}, which is {:?}", position, code[position]);
 
-        if let Some(new_position) = try_consume_preprocessor_directive(&code, position) {
-            let parse_include_result = try_parse_include(&code, position);
-            if let Some(parse_include_result) = parse_include_result {
-                //println!("handle include {:?}", parse_include_result);
+        if let Some(consume_directive_result) = try_consume_preprocessor_directive(&code, position)
+        {
+            match consume_directive_result.directive_name.as_str() {
+                "include" => {
+                    let directive = try_parse_include(&code, position);
+                    // assert!(directive.is_some());
+                    // println!("include: {:?}", directive);
 
-                let included_file = FileToProcess {
-                    path: parse_include_result.path,
-                    include_type: parse_include_result.include_type,
-                    requested_from: file_to_process.path.clone(),
-                    include_depth: file_to_process.include_depth + 1,
-                };
+                    if let Some(directive) = directive {
+                        let included_file = FileToProcess {
+                            path: directive.path,
+                            include_type: directive.include_type,
+                            requested_from: file_to_process.path.clone(),
+                            include_depth: file_to_process.include_depth + 1,
+                        };
 
-                parse_shader_source_recursive(&included_file, declarations, included_files)?;
+                        parse_shader_source_recursive(
+                            &included_file,
+                            declarations,
+                            included_files,
+                            preprocessor_state,
+                        )?;
+                    }
+                }
+                "define" => {
+                    let directive = try_parse_define(&code, position);
+                    // // we skip #defines that describe macros so this may be none
+                    // println!("define: {:?}", directive);
 
-                //println!("finish include");
+                    if let Some(directive) = directive {
+                        preprocessor_state.handle_define(directive.symbol, directive.value);
+                    }
+                }
+                "undef" => {
+                    let directive = try_parse_undef(&code, position);
+                    assert!(directive.is_some());
+                    //println!("undef: {:?}", directive);
+
+                    if let Some(directive) = directive {
+                        preprocessor_state.handle_undef(directive.symbol);
+                    }
+                }
+                "ifdef" => {
+                    let directive = try_parse_ifdef(&code, position);
+                    assert!(directive.is_some());
+                    //println!("ifdef: {:?}", directive);
+
+                    if let Some(directive) = directive {
+                        preprocessor_state.handle_ifdef(&directive.symbol);
+                    }
+                }
+                "ifndef" => {
+                    let directive = try_parse_ifndef(&code, position);
+                    assert!(directive.is_some());
+                    //println!("ifndef: {:?}", directive);
+
+                    if let Some(directive) = directive {
+                        preprocessor_state.handle_ifndef(&directive.symbol);
+                    }
+                }
+                "else" => {
+                    let directive = try_parse_else(&code, position);
+                    assert!(directive.is_some());
+                    //println!("else: {:?}", directive);
+
+                    if let Some(_) = directive {
+                        preprocessor_state.handle_else();
+                    }
+                }
+                "endif" => {
+                    let directive = try_parse_endif(&code, position);
+                    assert!(directive.is_some());
+                    //println!("endif: {:?}", directive);
+
+                    if let Some(_) = directive {
+                        preprocessor_state.handle_endif();
+                    }
+                }
+                "if" => {
+                    // We don't support parsing if currently, just treat it as always passing
+                    //println!("if - not parsed, assume it passes");
+                    preprocessor_state.handle_if();
+                }
+                _ => {} // do nothing for unrecognized
             }
 
-            position = new_position;
+            position = consume_directive_result.end_position;
         } else if let Some(new_position) = try_consume_declaration(&code, position) {
             // Drain comments that we've passed and haven't taken
             let relevant_comments = pop_comments_up_to_position(&mut comments, new_position);
@@ -717,10 +1176,12 @@ pub(crate) fn parse_shader_source_text(
 
             let text = code[position..new_position].iter().cloned().collect();
 
-            declarations.push(DeclarationText {
-                text,
-                annotations, //comments: relevant_comments
-            });
+            if preprocessor_state.is_emitting_code() {
+                declarations.push(DeclarationText {
+                    text,
+                    annotations, //comments: relevant_comments
+                });
+            }
             position = new_position
         } else if let Some(new_position) = try_consume_unknown_block(&code, position) {
             position = new_position
@@ -799,43 +1260,49 @@ mod test {
     #[test]
     fn test_is_string_at_position_a() {
         let example: Vec<char> = "test_string".to_string().chars().collect();
-        assert!(is_string_at_position(&example, 0, "test_string"));
+        assert!(is_string_at_position(&example, 0, "test_string", false));
     }
 
     #[test]
     fn test_is_string_at_position_b() {
         let example: Vec<char> = "test_strXng".to_string().chars().collect();
-        assert!(!is_string_at_position(&example, 0, "test_string"));
+        assert!(!is_string_at_position(&example, 0, "test_string", true));
     }
 
     #[test]
     fn test_is_string_at_position_c() {
         let example: Vec<char> = "aaaa".to_string().chars().collect();
-        assert!(is_string_at_position(&example, 0, "a"));
+        assert!(is_string_at_position(&example, 0, "a", true));
     }
 
     #[test]
     fn test_is_string_at_position_d() {
         let example: Vec<char> = "a".to_string().chars().collect();
-        assert!(!is_string_at_position(&example, 0, "aaaa"));
+        assert!(!is_string_at_position(&example, 0, "aaaa", false));
     }
 
     #[test]
     fn test_is_string_at_position_e() {
         let example: Vec<char> = "a".to_string().chars().collect();
-        assert!(!is_string_at_position(&example, 20, "aaaa"));
+        assert!(!is_string_at_position(&example, 20, "aaaa", false));
     }
 
     #[test]
     fn test_is_string_at_position_f() {
         let example: Vec<char> = "a".to_string().chars().collect();
-        assert!(!is_string_at_position(&example, 3, ""));
+        assert!(!is_string_at_position(&example, 3, "", false));
     }
 
     #[test]
     fn test_is_string_at_position_g() {
         let example: Vec<char> = "abaa".to_string().chars().collect();
-        assert!(!is_string_at_position(&example, 1, "a"));
+        assert!(!is_string_at_position(&example, 1, "a", false));
+    }
+
+    #[test]
+    fn test_is_string_at_position_h() {
+        let example: Vec<char> = "aaaa".to_string().chars().collect();
+        assert!(!is_string_at_position(&example, 0, "a", false));
     }
 
     #[test]
@@ -1029,28 +1496,28 @@ mod test {
     #[test]
     fn test_parse_include_d() {
         let code: Vec<char> = "   a #include \"asdf\"".to_string().chars().collect();
-        let result = try_parse_include(&code, 5);
+        let result = try_consume_preprocessor_directive(&code, 5);
         assert_eq!(result, None);
     }
 
     #[test]
     fn test_parse_include_e() {
         let code: Vec<char> = "#include \"asdf".to_string().chars().collect();
-        let result = try_parse_include(&code, 5);
+        let result = try_consume_preprocessor_directive(&code, 5);
         assert_eq!(result, None);
     }
 
     #[test]
     fn test_parse_include_f() {
         let code: Vec<char> = "#include x \"asdf\"".to_string().chars().collect();
-        let result = try_parse_include(&code, 5);
+        let result = try_consume_preprocessor_directive(&code, 5);
         assert_eq!(result, None);
     }
 
     #[test]
     fn test_parse_include_g() {
         let code: Vec<char> = "".to_string().chars().collect();
-        let result = try_parse_include(&code, 0);
+        let result = try_consume_preprocessor_directive(&code, 0);
         assert_eq!(result, None);
     }
 

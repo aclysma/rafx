@@ -160,7 +160,8 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
         create_draw_data_fn: CreateDrawDataFnT,
     ) -> (ResourceArc<BufferResource>, DescriptorSetArc) {
         let draw_data_buffer_size =
-            batch.draw_data.len() as u64 * std::mem::size_of::<DrawDataT>() as u64;
+            16 + batch.draw_data.len() as u64 * std::mem::size_of::<DrawDataT>() as u64;
+
         let draw_data_buffer = dyn_resource_allocator_set.insert_buffer(
             job_context
                 .device_context()
@@ -176,8 +177,12 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
         );
         let memory = draw_data_buffer.get_raw().buffer.mapped_memory().unwrap();
         unsafe {
-            let dst =
-                std::slice::from_raw_parts_mut::<DrawDataT>(memory as _, batch.draw_data.len());
+            let header = memory as *mut [u32; 4];
+            (*header)[0] = batch.draw_data.len() as u32;
+            let dst = std::slice::from_raw_parts_mut::<DrawDataT>(
+                memory.add(16) as _,
+                batch.draw_data.len(),
+            );
             let src = batch.draw_data.get_all_unchecked();
             for i in 0..batch.draw_data.len() {
                 dst[i] = create_draw_data_fn(&src[i]);
@@ -1287,8 +1292,11 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             all_indirect_commands_count += pass.draw_data.len()
         }
 
-        let indirect_buffer_size_in_bytes = all_indirect_commands_count as u64
-            * std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u64;
+        let command_size =
+            rafx::api::extra::indirect::indexed_indirect_command_size(context.device_context());
+
+        let indirect_buffer_size_in_bytes =
+            all_indirect_commands_count as u64 * command_size as u64;
         let indirect_buffer = dyn_resource_allocator_set.insert_buffer(
             dyn_resource_allocator_set
                 .device_context
@@ -1297,18 +1305,18 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     memory_usage: RafxMemoryUsage::CpuToGpu,
                     resource_type: RafxResourceType::BUFFER | RafxResourceType::INDIRECT_BUFFER,
                     always_mapped: true,
-                    alignment: std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32,
+                    alignment: command_size as u32,
                     ..Default::default()
                 })
                 .unwrap(),
         );
-        let indirect_buffer_memory = indirect_buffer.get_raw().buffer.mapped_memory().unwrap();
-        let indirect_buffer_slice = unsafe {
-            std::slice::from_raw_parts_mut::<RafxDrawIndexedIndirectCommand>(
-                indirect_buffer_memory as _,
-                all_indirect_commands_count,
-            )
-        };
+        indirect_buffer
+            .get_raw()
+            .buffer
+            .set_debug_name("MeshAdv indirect buffer");
+        let indirect_buffer_ref = indirect_buffer.get_raw().buffer;
+        let indirect_buffer_encoder =
+            rafx::api::RafxIndexedIndirectCommandEncoder::new(&*indirect_buffer_ref);
 
         let mut indirect_buffer_next_command_index = 0;
 
@@ -1426,14 +1434,16 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             };
 
             for (i, src) in pass_info.draw_data.iter().enumerate() {
-                indirect_buffer_slice[indirect_buffer_next_command_index] =
+                indirect_buffer_encoder.set_command(
+                    indirect_buffer_next_command_index,
                     RafxDrawIndexedIndirectCommand {
                         index_count: src.index_count,
                         instance_count: 1,
                         first_index: src.index_offset,
                         vertex_offset: src.vertex_offset as i32,
                         first_instance: i as u32,
-                    };
+                    },
+                );
                 indirect_buffer_next_command_index += 1;
             }
 

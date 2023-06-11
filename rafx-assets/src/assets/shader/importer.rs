@@ -1,8 +1,7 @@
 use crate::assets::shader::ShaderAssetData;
 use distill::core::AssetUuid;
 use distill::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
-use rafx_api::{RafxShaderPackage, RafxShaderPackageVulkan};
-use rafx_framework::{CookedShaderPackage, ShaderModuleHash};
+use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
@@ -74,14 +73,18 @@ impl Importer for ShaderImporterSpv {
             vk: Some(RafxShaderPackageVulkan::SpvBytes(spv_bytes)),
             gles2: None,
             gles3: None,
+            vk_reflection: None,
+            dx12_reflection: None,
+            metal_reflection: None,
+            gles2_reflection: None,
+            gles3_reflection: None,
+            debug_name: None,
         };
 
-        let shader_module_hash = ShaderModuleHash::new(&shader_package);
+        let hashed_shader_package = RafxHashedShaderPackage::new(shader_package);
 
         let shader_asset = ShaderAssetData {
-            shader_module_hash,
-            shader_package,
-            reflection_data: None,
+            shader_package: hashed_shader_package,
         };
 
         Ok(ImporterValue {
@@ -138,21 +141,19 @@ impl Importer for ShaderImporterCooked {
         let mut bytes = Vec::new();
         source.read_to_end(&mut bytes)?;
 
-        let cooked_shader: CookedShaderPackage = coerce_result_string(
-            bincode::deserialize::<CookedShaderPackage>(&bytes)
+        let hashed_shader_package: RafxHashedShaderPackage = coerce_result_string(
+            bincode::deserialize::<RafxHashedShaderPackage>(&bytes)
                 .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x)),
         )?;
 
         log::trace!(
             "Import shader asset {:?} with hash {:?}",
             asset_id,
-            cooked_shader.hash,
+            hashed_shader_package.shader_package_hash(),
         );
 
         let shader_asset = ShaderAssetData {
-            shader_module_hash: cooked_shader.hash,
-            shader_package: cooked_shader.shader_package,
-            reflection_data: Some(cooked_shader.entry_points),
+            shader_package: hashed_shader_package,
         };
 
         Ok(ImporterValue {

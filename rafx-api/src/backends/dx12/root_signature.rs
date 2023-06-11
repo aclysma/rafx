@@ -606,7 +606,7 @@ impl RafxRootSignatureDx12 {
                 root_sig_string.GetBufferSize(),
             );
             let str = String::from_utf8_lossy(sig_string);
-            println!("root sig {}", str);
+            //println!("root sig {}", str);
 
             device_context
                 .d3d12_device()

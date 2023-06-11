@@ -147,8 +147,8 @@ pub type PerViewDataUniform = PerViewDataStd140;
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct LightBinOutputStd430 {
-    pub data: LightBinningOutputStd430, // +0 (size: 3170320)
-} // 3170320 bytes
+    pub data: LightBinningOutputStd430, // +0 (size: 6316048)
+} // 6316048 bytes
 
 pub type LightBinOutputBuffer = LightBinOutputStd430;
 
@@ -313,8 +313,8 @@ pub struct LightBinningOutputStd430 {
     pub pad1: u32,                          // +8 (size: 4)
     pub pad2: u32,                          // +12 (size: 4)
     pub offsets: [ClusterMetaStd430; 3072], // +16 (size: 24576)
-    pub data: [u32; 786432],                // +24592 (size: 3145728)
-} // 3170320 bytes
+    pub data: [u32; 1572864],               // +24592 (size: 6291456)
+} // 6316048 bytes
 
 pub type LightBinningOutputBuffer = LightBinningOutputStd430;
 
@@ -834,8 +834,8 @@ mod test {
 
     #[test]
     fn test_struct_light_bin_output_std430() {
-        assert_eq!(std::mem::size_of::<LightBinOutputStd430>(), 3170320);
-        assert_eq!(std::mem::size_of::<LightBinningOutputStd430>(), 3170320);
+        assert_eq!(std::mem::size_of::<LightBinOutputStd430>(), 6316048);
+        assert_eq!(std::mem::size_of::<LightBinningOutputStd430>(), 6316048);
         assert_eq!(std::mem::align_of::<LightBinningOutputStd430>(), 4);
     }
 
@@ -1021,7 +1021,7 @@ mod test {
 
     #[test]
     fn test_struct_light_binning_output_std430() {
-        assert_eq!(std::mem::size_of::<LightBinningOutputStd430>(), 3170320);
+        assert_eq!(std::mem::size_of::<LightBinningOutputStd430>(), 6316048);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(std::mem::size_of::<u32>(), 4);
@@ -1032,8 +1032,8 @@ mod test {
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(std::mem::size_of::<[ClusterMetaStd430; 3072]>(), 24576);
         assert_eq!(std::mem::align_of::<[ClusterMetaStd430; 3072]>(), 4);
-        assert_eq!(std::mem::size_of::<[u32; 786432]>(), 3145728);
-        assert_eq!(std::mem::align_of::<[u32; 786432]>(), 4);
+        assert_eq!(std::mem::size_of::<[u32; 1572864]>(), 6291456);
+        assert_eq!(std::mem::align_of::<[u32; 1572864]>(), 4);
     }
 
     #[test]

@@ -1,9 +1,9 @@
 use crate::resources::resource_lookup::{ImageViewResource, SamplerResource};
 use crate::resources::ResourceArc;
-use crate::{BufferResource, DescriptorSetLayout};
+use crate::BufferResource;
 use fnv::FnvHashMap;
-use rafx_api::RafxResourceType;
 use rafx_api::RafxTexture;
+use rafx_api::{RafxReflectedDescriptorSetLayout, RafxResourceType};
 
 //
 // These represent descriptor updates that can be applied to a descriptor set in a pool
@@ -103,7 +103,7 @@ impl DescriptorSetWriteSet {
 }
 
 pub fn create_uninitialized_write_set_for_layout(
-    layout: &DescriptorSetLayout
+    layout: &RafxReflectedDescriptorSetLayout
 ) -> DescriptorSetWriteSet {
     let mut write_set = DescriptorSetWriteSet::default();
     for binding in &layout.bindings {

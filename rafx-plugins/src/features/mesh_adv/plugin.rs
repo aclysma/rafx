@@ -1,6 +1,7 @@
 use rafx::render_feature_renderer_prelude::*;
 
 use super::*;
+use crate::assets::mesh_adv::MeshAdvShaderPassIndices;
 use crate::features::mesh_adv::gpu_occlusion_cull::MeshAdvGpuOcclusionCullRenderResource;
 use crate::features::mesh_adv::light_binning::MeshAdvLightBinRenderResource;
 use crate::phases::{
@@ -8,6 +9,7 @@ use crate::phases::{
     WireframeRenderPhase,
 };
 use distill::loader::handle::Handle;
+use rafx::api::{RafxIndexedIndirectCommandSignature, RafxShaderStageFlags};
 use rafx::assets::{ComputePipelineAsset, MaterialAsset};
 use rafx::renderer::RendererLoadContext;
 
@@ -18,6 +20,10 @@ pub struct MeshAdvStaticResources {
     pub shadow_map_atlas_clear_tiles_material: Handle<MaterialAsset>,
     pub lights_bin_compute_pipeline: Handle<ComputePipelineAsset>,
     pub lights_build_lists_compute_pipeline: Handle<ComputePipelineAsset>,
+    pub pbr_indirect_signature: RafxIndexedIndirectCommandSignature,
+    pub wireframe_indirect_signature: RafxIndexedIndirectCommandSignature,
+    pub depth_indirect_signature: RafxIndexedIndirectCommandSignature,
+    pub shadow_indirect_signature: RafxIndexedIndirectCommandSignature,
 }
 
 pub struct MeshAdvRendererPlugin {
@@ -93,19 +99,20 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
         render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let default_pbr_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let default_pbr_material_handle = asset_resource.load_asset_path::<MaterialAsset, _>(
             "rafx-plugins/materials/modern_pipeline/mesh_adv.material",
         );
 
-        let depth_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let depth_material_handle = asset_resource.load_asset_path::<MaterialAsset, _>(
             "rafx-plugins/materials/modern_pipeline/depth_velocity.material",
         );
 
-        let shadow_map_atlas_depth_material = asset_resource.load_asset_path::<MaterialAsset, _>(
-            "rafx-plugins/materials/modern_pipeline/shadow_atlas_depth.material",
-        );
+        let shadow_map_atlas_depth_material_handle = asset_resource
+            .load_asset_path::<MaterialAsset, _>(
+                "rafx-plugins/materials/modern_pipeline/shadow_atlas_depth.material",
+            );
 
-        let shadow_map_atlas_clear_tiles_material = asset_resource
+        let shadow_map_atlas_clear_tiles_material_handle = asset_resource
             .load_asset_path::<MaterialAsset, _>(
                 "rafx-plugins/materials/modern_pipeline/shadow_atlas_clear_tiles.material",
             );
@@ -123,28 +130,28 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
         renderer_load_context.wait_for_asset_to_load(
             render_resources,
             asset_manager,
-            &default_pbr_material,
+            &default_pbr_material_handle,
             asset_resource,
             "default_pbr_material",
         )?;
         renderer_load_context.wait_for_asset_to_load(
             render_resources,
             asset_manager,
-            &depth_material,
+            &depth_material_handle,
             asset_resource,
             "depth",
         )?;
         renderer_load_context.wait_for_asset_to_load(
             render_resources,
             asset_manager,
-            &shadow_map_atlas_depth_material,
+            &shadow_map_atlas_depth_material_handle,
             asset_resource,
             "shadow atlas depth",
         )?;
         renderer_load_context.wait_for_asset_to_load(
             render_resources,
             asset_manager,
-            &shadow_map_atlas_clear_tiles_material,
+            &shadow_map_atlas_clear_tiles_material_handle,
             asset_resource,
             "shadow atlas clear",
         )?;
@@ -163,13 +170,75 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             "lights_build_lists.compute",
         )?;
 
+        let pbr_material = asset_resource.asset(&default_pbr_material_handle).unwrap();
+        let pbr_pass_indices = MeshAdvShaderPassIndices::new(pbr_material);
+        let pbr_root_signature = pbr_material
+            .get_material_pass_by_index(pbr_pass_indices.opaque as usize)
+            .unwrap()
+            .get_raw()
+            .root_signature
+            .get_raw()
+            .root_signature
+            .clone();
+        let wireframe_root_signature = pbr_material
+            .get_material_pass_by_index(pbr_pass_indices.wireframe as usize)
+            .unwrap()
+            .get_raw()
+            .root_signature
+            .get_raw()
+            .root_signature
+            .clone();
+
+        let depth_material = asset_resource.asset(&depth_material_handle).unwrap();
+        let depth_root_signature = depth_material
+            .get_single_material_pass()
+            .unwrap()
+            .get_raw()
+            .root_signature
+            .get_raw()
+            .root_signature
+            .clone();
+
+        let shadow_material = asset_resource
+            .asset(&shadow_map_atlas_depth_material_handle)
+            .unwrap();
+        let shadow_root_signature = shadow_material
+            .get_single_material_pass()
+            .unwrap()
+            .get_raw()
+            .root_signature
+            .get_raw()
+            .root_signature
+            .clone();
+
+        let pbr_indirect_signature = RafxIndexedIndirectCommandSignature::new(
+            &pbr_root_signature,
+            RafxShaderStageFlags::ALL,
+        )?;
+        let wireframe_indirect_signature = RafxIndexedIndirectCommandSignature::new(
+            &wireframe_root_signature,
+            RafxShaderStageFlags::ALL,
+        )?;
+        let depth_indirect_signature = RafxIndexedIndirectCommandSignature::new(
+            &depth_root_signature,
+            RafxShaderStageFlags::ALL,
+        )?;
+        let shadow_indirect_signature = RafxIndexedIndirectCommandSignature::new(
+            &shadow_root_signature,
+            RafxShaderStageFlags::ALL,
+        )?;
+
         render_resources.insert(MeshAdvStaticResources {
-            default_pbr_material,
-            depth_material,
-            shadow_map_atlas_depth_material,
-            shadow_map_atlas_clear_tiles_material,
+            default_pbr_material: default_pbr_material_handle,
+            depth_material: depth_material_handle,
+            shadow_map_atlas_depth_material: shadow_map_atlas_depth_material_handle,
+            shadow_map_atlas_clear_tiles_material: shadow_map_atlas_clear_tiles_material_handle,
             lights_bin_compute_pipeline,
             lights_build_lists_compute_pipeline,
+            pbr_indirect_signature,
+            wireframe_indirect_signature,
+            depth_indirect_signature,
+            shadow_indirect_signature,
         });
 
         render_resources.insert(MeshAdvShadowMapResource::default());

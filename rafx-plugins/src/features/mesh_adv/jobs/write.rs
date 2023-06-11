@@ -6,8 +6,9 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
     WireframeRenderPhase,
 };
-use rafx::api::{RafxDrawIndexedIndirectCommand, RafxPrimitiveTopology};
+
 use rafx::api::{RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding};
+use rafx::api::{RafxIndexedIndirectCommandSignature, RafxPrimitiveTopology};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};
 use rafx::render_features::{BeginSubmitNodeBatchArgs, RenderSubmitNodeArgs};
 use serde::{Deserialize, Serialize};
@@ -89,6 +90,10 @@ pub struct MeshAdvWriteJob<'write> {
     _frame_packet: Box<MeshAdvFramePacket>,
     submit_packet: Box<MeshSubmitPacket>,
     buffer_heaps: MeshAdvBindlessBuffers,
+    pbr_indirect_signature: RafxIndexedIndirectCommandSignature,
+    wireframe_indirect_signature: RafxIndexedIndirectCommandSignature,
+    shadow_indirect_signature: RafxIndexedIndirectCommandSignature,
+    depth_indirect_signature: RafxIndexedIndirectCommandSignature,
     phantom: PhantomData<&'write ()>,
 }
 
@@ -103,10 +108,18 @@ impl<'write> MeshAdvWriteJob<'write> {
             .fetch::<MeshAdvBindlessBuffers>())
         .clone();
 
+        let static_resources = write_context
+            .render_resources
+            .fetch::<MeshAdvStaticResources>();
+
         Arc::new(Self {
             _frame_packet: frame_packet,
             submit_packet,
             buffer_heaps,
+            pbr_indirect_signature: static_resources.pbr_indirect_signature.clone(),
+            wireframe_indirect_signature: static_resources.wireframe_indirect_signature.clone(),
+            shadow_indirect_signature: static_resources.shadow_indirect_signature.clone(),
+            depth_indirect_signature: static_resources.depth_indirect_signature.clone(),
             phantom: Default::default(),
         })
     }
@@ -241,6 +254,21 @@ impl<'write> MeshAdvWriteJob<'write> {
         return Ok(());
     }
 
+    fn indirect_signature(
+        &self,
+        render_phase_index: RenderPhaseIndex,
+    ) -> &RafxIndexedIndirectCommandSignature {
+        if render_phase_index == WireframeRenderPhase::render_phase_index() {
+            &self.wireframe_indirect_signature
+        } else if render_phase_index == ShadowMapRenderPhase::render_phase_index() {
+            &self.shadow_indirect_signature
+        } else if render_phase_index == DepthPrepassRenderPhase::render_phase_index() {
+            &self.depth_indirect_signature
+        } else {
+            &self.pbr_indirect_signature
+        }
+    }
+
     fn draw_batch(
         &self,
         write_context: &mut RenderJobCommandBufferContext,
@@ -268,10 +296,15 @@ impl<'write> MeshAdvWriteJob<'write> {
 
         let indirect_buffer = &per_frame_submit_data.indirect_buffer.get();
 
-        command_buffer.cmd_draw_indexed_indirect(
+        let command_size = rafx::api::extra::indirect::indexed_indirect_command_size(
+            write_context.graph_context.device_context(),
+        );
+
+        let indirect_signature = self.indirect_signature(render_phase_index);
+        indirect_signature.draw_indexed_indirect(
+            &*command_buffer,
             &*indirect_buffer.get_raw().buffer,
-            batch.indirect_buffer_first_command_index
-                * std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32,
+            batch.indirect_buffer_first_command_index * command_size as u32,
             batch.indirect_buffer_command_count,
         )?;
 
@@ -313,10 +346,15 @@ impl<'write> MeshAdvWriteJob<'write> {
         let indirect_buffer_command_index =
             batch.indirect_buffer_first_command_index + submit_node_data.draw_data_index;
 
-        command_buffer.cmd_draw_indexed_indirect(
+        let command_size = rafx::api::extra::indirect::indexed_indirect_command_size(
+            write_context.graph_context.device_context(),
+        );
+
+        let indirect_signature = self.indirect_signature(render_phase_index);
+        indirect_signature.draw_indexed_indirect(
+            &*command_buffer,
             &*indirect_buffer.get_raw().buffer,
-            indirect_buffer_command_index
-                * std::mem::size_of::<RafxDrawIndexedIndirectCommand>() as u32,
+            indirect_buffer_command_index * command_size as u32,
             1,
         )?;
 

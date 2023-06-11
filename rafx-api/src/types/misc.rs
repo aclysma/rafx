@@ -5,6 +5,25 @@ use crate::{RafxBuffer, RafxBufferDef, RafxSampler, RafxTexture};
 use rafx_base::DecimalF32;
 use std::hash::{Hash, Hasher};
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum RafxApiType {
+    Vk = 0,
+    Dx12 = 1,
+    Metal = 2,
+    Gles2 = 3,
+    Gles3 = 4,
+    Empty = 5,
+}
+
+// Generally we shouldn't use empty, it's excluded from this list
+pub const RAFX_VALID_API_TYPES: [RafxApiType; 5] = [
+    RafxApiType::Vk,
+    RafxApiType::Dx12,
+    RafxApiType::Metal,
+    RafxApiType::Gles2,
+    RafxApiType::Gles3,
+];
+
 /// Controls if validation is enabled or not. The requirements/behaviors of validation is
 /// API-specific.
 #[derive(Copy, Clone, Debug, PartialEq)]

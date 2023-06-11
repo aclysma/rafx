@@ -724,6 +724,7 @@ fn determine_alignment_c(
     }
 }
 
+#[cfg(test)]
 pub(crate) fn verify_all_binding_layouts(
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
     user_types: &FnvHashMap<String, UserType>,
@@ -778,6 +779,7 @@ pub(crate) fn verify_all_binding_layouts(
     Ok(())
 }
 
+#[cfg(test)]
 fn verify_layout(
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
     user_types: &FnvHashMap<String, UserType>,
@@ -886,7 +888,7 @@ fn verify_layout(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::parse_source::FileToProcess;
+    use crate::parse_source::{FileToProcess, PreprocessorState};
     use crate::shader_types::{create_builtin_type_lookup, create_user_type_lookup};
 
     fn verify_all_binding_layouts_in_test(
@@ -1166,10 +1168,12 @@ mod test {
         let mut declarations = Vec::default();
         let mut included_files = Default::default();
         let code: Vec<char> = shader_code.chars().collect();
+        let mut preprocessor_state = PreprocessorState::default();
         crate::parse_source::parse_shader_source_text(
             &file_to_process,
             &mut declarations,
             &mut included_files,
+            &mut preprocessor_state,
             &code,
         )
         .unwrap();

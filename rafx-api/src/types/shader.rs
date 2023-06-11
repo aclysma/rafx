@@ -1,5 +1,7 @@
-use std::hash::Hash;
+use fnv::FnvHasher;
+use std::hash::{Hash, Hasher};
 
+use crate::{RafxApiType, RafxReflectedEntryPoint};
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +33,7 @@ pub enum RafxShaderPackageGles3 {
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub enum RafxShaderPackageDx12 {
     /// Raw uncompiled source code. Will be compiled at runtime.
-    HlslSrc(String),
+    Src(String),
     // DXIL compiles from dxc
     //Dxil(Vec<u8>)
 }
@@ -70,6 +72,10 @@ pub enum RafxShaderPackageEmpty {
 /// This struct can be serialized/deserialized and is intended to allow asset pipeline to store
 /// a shader module to be created at runtime. The package can optionally include data for multiple
 /// APIs allowing a single file to be used with whatever API is found at runtime.
+///
+/// Optionally, reflection data can be packaged along with shaders. Shaders may have
+/// platform-specific changes that produce different reflection data, so reflection is stored
+/// per-api
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxShaderPackage {
@@ -78,9 +84,84 @@ pub struct RafxShaderPackage {
     pub dx12: Option<RafxShaderPackageDx12>,
     pub metal: Option<RafxShaderPackageMetal>,
     pub vk: Option<RafxShaderPackageVulkan>,
+
+    pub vk_reflection: Option<Vec<RafxReflectedEntryPoint>>,
+    pub dx12_reflection: Option<Vec<RafxReflectedEntryPoint>>,
+    pub metal_reflection: Option<Vec<RafxReflectedEntryPoint>>,
+    pub gles2_reflection: Option<Vec<RafxReflectedEntryPoint>>,
+    pub gles3_reflection: Option<Vec<RafxReflectedEntryPoint>>,
+
+    pub debug_name: Option<String>,
+}
+
+/// Provides a stable has for contents of a shader package
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub struct RafxShaderPackageHash(u64);
+impl RafxShaderPackageHash {
+    pub fn new(shader_package: &RafxShaderPackage) -> Self {
+        let mut hasher = FnvHasher::default();
+        shader_package.hash(&mut hasher);
+        let hash = hasher.finish();
+        RafxShaderPackageHash(hash)
+    }
+}
+
+/// A shader package and its hash. This allows storing the package with a pre-generated hash to
+/// file. The shader package is immutable to ensure the hash is never stale.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub struct RafxHashedShaderPackage {
+    shader_package_hash: RafxShaderPackageHash,
+    shader_package: RafxShaderPackage,
+}
+
+impl RafxHashedShaderPackage {
+    pub fn new(shader_package: RafxShaderPackage) -> Self {
+        let shader_package_hash = RafxShaderPackageHash::new(&shader_package);
+        RafxHashedShaderPackage {
+            shader_package_hash,
+            shader_package,
+        }
+    }
+
+    pub fn shader_package_hash(&self) -> RafxShaderPackageHash {
+        self.shader_package_hash
+    }
+
+    pub fn shader_package(&self) -> &RafxShaderPackage {
+        &self.shader_package
+    }
 }
 
 impl RafxShaderPackage {
+    pub fn reflection(
+        &self,
+        api_type: RafxApiType,
+    ) -> Option<&Vec<RafxReflectedEntryPoint>> {
+        match api_type {
+            RafxApiType::Vk => self.vk_reflection.as_ref(),
+            RafxApiType::Dx12 => self.dx12_reflection.as_ref(),
+            RafxApiType::Metal => self.metal_reflection.as_ref(),
+            RafxApiType::Gles2 => self.gles2_reflection.as_ref(),
+            RafxApiType::Gles3 => self.gles3_reflection.as_ref(),
+            RafxApiType::Empty => None,
+        }
+    }
+
+    pub fn find_entry_point(
+        &self,
+        api_type: RafxApiType,
+        entry_point_name: &str,
+    ) -> Option<&RafxReflectedEntryPoint> {
+        self.reflection(api_type)
+            .map(|x| {
+                x.iter()
+                    .find(|&x| x.rafx_api_reflection.entry_point_name == entry_point_name)
+            })
+            .flatten()
+    }
+
     /// Create a shader module def for use with a GL RafxDevice. Returns none if the package does
     /// not contain data necessary for GL ES 2.0
     #[cfg(feature = "rafx-gles2")]
@@ -113,7 +194,7 @@ impl RafxShaderPackage {
     pub fn dx12_module_def(&self) -> Option<RafxShaderModuleDefDx12> {
         if let Some(dx12) = self.dx12.as_ref() {
             Some(match dx12 {
-                RafxShaderPackageDx12::HlslSrc(src) => RafxShaderModuleDefDx12::HlslSrc(src),
+                RafxShaderPackageDx12::Src(src) => RafxShaderModuleDefDx12::HlslSrc(src),
                 //RafxShaderPackageDx12::Dxil(dxil) => RafxShaderModuleDefDx12::Dxil(dxil.as_slice()),
             })
         } else {

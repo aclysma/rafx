@@ -203,6 +203,7 @@ fn create_device(
     Ok((dxgi_factory, dxgi_adapter, d3d12_device))
 }
 
+use crate::dx12::mipmap_resources::Dx12MipmapResources;
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
 use std::sync::atomic::AtomicU64;
@@ -223,6 +224,8 @@ pub struct RafxDeviceContextDx12Inner {
 
     pub(crate) heaps: super::internal::descriptor_heap::Dx12DescriptorHeapSet,
 
+    pub(crate) mipmap_resources: rafx_base::trust_cell::TrustCell<Option<Dx12MipmapResources>>,
+
     destroyed: AtomicBool,
 
     #[cfg(debug_assertions)]
@@ -241,6 +244,11 @@ unsafe impl Sync for RafxDeviceContextDx12Inner {}
 impl Drop for RafxDeviceContextDx12Inner {
     fn drop(&mut self) {
         log::trace!("destroying device");
+
+        // We expect this is already set to None by RafxApiDx12::destroy so that there are no
+        // remaining references to RafxDeviceContextDx12
+        assert!(self.mipmap_resources.borrow().is_none());
+
         if !self.destroyed.swap(true, Ordering::AcqRel) {
             unsafe {
                 log::trace!("destroying device");
@@ -311,6 +319,8 @@ impl RafxDeviceContextDx12Inner {
             dxgi_factory,
 
             heaps,
+
+            mipmap_resources: Default::default(),
 
             destroyed: AtomicBool::new(false),
 
@@ -414,12 +424,17 @@ impl RafxDeviceContextDx12 {
     }
 
     pub fn new(inner: Arc<RafxDeviceContextDx12Inner>) -> RafxResult<Self> {
-        Ok(RafxDeviceContextDx12 {
+        let dx12_device_context = RafxDeviceContextDx12 {
             inner,
             #[cfg(debug_assertions)]
             #[cfg(feature = "track-device-contexts")]
             create_index: 0,
-        })
+        };
+
+        let mipmap_resources = Dx12MipmapResources::new(&dx12_device_context)?;
+        *dx12_device_context.inner.mipmap_resources.borrow_mut() = Some(mipmap_resources);
+
+        Ok(dx12_device_context)
     }
 
     pub fn create_queue(
