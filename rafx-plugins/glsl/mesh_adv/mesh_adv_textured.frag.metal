@@ -101,7 +101,7 @@ struct LightBinningOutput
     uint pad1;
     uint pad2;
     ClusterMeta offsets[3072];
-    uint data[786432];
+    uint data[1572864];
 };
 
 struct LightBinOutput
@@ -117,6 +117,10 @@ struct DrawData
 
 struct AllDrawData
 {
+    uint count;
+    uint pad0;
+    uint pad1;
+    uint pad2;
     DrawData draw_data[1];
 };
 

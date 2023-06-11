@@ -2,8 +2,7 @@ use log::LevelFilter;
 
 use rafx::api::*;
 use rafx::framework::{
-    CookedShaderPackage, DescriptorSetBindings, FixedFunctionState, RenderResources,
-    VertexDataLayout,
+    DescriptorSetBindings, FixedFunctionState, RenderResources, VertexDataLayout,
 };
 use rafx::graph::{
     PreparedRenderGraph, RenderGraphBuilder, RenderGraphImageConstraint, RenderGraphQueue,
@@ -140,7 +139,7 @@ fn run() -> RafxResult<()> {
         });
 
         // Create the material pass (which can later be used to create a graphics pipeline)
-        let material_pass = CookedShaderPackage::load_material_pass(
+        let material_pass = rafx_framework::cooked_shader::load_material_pass(
             resource_context.resources(),
             &[&cooked_vertex_shader_stage, &cooked_fragment_shader_stage],
             &["main", "main"],
@@ -527,11 +526,11 @@ fn process_input(event_pump: &mut sdl2::EventPump) -> bool {
 fn load_cooked_shader_stage(
     base_path: &Path,
     shader_file: &str,
-) -> RafxResult<CookedShaderPackage> {
+) -> RafxResult<RafxHashedShaderPackage> {
     let cooked_shader_path = base_path.join(shader_file);
     let bytes = std::fs::read(cooked_shader_path)?;
 
-    let cooked_shader = bincode::deserialize::<CookedShaderPackage>(&bytes)
+    let cooked_shader = bincode::deserialize::<RafxHashedShaderPackage>(&bytes)
         .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
 
     Ok(cooked_shader)

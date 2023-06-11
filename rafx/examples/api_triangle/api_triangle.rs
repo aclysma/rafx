@@ -499,7 +499,7 @@ fn load_shader_packages(
     {
         let dx12_path = _base_path.join(_dx12_src_file);
         let dx12_src = std::fs::read_to_string(dx12_path)?;
-        _package.dx12 = Some(RafxShaderPackageDx12::HlslSrc(dx12_src));
+        _package.dx12 = Some(RafxShaderPackageDx12::Src(dx12_src));
     }
 
     #[cfg(feature = "rafx-metal")]

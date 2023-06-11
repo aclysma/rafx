@@ -20,7 +20,6 @@ pub use resource_lookup::ResourceHash;
 pub use resource_lookup::ResourceLookupSet;
 pub use resource_lookup::RootSignatureResource;
 pub use resource_lookup::SamplerResource;
-pub use resource_lookup::ShaderModuleHash;
 pub use resource_lookup::ShaderModuleResource;
 
 mod dyn_resources;
@@ -35,8 +34,6 @@ pub use descriptor_sets::DescriptorSetAllocatorRef;
 pub use descriptor_sets::DescriptorSetArc;
 pub use descriptor_sets::DescriptorSetBindings;
 pub use descriptor_sets::DescriptorSetInitializer;
-pub use descriptor_sets::DescriptorSetLayout;
-pub use descriptor_sets::DescriptorSetLayoutBinding;
 pub use descriptor_sets::DescriptorSetWriteSet;
 pub use descriptor_sets::DescriptorSetWriter;
 pub use descriptor_sets::DescriptorSetWriterContext;

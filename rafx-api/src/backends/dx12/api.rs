@@ -80,6 +80,9 @@ impl RafxApiDx12 {
             #[cfg(feature = "track-device-contexts")]
             let _create_index = device_context.create_index;
 
+            // Need to drop the mipmap resources as they reference the Dx12 context
+            *device_context.inner.mipmap_resources.borrow_mut() = None;
+
             // This should be the final device context
             std::mem::drop(device_context);
 

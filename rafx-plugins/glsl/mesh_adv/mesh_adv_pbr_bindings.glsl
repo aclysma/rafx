@@ -168,6 +168,12 @@ layout (set = 2, binding = 0) buffer AllTransforms {
 } all_transforms;
 
 layout (set = 2, binding = 1) buffer AllDrawData {
+    // The count is used to avoid a bug on nvidia when GBV is enabled where it seems the push constant is just invalid
+    // and walks past the end of the array
+    uint count;
+    uint pad0;
+    uint pad1;
+    uint pad2;
     DrawData draw_data[];
 } all_draw_data;
 
@@ -197,3 +203,8 @@ layout (set = 3, binding = 0) buffer AllMaterials {
 
 layout (set = 3, binding = 1) uniform texture2D all_material_textures[768];
 
+#ifdef PLATFORM_DX12
+    layout (push_constant) uniform PushConstantData {
+        uint instance_offset;
+    } push_constants;
+#endif // PLATFORM_DX12

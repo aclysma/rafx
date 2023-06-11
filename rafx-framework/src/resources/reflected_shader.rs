@@ -1,15 +1,13 @@
 use crate::resources::resource_lookup::ShaderResource;
 use crate::{
-    ComputePipelineResource, DescriptorSetLayout, DescriptorSetLayoutBinding, FixedFunctionState,
-    MaterialPassResource, MaterialPassVertexInput, ResourceArc, ResourceLookupSet, SamplerResource,
-    ShaderModuleResource,
+    ComputePipelineResource, FixedFunctionState, MaterialPassResource, MaterialPassVertexInput,
+    ResourceArc, ResourceLookupSet, SamplerResource, ShaderModuleResource,
 };
 use fnv::{FnvHashMap, FnvHashSet};
 use rafx_api::{
-    RafxImmutableSamplerKey, RafxResult, RafxSamplerDef, RafxShaderResource, RafxShaderStageFlags,
-    RafxShaderStageReflection,
+    RafxImmutableSamplerKey, RafxReflectedDescriptorSetLayout, RafxReflectedEntryPoint, RafxResult,
+    RafxShaderStageFlags,
 };
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -20,63 +18,14 @@ pub struct SlotLocation {
 
 pub type SlotNameLookup = FnvHashMap<String, FnvHashSet<SlotLocation>>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct ReflectedDescriptorSetLayoutBinding {
-    // Basic info required to create the RafxRootSignature
-    pub resource: RafxShaderResource,
-
-    // Samplers created here will be automatically created/bound
-    pub immutable_samplers: Option<Vec<RafxSamplerDef>>,
-
-    // If this is non-zero we will allocate a buffer owned by the descriptor set pool chunk,
-    // and automatically bind it - this makes binding data easy to do without having to manage
-    // buffers.
-    pub internal_buffer_per_descriptor_size: Option<u32>,
-}
-
-impl Into<DescriptorSetLayoutBinding> for ReflectedDescriptorSetLayoutBinding {
-    fn into(self) -> DescriptorSetLayoutBinding {
-        DescriptorSetLayoutBinding {
-            resource: self.resource.clone(),
-            immutable_samplers: self.immutable_samplers.clone(),
-            internal_buffer_per_descriptor_size: self.internal_buffer_per_descriptor_size,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedDescriptorSetLayout {
-    // These are NOT indexable by binding (i.e. may be sparse)
-    pub bindings: Vec<ReflectedDescriptorSetLayoutBinding>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedVertexInput {
-    pub name: String,
-    pub semantic: String,
-    pub location: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ReflectedEntryPoint {
-    // The reflection data used by rafx API
-    pub rafx_api_reflection: RafxShaderStageReflection,
-
-    // Additional reflection data used by the framework level for descriptor sets
-    pub descriptor_set_layouts: Vec<Option<ReflectedDescriptorSetLayout>>,
-
-    // Additional reflection data used by the framework level for vertex inputs
-    pub vertex_inputs: Vec<ReflectedVertexInput>,
-}
-
 pub struct ReflectedShaderMetadata {
-    pub descriptor_set_layout_defs: Vec<DescriptorSetLayout>,
+    pub descriptor_set_layout_defs: Vec<RafxReflectedDescriptorSetLayout>,
     pub slot_name_lookup: SlotNameLookup,
     pub vertex_inputs: Option<Arc<Vec<MaterialPassVertexInput>>>,
 }
 
 impl ReflectedShaderMetadata {
-    pub fn new(entry_points: &[&ReflectedEntryPoint]) -> RafxResult<ReflectedShaderMetadata> {
+    pub fn new(entry_points: &[&RafxReflectedEntryPoint]) -> RafxResult<ReflectedShaderMetadata> {
         let mut descriptor_set_layout_defs = Vec::default();
         let mut slot_name_lookup: SlotNameLookup = Default::default();
         let mut vertex_inputs = None;
@@ -126,7 +75,7 @@ impl ReflectedShaderMetadata {
             for (set_index, layout) in reflection_data.descriptor_set_layouts.iter().enumerate() {
                 // Expand the layout def to include the given set index
                 while descriptor_set_layout_defs.len() <= set_index {
-                    descriptor_set_layout_defs.push(DescriptorSetLayout::default());
+                    descriptor_set_layout_defs.push(RafxReflectedDescriptorSetLayout::default());
                 }
 
                 if let Some(layout) = layout.as_ref() {
@@ -242,7 +191,7 @@ impl ReflectedShader {
     pub fn new(
         resources: &ResourceLookupSet,
         shader_modules: &[ResourceArc<ShaderModuleResource>],
-        entry_points: &[&ReflectedEntryPoint],
+        entry_points: &[&RafxReflectedEntryPoint],
     ) -> RafxResult<Self> {
         let metadata = ReflectedShaderMetadata::new(entry_points)?;
         let shader = resources.get_or_create_shader(shader_modules, entry_points)?;
@@ -252,7 +201,7 @@ impl ReflectedShader {
 
     pub fn create_immutable_samplers<'a>(
         resources: &'a ResourceLookupSet,
-        descriptor_set_layouts: &'a [DescriptorSetLayout],
+        descriptor_set_layouts: &'a [RafxReflectedDescriptorSetLayout],
     ) -> RafxResult<(
         Vec<RafxImmutableSamplerKey<'a>>,
         Vec<Vec<ResourceArc<SamplerResource>>>,
@@ -384,7 +333,7 @@ impl ReflectedShader {
         for (set_index, layout) in self.metadata.descriptor_set_layout_defs.iter().enumerate() {
             // Expand the layout def to include the given set index
             while descriptor_set_layout_defs.len() <= set_index {
-                descriptor_set_layout_defs.push(DescriptorSetLayout::default());
+                descriptor_set_layout_defs.push(RafxReflectedDescriptorSetLayout::default());
             }
 
             for binding in &layout.bindings {

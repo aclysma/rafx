@@ -15,5 +15,5 @@ struct LightBinningOutput {
     uint pad1;
     uint pad2;
     ClusterMeta offsets[3072]; // 1 per cluster
-    uint data[786432]; // 3072 clusters * 256 lights per cluster
+    uint data[1572864]; // 3072 clusters * 512 lights per cluster
 };

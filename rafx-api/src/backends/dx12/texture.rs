@@ -546,16 +546,20 @@ impl RafxTextureDx12 {
         })
     }
 
+    // TODO: Supprt arrays? Right now the handles are created foreach array element, foreach mip.. this is the opposite of RTV
+    // MIPMAP CODE IS ASSUMING THIS
     pub fn uav(
         &self,
         mip_level: u32,
     ) -> Option<Dx12DescriptorId> {
-        debug_assert!(self
-            .inner
-            .texture_def
-            .resource_type
-            .intersects(RafxResourceType::TEXTURE_READ_WRITE));
-        debug_assert!(mip_level < self.inner.texture_def.array_length);
+        // debug_assert!(self
+        //     .inner
+        //     .texture_def
+        //     .resource_type
+        //     .intersects(RafxResourceType::TEXTURE_READ_WRITE));
+        debug_assert!(
+            mip_level < self.inner.texture_def.array_length * self.inner.texture_def.mip_count
+        );
         self.inner.first_uav.map(|x| x.add_offset(mip_level))
     }
 
@@ -715,6 +719,11 @@ impl RafxTextureDx12 {
             .dimensions
             .determine_dimensions(texture_def.extents);
 
+        let create_uav_chain = texture_def
+            .resource_type
+            .intersects(RafxResourceType::TEXTURE_READ_WRITE)
+            || (texture_def.mip_count > 1 && !texture_def.format.is_compressed());
+
         //
         // Create the resource if it wasn't provided
         //
@@ -768,10 +777,7 @@ impl RafxTextureDx12 {
 
             let mut resource_states = RafxResourceState::UNDEFINED;
 
-            if texture_def
-                .resource_type
-                .intersects(RafxResourceType::TEXTURE_READ_WRITE)
-            {
+            if create_uav_chain {
                 desc.Flags |= d3d12::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
             }
 
@@ -882,10 +888,7 @@ impl RafxTextureDx12 {
         uav_first_index = srv_uav_handle_count;
 
         // One per mip count
-        if texture_def
-            .resource_type
-            .intersects(RafxResourceType::TEXTURE_READ_WRITE)
-        {
+        if create_uav_chain {
             srv_uav_handle_count += texture_def.mip_count;
         }
         let mut resource_desc = unsafe { image.image.GetDesc() };
@@ -920,10 +923,7 @@ impl RafxTextureDx12 {
                 next_srv_uav_handle = next_srv_uav_handle.add_offset(1);
             }
 
-            if texture_def
-                .resource_type
-                .intersects(RafxResourceType::TEXTURE_READ_WRITE)
-            {
+            if create_uav_chain {
                 first_uav = Some(next_srv_uav_handle);
                 let mut uav_desc = create_uav_desc(&resource_desc, pixel_format, is_cube_map);
                 for mip_slice in 0..texture_def.mip_count {

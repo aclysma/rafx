@@ -12,12 +12,10 @@ keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
 [dependencies]
-rafx-framework = { version = "0.0.15", path = "../rafx-framework" }
 rafx-api = { version = "0.0.15", path = "../rafx-api", features = ["serde-support"] }
 
 fnv = "1.0"
 structopt = "0.3"
-spirv-reflect = "0.2"
 shaderc = "0.8"
 spirv_cross = { version = "0.23.1", features = ["glsl", "hlsl", "msl"] }
 globwalk = "0.8.1"
@@ -30,3 +28,4 @@ env_logger = "0.6"
 heck = "0.3"
 
 [dev-dependencies]
+spirv-reflect = "0.2"

@@ -10,4 +10,6 @@ pub use misc::*;
 mod shader;
 pub use shader::*;
 
+pub use crate::extra::indirect::*;
+
 pub use crate::reflection::*;

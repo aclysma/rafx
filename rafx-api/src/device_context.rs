@@ -97,6 +97,32 @@ impl RafxDeviceContext {
         }
     }
 
+    pub fn api_type(&self) -> RafxApiType {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxDeviceContext::Dx12(_) => RafxApiType::Dx12,
+            #[cfg(feature = "rafx-vulkan")]
+            RafxDeviceContext::Vk(_) => RafxApiType::Vk,
+            #[cfg(feature = "rafx-metal")]
+            RafxDeviceContext::Metal(_) => RafxApiType::Metal,
+            #[cfg(feature = "rafx-gles2")]
+            RafxDeviceContext::Gles2(_) => RafxApiType::Gles2,
+            #[cfg(feature = "rafx-gles3")]
+            RafxDeviceContext::Gles3(_) => RafxApiType::Gles3,
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxDeviceContext::Empty(_) => RafxApiType::Empty,
+        }
+    }
+
     /// Get metadata about the device
     pub fn device_info(&self) -> &RafxDeviceInfo {
         match self {

@@ -8,14 +8,27 @@ struct BoundingSphere {
     float radius;
 };
 
-// @[export]
-struct IndirectCommand {
-    uint index_count;
-    uint instance_count;
-    uint first_index;
-    int vertex_offset;
-    uint first_instance;
-};
+// shader tool preprocessor doesn't support defines within a declaration yet
+#if PLATFORM_DX12
+    // @[export]
+    struct IndirectCommand {
+        uint push_constant;
+        uint index_count;
+        uint instance_count;
+        uint first_index;
+        int vertex_offset;
+        uint first_instance;
+    };
+#else
+    // @[export]
+    struct IndirectCommand {
+        uint index_count;
+        uint instance_count;
+        uint first_index;
+        int vertex_offset;
+        uint first_instance;
+    };
+#endif
 
 // Data for the view we are processing
 // @[export]
@@ -34,6 +47,10 @@ layout (set = 0, binding = 0) uniform Config {
 
 // The draw_data - we use this to pair transform/bounding data with a slot in the indirect command buffer
 layout (set = 0, binding = 1) buffer AllDrawData {
+    uint count;
+    uint pad0;
+    uint pad1;
+    uint pad2;
     DrawData draw_data[];
 } all_draw_data;
 

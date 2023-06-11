@@ -1,9 +1,5 @@
 use fnv::FnvHashMap;
 
-mod descriptor_set_layout;
-pub use descriptor_set_layout::DescriptorSetLayout;
-pub use descriptor_set_layout::DescriptorSetLayoutBinding;
-
 mod descriptor_set_arc;
 pub use descriptor_set_arc::DescriptorSetArc;
 

@@ -1,5 +1,8 @@
 #version 450
 
+// Second light binning step. We allocate space for the N lights in the cluster and make a list
+// of them.
+
 #include "lights_processing.glsl"
 
 // @[export]

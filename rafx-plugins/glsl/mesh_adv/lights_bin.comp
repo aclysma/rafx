@@ -1,5 +1,8 @@
 #version 450
 
+//This is the first of the two light binning steps. We have 512 lights max and 512 bits per each cluster. We
+//check if the light intersects the cluster and flip the bit to true
+
 #include "lights_processing.glsl"
 
 struct Light {

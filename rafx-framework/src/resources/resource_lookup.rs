@@ -1,8 +1,7 @@
 use crate::resources::pipeline_cache::GraphicsPipelineRenderTargetMeta;
 use crate::resources::resource_arc::{ResourceId, ResourceWithHash, WeakResourceArc};
-use crate::resources::DescriptorSetLayout;
 use crate::resources::ResourceArc;
-use crate::{CookedShaderPackage, ReflectedEntryPoint, ResourceDropSink};
+use crate::ResourceDropSink;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHasher};
 use rafx_api::RafxTexture;
@@ -300,22 +299,11 @@ pub struct FixedFunctionState {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct ShaderModuleHash(u64);
-impl ShaderModuleHash {
-    pub fn new(shader_package: &RafxShaderPackage) -> Self {
-        let mut hasher = FnvHasher::default();
-        shader_package.hash(&mut hasher);
-        let hash = hasher.finish();
-        ShaderModuleHash(hash)
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct ShaderHash(u64);
 impl ShaderHash {
     pub fn new(
-        entry_points: &[&ReflectedEntryPoint],
-        shader_module_hashes: &[ShaderModuleHash],
+        entry_points: &[&RafxReflectedEntryPoint],
+        shader_module_hashes: &[RafxShaderPackageHash],
     ) -> Self {
         let reflection_data: Vec<_> = entry_points
             .iter()
@@ -365,7 +353,7 @@ impl DescriptorSetLayoutHash {
     pub fn new(
         root_signature_hash: RootSignatureHash,
         set_index: u32,
-        bindings: &DescriptorSetLayout,
+        bindings: &RafxReflectedDescriptorSetLayout,
     ) -> Self {
         let mut hasher = FnvHasher::default();
         root_signature_hash.hash(&mut hasher);
@@ -439,7 +427,7 @@ impl ComputePipelineHash {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ShaderModuleKey {
-    hash: ShaderModuleHash,
+    hash: RafxShaderPackageHash,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -553,7 +541,7 @@ pub struct DescriptorSetLayoutResource {
     pub root_signature: RafxRootSignature,
     pub set_index: u32,
 
-    pub descriptor_set_layout_def: Arc<DescriptorSetLayout>,
+    pub descriptor_set_layout_def: Arc<RafxReflectedDescriptorSetLayout>,
     pub key: DescriptorSetLayoutKey,
 }
 
@@ -563,7 +551,6 @@ pub struct MaterialPassResource {
     pub shader: ResourceArc<ShaderResource>,
     pub root_signature: ResourceArc<RootSignatureResource>,
     pub descriptor_set_layouts: Arc<Vec<ResourceArc<DescriptorSetLayoutResource>>>,
-
     pub fixed_function_state: Arc<FixedFunctionState>,
     pub vertex_inputs: Arc<Vec<MaterialPassVertexInput>>,
 }
@@ -726,23 +713,26 @@ impl ResourceLookupSet {
         }
     }
 
-    pub fn get_or_create_shader_module_from_cooked_package(
+    pub fn get_or_create_shader_module_from_hashed_package(
         &self,
-        package: &CookedShaderPackage,
+        package: &RafxHashedShaderPackage,
     ) -> RafxResult<ResourceArc<ShaderModuleResource>> {
-        self.get_or_create_shader_module(&package.shader_package, Some(package.hash))
+        self.get_or_create_shader_module(
+            package.shader_package(),
+            Some(package.shader_package_hash()),
+        )
     }
 
     pub fn get_or_create_shader_module(
         &self,
         shader_package: &RafxShaderPackage,
-        shader_module_hash: Option<ShaderModuleHash>,
+        shader_package_hash: Option<RafxShaderPackageHash>,
     ) -> RafxResult<ResourceArc<ShaderModuleResource>> {
-        let shader_module_hash =
-            shader_module_hash.unwrap_or_else(|| ShaderModuleHash::new(shader_package));
+        let shader_package_hash =
+            shader_package_hash.unwrap_or_else(|| RafxShaderPackageHash::new(shader_package));
 
         let shader_module_key = ShaderModuleKey {
-            hash: shader_module_hash,
+            hash: shader_package_hash,
         };
 
         self.inner
@@ -793,7 +783,7 @@ impl ResourceLookupSet {
     pub fn get_or_create_shader(
         &self,
         shader_modules: &[ResourceArc<ShaderModuleResource>],
-        entry_points: &[&ReflectedEntryPoint],
+        entry_points: &[&RafxReflectedEntryPoint],
     ) -> RafxResult<ResourceArc<ShaderResource>> {
         let shader_module_hashes: Vec<_> = shader_modules
             .iter()
@@ -906,7 +896,7 @@ impl ResourceLookupSet {
         &self,
         root_signature: &ResourceArc<RootSignatureResource>,
         set_index: u32,
-        descriptor_set_layout_def: &DescriptorSetLayout,
+        descriptor_set_layout_def: &RafxReflectedDescriptorSetLayout,
     ) -> RafxResult<ResourceArc<DescriptorSetLayoutResource>> {
         let hash = DescriptorSetLayoutHash::new(
             root_signature.get_raw().key.hash,

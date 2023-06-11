@@ -116,13 +116,202 @@ fn generate_mipmaps_dx12(
     command_buffer: &RafxCommandBufferDx12,
     texture: &RafxTexture,
 ) -> RafxResult<()> {
-    //TODO: IMPLEMENT ME
-    //unimplemented!()
-    // let mip_level_count = texture.texture_def().mip_count;
-    //
-    // for layer in 0..texture.texture_def().array_length {
-    //     do_generate_mipmaps_vk(command_buffer, texture, layer, mip_level_count)?;
-    // }
+    use windows::Win32::Graphics::Direct3D12 as d3d12;
+
+    // Don't generate mipmaps if only one mip level exists
+    if texture.texture_def().mip_count <= 1 {
+        return Ok(());
+    }
+
+    let device_context = command_buffer.queue().device_context();
+    let mipmap_resources_ref = device_context.inner.mipmap_resources.borrow();
+    let mipmap_resources = mipmap_resources_ref.as_ref().unwrap();
+
+    //TODO: Set the command buffer to not have a root signature set
+    let command_list = command_buffer.dx12_graphics_command_list();
+    unsafe {
+        command_list.SetComputeRootSignature(&mipmap_resources.root_signature);
+        command_list.SetPipelineState(&mipmap_resources.pipeline);
+    }
+
+    // Must match compute shader
+    #[derive(Debug)]
+    struct Constants {
+        // Texture level of source mip
+        src_mip_level: u32,
+
+        // upper 16-bits: if non-zero, apply SRGB curve
+        // lower 16-bits: number of OutMips to write: [1, 4]
+        packed_is_srgb_num_mip_levels: u32,
+
+        // 1.0 / OutMip1.Dimensions
+        texel_size_x: f32,
+        texel_size_y: f32,
+    }
+
+    let srv_src_descriptor_id = texture.dx12_texture().unwrap().srv().unwrap();
+    let srv_src_cpu_handle = device_context
+        .inner
+        .heaps
+        .cbv_srv_uav_heap
+        .id_to_cpu_handle(srv_src_descriptor_id);
+
+    //TODO: LEAKING THESE
+    println!("TODO: Generating mipmaps is leaking descriptors");
+    let srv_dst_descriptor_id = device_context
+        .inner
+        .heaps
+        .gpu_cbv_srv_uav_heap
+        .allocate(device_context.d3d12_device(), 1)
+        .unwrap();
+    let srv_dst_cpu_handle = device_context
+        .inner
+        .heaps
+        .gpu_cbv_srv_uav_heap
+        .id_to_cpu_handle(srv_dst_descriptor_id);
+    unsafe {
+        device_context.d3d12_device().CopyDescriptorsSimple(
+            1,
+            srv_dst_cpu_handle,
+            srv_src_cpu_handle,
+            d3d12::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        );
+    }
+
+    unsafe {
+        command_list.SetComputeRootDescriptorTable(
+            1,
+            device_context
+                .inner
+                .heaps
+                .gpu_cbv_srv_uav_heap
+                .id_to_gpu_handle(srv_dst_descriptor_id),
+        );
+    }
+
+    let mut src_mip_level = 0;
+
+    // Continue until there are no unfilled mips, up to 4 at a time
+    while src_mip_level + 1 < texture.texture_def().mip_count {
+        let first_dst_level = src_mip_level + 1;
+        let num_levels = (texture.texture_def().mip_count - first_dst_level).min(4);
+        assert!(num_levels > 1 && num_levels <= 4);
+
+        println!(
+            "MIPMAP from src {} -> {} mips of {}",
+            src_mip_level,
+            num_levels,
+            texture.texture_def().mip_count
+        );
+
+        // set high bit on upper 16-bits to turn on srgb conversion
+        let mut packed_is_srgb_num_mip_levels = num_levels;
+        if texture.texture_def().format.is_srgb() {
+            packed_is_srgb_num_mip_levels |= 0x00010000;
+        }
+
+        let constants = Constants {
+            src_mip_level,
+            packed_is_srgb_num_mip_levels,
+            texel_size_x: 1.0 / (texture.texture_def().extents.width >> first_dst_level) as f32,
+            texel_size_y: 1.0 / (texture.texture_def().extents.height >> first_dst_level) as f32,
+        };
+        println!("MIPMAP constants {:?}", constants);
+
+        unsafe {
+            command_list.SetComputeRoot32BitConstants(
+                0,
+                4,
+                &constants as *const Constants as *const std::ffi::c_void,
+                0,
+            );
+        }
+
+        let uav_src_descriptor_id = texture
+            .dx12_texture()
+            .unwrap()
+            .uav(first_dst_level)
+            .unwrap();
+        let uav_src_cpu_handle = device_context
+            .inner
+            .heaps
+            .cbv_srv_uav_heap
+            .id_to_cpu_handle(uav_src_descriptor_id);
+
+        //TODO: LEAKING THESE
+        println!("TODO: Generating mipmaps is leaking descriptors");
+        let uav_dst_descriptor_id = device_context
+            .inner
+            .heaps
+            .gpu_cbv_srv_uav_heap
+            .allocate(device_context.d3d12_device(), 4)
+            .unwrap();
+        let uav_dst_cpu_handle = device_context
+            .inner
+            .heaps
+            .gpu_cbv_srv_uav_heap
+            .id_to_cpu_handle(uav_dst_descriptor_id);
+        unsafe {
+            //TODO: This assumes the UAVs are consecutive which is not how RTVs work with texture arrays
+
+            println!("MIPMAP set UAVs {}", num_levels);
+            device_context.d3d12_device().CopyDescriptorsSimple(
+                num_levels,
+                uav_dst_cpu_handle,
+                uav_src_cpu_handle,
+                d3d12::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+            );
+
+            // Assign the unset descriptor to the first dest mip
+            for i in num_levels..4 {
+                println!("MIPMAP set unassigned UAV index {}", i);
+                let uav_dst_cpu_handle = device_context
+                    .inner
+                    .heaps
+                    .gpu_cbv_srv_uav_heap
+                    .id_to_cpu_handle(uav_dst_descriptor_id.add_offset(i));
+                device_context.d3d12_device().CopyDescriptorsSimple(
+                    1,
+                    uav_dst_cpu_handle,
+                    uav_src_cpu_handle,
+                    d3d12::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+                );
+            }
+
+            command_list.SetComputeRootDescriptorTable(
+                2,
+                device_context
+                    .inner
+                    .heaps
+                    .gpu_cbv_srv_uav_heap
+                    .id_to_gpu_handle(uav_dst_descriptor_id),
+            );
+        }
+
+        // round up to 8 for group size
+        let num_threads_x = rafx_base::memory::round_size_up_to_alignment_u32(
+            texture.texture_def().extents.width >> src_mip_level,
+            8,
+        );
+        let num_threads_y = rafx_base::memory::round_size_up_to_alignment_u32(
+            texture.texture_def().extents.height >> src_mip_level,
+            8,
+        );
+        unsafe {
+            command_list.Dispatch(num_threads_x, num_threads_y, 1);
+
+            //
+            // Barrier UAV access so we can potentially do next loop
+            // TODO: Determine if there is another loop to do
+            //
+            let mut resource_barrier = d3d12::D3D12_RESOURCE_BARRIER::default();
+            resource_barrier.Type = d3d12::D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            command_list.ResourceBarrier(&[resource_barrier]);
+        }
+
+        // We can skip 4 at a time
+        src_mip_level += 4;
+    }
 
     Ok(())
 }

@@ -13,23 +13,25 @@ use rafx::framework::{
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct IndirectCommandStd140 {
-    pub index_count: u32,    // +0 (size: 4)
-    pub instance_count: u32, // +4 (size: 4)
-    pub first_index: u32,    // +8 (size: 4)
-    pub vertex_offset: i32,  // +12 (size: 4)
-    pub first_instance: u32, // +16 (size: 4)
-    pub _padding0: [u8; 12], // +20 (size: 12)
+    pub push_constant: u32,  // +0 (size: 4)
+    pub index_count: u32,    // +4 (size: 4)
+    pub instance_count: u32, // +8 (size: 4)
+    pub first_index: u32,    // +12 (size: 4)
+    pub vertex_offset: i32,  // +16 (size: 4)
+    pub first_instance: u32, // +20 (size: 4)
+    pub _padding0: [u8; 8],  // +24 (size: 8)
 } // 32 bytes
 
 impl Default for IndirectCommandStd140 {
     fn default() -> Self {
         IndirectCommandStd140 {
+            push_constant: <u32>::default(),
             index_count: <u32>::default(),
             instance_count: <u32>::default(),
             first_index: <u32>::default(),
             vertex_offset: <i32>::default(),
             first_instance: <u32>::default(),
-            _padding0: [u8::default(); 12],
+            _padding0: [u8::default(); 8],
         }
     }
 }
@@ -39,12 +41,13 @@ pub type IndirectCommandUniform = IndirectCommandStd140;
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct IndirectCommandStd430 {
-    pub index_count: u32,    // +0 (size: 4)
-    pub instance_count: u32, // +4 (size: 4)
-    pub first_index: u32,    // +8 (size: 4)
-    pub vertex_offset: i32,  // +12 (size: 4)
-    pub first_instance: u32, // +16 (size: 4)
-} // 20 bytes
+    pub push_constant: u32,  // +0 (size: 4)
+    pub index_count: u32,    // +4 (size: 4)
+    pub instance_count: u32, // +8 (size: 4)
+    pub first_index: u32,    // +12 (size: 4)
+    pub vertex_offset: i32,  // +16 (size: 4)
+    pub first_instance: u32, // +20 (size: 4)
+} // 24 bytes
 
 pub type IndirectCommandPushConstant = IndirectCommandStd430;
 
@@ -382,59 +385,77 @@ mod test {
         assert_eq!(std::mem::size_of::<IndirectCommandStd140>(), 32);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(memoffset::offset_of!(IndirectCommandStd140, index_count), 0);
+        assert_eq!(
+            memoffset::offset_of!(IndirectCommandStd140, push_constant),
+            0
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(memoffset::offset_of!(IndirectCommandStd140, index_count), 4);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
             memoffset::offset_of!(IndirectCommandStd140, instance_count),
-            4
+            8
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(memoffset::offset_of!(IndirectCommandStd140, first_index), 8);
+        assert_eq!(
+            memoffset::offset_of!(IndirectCommandStd140, first_index),
+            12
+        );
         assert_eq!(std::mem::size_of::<i32>(), 4);
         assert_eq!(std::mem::align_of::<i32>(), 4);
         assert_eq!(
             memoffset::offset_of!(IndirectCommandStd140, vertex_offset),
-            12
+            16
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
             memoffset::offset_of!(IndirectCommandStd140, first_instance),
-            16
+            20
         );
-        assert_eq!(std::mem::size_of::<[u8; 12]>(), 12);
-        assert_eq!(std::mem::align_of::<[u8; 12]>(), 1);
-        assert_eq!(memoffset::offset_of!(IndirectCommandStd140, _padding0), 20);
+        assert_eq!(std::mem::size_of::<[u8; 8]>(), 8);
+        assert_eq!(std::mem::align_of::<[u8; 8]>(), 1);
+        assert_eq!(memoffset::offset_of!(IndirectCommandStd140, _padding0), 24);
     }
 
     #[test]
     fn test_struct_indirect_command_std430() {
-        assert_eq!(std::mem::size_of::<IndirectCommandStd430>(), 20);
+        assert_eq!(std::mem::size_of::<IndirectCommandStd430>(), 24);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(memoffset::offset_of!(IndirectCommandStd430, index_count), 0);
+        assert_eq!(
+            memoffset::offset_of!(IndirectCommandStd430, push_constant),
+            0
+        );
+        assert_eq!(std::mem::size_of::<u32>(), 4);
+        assert_eq!(std::mem::align_of::<u32>(), 4);
+        assert_eq!(memoffset::offset_of!(IndirectCommandStd430, index_count), 4);
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
             memoffset::offset_of!(IndirectCommandStd430, instance_count),
-            4
+            8
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
-        assert_eq!(memoffset::offset_of!(IndirectCommandStd430, first_index), 8);
+        assert_eq!(
+            memoffset::offset_of!(IndirectCommandStd430, first_index),
+            12
+        );
         assert_eq!(std::mem::size_of::<i32>(), 4);
         assert_eq!(std::mem::align_of::<i32>(), 4);
         assert_eq!(
             memoffset::offset_of!(IndirectCommandStd430, vertex_offset),
-            12
+            16
         );
         assert_eq!(std::mem::size_of::<u32>(), 4);
         assert_eq!(std::mem::align_of::<u32>(), 4);
         assert_eq!(
             memoffset::offset_of!(IndirectCommandStd430, first_instance),
-            16
+            20
         );
     }
 

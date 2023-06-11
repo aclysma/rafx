@@ -1,11 +1,14 @@
 use crate::shaders::util_blit_image;
 use crate::VertexDataSetLayout;
 use crate::{
-    BufferResource, ComputePipelineResource, CookedShaderPackage, DescriptorSetAllocatorRef,
-    DescriptorSetBindings, FixedFunctionState, GraphicsPipelineRenderTargetMeta, ImageViewResource,
-    MaterialPassResource, ResourceArc, ResourceContext, ResourceLookupSet,
+    BufferResource, ComputePipelineResource, DescriptorSetAllocatorRef, DescriptorSetBindings,
+    FixedFunctionState, GraphicsPipelineRenderTargetMeta, ImageViewResource, MaterialPassResource,
+    ResourceArc, ResourceContext, ResourceLookupSet,
 };
-use rafx_api::{RafxBlendStateRenderTarget, RafxCommandBuffer, RafxPrimitiveTopology, RafxResult};
+use rafx_api::{
+    RafxBlendStateRenderTarget, RafxCommandBuffer, RafxHashedShaderPackage, RafxPrimitiveTopology,
+    RafxResult,
+};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -52,27 +55,27 @@ impl BuiltinPipelines {
         resources: &ResourceLookupSet
     ) -> RafxResult<ResourceArc<ComputePipelineResource>> {
         let util_fill_buffer =
-            bincode::deserialize::<CookedShaderPackage>(include_bytes!(concat!(
+            bincode::deserialize::<RafxHashedShaderPackage>(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/cooked_shaders/util_fill_buffer.comp.cookedshaderpackage"
             )))
             .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
 
-        util_fill_buffer.load_compute_pipeline(resources, "main")
+        super::cooked_shader::load_compute_pipeline(&util_fill_buffer, resources, "main")
     }
 
     fn create_util_blit_image_pass(
         resources: &ResourceLookupSet
     ) -> RafxResult<ResourceArc<MaterialPassResource>> {
         let util_blit_image_vert =
-            bincode::deserialize::<CookedShaderPackage>(include_bytes!(concat!(
+            bincode::deserialize::<RafxHashedShaderPackage>(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/cooked_shaders/util_blit_image/util_blit_image.vert.cookedshaderpackage"
             )))
             .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
 
         let util_blit_image_frag =
-            bincode::deserialize::<CookedShaderPackage>(include_bytes!(concat!(
+            bincode::deserialize::<RafxHashedShaderPackage>(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/cooked_shaders/util_blit_image/util_blit_image.frag.cookedshaderpackage"
             )))
@@ -90,7 +93,7 @@ impl BuiltinPipelines {
             .blend_state
             .render_target_blend_states = vec![RafxBlendStateRenderTarget::default_alpha_enabled()];
 
-        CookedShaderPackage::load_material_pass(
+        super::cooked_shader::load_material_pass(
             resources,
             &[&util_blit_image_vert, &util_blit_image_frag],
             &["main", "main"],

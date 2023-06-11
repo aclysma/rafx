@@ -1,11 +1,11 @@
 use crate::types::{RafxResourceType, RafxShaderStageFlags};
-use crate::{RafxResult, RafxShaderStageDef, MAX_DESCRIPTOR_SET_LAYOUTS};
+use crate::{RafxResult, RafxSamplerDef, RafxShaderStageDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 use fnv::FnvHashMap;
 #[cfg(feature = "serde-support")]
 use serde::{Deserialize, Serialize};
 
 /// Indicates where a resource is bound
-#[derive(PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct RafxShaderResourceBindingKey {
     pub set: u32,
     pub binding: u32,
@@ -255,7 +255,7 @@ impl RafxShaderResource {
 }
 
 /// Reflection data for a single shader stage
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
 pub struct RafxShaderStageReflection {
     // For now, this doesn't do anything, so commented out
@@ -373,4 +373,53 @@ impl RafxPipelineReflection {
             resources,
         })
     }
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+//TODO: Rename RafxReflected... to Rafx...Reflection
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub struct RafxReflectedDescriptorSetLayoutBinding {
+    // Basic info required to create the RafxRootSignature
+    pub resource: RafxShaderResource,
+
+    // Samplers created here will be automatically created/bound
+    pub immutable_samplers: Option<Vec<RafxSamplerDef>>,
+
+    // If this is non-zero we will allocate a buffer owned by the descriptor set pool chunk,
+    // and automatically bind it - this makes binding data easy to do without having to manage
+    // buffers.
+    pub internal_buffer_per_descriptor_size: Option<u32>,
+}
+
+//TODO: Rename RafxReflected... to Rafx...Reflection
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub struct RafxReflectedDescriptorSetLayout {
+    // These are NOT indexable by binding (i.e. may be sparse)
+    pub bindings: Vec<RafxReflectedDescriptorSetLayoutBinding>,
+}
+
+//TODO: Rename RafxReflected... to Rafx...Reflection
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub struct RafxReflectedVertexInput {
+    pub name: String,
+    pub semantic: String,
+    pub location: u32,
+}
+
+//TODO: Rename RafxReflected... to Rafx...Reflection
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde-support", derive(Serialize, Deserialize))]
+pub struct RafxReflectedEntryPoint {
+    // The reflection data used by rafx API
+    pub rafx_api_reflection: RafxShaderStageReflection,
+
+    // Additional reflection data used by the framework level for descriptor sets
+    pub descriptor_set_layouts: Vec<Option<RafxReflectedDescriptorSetLayout>>,
+
+    // Additional reflection data used by the framework level for vertex inputs
+    pub vertex_inputs: Vec<RafxReflectedVertexInput>,
 }

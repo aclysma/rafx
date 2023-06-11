@@ -3,8 +3,7 @@ use crate::parse_declarations::{
 };
 use crate::shader_types::*;
 use fnv::{FnvHashMap, FnvHashSet};
-use rafx_api::RafxResourceType;
-use rafx_framework::reflected_shader::ReflectedEntryPoint;
+use rafx_api::{RafxReflectedEntryPoint, RafxResourceType};
 use std::collections::BTreeMap;
 
 // Structs can be used in one of these three ways. The usage will determine the memory layout
@@ -41,20 +40,9 @@ pub(crate) fn generate_rust_code(
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
     user_types: &mut FnvHashMap<String, UserType>,
     parsed_declarations: &ParseDeclarationsResult,
-    shader_module: &spirv_reflect::ShaderModule,
-    reflected_entry_point: &ReflectedEntryPoint,
+    reflected_entry_point: &RafxReflectedEntryPoint,
     for_rafx_framework_crate: bool,
 ) -> Result<String, String> {
-    //
-    // Populate the user types map. Adding types in the map helps us detect duplicate type names
-    // and quickly mark what layouts need to be exported (std140 - uniforms vs. std430 - push
-    // constants/buffers)
-    //
-    // Structs and bindings can both declare new types, so gather data from both sources
-    //
-
-    verify_all_binding_layouts(&builtin_types, user_types, shader_module)?;
-
     //
     // Any struct that's explicitly exported will produce all layouts
     //
@@ -117,7 +105,7 @@ fn generate_rust_file(
     parsed_declarations: &ParseDeclarationsResult,
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
     user_types: &FnvHashMap<String, UserType>,
-    reflected_entry_point: &ReflectedEntryPoint,
+    reflected_entry_point: &RafxReflectedEntryPoint,
     for_rafx_framework_crate: bool,
 ) -> Result<String, String> {
     let mut rust_code = Vec::<String>::default();
@@ -265,7 +253,7 @@ fn rust_binding_wrappers(
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
     user_types: &FnvHashMap<String, UserType>,
     parsed_declarations: &ParseDeclarationsResult,
-    reflected_entry_point: &ReflectedEntryPoint,
+    reflected_entry_point: &RafxReflectedEntryPoint,
 ) -> Result<(), String> {
     let mut bindings_by_set =
         BTreeMap::<usize, BTreeMap<usize, &ParsedBindingWithAnnotations>>::default();
@@ -518,7 +506,7 @@ fn create_binding_wrapper_binding_item(
     binding_wrapper_struct_lifetimes: &mut Vec<String>,
     user_types: &FnvHashMap<String, UserType>,
     builtin_types: &FnvHashMap<String, TypeAlignmentInfo>,
-    reflected_entry_point: &ReflectedEntryPoint,
+    reflected_entry_point: &RafxReflectedEntryPoint,
     set_index: usize,
     binding_index: usize,
     binding: &ParsedBindingWithAnnotations,

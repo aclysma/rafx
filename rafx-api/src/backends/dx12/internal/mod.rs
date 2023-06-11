@@ -5,6 +5,7 @@ use windows::Win32::Graphics::Dxgi as dxgi;
 
 pub mod conversions;
 pub mod descriptor_heap;
+pub mod mipmap_resources;
 
 pub fn queue_type_to_command_list_type(
     queue_type: RafxQueueType
