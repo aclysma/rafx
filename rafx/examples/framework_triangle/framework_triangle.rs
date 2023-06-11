@@ -144,6 +144,7 @@ fn run() -> RafxResult<()> {
             &[&cooked_vertex_shader_stage, &cooked_fragment_shader_stage],
             &["main", "main"],
             fixed_function_state,
+            None,
         )?;
 
         // It's good practice to register materials with the render phase they will be used in. This
