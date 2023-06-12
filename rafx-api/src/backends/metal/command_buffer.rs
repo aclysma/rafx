@@ -1060,8 +1060,8 @@ impl RafxCommandBufferMetal {
                 / block_width_in_pixels;
 
         let device_info = self.queue.device_context().device_info();
-        let texture_alignment = device_info.upload_buffer_texture_alignment;
-        let row_alignment = device_info.upload_buffer_texture_row_alignment;
+        let texture_alignment = device_info.upload_texture_alignment;
+        let row_alignment = device_info.upload_texture_row_alignment;
 
         let source_bytes_per_row = rafx_base::memory::round_size_up_to_alignment_u32(
             texture_width_in_blocks * block_size_in_bytes,

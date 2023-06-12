@@ -81,15 +81,22 @@ impl GpuImageData {
 
     pub fn total_size(
         &self,
-        required_alignment: u64,
+        required_image_alignment: u32,
+        required_row_alignment: u32,
     ) -> u64 {
         let mut bytes_required = 0;
         for layer in &self.layers {
             for level in &layer.mip_levels {
+                // We may need to align to place the first row
+                bytes_required += required_image_alignment as u64;
+
+                // Determine size required for rows, factoring in required pitch per row. Don't
+                // count the first image
+                let row_size = level.data.len() as u64 / level.height as u64;
                 bytes_required += rafx_base::memory::round_size_up_to_alignment_u64(
-                    level.data.len() as u64,
-                    required_alignment as u64,
-                )
+                    row_size,
+                    required_row_alignment as u64,
+                ) * (level.height as u64 - 1);
             }
         }
 

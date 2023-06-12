@@ -24,7 +24,10 @@ impl ImageAssetTypeHandler {
             ResourceAssetLoader(load_queues.create_loader()),
         ));
 
-        let image_upload_queue = ImageAssetUploadQueue::new(asset_manager.upload_queue_context())?;
+        let image_upload_queue = ImageAssetUploadQueue::new(
+            asset_manager.upload_queue_context(),
+            asset_manager.device_context(),
+        )?;
 
         Ok(Box::new(Self {
             asset_lookup: AssetLookup::new(asset_resource.loader()),

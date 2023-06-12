@@ -92,6 +92,7 @@ pub struct RafxPipelineEmpty;
 impl RafxPipelineEmpty {
     pub fn pipeline_type(&self) -> RafxPipelineType { unimplemented!(); }
     pub fn root_signature(&self) -> &RafxRootSignature { unimplemented!(); }
+    pub fn set_debug_name(&self, name: impl AsRef<str>) { unimplemented!() }
 }
 
 //

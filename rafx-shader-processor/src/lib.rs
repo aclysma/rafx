@@ -30,6 +30,13 @@ mod reflect;
 
 mod shader_types;
 
+const PREPROCESSOR_DEF_PLATFORM_RUST_CODEGEN: &'static str = "PLATFORM_RUST_CODEGEN";
+const PREPROCESSOR_DEF_PLATFORM_DX12: &'static str = "PLATFORM_DX12";
+const PREPROCESSOR_DEF_PLATFORM_VULKAN: &'static str = "PLATFORM_VULKAN";
+const PREPROCESSOR_DEF_PLATFORM_METAL: &'static str = "PLATFORM_METAL";
+const PREPROCESSOR_DEF_PLATFORM_GLES2: &'static str = "PLATFORM_GLES2";
+const PREPROCESSOR_DEF_PLATFORM_GLES3: &'static str = "PLATFORM_GLES3";
+
 #[derive(Clone, Copy, Debug)]
 enum RsFileType {
     Lib,
@@ -333,25 +340,6 @@ fn process_directory(
     Ok(())
 }
 
-fn try_load_override_src(
-    original_path: &Path,
-    extension: &str,
-) -> std::io::Result<Option<String>> {
-    let mut override_path = original_path.as_os_str().to_os_string();
-    override_path.push(extension);
-    let override_path = PathBuf::from(override_path);
-    if override_path.exists() {
-        log::info!(
-            "  Override shader {:?} with {:?}",
-            original_path,
-            override_path.to_string_lossy()
-        );
-        Ok(Some(std::fs::read_to_string(override_path)?))
-    } else {
-        Ok(None)
-    }
-}
-
 fn process_glsl_shader(
     glsl_file: &Path,
     spv_file: Option<&PathBuf>,
@@ -428,7 +416,8 @@ fn process_glsl_shader(
     };
 
     let rust_code = if rs_file.is_some() {
-        let mut compile_result = compile_glsl(&compile_parameters, "PLATFORM_RUST_CODEGEN")?;
+        let mut compile_result =
+            compile_glsl(&compile_parameters, PREPROCESSOR_DEF_PLATFORM_RUST_CODEGEN)?;
 
         log::trace!("{:?}: generate rust code", glsl_file);
         let reflected_entry_point = compile_result
@@ -606,6 +595,33 @@ struct CompileResult {
     reflection_data: Option<ShaderProcessorRefectionData>,
 }
 
+fn try_load_override_src(
+    original_path: &Path,
+    extension: &str,
+) -> Result<Option<String>, Box<dyn Error>> {
+    let mut override_path = original_path.as_os_str().to_os_string();
+    override_path.push(extension);
+    let override_path = PathBuf::from(override_path);
+    if override_path.exists() {
+        log::info!(
+            "  Override shader {:?} with {:?}",
+            original_path,
+            override_path.to_string_lossy()
+        );
+
+        let override_src = std::fs::read_to_string(&override_path)?;
+
+        // We want to inline all the #includes because we are packaging the source for compilation
+        // on target hardware and it won't be able to #include dependencies.
+        let preprocessed_src =
+            parse_source::inline_includes_in_override_src(&override_path, &override_src)?;
+
+        Ok(Some(preprocessed_src))
+    } else {
+        Ok(None)
+    }
+}
+
 fn compile_glsl(
     parameters: &CompileParameters,
     platform_define: &str,
@@ -702,7 +718,7 @@ fn cross_compile_to_vulkan(
     args: &ShaderProcessorArgs,
 ) -> Result<CrossCompileOutputVulkan, Box<dyn Error>> {
     log::trace!("{:?}: create vulkan", glsl_file);
-    let compile_result = compile_glsl(compile_parameters, "PLATFORM_VULKAN")?;
+    let compile_result = compile_glsl(compile_parameters, PREPROCESSOR_DEF_PLATFORM_VULKAN)?;
 
     let vk_spv = if args.optimize_shaders {
         let mut compile_options = shaderc::CompileOptions::new().unwrap();
@@ -741,7 +757,7 @@ fn cross_compile_to_dx12(
     compile_parameters: &CompileParameters,
 ) -> Result<CrossCompileOutputDx12, Box<dyn Error>> {
     log::trace!("{:?}: create dx12", glsl_file);
-    let compile_result = compile_glsl(compile_parameters, "PLATFORM_DX12")?;
+    let compile_result = compile_glsl(compile_parameters, PREPROCESSOR_DEF_PLATFORM_DX12)?;
 
     let dx12_src = if let Some(src) = try_load_override_src(glsl_file, ".hlsl")? {
         src
@@ -799,7 +815,7 @@ fn cross_compile_to_metal(
     compile_parameters: &CompileParameters,
 ) -> Result<CrossCompileOutputMetal, Box<dyn Error>> {
     log::trace!("{:?}: create msl", glsl_file);
-    let compile_result = compile_glsl(compile_parameters, "PLATFORM_METAL")?;
+    let compile_result = compile_glsl(compile_parameters, PREPROCESSOR_DEF_PLATFORM_METAL)?;
 
     let metal_src = if let Some(src) = try_load_override_src(glsl_file, ".metal")? {
         src
@@ -851,7 +867,7 @@ fn cross_compile_to_gles3(
     compile_parameters: &CompileParameters,
 ) -> Result<CrossCompileOutputGles3, Box<dyn Error>> {
     log::trace!("{:?}: create gles3", glsl_file);
-    let mut compile_result = compile_glsl(compile_parameters, "PLATFORM_GLES3")?;
+    let mut compile_result = compile_glsl(compile_parameters, PREPROCESSOR_DEF_PLATFORM_GLES3)?;
 
     let gles3_src = if let Some(src) = try_load_override_src(glsl_file, ".gles3")? {
         src
@@ -896,7 +912,7 @@ fn cross_compile_to_gles2(
     compile_parameters: &CompileParameters,
 ) -> Result<CrossCompileOutputGles2, Box<dyn Error>> {
     log::trace!("{:?}: create gles2", glsl_file);
-    let mut compile_result = compile_glsl(compile_parameters, "PLATFORM_GLES2")?;
+    let mut compile_result = compile_glsl(compile_parameters, PREPROCESSOR_DEF_PLATFORM_GLES2)?;
 
     let gles2_src = if let Some(src) = try_load_override_src(glsl_file, ".gles2")? {
         src

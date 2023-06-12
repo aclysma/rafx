@@ -1,5 +1,8 @@
-use rafx::framework::{ComputePipelineResource, DescriptorSetBindings, ResourceArc};
+use rafx::framework::{
+    BufferResource, ComputePipelineResource, DescriptorSetBindings, ResourceArc,
+};
 use rafx::graph::*;
+use std::collections::HashSet;
 
 use super::ModernPipelineContext;
 use crate::features::mesh_adv::MeshAdvGpuOcclusionCullRenderResource;
@@ -177,18 +180,27 @@ pub(super) fn mesh_culling_pass(
                 occlusion_job.indirect_first_command_index
             );
             command_buffer.cmd_dispatch(1, group_count, 1)?;
+        }
 
-            // We need a manual barrier here because this resource is not managed by the render graph
-            command_buffer.cmd_resource_barrier(
-                &[RafxBufferBarrier {
-                    buffer: &*occlusion_job.indirect_commands.get_raw().buffer,
-                    src_state: RafxResourceState::UNORDERED_ACCESS,
-                    dst_state: RafxResourceState::INDIRECT_ARGUMENT,
-                    queue_transition: RafxBarrierQueueTransition::None,
-                    offset_size: None,
-                }],
-                &[],
-            )?;
+        {
+            let mut transitioned_buffers: HashSet<ResourceArc<BufferResource>> = HashSet::default();
+            for occlusion_job in &occlusion_jobs.data {
+                if !transitioned_buffers.contains(&occlusion_job.indirect_commands) {
+                    transitioned_buffers.insert(occlusion_job.indirect_commands.clone());
+
+                    // We need a manual barrier here because this resource is not managed by the render graph
+                    args.command_buffer.cmd_resource_barrier(
+                        &[RafxBufferBarrier {
+                            buffer: &*occlusion_job.indirect_commands.get_raw().buffer,
+                            src_state: RafxResourceState::UNORDERED_ACCESS,
+                            dst_state: RafxResourceState::INDIRECT_ARGUMENT,
+                            queue_transition: RafxBarrierQueueTransition::None,
+                            offset_size: None,
+                        }],
+                        &[],
+                    )?;
+                }
+            }
         }
 
         occlusion_jobs.data.clear();

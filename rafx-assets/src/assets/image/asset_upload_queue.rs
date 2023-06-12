@@ -7,8 +7,7 @@ use crate::{ImageAssetDataPayload, ImageAssetDataPayloadSubresources};
 #[cfg(feature = "basis-universal")]
 use basis_universal::{TranscodeParameters, TranscoderTextureFormat};
 use crossbeam_channel::{Receiver, Sender};
-use rafx_api::{RafxFormat, RafxResult, RafxTexture};
-use rafx_framework::upload::image_upload::IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT;
+use rafx_api::{RafxDeviceContext, RafxFormat, RafxResult, RafxTexture};
 use rafx_framework::upload::UploadQueueContext;
 use rafx_framework::upload::{
     GpuImageData, GpuImageDataColorSpace, GpuImageDataLayer, GpuImageDataMipLevel,
@@ -87,13 +86,20 @@ pub struct ImageAssetUploadQueue {
     pub image_upload_result_tx: Sender<ImageAssetUploadOpResult>,
     pub image_upload_result_rx: Receiver<ImageAssetUploadOpResult>,
 
+    pub upload_texture_alignment: u32,
+    pub upload_texture_row_alignment: u32,
+
     pub astc4x4_supported: bool,
     pub bc7_supported: bool,
 }
 
 impl ImageAssetUploadQueue {
-    pub fn new(upload_queue_context: UploadQueueContext) -> RafxResult<Self> {
+    pub fn new(
+        upload_queue_context: UploadQueueContext,
+        device_context: &RafxDeviceContext,
+    ) -> RafxResult<Self> {
         let (image_upload_result_tx, image_upload_result_rx) = crossbeam_channel::unbounded();
+        let device_info = device_context.device_info();
 
         Ok(ImageAssetUploadQueue {
             upload_queue_context,
@@ -101,6 +107,8 @@ impl ImageAssetUploadQueue {
             image_upload_result_tx,
             astc4x4_supported: false,
             bc7_supported: true,
+            upload_texture_alignment: device_info.upload_texture_alignment,
+            upload_texture_row_alignment: device_info.upload_texture_row_alignment,
         })
     }
 
@@ -262,7 +270,10 @@ impl ImageAssetUploadQueue {
             "GpuImageData layer count: {} format {:?} total bytes {} prepared in {}ms",
             image_data.layers.len(),
             image_data.format,
-            image_data.total_size(IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT),
+            image_data.total_size(
+                self.upload_texture_alignment,
+                self.upload_texture_row_alignment
+            ),
             (t1 - t0).as_secs_f64() * 1000.0
         );
         let op = Box::new(UploadAssetOp::new(
