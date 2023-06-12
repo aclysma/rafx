@@ -4,7 +4,8 @@ use distill::loader::LoadHandle;
 use fnv::{FnvBuildHasher, FnvHashMap, FnvHashSet};
 use fontdue::layout::{GlyphPosition, LayoutSettings, TextStyle};
 use rafx::api::{
-    RafxBufferDef, RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxTextureDef,
+    RafxApiType, RafxBufferDef, RafxExtents3D, RafxFormat, RafxResourceType, RafxResult,
+    RafxTextureDef,
 };
 use rafx::framework::{BufferResource, DynResourceAllocatorSet, ImageViewResource, ResourceArc};
 
@@ -283,11 +284,17 @@ impl FontAtlasCache {
                 .unwrap();
             let buffer = dyn_resource_allocator.insert_buffer(buffer);
 
-            let mip_count = rafx::api::extra::mipmaps::mip_level_max_count_for_image_size(
-                extents.width,
-                extents.height,
-            );
-            //let mip_count = 1;
+            //DX12TODO: Fix mipmap code to work with this
+            let mip_count = if dyn_resource_allocator.device_context.api_type() == RafxApiType::Dx12
+            {
+                1
+            } else {
+                rafx::api::extra::mipmaps::mip_level_max_count_for_image_size(
+                    extents.width,
+                    extents.height,
+                )
+            };
+
             let texture =
                 dyn_resource_allocator
                     .device_context

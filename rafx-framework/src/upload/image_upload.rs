@@ -1,8 +1,8 @@
 use crate::upload::gpu_image_data::GpuImageData;
 use rafx_api::extra::upload::{RafxTransferUpload, RafxUploadError};
 use rafx_api::{
-    RafxBarrierQueueTransition, RafxCmdCopyBufferToTextureParams, RafxDeviceContext, RafxExtents3D,
-    RafxQueue, RafxResourceState, RafxResourceType, RafxSampleCount, RafxTexture,
+    RafxApiType, RafxBarrierQueueTransition, RafxCmdCopyBufferToTextureParams, RafxDeviceContext,
+    RafxExtents3D, RafxQueue, RafxResourceState, RafxResourceType, RafxSampleCount, RafxTexture,
     RafxTextureBarrier, RafxTextureDef, RafxTextureDimensions,
 };
 
@@ -188,6 +188,9 @@ pub fn enqueue_load_image(
     );
 
     if params.generate_mips && mip_count > 1 {
+        //DX12TODO: Not supported yet
+        assert_ne!(device_context.api_type(), RafxApiType::Dx12);
+
         //
         // Transition the first mip range to COPY_SRC on graphics queue (release)
         //

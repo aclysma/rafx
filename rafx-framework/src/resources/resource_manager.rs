@@ -15,7 +15,7 @@ use crate::resources::dyn_resources::{
     DynResourceAllocatorSetManager, DynResourceAllocatorSetProvider,
 };
 use crate::resources::resource_lookup::ResourceLookupSet;
-use rafx_api::{RafxDeviceContext, RafxResult};
+use rafx_api::{RafxApiType, RafxDeviceContext, RafxResult};
 use std::sync::Arc;
 
 //TODO: Support descriptors that can be different per-view
@@ -100,6 +100,11 @@ impl ResourceManager {
         let builtin_pipelines =
             BuiltinPipelines::new(&resources).expect("Failed to load a built-in resource");
 
+        //DX12TODO: Disable resource reuse for DX12 for now
+        // vulkan lets us transition from COMMON but dx12 doesn't. The graph
+        // is trying to reuse an image from previous frame transitioning it from COMMON
+        let reuse_resources = device_context.api_type() != RafxApiType::Dx12;
+
         ResourceManager {
             render_registry: render_registry.clone(),
             dyn_command_pool_allocator: DynCommandPoolAllocator::new(MAX_FRAMES_IN_FLIGHT as u32),
@@ -108,7 +113,7 @@ impl ResourceManager {
                 MAX_FRAMES_IN_FLIGHT as u32,
             ),
             resources: resources.clone(),
-            render_graph_cache: RenderGraphCache::new(MAX_FRAMES_IN_FLIGHT as u32),
+            render_graph_cache: RenderGraphCache::new(MAX_FRAMES_IN_FLIGHT as u32, reuse_resources),
             descriptor_set_allocator: DescriptorSetAllocatorManager::new(device_context),
             graphics_pipeline_cache: GraphicsPipelineCache::new(render_registry, resources),
             builtin_pipelines: Some(builtin_pipelines),

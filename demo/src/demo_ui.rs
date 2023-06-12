@@ -92,8 +92,15 @@ impl RenderOptions {
     }
 
     pub fn default_3d() -> Self {
+        //DX12TODO: MSAA not supported by dx12 backend
+        #[cfg(all(feature = "rafx-dx12", feature = "basic-pipeline"))]
+        let anti_alias_method = AntiAliasMethod::None;
+
+        #[cfg(not(all(feature = "rafx-dx12", feature = "basic-pipeline")))]
+        let anti_alias_method = AntiAliasMethod::default();
+
         RenderOptions {
-            anti_alias_method: AntiAliasMethod::default(),
+            anti_alias_method,
             enable_hdr: true,
             #[cfg(not(feature = "basic-pipeline"))]
             enable_ssao: true,
