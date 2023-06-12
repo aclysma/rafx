@@ -1203,6 +1203,121 @@ pub(crate) fn parse_shader_source_text(
     Ok(())
 }
 
+pub fn inline_includes_in_override_src(
+    file_path: &Path,
+    content: &str,
+) -> Result<String, String> {
+    let first_file = FileToProcess {
+        path: file_path.to_path_buf(),
+        include_type: IncludeType::Relative,
+        requested_from: PathBuf::new(),
+        include_depth: 0,
+    };
+
+    let mut included_files = FnvHashSet::<PathBuf>::default();
+    included_files.insert(file_path.to_path_buf());
+
+    let code: Vec<char> = content.chars().collect();
+    let mut output_code = String::with_capacity(16384);
+    inline_includes_in_source(&first_file, &mut included_files, &code, &mut output_code)?;
+
+    Ok(output_code)
+}
+
+fn inline_includes_in_source_recursive(
+    file_to_process: &FileToProcess,
+    included_files: &mut FnvHashSet<PathBuf>,
+    output_code: &mut String,
+) -> Result<(), String> {
+    log::trace!("inline_includes_in_source_recursive {:?}", file_to_process);
+    let resolved_include = super::include_impl(
+        &file_to_process.path,
+        file_to_process.include_type,
+        &file_to_process.requested_from,
+        file_to_process.include_depth,
+    )?;
+
+    if included_files.contains(&resolved_include.resolved_path) {
+        return Ok(());
+    }
+
+    included_files.insert(resolved_include.resolved_path.clone());
+
+    let mut resolved_file_paths = file_to_process.clone();
+    resolved_file_paths.path = resolved_include.resolved_path;
+    let code: Vec<char> = resolved_include.content.chars().collect();
+    inline_includes_in_source(&resolved_file_paths, included_files, &code, output_code)
+}
+
+pub(crate) fn inline_includes_in_source(
+    file_to_process: &FileToProcess,
+    included_files: &mut FnvHashSet<PathBuf>,
+    code: &Vec<char>,
+    output_code: &mut String,
+) -> Result<(), String> {
+    let code = remove_line_continuations(&code);
+    let remove_comments_result = remove_comments(&code);
+
+    let code = remove_comments_result.without_comments;
+
+    let mut position = 0;
+
+    while position < code.len() {
+        if let Some(consume_directive_result) = try_consume_preprocessor_directive(&code, position)
+        {
+            // We echo everything to output_code unless this gets set to false
+            let mut passthrough = true;
+            match consume_directive_result.directive_name.as_str() {
+                "include" => {
+                    let directive = try_parse_include(&code, position);
+
+                    if let Some(directive) = directive {
+                        match directive.include_type {
+                            IncludeType::Relative => {
+                                let included_file = FileToProcess {
+                                    path: directive.path,
+                                    include_type: directive.include_type,
+                                    requested_from: file_to_process.path.clone(),
+                                    include_depth: file_to_process.include_depth + 1,
+                                };
+
+                                passthrough = false;
+                                output_code.push('\n');
+                                inline_includes_in_source_recursive(
+                                    &included_file,
+                                    included_files,
+                                    output_code,
+                                )?;
+                                output_code.push('\n');
+                            }
+                            IncludeType::Standard => {
+                                // Pass these through, this is mainly to handle #includes out to
+                                // MSL standard library
+                            }
+                        }
+                    }
+                }
+                _ => {} // do nothing for unrecognized
+            }
+
+            // If we didn't handle the preprocessor directive in a special way, just pass it through
+            // to the output
+            if passthrough {
+                for p in position..consume_directive_result.end_position {
+                    output_code.push(code[p]);
+                }
+            }
+
+            position = consume_directive_result.end_position;
+        } else {
+            output_code.push(code[position]);
+            position += 1;
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

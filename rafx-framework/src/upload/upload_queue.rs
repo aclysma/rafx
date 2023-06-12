@@ -195,12 +195,15 @@ impl PendingUpload {
         })
     }
 
-    fn required_bytes(&self) -> usize {
+    fn required_bytes(&self, device_context: &RafxDeviceContext) -> usize {
         match self {
-            PendingUpload::Image(image) => image
-                .image_data
-                .total_size(image_upload::IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT)
-                as usize,
+            PendingUpload::Image(image) => {
+                let device_info = device_context.device_info();
+                image
+                    .image_data
+                    .total_size(device_info.upload_texture_alignment, device_info.upload_texture_row_alignment)
+                    as usize
+            },
             PendingUpload::Buffer(buffer) => buffer.data.len(),
             PendingUpload::ExistingBuffer(buffer) => buffer.data.len(),
         }
@@ -472,7 +475,7 @@ impl UploadQueue {
         if let Some(next_upload) = &self.next_upload {
             log::error!(
                 "Resource of {} bytes has repeatedly exceeded the available room in the upload buffer. ({} of {} bytes free)",
-                next_upload.required_bytes(),
+                next_upload.required_bytes(&upload.dst_queue().device_context()),
                 upload.bytes_free(),
                 upload.buffer_size()
             );
@@ -490,7 +493,7 @@ impl UploadQueue {
             if let Some(next_upload) = &self.next_upload {
                 log::debug!(
                     "Resource of {} bytes exceeds the available room in the upload buffer. ({} of {} bytes free)",
-                    next_upload.required_bytes(),
+                    next_upload.required_bytes(&upload.dst_queue().device_context()),
                     upload.bytes_free(),
                     upload.buffer_size(),
                 );

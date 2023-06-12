@@ -59,8 +59,8 @@ pub struct RafxDeviceInfo {
     pub debug_names_enabled: bool,
     pub min_uniform_buffer_offset_alignment: u32,
     pub min_storage_buffer_offset_alignment: u32,
-    pub upload_buffer_texture_alignment: u32,
-    pub upload_buffer_texture_row_alignment: u32,
+    pub upload_texture_alignment: u32,
+    pub upload_texture_row_alignment: u32,
 
     // Requires iOS 14.0, macOS 10.12
     pub supports_clamp_to_border_color: bool,

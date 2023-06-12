@@ -6,9 +6,6 @@ use rafx_api::{
     RafxTextureBarrier, RafxTextureDef, RafxTextureDimensions,
 };
 
-// Arbitrary, not sure if there is any real requirement
-pub const IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT: u64 = 16;
-
 pub struct ImageUploadParams<'a> {
     pub resource_type: RafxResourceType,
     pub generate_mips: bool,
@@ -41,11 +38,17 @@ pub fn enqueue_load_image(
     //
     // Determine the total amount of data we need to upload and verify there is enough space
     //
-    let bytes_required = image_data.total_size(IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT as u64);
+    let bytes_required = image_data.total_size(
+        device_context.device_info().upload_texture_alignment,
+        device_context
+            .device_info()
+            .upload_texture_row_alignment,
+    );
+
 
     let has_space_available = upload.has_space_available(
         bytes_required as usize,
-        IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT as usize,
+        device_context.device_info().upload_texture_alignment as usize,
         1,
     );
 
@@ -73,11 +76,37 @@ pub fn enqueue_load_image(
     for layer in &image_data.layers {
         let mut level_offsets = Vec::default();
         for level in &layer.mip_levels {
-            let offset = upload.push(
-                &level.data,
-                IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT as usize,
-            )?;
-            level_offsets.push(offset);
+            let level_block_width = rafx_base::memory::round_size_up_to_alignment_u32(
+                level.width,
+                image_data.format.block_width_in_pixels(),
+            ) / image_data.format.block_width_in_pixels();
+            let level_block_height = rafx_base::memory::round_size_up_to_alignment_u32(
+                level.height,
+                image_data.format.block_height_in_pixels(),
+            ) / image_data.format.block_height_in_pixels();
+
+            // A block format's row may be multiple pixels high
+            let row_size_in_bytes =
+                level_block_width * image_data.format.block_or_pixel_size_in_bytes();
+            for row_index in 0..level_block_height {
+                let alignment = if row_index == 0 {
+                    device_context.device_info().upload_texture_alignment
+                } else {
+                    device_context
+                        .device_info()
+                        .upload_texture_row_alignment
+                };
+
+                let offset = upload.push(
+                    &level.data[((row_size_in_bytes * row_index) as usize)
+                        ..((row_size_in_bytes * (row_index + 1)) as usize)],
+                    alignment as usize,
+                )?;
+
+                if row_index == 0 {
+                    level_offsets.push(offset);
+                }
+            }
         }
         layer_offsets.push(level_offsets);
     }
@@ -255,7 +284,12 @@ pub fn load_image_blocking(
     image_data: &GpuImageData,
     params: ImageUploadParams,
 ) -> Result<RafxTexture, RafxUploadError> {
-    let total_size = image_data.total_size(IMAGE_UPLOAD_REQUIRED_SUBRESOURCE_ALIGNMENT);
+    let total_size = image_data.total_size(
+        device_context.device_info().upload_texture_alignment,
+        device_context
+            .device_info()
+            .upload_texture_row_alignment,
+    );
     if upload_buffer_max_size < total_size {
         Err(RafxUploadError::BufferFull)?;
     }

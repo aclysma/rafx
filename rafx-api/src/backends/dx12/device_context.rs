@@ -291,8 +291,8 @@ impl RafxDeviceContextDx12Inner {
                 d3d12::D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT,
             // based on one of the loosest vulkan limits (intel iGPU), can't find official value
             min_storage_buffer_offset_alignment: 64,
-            upload_buffer_texture_alignment: d3d12::D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT,
-            upload_buffer_texture_row_alignment: d3d12::D3D12_TEXTURE_DATA_PITCH_ALIGNMENT,
+            upload_texture_alignment: d3d12::D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT,
+            upload_texture_row_alignment: d3d12::D3D12_TEXTURE_DATA_PITCH_ALIGNMENT,
             supports_clamp_to_border_color: true,
             max_vertex_attribute_count: 31,
         };

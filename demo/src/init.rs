@@ -26,6 +26,9 @@ use std::sync::Arc;
 #[cfg(feature = "rafx-metal")]
 use rafx::api::metal::RafxApiDefMetal;
 
+#[cfg(feature = "rafx-dx12")]
+use rafx::api::dx12::RafxApiDefDx12;
+
 #[cfg(feature = "rafx-vulkan")]
 use rafx::api::vulkan::RafxApiDefVulkan;
 
@@ -87,6 +90,16 @@ pub fn rendering_init(
 
     #[allow(unused_mut)]
     let mut api_def = RafxApiDef::default();
+
+    #[cfg(feature = "rafx-dx12")]
+    {
+        let mut options = RafxApiDefDx12::default();
+        options.validation_mode = rafx::api::RafxValidationMode::Enabled;
+        options.use_warp_device = false;
+        options.enable_debug_names = true;
+        options.enable_gpu_based_validation = false;
+        api_def.dx12_options = Some(options);
+    }
 
     // Turn on debug names for the demo
     #[cfg(feature = "rafx-metal")]

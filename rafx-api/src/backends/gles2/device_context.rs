@@ -83,8 +83,8 @@ impl RafxDeviceContextGles2Inner {
             debug_names_enabled: false,
             min_uniform_buffer_offset_alignment: pack_alignment,
             min_storage_buffer_offset_alignment: pack_alignment,
-            upload_buffer_texture_alignment: pack_alignment,
-            upload_buffer_texture_row_alignment: pack_alignment,
+            upload_texture_alignment: pack_alignment,
+            upload_texture_row_alignment: pack_alignment,
             supports_clamp_to_border_color: false, // requires GLES 3.2 or an extension
             max_vertex_attribute_count,
         };

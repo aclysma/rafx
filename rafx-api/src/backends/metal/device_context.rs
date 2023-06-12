@@ -55,8 +55,8 @@ impl RafxDeviceContextMetalInner {
             min_uniform_buffer_offset_alignment: 256,
             // based on one of the loosest vulkan limits (intel iGPU), can't find official value
             min_storage_buffer_offset_alignment: 64,
-            upload_buffer_texture_alignment: 16,
-            upload_buffer_texture_row_alignment: 1,
+            upload_texture_alignment: 16,
+            upload_texture_row_alignment: 1,
             supports_clamp_to_border_color: true, //TODO: Check for iOS support
             max_vertex_attribute_count: 31,
         };

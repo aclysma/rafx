@@ -176,8 +176,8 @@ impl RafxDeviceContextVulkanInner {
             debug_names_enabled,
             min_uniform_buffer_offset_alignment: limits.min_uniform_buffer_offset_alignment as u32,
             min_storage_buffer_offset_alignment: limits.min_storage_buffer_offset_alignment as u32,
-            upload_buffer_texture_alignment: limits.optimal_buffer_copy_offset_alignment as u32,
-            upload_buffer_texture_row_alignment: limits.optimal_buffer_copy_row_pitch_alignment
+            upload_texture_alignment: limits.optimal_buffer_copy_offset_alignment as u32,
+            upload_texture_row_alignment: limits.optimal_buffer_copy_row_pitch_alignment
                 as u32,
             supports_clamp_to_border_color: true,
             max_vertex_attribute_count: limits.max_vertex_input_attributes,

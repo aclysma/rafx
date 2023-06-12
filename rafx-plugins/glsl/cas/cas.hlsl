@@ -17,25 +17,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// @[export]
-// @[internal_buffer]
-layout(set=0,binding=0) uniform Config
+cbuffer Config : register(b0, space0)
 {
-    //uvec4 const0;
-    //uvec4 const1;
-    uint image_width;
-    uint image_height;
-    float sharpen_amount;
-} config;
+    uint config_image_width : packoffset(c0);
+    uint config_image_height : packoffset(c0.y);
+    float config_sharpen_amount : packoffset(c0.z);
+};
 
-// @[export]
-layout(set=0,binding=1,rgba16) uniform image2D img_src;
+RWTexture2D<unorm float4> img_src : register(u1, space0);
+RWTexture2D<unorm float4> img_dst : register(u2, space0);
 
-// @[export]
-layout(set=0,binding=2,rgba16) uniform image2D img_dst;
+
+
+
+
+
+
 
 #define A_GPU 1
-#define A_GLSL 1
+#define A_HLSL 1
 
 #if CAS_SAMPLE_FP16
 
@@ -50,7 +50,7 @@ layout(set=0,binding=2,rgba16) uniform image2D img_dst;
 
 AH3 CasLoadH(ASW2 p)
 {
-    return AH3(imageLoad(img_src,ASU2(p)).rgb);
+    return img_src.Load(ASU3(p, 0)).rgb;
 }
 
 // Lets you transform input from the load into a linear color space between 0 and 1. See ffx_cas.h
@@ -61,7 +61,7 @@ void CasInputH(inout AH2 r, inout AH2 g, inout AH2 b) {}
 
 AF3 CasLoad(ASU2 p)
 {
-    return imageLoad(img_src,p).rgb;
+    return img_src.Load(int3(p, 0)).rgb;
 }
 
 // Lets you transform input from the load into a linear color space between 0 and 1. See ffx_cas.h
@@ -72,15 +72,15 @@ void CasInput(inout AF1 r, inout AF1 g, inout AF1 b) {}
 
 #include "ffx_cas.h"
 
-layout(local_size_x=64) in;
-void main()
+[numthreads(64, 1, 1)]
+void main(uint3 LocalThreadId : SV_GroupThreadID, uint3 WorkGroupId : SV_GroupID)
 {
-    uvec4 const0;
-    uvec4 const1;
-    CasSetup(const0, const1, config.sharpen_amount, config.image_width, config.image_width, config.image_width, config.image_width);
+    AU4 const0;
+    AU4 const1;
+    CasSetup(const0, const1, config_sharpen_amount, config_image_width, config_image_width, config_image_width, config_image_width);
 
     // Do remapping of local xy in workgroup for a more PS-like swizzle pattern.
-    AU2 gxy = ARmp8x8(gl_LocalInvocationID.x)+AU2(gl_WorkGroupID.x<<4u,gl_WorkGroupID.y<<4u);
+    AU2 gxy = ARmp8x8(LocalThreadId.x) + AU2(WorkGroupId.x << 4u, WorkGroupId.y << 4u);
     bool sharpenOnly = true;
 
 #if CAS_SAMPLE_FP16
@@ -91,33 +91,33 @@ void main()
 
     CasFilterH(cR, cG, cB, gxy, const0, const1, sharpenOnly);
     CasDepack(c0, c1, cR, cG, cB);
-    imageStore(img_dst, ASU2(gxy), AF4(c0));
-    imageStore(img_dst, ASU2(gxy)+ASU2(8,0), AF4(c1));
+    img_dst[ASU2(gxy)] = AF4(c0);
+    img_dst[ASU2(gxy) + ASU2(8, 0)] = AF4(c1);
     gxy.y += 8u;
 
     CasFilterH(cR, cG, cB, gxy, const0, const1, sharpenOnly);
     CasDepack(c0, c1, cR, cG, cB);
-    imageStore(img_dst, ASU2(gxy), AF4(c0));
-    imageStore(img_dst, ASU2(gxy)+ASU2(8,0), AF4(c1));
+    img_dst[ASU2(gxy)] = AF4(c0);
+    img_dst[ASU2(gxy) + ASU2(8, 0)] = AF4(c1);
 
 #else
 
     // Filter.
-    AF4 c;
+    AF3 c;
     CasFilter(c.r, c.g, c.b, gxy, const0, const1, sharpenOnly);
-    imageStore(img_dst, ASU2(gxy), c);
+    img_dst[ASU2(gxy)] = AF4(c, 1);
     gxy.x += 8u;
 
     CasFilter(c.r, c.g, c.b, gxy, const0, const1, sharpenOnly);
-    imageStore(img_dst, ASU2(gxy), c);
+    img_dst[ASU2(gxy)] = AF4(c, 1);
     gxy.y += 8u;
 
     CasFilter(c.r, c.g, c.b, gxy, const0, const1, sharpenOnly);
-    imageStore(img_dst, ASU2(gxy), c);
+    img_dst[ASU2(gxy)] = AF4(c, 1);
     gxy.x -= 8u;
 
     CasFilter(c.r, c.g, c.b, gxy, const0, const1, sharpenOnly);
-    imageStore(img_dst, ASU2(gxy), c);
+    img_dst[ASU2(gxy)] = AF4(c, 1);
 
 #endif
 }
