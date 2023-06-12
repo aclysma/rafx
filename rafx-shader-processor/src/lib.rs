@@ -596,10 +596,8 @@ struct CompileResult {
 }
 
 fn try_load_override_src(
-    parameters: &CompileParameters,
     original_path: &Path,
     extension: &str,
-    platform_define: &str,
 ) -> Result<Option<String>, Box<dyn Error>> {
     let mut override_path = original_path.as_os_str().to_os_string();
     override_path.push(extension);
@@ -761,12 +759,7 @@ fn cross_compile_to_dx12(
     log::trace!("{:?}: create dx12", glsl_file);
     let compile_result = compile_glsl(compile_parameters, PREPROCESSOR_DEF_PLATFORM_DX12)?;
 
-    let dx12_src = if let Some(src) = try_load_override_src(
-        compile_parameters,
-        glsl_file,
-        ".hlsl",
-        PREPROCESSOR_DEF_PLATFORM_DX12,
-    )? {
+    let dx12_src = if let Some(src) = try_load_override_src(glsl_file, ".hlsl")? {
         src
     } else {
         let spirv_cross_module =
@@ -824,12 +817,7 @@ fn cross_compile_to_metal(
     log::trace!("{:?}: create msl", glsl_file);
     let compile_result = compile_glsl(compile_parameters, PREPROCESSOR_DEF_PLATFORM_METAL)?;
 
-    let metal_src = if let Some(src) = try_load_override_src(
-        compile_parameters,
-        glsl_file,
-        ".metal",
-        PREPROCESSOR_DEF_PLATFORM_METAL,
-    )? {
+    let metal_src = if let Some(src) = try_load_override_src(glsl_file, ".metal")? {
         src
     } else {
         let spirv_cross_module =
@@ -881,12 +869,7 @@ fn cross_compile_to_gles3(
     log::trace!("{:?}: create gles3", glsl_file);
     let mut compile_result = compile_glsl(compile_parameters, PREPROCESSOR_DEF_PLATFORM_GLES3)?;
 
-    let gles3_src = if let Some(src) = try_load_override_src(
-        compile_parameters,
-        glsl_file,
-        ".gles3",
-        PREPROCESSOR_DEF_PLATFORM_GLES3,
-    )? {
+    let gles3_src = if let Some(src) = try_load_override_src(glsl_file, ".gles3")? {
         src
     } else {
         let spirv_cross_module =
@@ -931,12 +914,7 @@ fn cross_compile_to_gles2(
     log::trace!("{:?}: create gles2", glsl_file);
     let mut compile_result = compile_glsl(compile_parameters, PREPROCESSOR_DEF_PLATFORM_GLES2)?;
 
-    let gles2_src = if let Some(src) = try_load_override_src(
-        compile_parameters,
-        glsl_file,
-        ".gles2",
-        PREPROCESSOR_DEF_PLATFORM_GLES2,
-    )? {
+    let gles2_src = if let Some(src) = try_load_override_src(glsl_file, ".gles2")? {
         src
     } else {
         let spirv_cross_module =
