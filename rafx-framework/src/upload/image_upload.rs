@@ -40,11 +40,8 @@ pub fn enqueue_load_image(
     //
     let bytes_required = image_data.total_size(
         device_context.device_info().upload_texture_alignment,
-        device_context
-            .device_info()
-            .upload_texture_row_alignment,
+        device_context.device_info().upload_texture_row_alignment,
     );
-
 
     let has_space_available = upload.has_space_available(
         bytes_required as usize,
@@ -92,9 +89,7 @@ pub fn enqueue_load_image(
                 let alignment = if row_index == 0 {
                     device_context.device_info().upload_texture_alignment
                 } else {
-                    device_context
-                        .device_info()
-                        .upload_texture_row_alignment
+                    device_context.device_info().upload_texture_row_alignment
                 };
 
                 let offset = upload.push(
@@ -286,9 +281,7 @@ pub fn load_image_blocking(
 ) -> Result<RafxTexture, RafxUploadError> {
     let total_size = image_data.total_size(
         device_context.device_info().upload_texture_alignment,
-        device_context
-            .device_info()
-            .upload_texture_row_alignment,
+        device_context.device_info().upload_texture_row_alignment,
     );
     if upload_buffer_max_size < total_size {
         Err(RafxUploadError::BufferFull)?;

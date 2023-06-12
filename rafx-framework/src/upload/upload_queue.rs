@@ -195,15 +195,18 @@ impl PendingUpload {
         })
     }
 
-    fn required_bytes(&self, device_context: &RafxDeviceContext) -> usize {
+    fn required_bytes(
+        &self,
+        device_context: &RafxDeviceContext,
+    ) -> usize {
         match self {
             PendingUpload::Image(image) => {
                 let device_info = device_context.device_info();
-                image
-                    .image_data
-                    .total_size(device_info.upload_texture_alignment, device_info.upload_texture_row_alignment)
-                    as usize
-            },
+                image.image_data.total_size(
+                    device_info.upload_texture_alignment,
+                    device_info.upload_texture_row_alignment,
+                ) as usize
+            }
             PendingUpload::Buffer(buffer) => buffer.data.len(),
             PendingUpload::ExistingBuffer(buffer) => buffer.data.len(),
         }

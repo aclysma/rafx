@@ -94,7 +94,10 @@ pub struct ImageAssetUploadQueue {
 }
 
 impl ImageAssetUploadQueue {
-    pub fn new(upload_queue_context: UploadQueueContext, device_context: &RafxDeviceContext) -> RafxResult<Self> {
+    pub fn new(
+        upload_queue_context: UploadQueueContext,
+        device_context: &RafxDeviceContext,
+    ) -> RafxResult<Self> {
         let (image_upload_result_tx, image_upload_result_rx) = crossbeam_channel::unbounded();
         let device_info = device_context.device_info();
 
@@ -263,12 +266,14 @@ impl ImageAssetUploadQueue {
         #[cfg(debug_assertions)]
         image_data.verify_state();
 
-
         log::debug!(
             "GpuImageData layer count: {} format {:?} total bytes {} prepared in {}ms",
             image_data.layers.len(),
             image_data.format,
-            image_data.total_size(self.upload_texture_alignment, self.upload_texture_row_alignment),
+            image_data.total_size(
+                self.upload_texture_alignment,
+                self.upload_texture_row_alignment
+            ),
             (t1 - t0).as_secs_f64() * 1000.0
         );
         let op = Box::new(UploadAssetOp::new(
