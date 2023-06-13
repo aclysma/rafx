@@ -86,6 +86,10 @@ pub struct ImageAssetUploadQueue {
     pub image_upload_result_tx: Sender<ImageAssetUploadOpResult>,
     pub image_upload_result_rx: Receiver<ImageAssetUploadOpResult>,
 
+    //DX12TODO: Temporary, disable mips on dx12 because it requries a compute shader and our
+    // barriers aren't properly set up for that yet
+    pub allow_generate_mips: bool,
+
     pub upload_texture_alignment: u32,
     pub upload_texture_row_alignment: u32,
 
@@ -105,6 +109,7 @@ impl ImageAssetUploadQueue {
             upload_queue_context,
             image_upload_result_rx,
             image_upload_result_tx,
+            allow_generate_mips: !device_context.is_dx12(),
             astc4x4_supported: false,
             bc7_supported: true,
             upload_texture_alignment: device_info.upload_texture_alignment,
@@ -141,7 +146,7 @@ impl ImageAssetUploadQueue {
         &self,
         request: LoadRequest<ImageAssetData, ImageAsset>,
     ) -> RafxResult<()> {
-        let generate_mips = request.asset.generate_mips_at_runtime;
+        let generate_mips = self.allow_generate_mips && request.asset.generate_mips_at_runtime;
 
         let t0 = rafx_base::Instant::now();
         let image_data = match request.asset.data {

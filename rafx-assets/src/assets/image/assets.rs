@@ -190,12 +190,6 @@ impl ImageAssetData {
     ) -> RafxResult<ImageAssetData> {
         match format_config {
             ImageAssetDataFormatConfig::Uncompressed => {
-                //DX12TODO: There's a problem with the mipmap generation on DX12, likely the state of the
-                // image being COPY_SRC instead of NON_PIXEL_SHADER_RESOURCE
-                #[cfg(feature = "rafx-dx12")]
-                let generate_mips_at_runtime = false;
-
-                #[cfg(not(feature = "rafx-dx12"))]
                 let generate_mips_at_runtime = match mip_generation {
                     ImageAssetMipGeneration::NoMips => false,
                     ImageAssetMipGeneration::Precomupted => Err(

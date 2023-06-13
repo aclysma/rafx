@@ -103,7 +103,7 @@ impl ResourceManager {
         //DX12TODO: Disable resource reuse for DX12 for now
         // vulkan lets us transition from COMMON but dx12 doesn't. The graph
         // is trying to reuse an image from previous frame transitioning it from COMMON
-        let reuse_resources = device_context.api_type() != RafxApiType::Dx12;
+        let reuse_resources = !device_context.is_dx12();
 
         ResourceManager {
             render_registry: render_registry.clone(),

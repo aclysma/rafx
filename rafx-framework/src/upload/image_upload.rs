@@ -189,7 +189,7 @@ pub fn enqueue_load_image(
 
     if params.generate_mips && mip_count > 1 {
         //DX12TODO: Not supported yet
-        assert_ne!(device_context.api_type(), RafxApiType::Dx12);
+        assert!(!device_context.is_dx12());
 
         //
         // Transition the first mip range to COPY_SRC on graphics queue (release)

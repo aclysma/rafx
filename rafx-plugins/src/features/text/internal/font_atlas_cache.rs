@@ -285,8 +285,7 @@ impl FontAtlasCache {
             let buffer = dyn_resource_allocator.insert_buffer(buffer);
 
             //DX12TODO: Fix mipmap code to work with this
-            let mip_count = if dyn_resource_allocator.device_context.api_type() == RafxApiType::Dx12
-            {
+            let mip_count = if dyn_resource_allocator.device_context.is_dx12() {
                 1
             } else {
                 rafx::api::extra::mipmaps::mip_level_max_count_for_image_size(
