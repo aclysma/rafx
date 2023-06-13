@@ -15,7 +15,7 @@ use crate::resources::dyn_resources::{
     DynResourceAllocatorSetManager, DynResourceAllocatorSetProvider,
 };
 use crate::resources::resource_lookup::ResourceLookupSet;
-use rafx_api::{RafxApiType, RafxDeviceContext, RafxResult};
+use rafx_api::{RafxDeviceContext, RafxResult};
 use std::sync::Arc;
 
 //TODO: Support descriptors that can be different per-view

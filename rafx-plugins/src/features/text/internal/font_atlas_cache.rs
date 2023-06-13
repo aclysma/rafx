@@ -4,8 +4,7 @@ use distill::loader::LoadHandle;
 use fnv::{FnvBuildHasher, FnvHashMap, FnvHashSet};
 use fontdue::layout::{GlyphPosition, LayoutSettings, TextStyle};
 use rafx::api::{
-    RafxApiType, RafxBufferDef, RafxExtents3D, RafxFormat, RafxResourceType, RafxResult,
-    RafxTextureDef,
+    RafxBufferDef, RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxTextureDef,
 };
 use rafx::framework::{BufferResource, DynResourceAllocatorSet, ImageViewResource, ResourceArc};
 
