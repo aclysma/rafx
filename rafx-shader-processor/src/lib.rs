@@ -770,6 +770,7 @@ fn cross_compile_to_dx12(
         let mut spirv_cross_hlsl_options = spirv_cross::hlsl::CompilerOptions::default();
         spirv_cross_hlsl_options.shader_model = spirv_cross::hlsl::ShaderModel::V6_0;
         spirv_cross_hlsl_options.flatten_matrix_vertex_input_semantics = true;
+        //DX12TODO: We want something more fine-grained than this
         spirv_cross_hlsl_options.force_storage_buffer_as_uav = true;
 
         for assignment in &compile_result

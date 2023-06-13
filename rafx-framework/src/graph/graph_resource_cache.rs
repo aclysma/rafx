@@ -38,12 +38,21 @@ pub struct RenderGraphCacheInner {
 }
 
 impl RenderGraphCacheInner {
-    pub fn new(max_frames_in_flight: u32) -> Self {
+    pub fn new(
+        max_frames_in_flight: u32,
+        reuse_resources: bool,
+    ) -> Self {
+        let frames_to_persist = if reuse_resources {
+            (max_frames_in_flight + 1) as u64
+        } else {
+            0
+        };
+
         RenderGraphCacheInner {
             buffers: Default::default(),
             images: Default::default(),
             current_frame_index: 0,
-            frames_to_persist: max_frames_in_flight as u64 + 1,
+            frames_to_persist,
         }
     }
 
@@ -316,8 +325,11 @@ pub struct RenderGraphCache {
 }
 
 impl RenderGraphCache {
-    pub fn new(max_frames_in_flight: u32) -> Self {
-        let inner = RenderGraphCacheInner::new(max_frames_in_flight);
+    pub fn new(
+        max_frames_in_flight: u32,
+        reuse_resources: bool,
+    ) -> Self {
+        let inner = RenderGraphCacheInner::new(max_frames_in_flight, reuse_resources);
         RenderGraphCache {
             inner: Arc::new(Mutex::new(inner)),
         }

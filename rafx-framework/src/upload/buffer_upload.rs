@@ -35,7 +35,7 @@ pub fn enqueue_load_buffer(
         new_buffer = Some(device_context.create_buffer(&RafxBufferDef {
             size,
             memory_usage: RafxMemoryUsage::GpuOnly,
-            queue_type: upload.dst_queue().queue_type(),
+            queue_type: upload.transfer_queue().queue_type(),
             resource_type,
             ..Default::default()
         })?);

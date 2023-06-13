@@ -297,7 +297,7 @@ impl DemoApp {
                 "Use Left/Right arrow keys to switch demos".to_string(),
                 glam::Vec3::new(100.0, 400.0, 0.0),
                 &self.font,
-                25.0,
+                20.0,
                 glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
             );
         }

@@ -218,9 +218,12 @@ impl RafxBufferDx12 {
             desc.Width = padded_size;
         }
 
-        //let mut start_state = RafxResourceState::SHADER_RESOURCE;
-
         let start_state = if buffer_def.queue_type == RafxQueueType::Transfer {
+            //DX12 Docs:
+            // The COPY flags (COPY_DEST and COPY_SOURCE) used as initial states represent states in
+            // the 3D/Compute type class. To use a resource initially on a Copy queue it should
+            // start in the COMMON state. The COMMON state can be used for all usages on a Copy
+            // queue using the implicit state transitions.
             RafxResourceState::COMMON
         } else {
             match buffer_def.memory_usage {
