@@ -43,9 +43,18 @@ pub(super) fn lights_bin_pass(context: &mut ModernPipelineContext) -> LightBinPa
         .frustum_bounds_gpu_buffer()
         .clone()
         .unwrap();
+
+    // DX12TODO: Hack to handle different resource types for dx12/other backends. Need to find a
+    // better solution than this later.
+    let initial_state = if context.asset_manager.device_context().is_dx12() {
+        RafxResourceState::GENERIC_READ
+    } else {
+        RafxResourceState::SHADER_RESOURCE
+    };
+
     let clusters_buffer = context.graph.add_external_buffer(
         clusters_buffer,
-        RafxResourceState::SHADER_RESOURCE,
+        initial_state,
         RafxResourceState::SHADER_RESOURCE,
     );
     let clusters_buffer = context.graph.read_external_buffer(clusters_buffer);
@@ -58,7 +67,7 @@ pub(super) fn lights_bin_pass(context: &mut ModernPipelineContext) -> LightBinPa
         .clone();
     let lights_buffer = context.graph.add_external_buffer(
         lights_buffer,
-        RafxResourceState::SHADER_RESOURCE,
+        initial_state,
         RafxResourceState::SHADER_RESOURCE,
     );
     let lights_buffer = context.graph.read_external_buffer(lights_buffer);
@@ -83,7 +92,7 @@ pub(super) fn lights_bin_pass(context: &mut ModernPipelineContext) -> LightBinPa
             size: Some(std::mem::size_of::<lights_bin_comp::LightBitfieldsBuffer>() as u64),
             ..Default::default()
         },
-        RafxLoadOp::Clear,
+        RafxLoadOp::Clear, // Requires clear because we atomic add counts
     );
 
     context.graph.set_callback(node, move |args| {
@@ -167,13 +176,21 @@ pub(super) fn lights_build_lists_pass(
         Default::default(),
     );
 
+    // DX12TODO: Hack to handle different resource types for dx12/other backends. Need to find a
+    // better solution than this later.
+    let initial_state = if context.asset_manager.device_context().is_dx12() {
+        RafxResourceState::COPY_DST
+    } else {
+        RafxResourceState::SHADER_RESOURCE
+    };
+
     // OUTPUT
     let output_buffer = light_bin_render_resource
         .output_gpu_buffer(context.main_view.frame_index())
         .clone();
     let output_buffer = context.graph.add_external_buffer(
         output_buffer,
-        RafxResourceState::SHADER_RESOURCE,
+        initial_state,
         RafxResourceState::SHADER_RESOURCE,
     );
     let output_buffer = context.graph.read_external_buffer(output_buffer);
@@ -181,7 +198,7 @@ pub(super) fn lights_build_lists_pass(
         node,
         output_buffer,
         Default::default(),
-        RafxLoadOp::Clear,
+        RafxLoadOp::Clear, // Clear necessary for data_write_ptr to be zero'd
     );
 
     context.graph.set_callback(node, move |args| {

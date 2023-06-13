@@ -2544,7 +2544,8 @@ fn build_pass_barriers(
     impl Default for BufferState {
         fn default() -> Self {
             BufferState {
-                resource_state: RafxResourceState::UNDEFINED,
+                //DX12TODO: This was UNDEFINED but DX12 seems to need it to be COPY_DST?
+                resource_state: RafxResourceState::COPY_DST,
             }
         }
     }

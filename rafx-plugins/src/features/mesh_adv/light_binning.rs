@@ -227,7 +227,8 @@ impl MeshAdvLightBinRenderResource {
                 alignment: 256,
                 memory_usage: RafxMemoryUsage::CpuToGpu,
                 queue_type: RafxQueueType::Graphics,
-                resource_type: RafxResourceType::BUFFER,
+                //DX12TODO: Does not need to be BUFFER_READ_WRITE for other backends
+                resource_type: RafxResourceType::BUFFER_READ_WRITE, //TODO: RW for dx12 because we forced storage buffers to be uav
                 ..Default::default()
             })?;
             buffer.set_debug_name("Light Binning Lights Input List");
@@ -309,7 +310,8 @@ impl MeshAdvLightBinRenderResource {
                         alignment: 256,
                         memory_usage: RafxMemoryUsage::CpuToGpu,
                         queue_type: RafxQueueType::Graphics,
-                        resource_type: RafxResourceType::BUFFER,
+                        //DX12TODO: Does not need to be BUFFER_READ_WRITE for other backends
+                        resource_type: RafxResourceType::BUFFER_READ_WRITE, //TODO: RW for dx12 because we forced storage buffers to be uav
                         ..Default::default()
                     })?;
             frustum_bounds_gpu_buffer.set_debug_name("Light Binning Config");

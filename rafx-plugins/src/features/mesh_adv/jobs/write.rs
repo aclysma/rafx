@@ -6,7 +6,6 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
     WireframeRenderPhase,
 };
-
 use rafx::api::{RafxIndexBufferBinding, RafxVertexAttributeRate, RafxVertexBufferBinding};
 use rafx::api::{RafxIndexedIndirectCommandSignature, RafxPrimitiveTopology};
 use rafx::framework::{VertexDataLayout, VertexDataSetLayout};

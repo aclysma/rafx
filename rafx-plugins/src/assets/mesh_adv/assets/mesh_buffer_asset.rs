@@ -94,7 +94,7 @@ impl MeshAdvBufferAssetTypeHandler {
                 size: VERTEX_BUFFER_SIZE as u64,
                 alignment: BUFFER_ALIGNMENT,
                 memory_usage: RafxMemoryUsage::GpuOnly,
-                queue_type: RafxQueueType::Graphics,
+                queue_type: RafxQueueType::Transfer,
                 resource_type: RafxResourceType::VERTEX_BUFFER,
                 ..Default::default()
             })?;
@@ -110,7 +110,7 @@ impl MeshAdvBufferAssetTypeHandler {
                 size: INDEX_BUFFER_SIZE as u64,
                 alignment: BUFFER_ALIGNMENT,
                 memory_usage: RafxMemoryUsage::GpuOnly,
-                queue_type: RafxQueueType::Graphics,
+                queue_type: RafxQueueType::Transfer,
                 resource_type: RafxResourceType::INDEX_BUFFER,
                 ..Default::default()
             })?;
