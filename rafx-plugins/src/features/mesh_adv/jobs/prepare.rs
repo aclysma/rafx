@@ -168,7 +168,8 @@ impl<'prepare> MeshAdvPrepareJob<'prepare> {
                 .create_buffer(&RafxBufferDef {
                     size: draw_data_buffer_size,
                     memory_usage: RafxMemoryUsage::CpuToGpu,
-                    resource_type: RafxResourceType::BUFFER,
+                    //DX12TODO: Does not need to be BUFFER_READ_WRITE for other backends
+                    resource_type: RafxResourceType::BUFFER | RafxResourceType::BUFFER_READ_WRITE,
                     always_mapped: true,
                     alignment: std::mem::size_of::<DrawDataT>() as u32,
                     ..Default::default()
@@ -989,7 +990,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                     .create_buffer(&RafxBufferDef {
                         size: all_lights_buffer_size as u64,
                         memory_usage: RafxMemoryUsage::CpuToGpu,
-                        resource_type: RafxResourceType::BUFFER,
+                        //DX12TODO: Does not need to be BUFFER_READ_WRITE for other backends
+                        resource_type: RafxResourceType::BUFFER_READ_WRITE,
                         ..Default::default()
                     })
                     .unwrap();
@@ -1223,7 +1225,8 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             &dyn_resource_allocator_set,
             &self.render_object_instance_transforms,
             RafxMemoryUsage::CpuToGpu,
-            RafxResourceType::BUFFER,
+            //DX12TODO: Does not need to be BUFFER_READ_WRITE for other backends
+            RafxResourceType::BUFFER_READ_WRITE,
         );
 
         let mut model_matrix_buffer = context
@@ -1242,14 +1245,16 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
             &dyn_resource_allocator_set,
             &self.render_object_instance_transforms_with_history,
             RafxMemoryUsage::CpuToGpu,
-            RafxResourceType::BUFFER,
+            //DX12TODO: Does not need to be BUFFER_READ_WRITE for other backends
+            RafxResourceType::BUFFER_READ_WRITE,
         );
 
         let bounding_spheres_buffer = create_buffer_from_atomic_once_stack(
             &dyn_resource_allocator_set,
             &self.render_object_instance_bounding_spheres,
             RafxMemoryUsage::CpuToGpu,
-            RafxResourceType::BUFFER,
+            //DX12TODO: Does not need to be BUFFER_READ_WRITE for other backends
+            RafxResourceType::BUFFER_READ_WRITE,
         );
 
         //
@@ -1303,7 +1308,10 @@ impl<'prepare> PrepareJobEntryPoints<'prepare> for MeshAdvPrepareJob<'prepare> {
                 .create_buffer(&RafxBufferDef {
                     size: indirect_buffer_size_in_bytes,
                     memory_usage: RafxMemoryUsage::CpuToGpu,
-                    resource_type: RafxResourceType::BUFFER | RafxResourceType::INDIRECT_BUFFER,
+                    //DX12TODO: Does not need to be BUFFER_READ_WRITE for other backends
+                    resource_type: RafxResourceType::BUFFER
+                        | RafxResourceType::BUFFER_READ_WRITE
+                        | RafxResourceType::INDIRECT_BUFFER,
                     always_mapped: true,
                     alignment: command_size as u32,
                     ..Default::default()

@@ -213,7 +213,8 @@ impl MaterialDB {
                     alignment: 256,
                     memory_usage: RafxMemoryUsage::CpuToGpu,
                     queue_type: RafxQueueType::Graphics,
-                    resource_type: RafxResourceType::BUFFER,
+                    //DX12TODO: Does not need to be BUFFER_READ_WRITE for other backends
+                    resource_type: RafxResourceType::BUFFER_READ_WRITE,
                     ..Default::default()
                 })?;
         material_data_sbo.set_debug_name("MeshAdv Material Data");

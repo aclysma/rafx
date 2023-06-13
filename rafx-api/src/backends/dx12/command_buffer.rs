@@ -769,6 +769,14 @@ impl RafxCommandBufferDx12 {
                     barrier.Type = d3d12::D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                     barrier.Flags = d3d12::D3D12_RESOURCE_BARRIER_FLAG_NONE;
 
+                    if let Some(offset_size) = buffer_barrier.offset_size {
+                        if offset_size.byte_offset != 0
+                            || offset_size.size != buffer_barrier.buffer.buffer_def().size
+                        {
+                            unimplemented!("WARNING: DX12 doesn't support offset_size in buffer barriers, it requires extended barriers.");
+                        }
+                    }
+
                     //TODO: Partial barriers
 
                     let (state_before, state_after) = match buffer_barrier.queue_transition {

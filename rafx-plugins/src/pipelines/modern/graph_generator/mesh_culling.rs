@@ -69,6 +69,29 @@ pub(super) fn mesh_culling_pass(
             .graph_context
             .render_resources()
             .fetch_mut::<MeshAdvGpuOcclusionCullRenderResource>();
+
+        // DX12TODO: This only needed to be done for DX12 but not sure why
+        {
+            let mut transitioned_buffers: HashSet<ResourceArc<BufferResource>> = HashSet::default();
+            for occlusion_job in &occlusion_jobs.data {
+                if !transitioned_buffers.contains(&occlusion_job.indirect_commands) {
+                    transitioned_buffers.insert(occlusion_job.indirect_commands.clone());
+
+                    // We need a manual barrier here because this resource is not managed by the render graph
+                    args.command_buffer.cmd_resource_barrier(
+                        &[RafxBufferBarrier {
+                            buffer: &*occlusion_job.indirect_commands.get_raw().buffer,
+                            src_state: RafxResourceState::GENERIC_READ,
+                            dst_state: RafxResourceState::UNORDERED_ACCESS,
+                            queue_transition: RafxBarrierQueueTransition::None,
+                            offset_size: None,
+                        }],
+                        &[],
+                    )?;
+                }
+            }
+        }
+
         for occlusion_job in &occlusion_jobs.data {
             let mut descriptor_set_allocator = args
                 .graph_context
