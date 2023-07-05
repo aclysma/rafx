@@ -5,6 +5,7 @@ use rafx_framework::render_features::render_features_prelude::*;
 use rafx_framework::visibility::{VisibilityConfig, VisibilityResource};
 use rafx_framework::{ImageViewResource, ResourceArc};
 use rafx_framework::{RenderResources, ResourceLookupSet};
+use rafx_framework::MAX_FRAMES_IN_FLIGHT;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -600,12 +601,12 @@ impl Renderer {
         render_resources
             .fetch_mut::<AssetManagerRenderResource>()
             .end_extract();
-
+        
         //TODO: This is now possible to run on the render thread
         let prepared_render_graph = renderer.pipeline_plugin.generate_render_graph(
             asset_manager,
             swapchain_image,
-            presentable_frame.rotating_frame_index(),
+            presentable_frame.incrementing_frame_index() % MAX_FRAMES_IN_FLIGHT,
             main_view.clone(),
             extract_resources,
             render_resources,
