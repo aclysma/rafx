@@ -6,6 +6,7 @@ use crate::{
 use crossbeam_channel::{Receiver, Sender};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use arrayvec::ArrayVec;
 
 /// May be implemented to get callbacks related to the swapchain being created/destroyed. This is
 /// optional.
@@ -33,9 +34,9 @@ pub trait RafxSwapchainEventListener {
 struct RafxSwapchainHelperSharedState {
     global_frame_index: AtomicUsize,
     sync_frame_index: AtomicUsize,
-    image_available_semaphores: Vec<RafxSemaphore>,
-    render_finished_semaphores: Vec<RafxSemaphore>,
-    in_flight_fences: Vec<RafxFence>,
+    image_available_semaphores: ArrayVec<RafxSemaphore, 8>,
+    render_finished_semaphores: ArrayVec<RafxSemaphore, 8>,
+    in_flight_fences: ArrayVec<RafxFence, 8>,
     result_tx: Sender<RafxResult<RafxPresentSuccessResult>>,
     result_rx: Receiver<RafxResult<RafxPresentSuccessResult>>,
     // Arc so that we can move the swapchain to a new RafxSwapchainHelperSharedState
@@ -47,10 +48,13 @@ impl RafxSwapchainHelperSharedState {
         device_context: &RafxDeviceContext,
         swapchain: Arc<Mutex<RafxSwapchain>>,
     ) -> RafxResult<Self> {
+        //let mut arr = arrayvec::ArrayVec<_, 16>::new();
+
         let image_count = swapchain.lock().unwrap().image_count();
-        let mut image_available_semaphores = Vec::with_capacity(image_count);
-        let mut render_finished_semaphores = Vec::with_capacity(image_count);
-        let mut in_flight_fences = Vec::with_capacity(image_count);
+        
+        let mut image_available_semaphores = ArrayVec::<RafxSemaphore, 8>::new();
+        let mut render_finished_semaphores = ArrayVec::<RafxSemaphore, 8>::new();
+        let mut in_flight_fences = ArrayVec::<RafxFence, 8>::new();
 
         for _ in 0..image_count {
             image_available_semaphores.push(device_context.create_semaphore()?);
