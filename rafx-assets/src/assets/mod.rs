@@ -79,6 +79,8 @@ pub use load_queue::GenericLoader;
 pub use load_queue::LoadQueues;
 pub use load_queue::LoadRequest;
 
+pub mod load_queue_hydrate;
+
 mod material_descriptor_sets;
 pub use material_descriptor_sets::DynMaterialInstance;
 pub use material_descriptor_sets::DynPassMaterialInstance;

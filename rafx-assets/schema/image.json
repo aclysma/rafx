@@ -1,0 +1,220 @@
+[
+  {
+    "type": "enum",
+    "name": "GpuImageColorSpace",
+    "symbols": [
+      {
+        "name": "Srgb"
+      },
+      {
+        "name": "Linear"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "GpuImageMipGeneration",
+    "symbols": [
+      {
+        "name": "NoMips"
+      },
+      {
+        "name": "Precomputed"
+      },
+      {
+        "name": "Runtime"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "GpuImageBasisCompressionType",
+    "symbols": [
+      {
+        "name": "Etc1S"
+      },
+      {
+        "name": "Uastc"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "GpuImageBasisCompressionSettings",
+    "fields": [
+      {
+        "name": "compression_type",
+        "type": "GpuImageBasisCompressionType"
+      },
+      {
+        "name": "quality",
+        "type": "u32"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "GpuImageAssetDataFormat",
+    "symbols": [
+      {
+        "name": "RGBA32_Linear"
+      },
+      {
+        "name": "RGBA32_Srgb"
+      },
+      {
+        "name": "Basis_Linear"
+      },
+      {
+        "name": "Basis_Srgb"
+      },
+      {
+        "name": "BC1_UNorm_Linear"
+      },
+      {
+        "name": "BC1_UNorm_Srgb"
+      },
+      {
+        "name": "BC2_UNorm_Linear"
+      },
+      {
+        "name": "BC2_UNorm_Srgb"
+      },
+      {
+        "name": "BC3_UNorm_Linear"
+      },
+      {
+        "name": "BC3_UNorm_Srgb"
+      },
+      {
+        "name": "BC4_UNorm"
+      },
+      {
+        "name": "BC4_SNorm"
+      },
+      {
+        "name": "BC5_UNorm"
+      },
+      {
+        "name": "BC5_SNorm"
+      },
+      {
+        "name": "BC6H_UFloat"
+      },
+      {
+        "name": "BC6H_SFloat"
+      },
+      {
+        "name": "BC7_Unorm_Linear"
+      },
+      {
+        "name": "BC7_Unorm_Srgb"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "GpuImageAsset",
+    "fields": [
+      {
+        "name": "basis_compression",
+        "type": "bool"
+      },
+      {
+        "name": "basis_compression_settings",
+        "type": "GpuImageBasisCompressionSettings"
+      },
+      {
+        "name": "color_space",
+        "type": "GpuImageColorSpace"
+      },
+      {
+        "name": "mip_generation",
+        "type": "GpuImageMipGeneration"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "GpuImageImportedData",
+    "fields": [
+      {
+        "name": "image_bytes",
+        "type": "bytes"
+      },
+      {
+        "name": "width",
+        "type": "u32"
+      },
+      {
+        "name": "height",
+        "type": "u32"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "GpuCompressedImageAsset",
+    "fields": [
+
+    ]
+  },
+  {
+    "type": "record",
+    "name": "GpuImageSubresourceMipLevel",
+    "fields": [
+      {
+        "name": "bytes",
+        "type": "bytes"
+      },
+      {
+        "name": "width",
+        "type": "u32"
+      },
+      {
+        "name": "height",
+        "type": "u32"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "GpuImageSubresourceLayer",
+    "fields": [
+      {
+        "name": "mip_levels",
+        "type": { "name": "dynamic_array", "inner_type": "GpuImageSubresourceMipLevel" }
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "GpuCompressedImageImportedData",
+    "fields": [
+      {
+        "name": "width",
+        "type": "u32"
+      },
+      {
+        "name": "height",
+        "type": "u32"
+      },
+      {
+        "name": "format",
+        "type": "GpuImageAssetDataFormat"
+      },
+      {
+        "name": "data_single_buffer",
+        "type": "bytes"
+      },
+      {
+        "name": "is_cube_texture",
+        "type": "bool"
+      },
+      {
+        "name": "data_layers",
+        "type": { "name": "dynamic_array", "inner_type": "GpuImageSubresourceLayer" }
+      }
+    ]
+  }
+]

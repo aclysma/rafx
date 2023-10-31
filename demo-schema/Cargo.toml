@@ -1,0 +1,12 @@
+[package]
+name = "demo-schema"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hydrate-codegen = { path = "../../hydrate/hydrate-codegen" }
+
+log = "0.4"
+env_logger = "0.6"

@@ -16,3 +16,8 @@ mod resource_loader;
 pub use resource_loader::ResourceLoader;
 
 pub use distill;
+
+pub mod schema;
+
+mod hydrate_impl;
+mod resource_loader_hydrate;

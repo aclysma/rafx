@@ -48,8 +48,8 @@ impl Into<basis_universal::BasisTextureFormat> for ImageAssetBasisCompressionTyp
 //NOTE: This is serialized in image asset options, so may require asset schema change if modifying it
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct ImageAssetBasisCompressionSettings {
-    compression_type: ImageAssetBasisCompressionType,
-    quality: u32,
+    pub compression_type: ImageAssetBasisCompressionType,
+    pub quality: u32,
 }
 
 #[cfg(feature = "basis-universal")]

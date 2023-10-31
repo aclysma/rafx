@@ -30,6 +30,12 @@ rafx-gles3 = ["rafx-framework/rafx-gles3"]
 rafx-api = { version = "0.0.15", path = "../rafx-api" }
 rafx-base = { version = "0.0.15", path = "../rafx-base" }
 rafx-framework = { version = "0.0.15", path = "../rafx-framework" }
+
+hydrate-model = { path = "../../hydrate/hydrate-model" }
+hydrate-data = { path = "../../hydrate/hydrate-data" }
+hydrate-loader = { path = "../../hydrate/hydrate-loader" }
+hydrate-base = { path = "../../hydrate/hydrate-base" }
+
 distill = { version = "=0.0.3", features = ["serde_importers", "distill-daemon"] }
 basis-universal = { version = "0.1.1", optional = true }
 type-uuid = "0.1"
