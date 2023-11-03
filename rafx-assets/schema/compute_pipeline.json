@@ -1,0 +1,16 @@
+[
+  {
+    "type": "record",
+    "name": "ComputePipelineAsset",
+    "fields": [
+      {
+        "name": "entry_name",
+        "type": "string"
+      },
+      {
+        "name": "shader_module",
+        "type": { "name": "object_ref", "inner_type": "ShaderPackageAsset" }
+      }
+    ]
+  }
+]

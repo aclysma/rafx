@@ -11,6 +11,7 @@ members = [
     "rafx-plugins",
     "demo",
     "demo-schema",
+    "demo-editor",
     "demo/cli",
     "demo-web"
 ]
@@ -18,6 +19,8 @@ members = [
 exclude = [
 
 ]
+
+resolver = "2"
 
 # Example of overriding a single crate. Doesn't affect dependencies though so it's of limited value
 #[profile.dev.package.image]
@@ -52,3 +55,15 @@ distill = { git = "https://github.com/aclysma/distill.git", rev = "9e127ca9d034e
 
 #spirv_cross = { path = "../spirv_cross/spirv_cross" }
 spirv_cross = { git = "https://github.com/aclysma/spirv_cross.git", branch = "rafx-support" }
+
+
+
+
+
+
+## For hydrate
+imgui = { path = "../imgui-rs/imgui" }
+imgui-sys = { path = "../imgui-rs/imgui-sys" }
+imgui-winit-support = { path = "../imgui-rs/imgui-winit-support" }
+imnodes = { path = "../imnodes-rs" }
+imnodes-sys = { path = "../imnodes-rs/imnodes-sys" }

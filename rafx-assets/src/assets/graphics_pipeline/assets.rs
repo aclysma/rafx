@@ -20,6 +20,7 @@ use rafx_framework::{
 use rafx_framework::{DescriptorSetWriteSet, SamplerResource};
 use std::hash::Hash;
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
@@ -165,6 +166,47 @@ impl FixedFunctionStateData {
             rasterizer_state,
         })
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct GraphicsPipelineShaderStageRon {
+    pub stage: MaterialShaderStage,
+    pub shader_module: PathBuf,
+    pub entry_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MaterialPassRon {
+    pub name: Option<String>,
+    pub phase: Option<String>,
+    pub fixed_function_state: FixedFunctionStateData,
+    pub shaders: Vec<GraphicsPipelineShaderStageRon>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MaterialRon {
+    pub passes: Vec<MaterialPassRon>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct HydrateGraphicsPipelineShaderStage {
+    pub stage: MaterialShaderStage,
+    pub shader_module: hydrate_base::Handle<ShaderAsset>,
+    pub entry_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct HydrateMaterialPassData {
+    pub name: Option<String>,
+    pub phase: Option<String>,
+    pub fixed_function_state: FixedFunctionStateData,
+    pub shaders: Vec<HydrateGraphicsPipelineShaderStage>,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[uuid = "ea4a2be8-af66-4a57-8607-79eca02ab054"]
+pub struct HydrateMaterialAssetData {
+    pub passes: Vec<HydrateMaterialPassData>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

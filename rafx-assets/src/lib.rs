@@ -2,6 +2,7 @@
 //! pipeline
 
 pub mod assets;
+
 pub use assets::*;
 
 /// Contains some distill-related helpers. They are optional and end-users can provide their own.
@@ -21,3 +22,10 @@ pub mod schema;
 
 mod hydrate_impl;
 mod resource_loader_hydrate;
+
+use std::path::PathBuf;
+
+pub fn schema_def_path() -> PathBuf {
+    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/schema"))
+}
+pub use hydrate_impl::register_default_hydrate_plugins;

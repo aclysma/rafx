@@ -1,5 +1,29 @@
 // This file generated automatically by hydrate-codegen. Do not make manual edits. Use include!() to place these types in the intended location.
 #[derive(Default)]
+pub struct ComputePipelineAssetRecord(PropertyPath);
+
+impl Field for ComputePipelineAssetRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        ComputePipelineAssetRecord(property_path)
+    }
+}
+
+impl Record for ComputePipelineAssetRecord {
+    fn schema_name() -> &'static str {
+        "ComputePipelineAsset"
+    }
+}
+
+impl ComputePipelineAssetRecord {
+    pub fn entry_name(&self) -> StringField {
+        StringField::new(self.0.push("entry_name"))
+    }
+
+    pub fn shader_module(&self) -> ObjectRefField {
+        ObjectRefField::new(self.0.push("shader_module"))
+    }
+}
+#[derive(Default)]
 pub struct GpuCompressedImageAssetRecord(PropertyPath);
 
 impl Field for GpuCompressedImageAssetRecord {
@@ -349,6 +373,123 @@ impl GpuImageSubresourceMipLevelRecord {
 
     pub fn width(&self) -> U32Field {
         U32Field::new(self.0.push("width"))
+    }
+}
+#[derive(Default)]
+pub struct GraphicsPipelineShaderStageRecord(PropertyPath);
+
+impl Field for GraphicsPipelineShaderStageRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        GraphicsPipelineShaderStageRecord(property_path)
+    }
+}
+
+impl Record for GraphicsPipelineShaderStageRecord {
+    fn schema_name() -> &'static str {
+        "GraphicsPipelineShaderStage"
+    }
+}
+
+impl GraphicsPipelineShaderStageRecord {
+    pub fn entry_name(&self) -> StringField {
+        StringField::new(self.0.push("entry_name"))
+    }
+
+    pub fn shader_module(&self) -> ObjectRefField {
+        ObjectRefField::new(self.0.push("shader_module"))
+    }
+}
+#[derive(Default)]
+pub struct MaterialAssetRecord(PropertyPath);
+
+impl Field for MaterialAssetRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        MaterialAssetRecord(property_path)
+    }
+}
+
+impl Record for MaterialAssetRecord {
+    fn schema_name() -> &'static str {
+        "MaterialAsset"
+    }
+}
+
+impl MaterialAssetRecord {
+    pub fn passes(&self) -> DynamicArrayField::<MaterialPassRecord> {
+        DynamicArrayField::<MaterialPassRecord>::new(self.0.push("passes"))
+    }
+}
+#[derive(Default)]
+pub struct MaterialPassRecord(PropertyPath);
+
+impl Field for MaterialPassRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        MaterialPassRecord(property_path)
+    }
+}
+
+impl Record for MaterialPassRecord {
+    fn schema_name() -> &'static str {
+        "MaterialPass"
+    }
+}
+
+impl MaterialPassRecord {
+    pub fn fixed_function_state(&self) -> StringField {
+        StringField::new(self.0.push("fixed_function_state"))
+    }
+
+    pub fn fragment_stage(&self) -> GraphicsPipelineShaderStageRecord {
+        GraphicsPipelineShaderStageRecord::new(self.0.push("fragment_stage"))
+    }
+
+    pub fn name(&self) -> StringField {
+        StringField::new(self.0.push("name"))
+    }
+
+    pub fn phase(&self) -> StringField {
+        StringField::new(self.0.push("phase"))
+    }
+
+    pub fn vertex_stage(&self) -> GraphicsPipelineShaderStageRecord {
+        GraphicsPipelineShaderStageRecord::new(self.0.push("vertex_stage"))
+    }
+}
+#[derive(Default)]
+pub struct ShaderPackageAssetRecord(PropertyPath);
+
+impl Field for ShaderPackageAssetRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        ShaderPackageAssetRecord(property_path)
+    }
+}
+
+impl Record for ShaderPackageAssetRecord {
+    fn schema_name() -> &'static str {
+        "ShaderPackageAsset"
+    }
+}
+
+impl ShaderPackageAssetRecord {
+}
+#[derive(Default)]
+pub struct ShaderPackageImportedDataRecord(PropertyPath);
+
+impl Field for ShaderPackageImportedDataRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        ShaderPackageImportedDataRecord(property_path)
+    }
+}
+
+impl Record for ShaderPackageImportedDataRecord {
+    fn schema_name() -> &'static str {
+        "ShaderPackageImportedData"
+    }
+}
+
+impl ShaderPackageImportedDataRecord {
+    pub fn bytes(&self) -> BytesField {
+        BytesField::new(self.0.push("bytes"))
     }
 }
 #[derive(Default)]

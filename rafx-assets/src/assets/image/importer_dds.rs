@@ -205,7 +205,7 @@ impl hydrate_model::Importer for GpuCompressedImageImporterDds {
         schema_set: &SchemaSet,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
-            .find_named_type(GpuImageAssetRecord::schema_name())
+            .find_named_type(GpuCompressedImageAssetRecord::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -458,7 +458,7 @@ pub struct GpuCompressedImageJobOutput {}
 impl JobOutput for GpuCompressedImageJobOutput {}
 
 #[derive(Default, TypeUuid)]
-#[uuid = "5311c92e-470e-4fdc-88cd-3abaf1c28f39"]
+#[uuid = "9377c690-a9d4-4744-bc43-bdc4b0c72c48"]
 pub struct GpuCompressedImageJobProcessor;
 
 impl JobProcessor for GpuCompressedImageJobProcessor {
@@ -613,7 +613,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
 }
 
 #[derive(TypeUuid, Default)]
-#[uuid = "da6760e7-5b24-43b4-830d-6ee4515096b8"]
+#[uuid = "69ec69e0-feb2-4fca-a2a3-8fb963a26dfc"]
 pub struct GpuCompressedImageBuilder {}
 
 impl Builder for GpuCompressedImageBuilder {

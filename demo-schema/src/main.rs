@@ -20,6 +20,20 @@ fn do_codegen() -> Result<(), Box<dyn Error>> {
         trace: false,
     })?;
 
+    hydrate_codegen::run(&HydrateCodegenArgs {
+        schema_path: PathBuf::from_str(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../rafx-plugins/schema"
+        ))
+        .unwrap(),
+        outfile: PathBuf::from_str(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../rafx-plugins/src/schema_codegen.rs"
+        ))
+        .unwrap(),
+        trace: false,
+    })?;
+
     Ok(())
 }
 

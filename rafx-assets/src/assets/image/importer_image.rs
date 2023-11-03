@@ -306,7 +306,7 @@ impl GpuImageImporterSimple {
 
 impl hydrate_model::Importer for GpuImageImporterSimple {
     fn supported_file_extensions(&self) -> &[&'static str] {
-        &["png", "jpg", "tif"]
+        &["png", "jpg", "jpeg", "tga", "tif", "tiff", "bmp"]
     }
 
     fn scan_file(
@@ -315,7 +315,7 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
         schema_set: &SchemaSet,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
-            .find_named_type(GpuCompressedImageAssetRecord::schema_name())
+            .find_named_type(GpuImageAssetRecord::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -556,7 +556,7 @@ impl JobProcessor for GpuImageJobProcessor {
 }
 
 #[derive(TypeUuid, Default)]
-#[uuid = "da6760e7-5b24-43b4-830d-6ee4515096b8"]
+#[uuid = "7fe7e10b-6b99-4acc-8bf9-09cc17fedcdf"]
 pub struct GpuImageBuilder {}
 
 impl Builder for GpuImageBuilder {

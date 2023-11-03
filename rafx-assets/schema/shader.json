@@ -1,0 +1,19 @@
+[
+  {
+    "type": "record",
+    "name": "ShaderPackageAsset",
+    "fields": [
+
+    ]
+  },
+  {
+    "type": "record",
+    "name": "ShaderPackageImportedData",
+    "fields": [
+      {
+        "name": "bytes",
+        "type": "bytes"
+      }
+    ]
+  }
+]

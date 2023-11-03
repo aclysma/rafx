@@ -1,0 +1,52 @@
+[
+  {
+    "type": "record",
+    "name": "GraphicsPipelineShaderStage",
+    "fields": [
+      {
+        "name": "entry_name",
+        "type": "string"
+      },
+      {
+        "name": "shader_module",
+        "type": { "name": "object_ref", "inner_type": "ShaderPackageAsset" }
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MaterialPass",
+    "fields": [
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "phase",
+        "type": "string"
+      },
+      {
+        "name": "fixed_function_state",
+        "type": "string"
+      },
+      {
+        "name": "vertex_stage",
+        "type": "GraphicsPipelineShaderStage"
+      },
+      {
+        "name": "fragment_stage",
+        "type": "GraphicsPipelineShaderStage"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MaterialAsset",
+    "fields": [
+      {
+        "name": "passes",
+        "type": { "name": "dynamic_array", "inner_type": "MaterialPass" }
+      }
+    ]
+  }
+]
