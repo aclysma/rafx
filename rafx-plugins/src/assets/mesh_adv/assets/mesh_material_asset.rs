@@ -27,6 +27,17 @@ pub struct MeshMaterialAdvAssetDataLod {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
+#[uuid = "8a2f44ec-0911-478a-851a-f61bcf085459"]
+pub struct HydrateMeshMaterialAdvAssetData {
+    pub material_asset: hydrate_base::Handle<MaterialAsset>,
+    pub material_data: MeshAdvMaterialData,
+    pub color_texture: Option<hydrate_base::Handle<ImageAsset>>,
+    pub metallic_roughness_texture: Option<hydrate_base::Handle<ImageAsset>>,
+    pub normal_texture: Option<hydrate_base::Handle<ImageAsset>>,
+    pub emissive_texture: Option<hydrate_base::Handle<ImageAsset>>,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "41ea076f-19d7-4deb-8af1-983148af5383"]
 pub struct MeshMaterialAdvAssetData {
     pub material_asset: Handle<MaterialAsset>,

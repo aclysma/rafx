@@ -32,8 +32,9 @@ pub enum MeshAdvBlendMethod {
 
 // This is non-texture data associated with the material. Must convert to
 // MeshMaterialDataShaderParam to bind to a shader uniform
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, TypeUuid)]
 #[repr(C)]
+#[uuid = "e7c4f03b-8c1a-4fbc-9f98-83e521687777"]
 pub struct MeshAdvMaterialData {
     // Using f32 arrays for serde support
     pub base_color_factor: [f32; 4], // default: 1,1,1,1
@@ -76,6 +77,18 @@ impl Default for MeshAdvMaterialData {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct HydrateMeshAdvPartAssetData {
+    pub vertex_full_buffer_offset_in_bytes: u32,
+    pub vertex_full_buffer_size_in_bytes: u32,
+    pub vertex_position_buffer_offset_in_bytes: u32,
+    pub vertex_position_buffer_size_in_bytes: u32,
+    pub index_buffer_offset_in_bytes: u32,
+    pub index_buffer_size_in_bytes: u32,
+    pub mesh_material: hydrate_base::Handle<MeshMaterialAdvAsset>,
+    pub index_type: RafxIndexType,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MeshAdvPartAssetData {
     pub vertex_full_buffer_offset_in_bytes: u32,
     pub vertex_full_buffer_size_in_bytes: u32,
@@ -85,6 +98,16 @@ pub struct MeshAdvPartAssetData {
     pub index_buffer_size_in_bytes: u32,
     pub mesh_material: Handle<MeshMaterialAdvAsset>,
     pub index_type: RafxIndexType,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Clone)]
+#[uuid = "cad61203-7686-463d-a93f-feb6d1fe9810"]
+pub struct HydrateMeshAdvAssetData {
+    pub mesh_parts: Vec<HydrateMeshAdvPartAssetData>,
+    pub vertex_full_buffer: hydrate_base::Handle<MeshAdvBufferAsset>, // Vertex type is MeshVertexFull
+    pub vertex_position_buffer: hydrate_base::Handle<MeshAdvBufferAsset>, // Vertex type is MeshVertexPosition
+    pub index_buffer: hydrate_base::Handle<MeshAdvBufferAsset>,           // u16 indices
+    pub visible_bounds: VisibleBounds,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]

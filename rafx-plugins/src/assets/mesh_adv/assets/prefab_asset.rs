@@ -55,6 +55,24 @@ pub struct PrefabAdvAssetData {
     pub objects: Vec<PrefabAdvAssetDataObject>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HydratePrefabAdvAssetDataObjectModel {
+    pub model: hydrate_base::Handle<ModelAdvAsset>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HydratePrefabAdvAssetDataObject {
+    pub transform: PrefabAdvAssetDataObjectTransform,
+    pub model: Option<HydratePrefabAdvAssetDataObjectModel>,
+    pub light: Option<PrefabAdvAssetDataObjectLight>,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Clone, Debug)]
+#[uuid = "fcbd5421-7ea0-4270-9d67-f06cbd0c08e1"]
+pub struct HydratePrefabAdvAssetData {
+    pub objects: Vec<HydratePrefabAdvAssetDataObject>,
+}
+
 pub struct PrefabAdvAssetInner {
     pub objects: Vec<PrefabAdvAssetDataObject>,
 }

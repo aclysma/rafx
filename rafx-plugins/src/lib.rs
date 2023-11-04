@@ -8,6 +8,11 @@ mod schema;
 mod shaders;
 
 use crate::assets::font::FontAssetPlugin;
+use crate::assets::ldtk::LdtkAssetPlugin;
+use crate::assets::mesh_adv::{
+    BlenderMaterialAssetPlugin, BlenderMeshAssetPlugin, BlenderModelAssetPlugin,
+    BlenderPrefabAssetPlugin, GltfAssetPlugin, MeshAdvAssetPlugin,
+};
 use hydrate_model::{AssetPluginRegistrationHelper, SchemaLinker};
 use std::path::PathBuf;
 
@@ -21,7 +26,15 @@ pub fn register_default_hydrate_plugins(
 ) -> AssetPluginRegistrationHelper {
     use crate::assets::*;
 
-    registration_helper = registration_helper.register_plugin::<FontAssetPlugin>(schema_linker);
+    registration_helper = registration_helper
+        .register_plugin::<LdtkAssetPlugin>(schema_linker)
+        .register_plugin::<FontAssetPlugin>(schema_linker)
+        .register_plugin::<BlenderMaterialAssetPlugin>(schema_linker)
+        .register_plugin::<BlenderMeshAssetPlugin>(schema_linker)
+        .register_plugin::<BlenderModelAssetPlugin>(schema_linker)
+        .register_plugin::<BlenderPrefabAssetPlugin>(schema_linker)
+        .register_plugin::<GltfAssetPlugin>(schema_linker)
+        .register_plugin::<MeshAdvAssetPlugin>(schema_linker);
 
     registration_helper
 }

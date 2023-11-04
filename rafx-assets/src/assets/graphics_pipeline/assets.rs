@@ -431,6 +431,26 @@ pub struct MaterialInstanceAssetData {
     pub slot_assignments: Vec<MaterialInstanceSlotAssignment>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct HydrateMaterialInstanceSlotAssignment {
+    pub slot_name: String,
+    pub array_index: usize,
+
+    pub image: Option<hydrate_base::Handle<ImageAsset>>,
+    pub sampler: Option<RafxSamplerDef>,
+
+    // Would be nice to use this, but I don't think it works with Option
+    //#[serde(with = "serde_bytes")]
+    pub buffer_data: Option<Vec<u8>>,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[uuid = "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b"]
+pub struct HydrateMaterialInstanceAssetData {
+    pub material: hydrate_base::Handle<MaterialAsset>,
+    pub slot_assignments: Vec<HydrateMaterialInstanceSlotAssignment>,
+}
+
 pub struct MaterialInstanceAssetInner {
     pub material_handle: Handle<MaterialAsset>,
     pub material: MaterialAsset,

@@ -3,7 +3,10 @@ mod image;
 pub use self::image::BasisImageImporter;
 #[cfg(feature = "ddsfile")]
 pub use self::image::DdsImageImporter;
+pub use self::image::GpuCompressedImageImporterBasis;
+pub use self::image::GpuCompressedImageImporterDds;
 pub use self::image::GpuImageAssetPlugin;
+pub use self::image::GpuImageImporterSimple;
 pub use self::image::ImageAsset;
 pub use self::image::ImageAssetBasisCompressionSettings;
 pub use self::image::ImageAssetBasisCompressionType;
@@ -32,6 +35,8 @@ pub use shader::ShaderPackageAssetPlugin;
 
 mod graphics_pipeline;
 pub use graphics_pipeline::FixedFunctionStateData;
+pub use graphics_pipeline::HydrateMaterialInstanceAssetData;
+pub use graphics_pipeline::HydrateMaterialInstanceSlotAssignment;
 pub use graphics_pipeline::MaterialAsset;
 pub use graphics_pipeline::MaterialAssetData;
 pub use graphics_pipeline::MaterialAssetPlugin;

@@ -70,7 +70,7 @@ fn fix_tangent_binormal(
     (t, b)
 }
 
-pub(super) struct MeshPartData {
+pub(crate) struct MeshPartData {
     pub vertex_full_buffer_offset_in_bytes: u32,
     pub vertex_full_buffer_size_in_bytes: u32,
     pub vertex_position_buffer_offset_in_bytes: u32,
@@ -81,7 +81,7 @@ pub(super) struct MeshPartData {
 }
 
 // Appends index/vertex data to buffers and returns metadata about the processed mesh part
-pub(super) fn process_mesh_part(
+pub(crate) fn process_mesh_part(
     part_indices: &[u32],
     positions: &[[f32; 3]],
     normals: &[[f32; 3]],
@@ -113,7 +113,7 @@ pub(super) fn process_mesh_part(
         let uv1 = glam::Vec2::from(tex_coords[i1]);
         let uv2 = glam::Vec2::from(tex_coords[i2]);
 
-        let (t, b) = super::util::calculate_tangent_binormal(p0, p1, p2, uv0, uv1, uv2);
+        let (t, b) = super::mesh_util::calculate_tangent_binormal(p0, p1, p2, uv0, uv1, uv2);
 
         tangents[i0] += t;
         tangents[i1] += t;

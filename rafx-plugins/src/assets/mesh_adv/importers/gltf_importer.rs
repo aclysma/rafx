@@ -1,8 +1,11 @@
 use crate::assets::mesh_adv::{
-    MeshAdvAssetData, MeshAdvBufferAssetData, MeshAdvMaterialData, MeshAdvPartAssetData,
-    MeshMaterialAdvAsset, MeshMaterialAdvAssetData,
+    HydrateMeshAdvAssetData, MeshAdvAssetData, MeshAdvBufferAssetData, MeshAdvMaterialData,
+    MeshAdvPartAssetData, MeshMaterialAdvAsset, MeshMaterialAdvAssetData,
 };
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
+use crate::schema::{
+    MeshAdvMaterialAssetRecord, MeshAdvMeshAssetRecord, MeshAdvMeshImportedDataRecord,
+};
 use distill::core::AssetUuid;
 use distill::importer::{Error, ImportOp, ImportedAsset, Importer, ImporterValue};
 use distill::loader::handle::Handle;
@@ -11,14 +14,23 @@ use fnv::FnvHashMap;
 use glam::Vec3;
 use gltf::buffer::Data as GltfBufferData;
 use gltf::image::Data as GltfImageData;
+use hydrate_base::hashing::HashMap;
+use hydrate_base::ObjectId;
+use hydrate_data::{DataContainerMut, Record, SchemaSet, SingleObject};
+use hydrate_model::{
+    AssetPlugin, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
+};
 use itertools::Itertools;
 use rafx::api::RafxResourceType;
-use rafx::assets::ImageAsset;
+use rafx::assets::schema::{GpuImageAssetRecord, GpuImageImportedDataRecord};
 use rafx::assets::PushBuffer;
+use rafx::assets::{GpuImageImporterSimple, ImageAsset, ImageImporterOptions};
 use rafx::assets::{ImageAssetColorSpaceConfig, ImageAssetData};
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
+use std::path::Path;
 use type_uuid::*;
 
 //TODO: These are extensions that might be interesting to try supporting. In particular, lights,
@@ -94,6 +106,11 @@ struct MaterialToImport {
 struct MeshToImport {
     id: GltfObjectId,
     asset: MeshAdvAssetData,
+}
+
+struct HydrateMeshToImport {
+    id: GltfObjectId,
+    asset: HydrateMeshAdvAssetData,
 }
 
 struct BufferToImport {
@@ -710,7 +727,7 @@ fn extract_meshes_to_import(
                     let normals: Vec<_> = normals.collect();
                     let tex_coords: Vec<_> = tex_coords.into_f32().collect();
 
-                    let part_data = super::util::process_mesh_part(
+                    let part_data = super::mesh_util::process_mesh_part(
                         &part_indices,
                         &positions,
                         &normals,
@@ -878,4 +895,614 @@ fn extract_meshes_to_import(
     }
 
     Ok((meshes_to_import, buffers_to_import))
+}
+
+fn hydrate_import_image(
+    asset_name: &str,
+    schema_set: &SchemaSet,
+    image: &gltf::Image,
+    images: &Vec<gltf::image::Data>,
+    imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
+    image_color_space_assignments: &FnvHashMap<usize, ImageAssetColorSpaceConfig>,
+) -> distill::importer::Result<()> {
+    let image_data = &images[image.index()];
+
+    // Convert it to standard RGBA format
+    use gltf::image::Format;
+    use image::buffer::ConvertBuffer;
+    let converted_image: image::RgbaImage = match image_data.format {
+        Format::R8 => image::ImageBuffer::<image::Luma<u8>, Vec<u8>>::from_vec(
+            image_data.width,
+            image_data.height,
+            image_data.pixels.clone(),
+        )
+        .unwrap()
+        .convert(),
+        Format::R8G8 => image::ImageBuffer::<image::LumaA<u8>, Vec<u8>>::from_vec(
+            image_data.width,
+            image_data.height,
+            image_data.pixels.clone(),
+        )
+        .unwrap()
+        .convert(),
+        Format::R8G8B8 => image::ImageBuffer::<image::Rgb<u8>, Vec<u8>>::from_vec(
+            image_data.width,
+            image_data.height,
+            image_data.pixels.clone(),
+        )
+        .unwrap()
+        .convert(),
+        Format::R8G8B8A8 => image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_vec(
+            image_data.width,
+            image_data.height,
+            image_data.pixels.clone(),
+        )
+        .unwrap()
+        .convert(),
+        Format::B8G8R8 => image::ImageBuffer::<image::Bgr<u8>, Vec<u8>>::from_vec(
+            image_data.width,
+            image_data.height,
+            image_data.pixels.clone(),
+        )
+        .unwrap()
+        .convert(),
+        Format::B8G8R8A8 => image::ImageBuffer::<image::Bgra<u8>, Vec<u8>>::from_vec(
+            image_data.width,
+            image_data.height,
+            image_data.pixels.clone(),
+        )
+        .unwrap()
+        .convert(),
+        Format::R16 => {
+            unimplemented!();
+        }
+        Format::R16G16 => {
+            unimplemented!();
+        }
+        Format::R16G16B16 => {
+            unimplemented!();
+        }
+        Format::R16G16B16A16 => {
+            unimplemented!();
+        }
+    };
+
+    let color_space = *image_color_space_assignments
+        .get(&image.index())
+        .unwrap_or(&ImageAssetColorSpaceConfig::Linear);
+    log::trace!(
+        "Choosing color space {:?} for image index {}",
+        color_space,
+        image.index()
+    );
+
+    let (data_format, mip_generation) = ImageAssetData::default_format_and_mip_generation();
+    let default_settings = ImageImporterOptions {
+        mip_generation,
+        color_space,
+        data_format,
+    };
+
+    //
+    // Create the default asset
+    //
+    let default_asset = {
+        let mut default_asset_object = GpuImageAssetRecord::new_single_object(schema_set).unwrap();
+        let mut default_asset_data_container =
+            DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+        let x = GpuImageAssetRecord::default();
+
+        GpuImageImporterSimple::set_default_asset_properties(
+            &default_settings,
+            &mut default_asset_data_container,
+            &x,
+        );
+
+        default_asset_object
+    };
+
+    let import_data = {
+        let mut import_data = GpuImageImportedDataRecord::new_single_object(schema_set).unwrap();
+        let mut import_data_container =
+            DataContainerMut::new_single_object(&mut import_data, schema_set);
+        let x = GpuImageImportedDataRecord::default();
+
+        x.image_bytes()
+            .set(&mut import_data_container, converted_image.to_vec())
+            .unwrap();
+        x.width()
+            .set(&mut import_data_container, converted_image.width())
+            .unwrap();
+        x.height()
+            .set(&mut import_data_container, converted_image.height())
+            .unwrap();
+
+        import_data
+    };
+
+    //
+    // Return the created objects
+    //
+    imported_objects.insert(
+        Some(asset_name.to_string()),
+        ImportedImportable {
+            file_references: Default::default(),
+            import_data: Some(import_data),
+            default_asset: Some(default_asset),
+        },
+    );
+
+    Ok(())
+}
+
+fn hydrate_import_material(
+    asset_name: &str,
+    schema_set: &SchemaSet,
+    material: &gltf::Material,
+    imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
+    image_object_ids: &HashMap<usize, ObjectId>,
+) -> distill::importer::Result<()> {
+    //
+    // Create the default asset
+    //
+    let default_asset = {
+        let mut default_asset_object =
+            MeshAdvMaterialAssetRecord::new_single_object(schema_set).unwrap();
+        let mut default_asset_data_container =
+            DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+        let x = MeshAdvMaterialAssetRecord::default();
+        x.base_color_factor()
+            .set_vec4(
+                &mut default_asset_data_container,
+                material.pbr_metallic_roughness().base_color_factor(),
+            )
+            .unwrap();
+        x.emissive_factor()
+            .set_vec3(
+                &mut default_asset_data_container,
+                material.emissive_factor(),
+            )
+            .unwrap();
+        x.metallic_factor()
+            .set(
+                &mut default_asset_data_container,
+                material.pbr_metallic_roughness().metallic_factor(),
+            )
+            .unwrap();
+        x.roughness_factor()
+            .set(
+                &mut default_asset_data_container,
+                material.pbr_metallic_roughness().roughness_factor(),
+            )
+            .unwrap();
+        x.normal_texture_scale()
+            .set(
+                &mut default_asset_data_container,
+                material.normal_texture().map_or(1.0, |x| x.scale()),
+            )
+            .unwrap();
+
+        if let Some(texture) = material.pbr_metallic_roughness().base_color_texture() {
+            let texture_index = texture.texture().index();
+            let texture_object_id = image_object_ids[&texture_index];
+            x.color_texture()
+                .set(&mut default_asset_data_container, texture_object_id)
+                .unwrap();
+        }
+
+        if let Some(texture) = material
+            .pbr_metallic_roughness()
+            .metallic_roughness_texture()
+        {
+            let texture_index = texture.texture().index();
+            let texture_object_id = image_object_ids[&texture_index];
+            x.metallic_roughness_texture()
+                .set(&mut default_asset_data_container, texture_object_id)
+                .unwrap();
+        }
+
+        if let Some(texture) = material.normal_texture() {
+            let texture_index = texture.texture().index();
+            let texture_object_id = image_object_ids[&texture_index];
+            x.normal_texture()
+                .set(&mut default_asset_data_container, texture_object_id)
+                .unwrap();
+        }
+
+        if let Some(texture) = material.emissive_texture() {
+            let texture_index = texture.texture().index();
+            let texture_object_id = image_object_ids[&texture_index];
+            x.emissive_texture()
+                .set(&mut default_asset_data_container, texture_object_id)
+                .unwrap();
+        }
+
+        if let Some(texture) = material.occlusion_texture() {
+            let texture_index = texture.texture().index();
+            let texture_object_id = image_object_ids[&texture_index];
+            x.occlusion_texture()
+                .set(&mut default_asset_data_container, texture_object_id)
+                .unwrap();
+        }
+
+        //x.shadow_method()
+
+        //x.shadow_method().set(&mut default_asset_data_container, shadow_method).unwrap();
+        //x.blend_method().set(&mut default_asset_data_container, blend_method).unwrap();
+        x.alpha_threshold()
+            .set(
+                &mut default_asset_data_container,
+                material.alpha_cutoff().unwrap_or(0.5),
+            )
+            .unwrap();
+        x.backface_culling()
+            .set(&mut default_asset_data_container, false)
+            .unwrap();
+        //TODO: Does this incorrectly write older enum string names when code is older than schema file?
+        x.color_texture_has_alpha_channel()
+            .set(&mut default_asset_data_container, false)
+            .unwrap();
+        default_asset_object
+    };
+
+    //
+    // Return the created objects
+    //
+    imported_objects.insert(
+        Some(asset_name.to_string()),
+        ImportedImportable {
+            file_references: Default::default(),
+            import_data: None,
+            default_asset: Some(default_asset),
+        },
+    );
+
+    Ok(())
+}
+
+fn hydrate_import_mesh(
+    asset_name: &str,
+    buffers: &[GltfBufferData],
+    schema_set: &SchemaSet,
+    mesh: &gltf::Mesh,
+    imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
+    material_index_to_object_id: &HashMap<Option<usize>, ObjectId>,
+) -> distill::importer::Result<()> {
+    //
+    // Set up material slots (we find unique materials in this mesh and assign them a slot
+    //
+    let mut material_slots: Vec<ObjectId> = Vec::default();
+    let mut material_slots_lookup: HashMap<Option<usize>, u32> = HashMap::default();
+    for primitive in mesh.primitives() {
+        let material_index = primitive.material().index();
+        //primitive.material()
+
+        if !material_slots_lookup.contains_key(&material_index) {
+            let slot_index = material_slots.len() as u32;
+            //TODO: This implies we always import materials, we'd need a different way to get the ObjectId
+            // of an already imported material from this file.
+            material_slots.push(*material_index_to_object_id.get(&material_index).unwrap());
+            material_slots_lookup.insert(material_index, slot_index);
+        }
+    }
+
+    //
+    // Create the asset (mainly we create a list of material slots referencing the appropriate material asset)
+    //
+    let default_asset = {
+        let mut default_asset_object =
+            MeshAdvMeshAssetRecord::new_single_object(schema_set).unwrap();
+        let mut default_asset_data_container =
+            DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+        let x = MeshAdvMeshAssetRecord::default();
+
+        for material_slot in material_slots {
+            let entry = x
+                .material_slots()
+                .add_entry(&mut default_asset_data_container);
+            x.material_slots()
+                .entry(entry)
+                .set(&mut default_asset_data_container, material_slot)
+                .unwrap();
+        }
+
+        default_asset_object
+    };
+
+    //
+    // Create import data
+    //
+    let mut import_data = MeshAdvMeshImportedDataRecord::new_single_object(schema_set).unwrap();
+    let mut import_data_container =
+        DataContainerMut::new_single_object(&mut import_data, schema_set);
+    let x = MeshAdvMeshImportedDataRecord::default();
+
+    //
+    // Iterate all mesh parts, building a single vertex and index buffer. Each MeshPart will
+    // hold offsets/lengths to their sections in the vertex/index buffers
+    //
+    for primitive in mesh.primitives() {
+        let reader = primitive.reader(|buffer| buffers.get(buffer.index()).map(|x| &**x));
+
+        let positions = reader.read_positions();
+        let normals = reader.read_normals();
+        let tex_coords = reader.read_tex_coords(0);
+        let indices = reader.read_indices();
+
+        if let (Some(indices), Some(positions), Some(normals), Some(tex_coords)) =
+            (indices, positions, normals, tex_coords)
+        {
+            let part_indices: Vec<u32> = indices.into_u32().collect();
+            let part_indices_bytes = PushBuffer::from_vec(&part_indices).into_data();
+
+            let positions: Vec<_> = positions.collect();
+            let positions_bytes = PushBuffer::from_vec(&positions).into_data();
+            let normals: Vec<_> = normals.collect();
+            let normals_bytes = PushBuffer::from_vec(&normals).into_data();
+            let tex_coords: Vec<_> = tex_coords.into_f32().collect();
+            let tex_coords_bytes = PushBuffer::from_vec(&tex_coords).into_data();
+
+            if primitive.material().index().is_none() {
+                return Err(distill::importer::Error::Boxed(Box::new(
+                    GltfImportError::new("A mesh primitive did not have a material"),
+                )));
+            }
+
+            let material_index = *material_slots_lookup
+                .get(&primitive.material().index())
+                .unwrap();
+
+            // let Some(material_index) = primitive.material().index() else {
+            //     return Err(distill::importer::Error::Boxed(Box::new(
+            //         GltfImportError::new("A mesh primitive did not have a material"),
+            //     )));
+            // };
+
+            let entry_uuid = x.mesh_parts().add_entry(&mut import_data_container);
+            let entry = x.mesh_parts().entry(entry_uuid);
+            entry
+                .positions()
+                .set(&mut import_data_container, positions_bytes.to_vec())
+                .unwrap();
+            entry
+                .normals()
+                .set(&mut import_data_container, normals_bytes.to_vec())
+                .unwrap();
+            entry
+                .texture_coordinates()
+                .set(&mut import_data_container, tex_coords_bytes.to_vec())
+                .unwrap();
+            entry
+                .indices()
+                .set(&mut import_data_container, part_indices_bytes)
+                .unwrap();
+            entry
+                .material_index()
+                .set(&mut import_data_container, material_index)
+                .unwrap();
+        } else {
+            log::error!(
+                "Mesh primitives must specify indices, positions, normals, tangents, and tex_coords"
+            );
+
+            return Err(distill::importer::Error::Boxed(Box::new(
+                GltfImportError::new("Mesh primitives must specify indices, positions, normals, tangents, and tex_coords"),
+            )));
+        }
+    }
+
+    // let mesh_id = mesh
+    //     .name()
+    //     .map(|s| GltfObjectId::Name(s.to_string()))
+    //     .unwrap_or_else(|| GltfObjectId::Index(mesh.index()));
+    //
+    // let mesh_to_import = MeshToImport { id: mesh_id, asset };
+    //
+    // // Verify that we iterate meshes in order so that our resulting assets are in order
+    // assert!(mesh.index() == meshes_to_import.len());
+
+    log::debug!(
+        "Importing Mesh name: {:?} index: {}",
+        mesh.name(),
+        mesh.index(),
+    );
+
+    //meshes_to_import.push(mesh_to_import);
+
+    imported_objects.insert(
+        Some(asset_name.to_string()),
+        ImportedImportable {
+            file_references: Default::default(),
+            import_data: Some(import_data),
+            default_asset: Some(default_asset),
+        },
+    );
+
+    Ok(())
+}
+
+fn name_or_index(
+    prefix: &str,
+    name: Option<&str>,
+    index: usize,
+) -> String {
+    if let Some(name) = name {
+        format!("{}_{}", prefix, name)
+    } else {
+        format!("{}_{}", prefix, index)
+    }
+}
+
+#[derive(TypeUuid, Default)]
+#[uuid = "01d71c49-867c-4d96-ad16-7c08b6cbfaf9"]
+pub struct GltfImporter;
+
+impl hydrate_model::Importer for GltfImporter {
+    fn supported_file_extensions(&self) -> &[&'static str] {
+        &["gltf", "glb"]
+    }
+
+    fn scan_file(
+        &self,
+        path: &Path,
+        schema_set: &SchemaSet,
+    ) -> Vec<ScannedImportable> {
+        let mesh_asset_type = schema_set
+            .find_named_type(MeshAdvMeshAssetRecord::schema_name())
+            .unwrap()
+            .as_record()
+            .unwrap()
+            .clone();
+
+        let material_asset_type = schema_set
+            .find_named_type(MeshAdvMaterialAssetRecord::schema_name())
+            .unwrap()
+            .as_record()
+            .unwrap()
+            .clone();
+
+        let image_asset_type = schema_set
+            .find_named_type(GpuImageAssetRecord::schema_name())
+            .unwrap()
+            .as_record()
+            .unwrap()
+            .clone();
+
+        let (doc, buffers, images) = ::gltf::import(path).unwrap();
+
+        let mut importables = Vec::default();
+
+        let mut uses_default_material = false;
+        for (i, mesh) in doc.meshes().enumerate() {
+            let name = name_or_index("mesh", mesh.name(), i);
+
+            for primitive in mesh.primitives() {
+                if primitive.material().index().is_none() {
+                    uses_default_material = true;
+                    break;
+                }
+            }
+
+            importables.push(ScannedImportable {
+                name: Some(name),
+                asset_type: mesh_asset_type.clone(),
+                file_references: Default::default(),
+            });
+        }
+
+        for (i, material) in doc.materials().enumerate() {
+            let name = name_or_index("material", material.name(), i);
+
+            importables.push(ScannedImportable {
+                name: Some(name),
+                asset_type: material_asset_type.clone(),
+                file_references: Default::default(),
+            });
+        }
+
+        for (i, image) in doc.images().enumerate() {
+            let name = name_or_index("image", image.name(), i);
+
+            importables.push(ScannedImportable {
+                name: Some(name),
+                asset_type: image_asset_type.clone(),
+                file_references: Default::default(),
+            });
+        }
+
+        if uses_default_material {
+            //TODO: Warn?
+            let name = "material__default_material".to_string();
+
+            importables.push(ScannedImportable {
+                name: Some(name),
+                asset_type: material_asset_type.clone(),
+                file_references: Default::default(),
+            });
+        }
+
+        importables
+    }
+
+    fn import_file(
+        &self,
+        path: &Path,
+        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        schema_set: &SchemaSet,
+        //import_info: &ImportInfo,
+    ) -> HashMap<Option<String>, ImportedImportable> {
+        //
+        // Read the file
+        //
+        let (doc, buffers, images) = ::gltf::import(path).unwrap();
+
+        let mut imported_objects = HashMap::default();
+
+        let mut image_index_to_object_id = HashMap::default();
+        let mut material_index_to_object_id = HashMap::default();
+
+        let image_color_space_assignments =
+            build_image_color_space_assignments_from_materials(&doc);
+
+        for (i, image) in doc.images().enumerate() {
+            let asset_name = name_or_index("image", image.name(), i);
+            if let Some(importable_object) = importable_objects.get(&Some(asset_name.clone())) {
+                image_index_to_object_id.insert(image.index(), importable_object.id);
+                hydrate_import_image(
+                    &asset_name,
+                    schema_set,
+                    &image,
+                    &images,
+                    &mut imported_objects,
+                    &image_color_space_assignments,
+                )
+                .unwrap();
+            }
+        }
+
+        for (i, material) in doc.materials().enumerate() {
+            let asset_name = name_or_index("material", material.name(), i);
+            if let Some(importable_object) = importable_objects.get(&Some(asset_name.clone())) {
+                material_index_to_object_id.insert(material.index(), importable_object.id);
+                hydrate_import_material(
+                    &asset_name,
+                    schema_set,
+                    &material,
+                    &mut imported_objects,
+                    &image_index_to_object_id,
+                )
+                .unwrap();
+            }
+        }
+
+        for (i, mesh) in doc.meshes().enumerate() {
+            let asset_name = name_or_index("mesh", mesh.name(), i);
+            if importable_objects.contains_key(&Some(asset_name.clone())) {
+                hydrate_import_mesh(
+                    &asset_name,
+                    &buffers,
+                    schema_set,
+                    &mesh,
+                    &mut imported_objects,
+                    &material_index_to_object_id,
+                )
+                .unwrap();
+            }
+        }
+
+        imported_objects
+    }
+}
+
+pub struct GltfAssetPlugin;
+
+impl AssetPlugin for GltfAssetPlugin {
+    fn setup(
+        schema_linker: &mut SchemaLinker,
+        importer_registry: &mut ImporterRegistryBuilder,
+        builder_registry: &mut BuilderRegistryBuilder,
+        job_processor_registry: &mut JobProcessorRegistryBuilder,
+    ) {
+        importer_registry.register_handler::<GltfImporter>(schema_linker);
+    }
 }

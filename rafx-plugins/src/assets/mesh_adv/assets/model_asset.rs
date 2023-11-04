@@ -19,6 +19,17 @@ pub struct ModelAdvAssetData {
     pub lods: Vec<ModelAdvAssetDataLod>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct HydrateModelAdvAssetDataLod {
+    pub mesh: hydrate_base::Handle<MeshAdvAsset>,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Clone)]
+#[uuid = "5c6d78ae-ad2b-4cdc-a7a7-8ade67882c6e"]
+pub struct HydrateModelAdvAssetData {
+    pub lods: Vec<HydrateModelAdvAssetDataLod>,
+}
+
 pub struct ModelAdvAssetInner {
     pub lods: Vec<ModelAdvAssetDataLod>,
 }

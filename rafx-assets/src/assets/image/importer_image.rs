@@ -302,6 +302,69 @@ impl GpuImageImporterSimple {
             color_space: self.image_importer_config.default.color_space,
         };
     }
+
+    pub fn set_default_asset_properties(
+        default_settings: &ImageImporterOptions,
+        default_asset_data_container: &mut DataContainerMut,
+        asset_record: &GpuImageAssetRecord,
+    ) {
+        match default_settings.data_format {
+            ImageAssetDataFormatConfig::Uncompressed => {
+                asset_record
+                    .basis_compression()
+                    .set(default_asset_data_container, false)
+                    .unwrap();
+            }
+            ImageAssetDataFormatConfig::BasisCompressed(settings) => {
+                asset_record
+                    .basis_compression()
+                    .set(default_asset_data_container, true)
+                    .unwrap();
+
+                asset_record
+                    .basis_compression_settings()
+                    .compression_type()
+                    .set(
+                        default_asset_data_container,
+                        match settings.compression_type {
+                            ImageAssetBasisCompressionType::Etc1S => {
+                                GpuImageBasisCompressionTypeEnum::Etc1S
+                            }
+                            ImageAssetBasisCompressionType::Uastc => {
+                                GpuImageBasisCompressionTypeEnum::Uastc
+                            }
+                        },
+                    )
+                    .unwrap();
+                asset_record
+                    .basis_compression_settings()
+                    .quality()
+                    .set(default_asset_data_container, settings.quality)
+                    .unwrap();
+            }
+        }
+        asset_record
+            .color_space()
+            .set(
+                default_asset_data_container,
+                match default_settings.color_space {
+                    ImageAssetColorSpaceConfig::Srgb => GpuImageColorSpaceEnum::Srgb,
+                    ImageAssetColorSpaceConfig::Linear => GpuImageColorSpaceEnum::Linear,
+                },
+            )
+            .unwrap();
+        asset_record
+            .mip_generation()
+            .set(
+                default_asset_data_container,
+                match default_settings.mip_generation {
+                    ImageAssetMipGeneration::NoMips => GpuImageMipGenerationEnum::NoMips,
+                    ImageAssetMipGeneration::Precomupted => GpuImageMipGenerationEnum::Precomputed,
+                    ImageAssetMipGeneration::Runtime => GpuImageMipGenerationEnum::Runtime,
+                },
+            )
+            .unwrap();
+    }
 }
 
 impl hydrate_model::Importer for GpuImageImporterSimple {
@@ -366,58 +429,64 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
                 DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
             let x = GpuImageAssetRecord::default();
 
-            match default_settings.data_format {
-                ImageAssetDataFormatConfig::Uncompressed => {
-                    x.basis_compression()
-                        .set(&mut default_asset_data_container, false)
-                        .unwrap();
-                }
-                ImageAssetDataFormatConfig::BasisCompressed(settings) => {
-                    x.basis_compression()
-                        .set(&mut default_asset_data_container, true)
-                        .unwrap();
+            GpuImageImporterSimple::set_default_asset_properties(
+                &default_settings,
+                &mut default_asset_data_container,
+                &x,
+            );
 
-                    x.basis_compression_settings()
-                        .compression_type()
-                        .set(
-                            &mut default_asset_data_container,
-                            match settings.compression_type {
-                                ImageAssetBasisCompressionType::Etc1S => {
-                                    GpuImageBasisCompressionTypeEnum::Etc1S
-                                }
-                                ImageAssetBasisCompressionType::Uastc => {
-                                    GpuImageBasisCompressionTypeEnum::Uastc
-                                }
-                            },
-                        )
-                        .unwrap();
-                    x.basis_compression_settings()
-                        .quality()
-                        .set(&mut default_asset_data_container, settings.quality)
-                        .unwrap();
-                }
-            }
-            x.color_space()
-                .set(
-                    &mut default_asset_data_container,
-                    match default_settings.color_space {
-                        ImageAssetColorSpaceConfig::Srgb => GpuImageColorSpaceEnum::Srgb,
-                        ImageAssetColorSpaceConfig::Linear => GpuImageColorSpaceEnum::Linear,
-                    },
-                )
-                .unwrap();
-            x.mip_generation()
-                .set(
-                    &mut default_asset_data_container,
-                    match default_settings.mip_generation {
-                        ImageAssetMipGeneration::NoMips => GpuImageMipGenerationEnum::NoMips,
-                        ImageAssetMipGeneration::Precomupted => {
-                            GpuImageMipGenerationEnum::Precomputed
-                        }
-                        ImageAssetMipGeneration::Runtime => GpuImageMipGenerationEnum::Runtime,
-                    },
-                )
-                .unwrap();
+            // match default_settings.data_format {
+            //     ImageAssetDataFormatConfig::Uncompressed => {
+            //         x.basis_compression()
+            //             .set(&mut default_asset_data_container, false)
+            //             .unwrap();
+            //     }
+            //     ImageAssetDataFormatConfig::BasisCompressed(settings) => {
+            //         x.basis_compression()
+            //             .set(&mut default_asset_data_container, true)
+            //             .unwrap();
+            //
+            //         x.basis_compression_settings()
+            //             .compression_type()
+            //             .set(
+            //                 &mut default_asset_data_container,
+            //                 match settings.compression_type {
+            //                     ImageAssetBasisCompressionType::Etc1S => {
+            //                         GpuImageBasisCompressionTypeEnum::Etc1S
+            //                     }
+            //                     ImageAssetBasisCompressionType::Uastc => {
+            //                         GpuImageBasisCompressionTypeEnum::Uastc
+            //                     }
+            //                 },
+            //             )
+            //             .unwrap();
+            //         x.basis_compression_settings()
+            //             .quality()
+            //             .set(&mut default_asset_data_container, settings.quality)
+            //             .unwrap();
+            //     }
+            // }
+            // x.color_space()
+            //     .set(
+            //         &mut default_asset_data_container,
+            //         match default_settings.color_space {
+            //             ImageAssetColorSpaceConfig::Srgb => GpuImageColorSpaceEnum::Srgb,
+            //             ImageAssetColorSpaceConfig::Linear => GpuImageColorSpaceEnum::Linear,
+            //         },
+            //     )
+            //     .unwrap();
+            // x.mip_generation()
+            //     .set(
+            //         &mut default_asset_data_container,
+            //         match default_settings.mip_generation {
+            //             ImageAssetMipGeneration::NoMips => GpuImageMipGenerationEnum::NoMips,
+            //             ImageAssetMipGeneration::Precomupted => {
+            //                 GpuImageMipGenerationEnum::Precomputed
+            //             }
+            //             ImageAssetMipGeneration::Runtime => GpuImageMipGenerationEnum::Runtime,
+            //         },
+            //     )
+            //     .unwrap();
 
             default_asset_object
         };

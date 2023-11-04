@@ -1,0 +1,19 @@
+[
+  {
+    "type": "record",
+    "name": "LdtkImportData",
+    "fields": [
+      {
+        "name": "json_data",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "LdtkAsset",
+    "fields": [
+
+    ]
+  }
+]

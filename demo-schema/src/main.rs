@@ -12,6 +12,7 @@ fn do_codegen() -> Result<(), Box<dyn Error>> {
             "/../rafx-assets/schema"
         ))
         .unwrap(),
+        included_schema: Default::default(),
         outfile: PathBuf::from_str(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../rafx-assets/src/schema_codegen.rs"
@@ -26,6 +27,11 @@ fn do_codegen() -> Result<(), Box<dyn Error>> {
             "/../rafx-plugins/schema"
         ))
         .unwrap(),
+        included_schema: vec![PathBuf::from_str(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../rafx-assets/schema"
+        ))
+        .unwrap()],
         outfile: PathBuf::from_str(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../rafx-plugins/src/schema_codegen.rs"

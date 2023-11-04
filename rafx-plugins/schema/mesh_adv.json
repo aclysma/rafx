@@ -1,0 +1,204 @@
+[
+  {
+    "type": "enum",
+    "name": "MeshAdvShadowMethod",
+    "symbols": [
+      {
+        "name": "None",
+        "aliases": ["NONE"]
+      },
+      {
+        "name": "Opaque",
+        "aliases": ["OPAQUE"]
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "MeshAdvBlendMethod",
+    "symbols": [
+      {
+        "name": "Opaque",
+        "aliases": ["OPAQUE"]
+      },
+      {
+        "name": "AlphaClip",
+        "aliases": ["ALPHA_CLIP"]
+      },
+      {
+        "name": "AlphaBlend",
+        "aliases": ["ALPHA_BLEND", "BLEND"]
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MeshAdvMaterialImportedData",
+    "fields": [
+
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MeshAdvMaterialAsset",
+    "fields": [
+      {
+        "name": "base_color_factor",
+        "type": "Vec4"
+      },
+      {
+        "name": "emissive_factor",
+        "type": "Vec3"
+      },
+      {
+        "name": "metallic_factor",
+        "type": "f32"
+      },
+      {
+        "name": "roughness_factor",
+        "type": "f32"
+      },
+      {
+        "name": "normal_texture_scale",
+        "type": "f32"
+      },
+      {
+        "name": "color_texture",
+        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+      },
+      {
+        "name": "metallic_roughness_texture",
+        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+      },
+      {
+        "name": "normal_texture",
+        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+      },
+      {
+        "name": "emissive_texture",
+        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+      },
+      {
+        "name": "occlusion_texture",
+        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+      },
+      {
+        "name": "shadow_method",
+        "type": "MeshAdvShadowMethod"
+      },
+      {
+        "name": "blend_method",
+        "type": "MeshAdvBlendMethod"
+      },
+      {
+        "name": "alpha_threshold",
+        "type": "f32"
+      },
+      {
+        "name": "backface_culling",
+        "type": "bool"
+      },
+      {
+        "name": "color_texture_has_alpha_channel",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "MeshAdvIndexType",
+    "symbols": [
+      {
+        "name": "Uint16",
+        "aliases": []
+      },
+      {
+        "name": "Uint32",
+        "aliases": []
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MeshAdvMeshImportedDataMeshPart",
+    "fields": [
+      {
+        "name": "positions",
+        "type": "bytes"
+      },
+      {
+        "name": "normals",
+        "type": "bytes"
+      },
+      {
+        "name": "texture_coordinates",
+        "type": "bytes"
+      },
+      {
+        "name": "indices",
+        "type": "bytes"
+      },
+      {
+        "name": "material_index",
+        "type": "u32"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MeshAdvMeshImportedData",
+    "fields": [
+      {
+        "name": "mesh_parts",
+        "type": { "name": "dynamic_array", "inner_type": "MeshAdvMeshImportedDataMeshPart" }
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MeshAdvMeshAsset",
+    "fields": [
+      {
+        "name": "material_slots",
+        "type": { "name": "dynamic_array", "inner_type": { "name": "object_ref", "inner_type": "MeshAdvMaterialAsset" }}
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MeshAdvModelLod",
+    "fields": [
+      {
+        "name": "mesh",
+        "type": { "name": "object_ref", "inner_type": "MeshAdvMeshAsset" }
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MeshAdvModelAsset",
+    "fields": [
+      {
+        "name": "lods",
+        "type": { "name": "dynamic_array", "inner_type": "MeshAdvModelLod" }
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MeshAdvPrefabImportData",
+    "fields": [
+      {
+        "name": "json_data",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MeshAdvPrefabAsset",
+    "fields": [
+
+    ]
+  }
+]
