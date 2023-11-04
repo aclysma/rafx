@@ -18,7 +18,7 @@ use hydrate_base::hashing::HashMap;
 use hydrate_base::ObjectId;
 use hydrate_data::{DataContainerMut, Record, SchemaSet, SingleObject};
 use hydrate_model::{
-    AssetPlugin, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
+    AssetPlugin, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
 };
 use itertools::Itertools;
@@ -1346,6 +1346,7 @@ impl hydrate_model::Importer for GltfImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let mesh_asset_type = schema_set
             .find_named_type(MeshAdvMeshAssetRecord::schema_name())

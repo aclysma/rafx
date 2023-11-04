@@ -1,5 +1,42 @@
 // This file generated automatically by hydrate-codegen. Do not make manual edits. Use include!() to place these types in the intended location.
 #[derive(Default)]
+pub struct BlenderAnimAssetRecord(PropertyPath);
+
+impl Field for BlenderAnimAssetRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        BlenderAnimAssetRecord(property_path)
+    }
+}
+
+impl Record for BlenderAnimAssetRecord {
+    fn schema_name() -> &'static str {
+        "BlenderAnimAsset"
+    }
+}
+
+impl BlenderAnimAssetRecord {
+}
+#[derive(Default)]
+pub struct BlenderAnimImportedDataRecord(PropertyPath);
+
+impl Field for BlenderAnimImportedDataRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        BlenderAnimImportedDataRecord(property_path)
+    }
+}
+
+impl Record for BlenderAnimImportedDataRecord {
+    fn schema_name() -> &'static str {
+        "BlenderAnimImportedData"
+    }
+}
+
+impl BlenderAnimImportedDataRecord {
+    pub fn json_string(&self) -> StringField {
+        StringField::new(self.0.push("json_string"))
+    }
+}
+#[derive(Default)]
 pub struct FontAssetRecord(PropertyPath);
 
 impl Field for FontAssetRecord {

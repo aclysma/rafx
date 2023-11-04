@@ -7,6 +7,7 @@ pub mod pipelines;
 mod schema;
 mod shaders;
 
+use crate::assets::anim::BlenderAnimAssetPlugin;
 use crate::assets::font::FontAssetPlugin;
 use crate::assets::ldtk::LdtkAssetPlugin;
 use crate::assets::mesh_adv::{
@@ -33,6 +34,7 @@ pub fn register_default_hydrate_plugins(
         .register_plugin::<BlenderMeshAssetPlugin>(schema_linker)
         .register_plugin::<BlenderModelAssetPlugin>(schema_linker)
         .register_plugin::<BlenderPrefabAssetPlugin>(schema_linker)
+        .register_plugin::<BlenderAnimAssetPlugin>(schema_linker)
         .register_plugin::<GltfAssetPlugin>(schema_linker)
         .register_plugin::<MeshAdvAssetPlugin>(schema_linker);
 

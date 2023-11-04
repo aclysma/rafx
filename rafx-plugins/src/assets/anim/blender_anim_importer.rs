@@ -2,14 +2,26 @@ use crate::assets::anim::{
     AnimAssetData, AnimClip, AnimInterpolationMode, Bone, BoneChannelGroup, BoneChannelQuat,
     BoneChannelVec3, Skeleton,
 };
+use crate::schema::{BlenderAnimAssetRecord, BlenderAnimImportedDataRecord};
 use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use fnv::FnvHashMap;
+use hydrate_base::hashing::HashMap;
+use hydrate_base::ObjectId;
+use hydrate_data::{
+    DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
+};
+use hydrate_model::{
+    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
+    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
+};
 use rafx::api::{RafxError, RafxResult};
 use rafx::distill::importer::Error;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::Read;
+use std::path::Path;
 use type_uuid::*;
 
 #[allow(dead_code)]
@@ -340,4 +352,229 @@ fn parse_action(
         name: action.name.clone(),
         bone_channel_groups,
     })
+}
+
+#[derive(TypeUuid, Default)]
+#[uuid = "238792bf-7078-4675-9f4d-cf53305806c6"]
+pub struct HydrateBlenderAnimImporter;
+
+impl hydrate_model::Importer for HydrateBlenderAnimImporter {
+    fn supported_file_extensions(&self) -> &[&'static str] {
+        &["blender_anim"]
+    }
+
+    fn scan_file(
+        &self,
+        path: &Path,
+        schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
+    ) -> Vec<ScannedImportable> {
+        //
+        // Read the file
+        //
+        let json_str = std::fs::read_to_string(path).unwrap();
+        let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_str(&json_str);
+        if let Err(err) = anim_data {
+            panic!("anim Import error: {:?}", err);
+            //return Err(Error::Boxed(Box::new(err)));
+        }
+
+        let asset_type = schema_set
+            .find_named_type(BlenderAnimAssetRecord::schema_name())
+            .unwrap()
+            .as_record()
+            .unwrap()
+            .clone();
+        let mut file_references: Vec<ReferencedSourceFile> = Default::default();
+        vec![ScannedImportable {
+            name: None,
+            asset_type,
+            file_references,
+        }]
+    }
+
+    fn import_file(
+        &self,
+        path: &Path,
+        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        schema_set: &SchemaSet,
+    ) -> HashMap<Option<String>, ImportedImportable> {
+        //
+        // Read the file
+        //
+        let json_str = std::fs::read_to_string(path).unwrap();
+        let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_str(&json_str);
+        if let Err(err) = anim_data {
+            panic!("anim Import error: {:?}", err);
+            //return Err(Error::Boxed(Box::new(err)));
+        }
+
+        //
+        // Create the default asset
+        //
+        let default_asset = {
+            let mut default_asset_object =
+                BlenderAnimAssetRecord::new_single_object(schema_set).unwrap();
+            // let mut default_asset_data_container =
+            //     DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+            // let x = BlenderAnimAssetRecord::default();
+
+            // No fields to write
+            default_asset_object
+        };
+
+        //
+        // Create import data
+        //
+        let import_data = {
+            let mut import_object =
+                BlenderAnimImportedDataRecord::new_single_object(schema_set).unwrap();
+            let mut import_data_container =
+                DataContainerMut::new_single_object(&mut import_object, schema_set);
+            let x = BlenderAnimImportedDataRecord::default();
+
+            x.json_string()
+                .set(&mut import_data_container, json_str)
+                .unwrap();
+
+            import_object
+        };
+
+        //
+        // Return the created objects
+        //
+        let mut imported_objects = HashMap::default();
+        imported_objects.insert(
+            None,
+            ImportedImportable {
+                file_references: Default::default(),
+                import_data: Some(import_data),
+                default_asset: Some(default_asset),
+            },
+        );
+        imported_objects
+    }
+}
+
+#[derive(Hash, Serialize, Deserialize)]
+pub struct BlenderAnimJobInput {
+    pub asset_id: ObjectId,
+}
+impl JobInput for BlenderAnimJobInput {}
+
+#[derive(Serialize, Deserialize)]
+pub struct BlenderAnimJobOutput {}
+impl JobOutput for BlenderAnimJobOutput {}
+
+#[derive(Default, TypeUuid)]
+#[uuid = "e7ab8a6c-6d53-4c05-b3e3-eb286ff2042a"]
+pub struct BlenderAnimJobProcessor;
+
+impl JobProcessor for BlenderAnimJobProcessor {
+    type InputT = BlenderAnimJobInput;
+    type OutputT = BlenderAnimJobOutput;
+
+    fn version(&self) -> u32 {
+        1
+    }
+
+    fn enumerate_dependencies(
+        &self,
+        input: &BlenderAnimJobInput,
+        data_set: &DataSet,
+        schema_set: &SchemaSet,
+    ) -> JobEnumeratedDependencies {
+        // No dependencies
+        JobEnumeratedDependencies {
+            import_data: vec![input.asset_id],
+            upstream_jobs: Default::default(),
+        }
+    }
+
+    fn run(
+        &self,
+        input: &BlenderAnimJobInput,
+        data_set: &DataSet,
+        schema_set: &SchemaSet,
+        dependency_data: &HashMap<ObjectId, SingleObject>,
+        job_api: &dyn JobApi,
+    ) -> BlenderAnimJobOutput {
+        //
+        // Read imported data
+        //
+        let imported_data = &dependency_data[&input.asset_id];
+        let data_container = DataContainer::new_single_object(&imported_data, schema_set);
+        let x = BlenderAnimImportedDataRecord::new(PropertyPath::default());
+
+        let json_str = x.json_string().get(&data_container).unwrap();
+
+        let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_str(&json_str);
+        if let Err(err) = anim_data {
+            panic!("anim Import error: {:?}", err);
+            //return Err(Error::Boxed(Box::new(err)));
+        }
+
+        let anim_data = anim_data.unwrap();
+
+        let skeleton = parse_skeleton(&anim_data.skeleton)
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let mut clips = Vec::with_capacity(anim_data.actions.len());
+        for action in &anim_data.actions {
+            clips.push(
+                parse_action(&skeleton, action)
+                    .map_err(|e| e.to_string())
+                    .unwrap(),
+            );
+        }
+
+        job_system::produce_asset(job_api, input.asset_id, AnimAssetData { skeleton, clips });
+
+        BlenderAnimJobOutput {}
+    }
+}
+
+#[derive(TypeUuid, Default)]
+#[uuid = "77a09407-3ec8-440d-bd01-408b84b4516c"]
+pub struct BlenderAnimBuilder {}
+
+impl hydrate_model::Builder for BlenderAnimBuilder {
+    fn asset_type(&self) -> &'static str {
+        BlenderAnimAssetRecord::schema_name()
+    }
+
+    fn start_jobs(
+        &self,
+        asset_id: ObjectId,
+        data_set: &DataSet,
+        schema_set: &SchemaSet,
+        job_api: &dyn JobApi,
+    ) {
+        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let x = BlenderAnimAssetRecord::default();
+
+        //Future: Might produce jobs per-platform
+        job_system::enqueue_job::<BlenderAnimJobProcessor>(
+            data_set,
+            schema_set,
+            job_api,
+            BlenderAnimJobInput { asset_id },
+        );
+    }
+}
+
+pub struct BlenderAnimAssetPlugin;
+
+impl hydrate_model::AssetPlugin for BlenderAnimAssetPlugin {
+    fn setup(
+        schema_linker: &mut SchemaLinker,
+        importer_registry: &mut ImporterRegistryBuilder,
+        builder_registry: &mut BuilderRegistryBuilder,
+        job_processor_registry: &mut JobProcessorRegistryBuilder,
+    ) {
+        importer_registry.register_handler::<HydrateBlenderAnimImporter>(schema_linker);
+        builder_registry.register_handler::<BlenderAnimBuilder>(schema_linker);
+        job_processor_registry.register_job_processor::<BlenderAnimJobProcessor>();
+    }
 }

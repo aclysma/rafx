@@ -1,0 +1,19 @@
+[
+  {
+    "type": "record",
+    "name": "BlenderAnimAsset",
+    "fields": [
+
+    ]
+  },
+  {
+    "type": "record",
+    "name": "BlenderAnimImportedData",
+    "fields": [
+      {
+        "name": "json_string",
+        "type": "string"
+      }
+    ]
+  }
+]

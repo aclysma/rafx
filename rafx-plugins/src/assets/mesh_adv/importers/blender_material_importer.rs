@@ -7,13 +7,14 @@ use distill::{core::AssetUuid, importer::ImportOp};
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, Enum, ImporterId, ObjectRefField, Record, SchemaSet};
 use hydrate_model::{
-    AssetPlugin, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
+    AssetPlugin, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
     SchemaLinker,
 };
-use rafx::assets::{GpuImageImporterSimple, ImageAsset};
+use rafx::assets::{GpuCompressedImageImporterDds, GpuImageImporterSimple, ImageAsset};
 use rafx::distill::loader::handle::Handle;
 use serde::{Deserialize, Serialize};
+use std::ffi::OsStr;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use type_uuid::*;
@@ -197,6 +198,7 @@ impl hydrate_model::Importer for BlenderMaterialImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(MeshAdvMaterialAssetRecord::schema_name())
@@ -210,14 +212,23 @@ impl hydrate_model::Importer for BlenderMaterialImporter {
 
         let mut file_references: Vec<ReferencedSourceFile> = Default::default();
 
-        fn try_add_file_reference<T: TypeUuid>(
+        fn try_add_image_file_reference(
             file_references: &mut Vec<ReferencedSourceFile>,
             path_as_string: &Option<PathBuf>,
+            importer_registry: &ImporterRegistry,
         ) {
-            let importer_image_id = ImporterId(Uuid::from_bytes(T::UUID));
             if let Some(path_as_string) = path_as_string {
+                let extension = path_as_string
+                    .extension()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string();
+                // We could be using different image importers scanning for different formats, so search for the best importer
+                let importers = importer_registry.importers_for_file_extension(&extension);
+                let importer_id = importers[0];
+
                 file_references.push(ReferencedSourceFile {
-                    importer_id: importer_image_id,
+                    importer_id,
                     path: path_as_string.clone(),
                 })
             }
@@ -225,21 +236,25 @@ impl hydrate_model::Importer for BlenderMaterialImporter {
 
         //TODO: We assume a particular importer but we should probably just say what kind of imported
         // data or asset we would use?
-        try_add_file_reference::<GpuImageImporterSimple>(
+        try_add_image_file_reference(
             &mut file_references,
             &json_data.color_texture,
+            importer_registry,
         );
-        try_add_file_reference::<GpuImageImporterSimple>(
+        try_add_image_file_reference(
             &mut file_references,
             &json_data.metallic_roughness_texture,
+            importer_registry,
         );
-        try_add_file_reference::<GpuImageImporterSimple>(
+        try_add_image_file_reference(
             &mut file_references,
             &json_data.normal_texture,
+            importer_registry,
         );
-        try_add_file_reference::<GpuImageImporterSimple>(
+        try_add_image_file_reference(
             &mut file_references,
             &json_data.emissive_texture,
+            importer_registry,
         );
 
         vec![ScannedImportable {

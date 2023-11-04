@@ -12,8 +12,8 @@ use hydrate_data::{
 };
 use hydrate_model::{
     job_system, AssetPlugin, Builder, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
+    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
 };
 use image::GenericImageView;
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
@@ -198,6 +198,7 @@ impl hydrate_model::Importer for ShaderPackageImporterSpv {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(ShaderPackageAssetRecord::schema_name())
@@ -296,6 +297,7 @@ impl hydrate_model::Importer for ShaderPackageImporterCooked {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(ShaderPackageAssetRecord::schema_name())

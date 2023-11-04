@@ -9,7 +9,7 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
+    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
 };
@@ -97,6 +97,7 @@ impl hydrate_model::Importer for HydrateFontImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(FontAssetRecord::schema_name())

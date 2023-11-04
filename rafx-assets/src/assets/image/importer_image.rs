@@ -20,8 +20,8 @@ use hydrate_data::{
 };
 use hydrate_model::{
     job_system, Builder, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ScannedImportable,
+    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScannedImportable,
 };
 use image::GenericImageView;
 use rafx_api::RafxResourceType;
@@ -376,6 +376,7 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(GpuImageAssetRecord::schema_name())

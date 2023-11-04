@@ -12,7 +12,7 @@ use distill::importer::{ImportedAsset, Importer, ImporterValue};
 use distill::{core::AssetUuid, importer::ImportOp};
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, Record, SchemaSet};
-use hydrate_model::{ImportableObject, ImportedImportable, ScannedImportable};
+use hydrate_model::{ImportableObject, ImportedImportable, ImporterRegistry, ScannedImportable};
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -139,6 +139,7 @@ impl hydrate_model::Importer for GpuCompressedImageImporterBasis {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(GpuCompressedImageAssetRecord::schema_name())

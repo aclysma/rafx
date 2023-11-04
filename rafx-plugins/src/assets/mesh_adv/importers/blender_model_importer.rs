@@ -6,8 +6,9 @@ use distill::{core::AssetUuid, importer::ImportOp};
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
 use hydrate_model::{
-    BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistryBuilder,
-    JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
+    BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
+    SchemaLinker,
 };
 use rafx::distill::loader::handle::Handle;
 use serde::{Deserialize, Serialize};
@@ -111,6 +112,7 @@ impl hydrate_model::Importer for BlenderModelImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file

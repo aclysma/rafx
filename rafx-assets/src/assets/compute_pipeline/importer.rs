@@ -11,7 +11,7 @@ use hydrate_data::{
     SingleObject,
 };
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
+    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
 };
@@ -87,6 +87,7 @@ impl hydrate_model::Importer for HydrateComputePipelineImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file

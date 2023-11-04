@@ -18,8 +18,8 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, Builder, ImportableObject, ImportedImportable, JobApi, JobEnumeratedDependencies,
-    JobInput, JobOutput, JobProcessor, ScannedImportable,
+    job_system, Builder, ImportableObject, ImportedImportable, ImporterRegistry, JobApi,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ScannedImportable,
 };
 use image::GenericImageView;
 use rafx_api::RafxResourceType;
@@ -203,6 +203,7 @@ impl hydrate_model::Importer for GpuCompressedImageImporterDds {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
+        importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(GpuCompressedImageAssetRecord::schema_name())
