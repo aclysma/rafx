@@ -2,6 +2,7 @@ use crate::shaders::tile_layer::tile_layer_frag;
 use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
 use glam::Vec3;
+use hydrate_base::{ArtifactId, ObjectId};
 use rafx::api::RafxResult;
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset,
@@ -49,6 +50,67 @@ pub struct LdtkTileSet {
     pub material_instance: Handle<MaterialInstanceAsset>,
     pub image_width: u32,
     pub image_height: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HydrateLdtkLayerData {
+    pub material_instance: hydrate_base::Handle<MaterialInstanceAsset>,
+    pub draw_call_data: Vec<LdtkLayerDrawCallData>,
+    pub z_pos: f32,
+    pub world_x_pos: i64,
+    pub world_y_pos: i64,
+    pub grid_width: i64,
+    pub grid_height: i64,
+    pub grid_size: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HydrateLdtkLayerDataTemp {
+    pub material_instance: ArtifactId,
+    pub draw_call_data: Vec<LdtkLayerDrawCallData>,
+    pub z_pos: f32,
+    pub world_x_pos: i64,
+    pub world_y_pos: i64,
+    pub grid_width: i64,
+    pub grid_height: i64,
+    pub grid_size: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HydrateLdtkLevelData {
+    pub layer_data: Vec<HydrateLdtkLayerData>,
+    pub vertex_data: Option<hydrate_base::Handle<BufferAsset>>,
+    pub index_data: Option<hydrate_base::Handle<BufferAsset>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct HydrateLdtkLevelDataTemp {
+    pub layer_data: Vec<HydrateLdtkLayerDataTemp>,
+    pub vertex_data: Option<hydrate_model::AssetArtifactIdPair>,
+    pub index_data: Option<hydrate_model::AssetArtifactIdPair>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HydrateLdtkTileSet {
+    pub image: hydrate_base::Handle<ImageAsset>,
+    pub material_instance: hydrate_base::Handle<MaterialInstanceAsset>,
+    pub image_width: u32,
+    pub image_height: u32,
+}
+
+#[derive(Clone, Debug)]
+pub struct HydrateLdtkTileSetTemp {
+    pub image: ObjectId,
+    pub material_instance: ArtifactId,
+    pub image_width: u32,
+    pub image_height: u32,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Clone, Debug)]
+#[uuid = "1eb04266-4a32-473a-a54a-70b4d1172877"]
+pub struct HydrateLdtkAssetData {
+    pub tilesets: FnvHashMap<TileSetUid, HydrateLdtkTileSet>,
+    pub levels: FnvHashMap<LevelUid, HydrateLdtkLevelData>,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone, Debug)]

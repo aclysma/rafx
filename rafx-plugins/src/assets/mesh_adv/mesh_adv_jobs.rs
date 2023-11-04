@@ -563,7 +563,7 @@ impl JobProcessor for MeshAdvModelJobProcessor {
 }
 
 #[derive(TypeUuid, Default)]
-#[uuid = "02a99fa5-8053-4d6f-9e8d-54cb9e2f7949"]
+#[uuid = "1190eda4-e0c7-4851-ba1e-0ba56d1dc384"]
 pub struct MeshAdvModelBuilder {}
 
 impl hydrate_model::Builder for MeshAdvModelBuilder {
@@ -712,7 +712,7 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
 }
 
 #[derive(TypeUuid, Default)]
-#[uuid = "02a99fa5-8053-4d6f-9e8d-54cb9e2f7949"]
+#[uuid = "e5e3879c-5ff6-4823-b53d-a209a1fed82f"]
 pub struct MeshAdvPrefabBuilder {}
 
 impl hydrate_model::Builder for MeshAdvPrefabBuilder {

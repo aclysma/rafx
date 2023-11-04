@@ -1,6 +1,7 @@
 use crate::assets::ldtk::{
-    LdtkAssetData, LdtkLayerData, LdtkLayerDrawCallData, LdtkLevelData, LdtkTileSet, LevelUid,
-    TileSetUid,
+    HydrateLdtkAssetData, HydrateLdtkLayerData, HydrateLdtkLayerDataTemp, HydrateLdtkLevelData,
+    HydrateLdtkLevelDataTemp, HydrateLdtkTileSet, HydrateLdtkTileSetTemp, LdtkAssetData,
+    LdtkLayerData, LdtkLayerDrawCallData, LdtkLevelData, LdtkTileSet, LevelUid, TileSetUid,
 };
 use crate::features::tile_layer::TileLayerVertex;
 use crate::schema::{LdtkAssetRecord, LdtkImportDataRecord};
@@ -449,6 +450,105 @@ fn generate_draw_data(
     }
 }
 
+fn hydrate_generate_draw_data(
+    level: &Level,
+    layer: &LayerInstance,
+    z_pos: f32,
+    tile_instances: &[TileInstance],
+    tileset: &HydrateLdtkTileSetTemp,
+    vertex_data: &mut Vec<TileLayerVertex>,
+    index_data: &mut Vec<u16>,
+    layer_draw_call_data: &mut Vec<LdtkLayerDrawCallData>,
+) {
+    for tile in tile_instances {
+        //
+        // If the vertex count exceeds what a u16 index buffer support, start a new draw call
+        //
+
+        let mut vertex_count = (layer_draw_call_data
+            .last()
+            .map(|x| x.index_count)
+            .unwrap_or(0)
+            / 6)
+            * 4;
+        if layer_draw_call_data.is_empty() || vertex_count + 4 > std::u16::MAX as u32 {
+            layer_draw_call_data.push(LdtkLayerDrawCallData {
+                vertex_data_offset_in_bytes: (vertex_data.len()
+                    * std::mem::size_of::<TileLayerVertex>())
+                    as u32,
+                index_data_offset_in_bytes: (index_data.len() * std::mem::size_of::<u16>()) as u32,
+                index_count: 0,
+                z_pos,
+            });
+
+            vertex_count = 0;
+        }
+
+        let current_draw_call_data = layer_draw_call_data.last_mut().unwrap();
+
+        let flip_bits = tile.f;
+        let x_pos = (tile.px[0] + layer.px_total_offset_x + level.world_x) as f32;
+        let y_pos = -1.0 * (tile.px[1] + layer.px_total_offset_y + level.world_y) as f32;
+        let tileset_src_x_pos = tile.src[0];
+        let tileset_src_y_pos = tile.src[1];
+        let tile_width = layer.grid_size as f32;
+        let tile_height = layer.grid_size as f32;
+
+        let mut texture_rect_left = tileset_src_x_pos as f32 / tileset.image_width as f32;
+        let mut texture_rect_right =
+            (tileset_src_x_pos as f32 + tile_width) / tileset.image_width as f32;
+        let mut texture_rect_top =
+            (tileset_src_y_pos as f32 + tile_height) / tileset.image_height as f32;
+        let mut texture_rect_bottom = (tileset_src_y_pos as f32) / tileset.image_height as f32;
+
+        //
+        // Handle flipping the image
+        //
+        if (flip_bits & 1) == 1 {
+            std::mem::swap(&mut texture_rect_left, &mut texture_rect_right);
+        }
+
+        if (flip_bits & 2) == 2 {
+            std::mem::swap(&mut texture_rect_top, &mut texture_rect_bottom);
+        }
+
+        //
+        // Insert vertex data
+        //
+        vertex_data.push(TileLayerVertex {
+            position: [x_pos + tile_width, y_pos + tile_height, z_pos],
+            uv: [texture_rect_right, texture_rect_bottom],
+        });
+        vertex_data.push(TileLayerVertex {
+            position: [x_pos, y_pos + tile_height, z_pos],
+            uv: [texture_rect_left, texture_rect_bottom],
+        });
+        vertex_data.push(TileLayerVertex {
+            position: [x_pos + tile_width, y_pos, z_pos],
+            uv: [texture_rect_right, texture_rect_top],
+        });
+        vertex_data.push(TileLayerVertex {
+            position: [x_pos, y_pos, z_pos],
+            uv: [texture_rect_left, texture_rect_top],
+        });
+
+        //
+        // Insert index data
+        //
+        index_data.push(vertex_count as u16 + 0);
+        index_data.push(vertex_count as u16 + 1);
+        index_data.push(vertex_count as u16 + 2);
+        index_data.push(vertex_count as u16 + 2);
+        index_data.push(vertex_count as u16 + 1);
+        index_data.push(vertex_count as u16 + 3);
+
+        //
+        // Update the draw call to include the new data
+        //
+        current_draw_call_data.index_count += 6;
+    }
+}
+
 #[derive(TypeUuid, Default)]
 #[uuid = "7d507fac-ccb8-47fb-a4af-15da5e751601"]
 pub struct HydrateLdtkImporter;
@@ -572,7 +672,7 @@ pub struct LdtkJobOutput {}
 impl JobOutput for LdtkJobOutput {}
 
 #[derive(Default, TypeUuid)]
-#[uuid = "a11b7361-33ae-4361-905b-fe25d2ac389e"]
+#[uuid = "2e4e713e-71ef-4972-bb6b-827a4d291ccb"]
 pub struct LdtkJobProcessor;
 
 impl JobProcessor for LdtkJobProcessor {
@@ -627,7 +727,7 @@ impl JobProcessor for LdtkJobProcessor {
         // All imported assets
         let mut imported_assets = Vec::<ImportedAsset>::default();
         // CPU-form of tileset data
-        let mut tilesets = FnvHashMap::default();
+        let mut tilesets_temp = FnvHashMap::default();
 
         // The one material we always use for tile layers
         //let material_handle = make_handle_from_str("ae8320e2-9d84-432d-879b-e34ebef90a82")?;
@@ -645,8 +745,12 @@ impl JobProcessor for LdtkJobProcessor {
             //
             // Create a material instance
             //
+            let image_object_id = file_references
+                .get(&PathBuf::from_str(&tileset.rel_path).unwrap())
+                .unwrap();
+
             let material_instance_artifact_name = format!("mi_{}", tileset.uid);
-            let material_instance_artifact = job_system::produce_artifact_with_handles(
+            let material_instance_artifact_id = job_system::produce_artifact_with_handles(
                 job_api,
                 input.asset_id,
                 Some(material_instance_artifact_name),
@@ -659,9 +763,6 @@ impl JobProcessor for LdtkJobProcessor {
                             ),
                         );
 
-                    let image_object_id = file_references
-                        .get(&PathBuf::from_str(&tileset.rel_path).unwrap())
-                        .unwrap();
                     let image_handle =
                         job_system::make_handle_to_default_artifact(job_api, *image_object_id);
 
@@ -684,18 +785,18 @@ impl JobProcessor for LdtkJobProcessor {
             let image_width = tileset.px_wid as _;
             let image_height = tileset.px_hei as _;
 
-            tilesets.insert(
+            tilesets_temp.insert(
                 tileset.uid,
-                LdtkTileSet {
-                    image: image_handle,
-                    material_instance: material_instance_handle,
+                HydrateLdtkTileSetTemp {
+                    image: *image_object_id,
+                    material_instance: material_instance_artifact_id,
                     image_width,
                     image_height,
                 },
             );
         }
 
-        let mut levels = FnvHashMap::<LevelUid, LdtkLevelData>::default();
+        let mut levels_temp = FnvHashMap::<LevelUid, HydrateLdtkLevelDataTemp>::default();
 
         for level in &project.levels {
             let mut vertex_data = Vec::<TileLayerVertex>::default();
@@ -714,16 +815,18 @@ impl JobProcessor for LdtkJobProcessor {
                 };
 
                 if let Some(tileset_uid) = tileset_uid {
-                    let tileset = &tilesets[&tileset_uid];
+                    let tileset = &tilesets_temp[&tileset_uid];
 
                     let mut layer_draw_call_data: Vec<LdtkLayerDrawCallData> = Vec::default();
 
-                    let z_pos = options
-                        .layer_z_positions
-                        .get(layer_index)
-                        .copied()
-                        .unwrap_or(layer_index as f32);
-                    generate_draw_data(
+                    // let z_pos = options
+                    //     .layer_z_positions
+                    //     .get(layer_index)
+                    //     .copied()
+                    //     .unwrap_or(layer_index as f32);
+                    //TODO: Data drive this from the asset
+                    let z_pos = layer_index as f32;
+                    hydrate_generate_draw_data(
                         level,
                         layer,
                         z_pos,
@@ -733,7 +836,7 @@ impl JobProcessor for LdtkJobProcessor {
                         &mut index_data,
                         &mut layer_draw_call_data,
                     );
-                    generate_draw_data(
+                    hydrate_generate_draw_data(
                         level,
                         layer,
                         z_pos,
@@ -744,8 +847,8 @@ impl JobProcessor for LdtkJobProcessor {
                         &mut layer_draw_call_data,
                     );
 
-                    layer_data.push(LdtkLayerData {
-                        material_instance: tileset.material_instance.clone(),
+                    layer_data.push(HydrateLdtkLayerDataTemp {
+                        material_instance: tileset.material_instance,
                         draw_call_data: layer_draw_call_data,
                         z_pos,
                         world_x_pos: level.world_x + layer.px_total_offset_x,
@@ -757,8 +860,8 @@ impl JobProcessor for LdtkJobProcessor {
                 }
             }
 
-            let mut vertex_buffer_handle = None;
-            let mut index_buffer_handle = None;
+            let mut vertex_buffer_artifact = None;
+            let mut index_buffer_artifact = None;
 
             if !vertex_data.is_empty() & !index_data.is_empty() {
                 //
@@ -766,129 +869,102 @@ impl JobProcessor for LdtkJobProcessor {
                 //
                 let vertex_buffer_asset_data =
                     BufferAssetData::from_vec(RafxResourceType::VERTEX_BUFFER, &vertex_data);
-                let vertex_buffer_uuid = *unstable_state
-                    .level_vertex_buffer_uuids
-                    .entry(level.uid)
-                    .or_insert_with(|| op.new_asset_uuid());
-
-                imported_assets.push(ImportedAsset {
-                    id: vertex_buffer_uuid,
-                    search_tags: vec![],
-                    build_deps: vec![],
-                    load_deps: vec![],
-                    build_pipeline: None,
-                    asset_data: Box::new(vertex_buffer_asset_data),
-                });
+                let vb_artifact = job_system::produce_artifact(
+                    job_api,
+                    input.asset_id,
+                    Some(("vertex_buffer", level.uid)),
+                    vertex_buffer_asset_data,
+                );
 
                 //
                 // Create an index buffer for the level
                 //
                 let index_buffer_asset_data =
                     BufferAssetData::from_vec(RafxResourceType::INDEX_BUFFER, &index_data);
-                let index_buffer_uuid = *unstable_state
-                    .level_index_buffer_uuids
-                    .entry(level.uid)
-                    .or_insert_with(|| op.new_asset_uuid());
+                let ib_artifact = job_system::produce_artifact(
+                    job_api,
+                    input.asset_id,
+                    Some(("index_buffer", level.uid)),
+                    index_buffer_asset_data,
+                );
 
-                imported_assets.push(ImportedAsset {
-                    id: index_buffer_uuid,
-                    search_tags: vec![],
-                    build_deps: vec![],
-                    load_deps: vec![],
-                    build_pipeline: None,
-                    asset_data: Box::new(index_buffer_asset_data),
-                });
-
-                vertex_buffer_handle = Some(make_handle(vertex_buffer_uuid));
-                index_buffer_handle = Some(make_handle(index_buffer_uuid));
+                vertex_buffer_artifact = Some(vb_artifact);
+                index_buffer_artifact = Some(ib_artifact);
             }
 
-            let old = levels.insert(
+            let old = levels_temp.insert(
                 level.uid,
-                LdtkLevelData {
+                HydrateLdtkLevelDataTemp {
                     layer_data,
-                    vertex_data: vertex_buffer_handle,
-                    index_data: index_buffer_handle,
+                    vertex_data: vertex_buffer_artifact,
+                    index_data: index_buffer_artifact,
                 },
             );
             assert!(old.is_none());
         }
 
-        let asset_data = LdtkAssetData { tilesets, levels };
+        job_system::produce_asset_with_handles(job_api, input.asset_id, || {
+            let mut tilesets = FnvHashMap::default();
+            for (uid, tileset) in tilesets_temp {
+                tilesets.insert(
+                    uid,
+                    HydrateLdtkTileSet {
+                        material_instance: job_system::make_handle_to_artifact_raw(
+                            job_api,
+                            input.asset_id,
+                            tileset.material_instance,
+                        ),
+                        image: job_system::make_handle_to_default_artifact(job_api, tileset.image),
+                        image_width: tileset.image_width,
+                        image_height: tileset.image_height,
+                    },
+                );
+            }
 
-        imported_assets.push(ImportedAsset {
-            id: unstable_state.ldtk_asset_uuid.unwrap(),
-            search_tags: vec![],
-            build_deps: vec![],
-            load_deps: vec![],
-            build_pipeline: None,
-            asset_data: Box::new(asset_data),
+            let mut levels = FnvHashMap::default();
+            for (uid, level) in levels_temp {
+                let layers = level
+                    .layer_data
+                    .into_iter()
+                    .map(|layer| HydrateLdtkLayerData {
+                        material_instance: job_system::make_handle_to_artifact_raw(
+                            job_api,
+                            input.asset_id,
+                            layer.material_instance,
+                        ),
+                        draw_call_data: layer.draw_call_data,
+                        z_pos: layer.z_pos,
+                        world_x_pos: layer.world_x_pos,
+                        world_y_pos: layer.world_y_pos,
+                        grid_width: layer.grid_width,
+                        grid_height: layer.grid_height,
+                        grid_size: layer.grid_size,
+                    })
+                    .collect();
+
+                levels.insert(
+                    uid,
+                    HydrateLdtkLevelData {
+                        layer_data: layers,
+                        vertex_data: level
+                            .vertex_data
+                            .map(|x| job_system::make_handle_to_artifact(job_api, x)),
+                        index_data: level
+                            .index_data
+                            .map(|x| job_system::make_handle_to_artifact(job_api, x)),
+                    },
+                );
+            }
+
+            HydrateLdtkAssetData { tilesets, levels }
         });
 
-        /*
-                job_system::produce_asset_with_handles(job_api, input.asset_id, || {
-                    let mut objects = Vec::with_capacity(json_format.objects.len());
-                    for json_object in json_format.objects {
-                        let model = if let Some(json_model) = &json_object.model {
-                            let model_object_id = file_references.get(&json_model.model).unwrap();
-                            let model_handle =
-                                job_system::make_handle_to_default_artifact(job_api, *model_object_id);
-
-                            Some(HydratePrefabAdvAssetDataObjectModel {
-                                model: model_handle,
-                            })
-                        } else {
-                            None
-                        };
-
-                        let light = if let Some(json_light) = &json_object.light {
-                            let light = json_light.clone();
-                            let spot = light
-                                .spot
-                                .as_ref()
-                                .map(|x| PrefabAdvAssetDataObjectLightSpot {
-                                    inner_angle: x.inner_angle,
-                                    outer_angle: x.outer_angle,
-                                });
-
-                            let range = if light.cutoff_distance.unwrap_or(-1.0) < 0.0 {
-                                None
-                            } else {
-                                light.cutoff_distance
-                            };
-                            Some(PrefabAdvAssetDataObjectLight {
-                                color: light.color.into(),
-                                kind: light.kind.into(),
-                                intensity: light.intensity,
-                                range,
-                                spot,
-                            })
-                        } else {
-                            None
-                        };
-
-                        let transform = PrefabAdvAssetDataObjectTransform {
-                            position: json_object.transform.position.into(),
-                            rotation: json_object.transform.rotation.into(),
-                            scale: json_object.transform.scale.into(),
-                        };
-
-                        objects.push(HydratePrefabAdvAssetDataObject {
-                            transform,
-                            model,
-                            light,
-                        });
-                    }
-
-                    HydratePrefabAdvAssetData { objects }
-                });
-        */
         LdtkJobOutput {}
     }
 }
 
 #[derive(TypeUuid, Default)]
-#[uuid = "02a99fa5-8053-4d6f-9e8d-54cb9e2f7949"]
+#[uuid = "a0cc5ab1-430c-4052-b082-074f63539fbe"]
 pub struct LdtkBuilder {}
 
 impl hydrate_model::Builder for LdtkBuilder {
