@@ -48,7 +48,6 @@ pub use graphics_pipeline::MaterialInstanceSlotAssignment;
 pub use graphics_pipeline::MaterialPassData;
 pub use graphics_pipeline::SamplerAsset;
 pub use graphics_pipeline::SamplerAssetData;
-pub use graphics_pipeline::SamplerImporter;
 
 mod compute_pipeline;
 pub use compute_pipeline::ComputePipelineAsset;

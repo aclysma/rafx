@@ -420,6 +420,66 @@ impl MaterialAssetRecord {
     }
 }
 #[derive(Default)]
+pub struct MaterialInstanceAssetRecord(PropertyPath);
+
+impl Field for MaterialInstanceAssetRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        MaterialInstanceAssetRecord(property_path)
+    }
+}
+
+impl Record for MaterialInstanceAssetRecord {
+    fn schema_name() -> &'static str {
+        "MaterialInstanceAsset"
+    }
+}
+
+impl MaterialInstanceAssetRecord {
+    pub fn material(&self) -> ObjectRefField {
+        ObjectRefField::new(self.0.push("material"))
+    }
+
+    pub fn slot_assignments(&self) -> DynamicArrayField::<MaterialInstanceSlotAssignmentRecord> {
+        DynamicArrayField::<MaterialInstanceSlotAssignmentRecord>::new(self.0.push("slot_assignments"))
+    }
+}
+#[derive(Default)]
+pub struct MaterialInstanceSlotAssignmentRecord(PropertyPath);
+
+impl Field for MaterialInstanceSlotAssignmentRecord {
+    fn new(property_path: PropertyPath) -> Self {
+        MaterialInstanceSlotAssignmentRecord(property_path)
+    }
+}
+
+impl Record for MaterialInstanceSlotAssignmentRecord {
+    fn schema_name() -> &'static str {
+        "MaterialInstanceSlotAssignment"
+    }
+}
+
+impl MaterialInstanceSlotAssignmentRecord {
+    pub fn array_index(&self) -> U32Field {
+        U32Field::new(self.0.push("array_index"))
+    }
+
+    pub fn buffer_data(&self) -> NullableField::<BytesField> {
+        NullableField::<BytesField>::new(self.0.push("buffer_data"))
+    }
+
+    pub fn image(&self) -> ObjectRefField {
+        ObjectRefField::new(self.0.push("image"))
+    }
+
+    pub fn sampler(&self) -> StringField {
+        StringField::new(self.0.push("sampler"))
+    }
+
+    pub fn slot_name(&self) -> StringField {
+        StringField::new(self.0.push("slot_name"))
+    }
+}
+#[derive(Default)]
 pub struct MaterialPassRecord(PropertyPath);
 
 impl Field for MaterialPassRecord {

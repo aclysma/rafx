@@ -819,12 +819,10 @@ impl JobProcessor for LdtkJobProcessor {
 
                     let mut layer_draw_call_data: Vec<LdtkLayerDrawCallData> = Vec::default();
 
-                    // let z_pos = options
-                    //     .layer_z_positions
-                    //     .get(layer_index)
-                    //     .copied()
-                    //     .unwrap_or(layer_index as f32);
                     //TODO: Data drive this from the asset
+                    let z_pos =
+                        (level.layer_instances.as_ref().unwrap().len() - layer_index - 1) * 10;
+
                     let z_pos = layer_index as f32;
                     hydrate_generate_draw_data(
                         level,

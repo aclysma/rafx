@@ -53,7 +53,6 @@ pub fn default_daemon() -> distill::daemon::AssetDaemon {
 
     #[allow(unused_mut)]
     let mut daemon = distill::daemon::AssetDaemon::default()
-        .with_importer(&["sampler"], SamplerImporter)
         .with_importer(&["material"], MaterialImporter)
         .with_importer(&["materialinstance"], MaterialInstanceImporter)
         .with_importer(&["compute"], ComputePipelineImporter)

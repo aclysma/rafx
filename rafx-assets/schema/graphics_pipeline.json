@@ -48,5 +48,45 @@
         "type": { "name": "dynamic_array", "inner_type": "MaterialPass" }
       }
     ]
+  },
+  {
+    "type": "record",
+    "name": "MaterialInstanceSlotAssignment",
+    "fields": [
+      {
+        "name": "slot_name",
+        "type": "string"
+      },
+      {
+        "name": "array_index",
+        "type": "u32"
+      },
+      {
+        "name": "image",
+        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+      },
+      {
+        "name": "sampler",
+        "type": "string"
+      },
+      {
+        "name": "buffer_data",
+        "type": { "name": "nullable", "inner_type": "bytes" }
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MaterialInstanceAsset",
+    "fields": [
+      {
+        "name": "slot_assignments",
+        "type": { "name": "dynamic_array", "inner_type": "MaterialInstanceSlotAssignment" }
+      },
+      {
+        "name": "material",
+        "type": { "name": "object_ref", "inner_type": "MaterialAsset" }
+      }
+    ]
   }
 ]
