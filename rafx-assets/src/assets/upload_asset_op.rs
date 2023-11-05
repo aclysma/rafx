@@ -1,6 +1,6 @@
 use crossbeam_channel::Sender;
-use distill::loader::storage::AssetLoadOp;
-use distill::loader::LoadHandle;
+use hydrate_base::LoadHandle;
+use hydrate_loader::storage::AssetLoadOp;
 use rafx_api::RafxError;
 use rafx_framework::upload::UploadOp;
 

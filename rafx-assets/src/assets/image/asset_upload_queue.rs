@@ -1,7 +1,7 @@
 use super::ImageAsset;
 use super::ImageAssetData;
 use crate::assets::image::ImageAssetDataFormat;
-use crate::assets::load_queue::LoadRequest;
+use crate::assets::load_queue_hydrate::LoadRequest;
 use crate::assets::upload_asset_op::{UploadAssetOp, UploadAssetOpResult};
 use crate::{ImageAssetDataPayload, ImageAssetDataPayloadSubresources};
 #[cfg(feature = "basis-universal")]

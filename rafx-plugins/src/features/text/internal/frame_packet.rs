@@ -1,8 +1,8 @@
 use super::*;
 use crate::assets::font::FontAsset;
 use crate::shaders::text::text_vert;
-use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
+use hydrate_base::LoadHandle;
 use rafx::framework::render_features::render_features_prelude::*;
 use rafx::framework::{BufferResource, DescriptorSetArc, MaterialPassResource, ResourceArc};
 

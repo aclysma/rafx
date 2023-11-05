@@ -1,4 +1,4 @@
-use crate::assets::load_queue::LoadRequest;
+use crate::assets::load_queue_hydrate::LoadRequest;
 use crate::assets::upload_asset_op::{UploadAssetOp, UploadAssetOpResult};
 use crate::{BufferAsset, BufferAssetData};
 use crossbeam_channel::{Receiver, Sender};

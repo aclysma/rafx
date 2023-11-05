@@ -11,7 +11,9 @@ publish = false
 [dependencies]
 rafx = { path = "../rafx", features = ["renderer", "basis-universal", "ddsfile"] }
 rafx-plugins = { path = "../rafx-plugins", features = ["legion", "egui"] }
-distill = { version = "=0.0.3", features = ["serde_importers"] }
+
+hydrate-base = { path = "../../hydrate/hydrate-base" }
+
 uuid = "0.8"
 type-uuid = "0.1"
 imgui = { version = "0.7", optional = true }

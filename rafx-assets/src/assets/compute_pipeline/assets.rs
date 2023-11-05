@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use type_uuid::*;
 
 use crate::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ShaderAsset};
-use distill::loader::handle::Handle;
-use distill::loader::LoadHandle;
+use hydrate_base::handle::Handle;
+use hydrate_base::LoadHandle;
 use rafx_api::RafxResult;
 pub use rafx_framework::DescriptorSetLayoutResource;
 pub use rafx_framework::GraphicsPipelineResource;
@@ -22,13 +22,6 @@ pub struct ComputePipelineRon {
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
 #[uuid = "cab18bf6-384b-4e1a-bf3d-95b778122388"]
-pub struct HydrateComputePipelineAssetData {
-    pub shader_module: hydrate_base::Handle<ShaderAsset>,
-    pub entry_name: String,
-}
-
-#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
-#[uuid = "e70aa3d2-5727-433a-80c2-4f6f1d01c91f"]
 pub struct ComputePipelineAssetData {
     pub shader_module: Handle<ShaderAsset>,
     pub entry_name: String,

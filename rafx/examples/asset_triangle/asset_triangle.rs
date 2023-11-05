@@ -2,7 +2,7 @@ use log::LevelFilter;
 
 use rafx::api::*;
 use rafx::assets::distill::loader::rpc_io::RpcConnectionType;
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::MaterialAsset;
 use rafx::distill::loader::{storage::DefaultIndirectionResolver, Loader, RpcIO};
 use rafx::framework::render_features::{RenderJobWriteContext, SubmitNodeBlocks};
@@ -46,7 +46,7 @@ fn run() -> RafxResult<()> {
 
     // Daemon will runs in a background thread for the life of the process
     std::thread::spawn(move || {
-        rafx::assets::distill_impl::default_daemon()
+        rafx::assets::hydrate_impl::default_daemon()
             .with_db_path(db_dir)
             .with_address(connect_string.parse().unwrap())
             .with_asset_dirs(vec![asset_dir])

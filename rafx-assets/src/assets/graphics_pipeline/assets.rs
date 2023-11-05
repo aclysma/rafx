@@ -4,9 +4,9 @@ use type_uuid::*;
 use crate::{
     AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset, ShaderAsset,
 };
-use distill::loader::handle::Handle;
-use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
+use hydrate_base::handle::Handle;
+use hydrate_base::LoadHandle;
 use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
     RafxError, RafxFillMode, RafxFrontFace, RafxRasterizerState, RafxResult, RafxSamplerDef,
@@ -188,25 +188,10 @@ pub struct MaterialRon {
     pub passes: Vec<MaterialPassRon>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct HydrateGraphicsPipelineShaderStage {
-    pub stage: MaterialShaderStage,
-    pub shader_module: hydrate_base::Handle<ShaderAsset>,
-    pub entry_name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct HydrateMaterialPassData {
-    pub name: Option<String>,
-    pub phase: Option<String>,
-    pub fixed_function_state: FixedFunctionStateData,
-    pub shaders: Vec<HydrateGraphicsPipelineShaderStage>,
-}
-
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[uuid = "ea4a2be8-af66-4a57-8607-79eca02ab054"]
-pub struct HydrateMaterialAssetData {
-    pub passes: Vec<HydrateMaterialPassData>,
+pub struct MaterialAssetData {
+    pub passes: Vec<MaterialPassData>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -330,12 +315,6 @@ impl MaterialPassData {
     }
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[uuid = "ad94bca2-1f02-4e5f-9117-1a7b03456a11"]
-pub struct MaterialAssetData {
-    pub passes: Vec<MaterialPassData>,
-}
-
 pub struct MaterialAssetInner {
     //TODO: Consider making this named
     //TODO: Get cached graphics pipelines working
@@ -412,6 +391,25 @@ impl Deref for MaterialAsset {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MaterialInstanceSlotAssignmentRon {
+    pub slot_name: String,
+    pub array_index: usize,
+
+    pub image: Option<PathBuf>, //Option<Handle<ImageAsset>>,
+    pub sampler: Option<RafxSamplerDef>,
+
+    // Would be nice to use this, but I don't think it works with Option
+    //#[serde(with = "serde_bytes")]
+    pub buffer_data: Option<Vec<u8>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MaterialInstanceRon {
+    pub material: PathBuf, //Handle<MaterialAsset>,
+    pub slot_assignments: Vec<MaterialInstanceSlotAssignmentRon>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MaterialInstanceSlotAssignment {
     pub slot_name: String,
     pub array_index: usize,
@@ -429,45 +427,6 @@ pub struct MaterialInstanceSlotAssignment {
 pub struct MaterialInstanceAssetData {
     pub material: Handle<MaterialAsset>,
     pub slot_assignments: Vec<MaterialInstanceSlotAssignment>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct MaterialInstanceSlotAssignmentRon {
-    pub slot_name: String,
-    pub array_index: usize,
-
-    pub image: Option<PathBuf>, //Option<hydrate_base::Handle<ImageAsset>>,
-    pub sampler: Option<RafxSamplerDef>,
-
-    // Would be nice to use this, but I don't think it works with Option
-    //#[serde(with = "serde_bytes")]
-    pub buffer_data: Option<Vec<u8>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct MaterialInstanceRon {
-    pub material: PathBuf, //hydrate_base::Handle<MaterialAsset>,
-    pub slot_assignments: Vec<MaterialInstanceSlotAssignmentRon>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct HydrateMaterialInstanceSlotAssignment {
-    pub slot_name: String,
-    pub array_index: usize,
-
-    pub image: Option<hydrate_base::Handle<ImageAsset>>,
-    pub sampler: Option<RafxSamplerDef>,
-
-    // Would be nice to use this, but I don't think it works with Option
-    //#[serde(with = "serde_bytes")]
-    pub buffer_data: Option<Vec<u8>>,
-}
-
-#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[uuid = "0d8cacf7-79df-4aa6-b99e-659a9c3b5e6b"]
-pub struct HydrateMaterialInstanceAssetData {
-    pub material: hydrate_base::Handle<MaterialAsset>,
-    pub slot_assignments: Vec<HydrateMaterialInstanceSlotAssignment>,
 }
 
 pub struct MaterialInstanceAssetInner {

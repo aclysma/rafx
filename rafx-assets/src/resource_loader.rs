@@ -1,6 +1,6 @@
-use distill::loader::{storage::AssetLoadOp, LoadHandle};
-
 use crossbeam_channel::Receiver;
+use hydrate_base::LoadHandle;
+use hydrate_loader::storage::AssetLoadOp;
 
 pub struct ResourceLoadResult<T>
 where

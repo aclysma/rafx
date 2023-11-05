@@ -3,9 +3,8 @@ use crate::assets::mesh_adv::{
     MeshAdvAssetType, MeshAdvBufferAssetType, MeshAdvMaterialAssetType, ModelAdvAssetType,
     PrefabAdvAssetType,
 };
-use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
-use rafx::distill::daemon::AssetDaemon;
+use rafx::assets::AssetResource;
 use rafx::framework::RenderResources;
 use rafx::render_feature_renderer_prelude::RafxTransferUpload;
 use rafx::render_features::ExtractResources;
@@ -15,19 +14,6 @@ use rafx::RafxResult;
 pub struct MeshAdvAssetTypeRendererPlugin;
 
 impl RendererAssetPlugin for MeshAdvAssetTypeRendererPlugin {
-    fn configure_asset_daemon(
-        &self,
-        asset_daemon: AssetDaemon,
-    ) -> AssetDaemon {
-        asset_daemon
-            .with_importer(&["gltf"], super::MeshAdvGltfImporter)
-            .with_importer(&["glb"], super::MeshAdvGltfImporter)
-            .with_importer(&["blender_material"], super::MeshAdvBlenderMaterialImporter)
-            .with_importer(&["blender_model"], super::MeshAdvBlenderModelImporter)
-            .with_importer(&["blender_mesh"], super::MeshAdvBlenderImporter)
-            .with_importer(&["blender_prefab"], super::MeshAdvBlenderPrefabImporter)
-    }
-
     fn register_asset_types(
         &self,
         asset_manager: &mut AssetManager,

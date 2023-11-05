@@ -1,6 +1,6 @@
 use super::SpriteRenderFeature;
-use distill::loader::handle::Handle;
 use glam::Vec3;
+use hydrate_base::handle::Handle;
 use rafx::assets::ImageAsset;
 use rafx::render_features::RenderObjectSet;
 

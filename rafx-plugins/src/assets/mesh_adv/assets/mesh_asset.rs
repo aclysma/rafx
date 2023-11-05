@@ -1,8 +1,8 @@
 use crate::assets::mesh_adv::{MeshAdvBufferAsset, MeshMaterialAdvAsset};
 use crate::features::mesh_adv::MeshAdvUntexturedRenderFeatureFlag;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
-use distill::loader::handle::{AssetHandle, Handle};
-use distill::loader::LoadHandle;
+use hydrate_base::handle::AssetHandle;
+use hydrate_base::{Handle, LoadHandle};
 use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::{
     AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, MaterialAsset,
@@ -77,18 +77,6 @@ impl Default for MeshAdvMaterialData {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct HydrateMeshAdvPartAssetData {
-    pub vertex_full_buffer_offset_in_bytes: u32,
-    pub vertex_full_buffer_size_in_bytes: u32,
-    pub vertex_position_buffer_offset_in_bytes: u32,
-    pub vertex_position_buffer_size_in_bytes: u32,
-    pub index_buffer_offset_in_bytes: u32,
-    pub index_buffer_size_in_bytes: u32,
-    pub mesh_material: hydrate_base::Handle<MeshMaterialAdvAsset>,
-    pub index_type: RafxIndexType,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
 pub struct MeshAdvPartAssetData {
     pub vertex_full_buffer_offset_in_bytes: u32,
     pub vertex_full_buffer_size_in_bytes: u32,
@@ -98,16 +86,6 @@ pub struct MeshAdvPartAssetData {
     pub index_buffer_size_in_bytes: u32,
     pub mesh_material: Handle<MeshMaterialAdvAsset>,
     pub index_type: RafxIndexType,
-}
-
-#[derive(TypeUuid, Serialize, Deserialize, Clone)]
-#[uuid = "cad61203-7686-463d-a93f-feb6d1fe9810"]
-pub struct HydrateMeshAdvAssetData {
-    pub mesh_parts: Vec<HydrateMeshAdvPartAssetData>,
-    pub vertex_full_buffer: hydrate_base::Handle<MeshAdvBufferAsset>, // Vertex type is MeshVertexFull
-    pub vertex_position_buffer: hydrate_base::Handle<MeshAdvBufferAsset>, // Vertex type is MeshVertexPosition
-    pub index_buffer: hydrate_base::Handle<MeshAdvBufferAsset>,           // u16 indices
-    pub visible_bounds: VisibleBounds,
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]

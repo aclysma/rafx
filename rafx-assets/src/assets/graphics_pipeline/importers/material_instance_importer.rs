@@ -2,20 +2,14 @@ use crate::assets::graphics_pipeline::material_importer::{
     HydrateMaterialImporter, MaterialJobOutput,
 };
 use crate::assets::graphics_pipeline::{
-    GraphicsPipelineShaderStage, HydrateGraphicsPipelineShaderStage, HydrateMaterialAssetData,
-    HydrateMaterialPassData, MaterialAssetData, MaterialInstanceAssetData, MaterialInstanceRon,
+    GraphicsPipelineShaderStage, MaterialAssetData, MaterialInstanceAssetData, MaterialInstanceRon,
     MaterialRon, SamplerAssetData,
 };
 use crate::assets::shader::ShaderPackageImporterCooked;
 use crate::schema::{
     GraphicsPipelineShaderStageRecord, MaterialAssetRecord, MaterialInstanceAssetRecord,
 };
-use crate::{
-    GpuImageImporterSimple, HydrateMaterialInstanceAssetData,
-    HydrateMaterialInstanceSlotAssignment, MaterialPassData,
-};
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
+use crate::{GpuImageImporterSimple, MaterialInstanceSlotAssignment, MaterialPassData};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::ObjectId;
 use hydrate_data::{
@@ -291,7 +285,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
                     None
                 };
 
-                slot_assignments.push(HydrateMaterialInstanceSlotAssignment {
+                slot_assignments.push(MaterialInstanceSlotAssignment {
                     slot_name,
                     array_index,
                     image,
@@ -300,7 +294,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
                 });
             }
 
-            HydrateMaterialInstanceAssetData {
+            MaterialInstanceAssetData {
                 slot_assignments,
                 material,
             }

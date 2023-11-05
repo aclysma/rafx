@@ -1,5 +1,5 @@
 use super::asset_upload_queue::{ImageAssetUploadOpResult, ImageAssetUploadQueue};
-use crate::distill_impl::{AssetResource, ResourceAssetLoader};
+use crate::hydrate_impl::{AssetResource, ResourceAssetLoader};
 use crate::{
     AssetLookup, AssetManager, AssetTypeHandler, DynAssetLookup, ImageAsset, ImageAssetData,
     LoadQueues,

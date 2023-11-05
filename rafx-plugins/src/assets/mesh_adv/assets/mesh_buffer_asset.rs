@@ -1,9 +1,9 @@
 use super::free_list_suballocator::*;
 use crossbeam_channel::{Receiver, Sender};
-use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
+use hydrate_base::LoadHandle;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxQueueType, RafxResourceType};
-use rafx::assets::distill_impl::ResourceAssetLoader;
+use rafx::assets::ResourceAssetLoader;
 use rafx::assets::{
     asset_type_handler, AssetLookup, AssetManager, AssetTypeHandler, DynAssetLookup, LoadQueues,
     LoadRequest, PushBuffer, UploadAssetOp, UploadAssetOpResult,

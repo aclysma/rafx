@@ -12,7 +12,6 @@ members = [
     "demo",
     "demo-schema",
     "demo-editor",
-    "demo/cli",
     "demo-web"
 ]
 
@@ -42,16 +41,10 @@ split-debuginfo = "unpacked"
 #[patch.crates-io]
 #gltf = { path = "gltf" }
 
-#[patch."https://github.com/amethyst/distill"]
-
 [patch.crates-io]
 #raw-gl-context = { git = "https://github.com/aclysma/raw-gl-context.git", branch = "rafx" }
 #basis-universal = { path = "../basis-universal-rs/basis-universal" }
 #basis-universal-sys = { path = "../basis-universal-rs/basis-universal-sys" }
-
-#distill = { path = "../distill" }
-#distill = { git = "https://github.com/amethyst/distill.git", rev = "852e48272ab3dad76c7490fce8df52461f94ebc0" }
-distill = { git = "https://github.com/aclysma/distill.git", rev = "9e127ca9d034e0c7dffb747f8aae3a2607b0e1e8" }
 
 #spirv_cross = { path = "../spirv_cross/spirv_cross" }
 spirv_cross = { git = "https://github.com/aclysma/spirv_cross.git", branch = "rafx-support" }

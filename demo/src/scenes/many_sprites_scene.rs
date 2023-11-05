@@ -3,11 +3,11 @@
 use crate::time::TimeState;
 use crate::RenderOptions;
 use glam::{Quat, Vec2, Vec3};
+use hydrate_base::handle::Handle;
 use legion;
 use legion::{IntoQuery, Read, Resources, Schedule, SystemBuilder, World, Write};
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::ImageAsset;
-use rafx::distill::loader::handle::Handle;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};

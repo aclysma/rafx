@@ -1,7 +1,6 @@
 use crate::assets::font::FontAssetType;
-use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
-use rafx::distill::daemon::AssetDaemon;
+use rafx::assets::AssetResource;
 use rafx::framework::RenderResources;
 use rafx::renderer::RendererAssetPlugin;
 use rafx::RafxResult;
@@ -9,14 +8,6 @@ use rafx::RafxResult;
 pub struct FontAssetTypeRendererPlugin;
 
 impl RendererAssetPlugin for FontAssetTypeRendererPlugin {
-    //
-    fn configure_asset_daemon(
-        &self,
-        asset_daemon: AssetDaemon,
-    ) -> AssetDaemon {
-        asset_daemon.with_importer(&["ttf"], super::FontImporter)
-    }
-
     fn register_asset_types(
         &self,
         asset_manager: &mut AssetManager,

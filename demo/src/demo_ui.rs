@@ -1,8 +1,7 @@
 use legion::Resources;
 
-pub use crate::daemon_args::AssetDaemonArgs;
 use crate::time::TimeState;
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 
 #[cfg(feature = "egui")]
 use rafx_plugins::features::egui::EguiContextResource;
@@ -480,16 +479,17 @@ pub fn draw_ui(resources: &Resources) {
                         .collect::<Vec<_>>();
                     asset_info.sort_by(|x, y| {
                         x.as_ref()
-                            .map(|x| &x.path)
-                            .cmp(&y.as_ref().map(|y| &y.path))
+                            .map(|x| &x.asset_id)
+                            .cmp(&y.as_ref().map(|y| &y.asset_id))
                     });
                     for info in asset_info {
                         if let Some(info) = info {
                             let id = info.asset_id;
                             ui.label(format!(
-                                "{}:{} .. {}",
-                                info.file_name.unwrap_or_else(|| "???".to_string()),
-                                info.asset_name.unwrap_or_else(|| format!("{}", id)),
+                                "{}:{}",
+                                //info.file_name.unwrap_or_else(|| "???".to_string()),
+                                //info.asset_name.unwrap_or_else(|| format!("{}", id)),
+                                info.asset_id,
                                 info.refs
                             ));
                         } else {

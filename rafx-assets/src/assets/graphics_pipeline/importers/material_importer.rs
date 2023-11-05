@@ -1,13 +1,10 @@
 use crate::assets::graphics_pipeline::{
-    GraphicsPipelineShaderStage, HydrateGraphicsPipelineShaderStage, HydrateMaterialAssetData,
-    HydrateMaterialPassData, MaterialAssetData, MaterialInstanceAssetData, MaterialRon,
+    GraphicsPipelineShaderStage, MaterialAssetData, MaterialInstanceAssetData, MaterialRon,
     SamplerAssetData,
 };
 use crate::assets::shader::ShaderPackageImporterCooked;
 use crate::schema::{GraphicsPipelineShaderStageRecord, MaterialAssetRecord};
 use crate::MaterialPassData;
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::ObjectId;
 use hydrate_data::{
@@ -232,7 +229,7 @@ impl JobProcessor for MaterialJobProcessor {
                     record: &GraphicsPipelineShaderStageRecord,
                     data_container: &DataContainer,
                     job_api: &dyn JobApi,
-                    stages: &mut Vec<HydrateGraphicsPipelineShaderStage>,
+                    stages: &mut Vec<GraphicsPipelineShaderStage>,
                 ) {
                     let entry_name = record.entry_name().get(&data_container).unwrap();
                     let shader_module = record.shader_module().get(&data_container).unwrap();
@@ -241,7 +238,7 @@ impl JobProcessor for MaterialJobProcessor {
                         return;
                     }
 
-                    HydrateGraphicsPipelineShaderStage {
+                    GraphicsPipelineShaderStage {
                         stage,
                         shader_module: job_system::make_handle_to_default_artifact(
                             job_api,
@@ -260,7 +257,7 @@ impl JobProcessor for MaterialJobProcessor {
                     &mut shaders,
                 );
 
-                passes.push(HydrateMaterialPassData {
+                passes.push(MaterialPassData {
                     name: Some(pass_entry.name().get(&data_container).unwrap()),
                     phase: Some(pass_entry.phase().get(&data_container).unwrap()),
                     fixed_function_state,
@@ -268,12 +265,12 @@ impl JobProcessor for MaterialJobProcessor {
                 });
             }
 
-            HydrateMaterialAssetData { passes }
+            MaterialAssetData { passes }
         });
 
         job_system::produce_asset_with_handles(job_api, input.asset_id, || {
             //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
-            HydrateMaterialAssetData {
+            MaterialAssetData {
                 passes: Default::default(),
             }
         });

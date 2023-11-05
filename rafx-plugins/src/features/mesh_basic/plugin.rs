@@ -5,7 +5,7 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
     WireframeRenderPhase,
 };
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::renderer::RendererLoadContext;
 

@@ -1,5 +1,5 @@
-use distill::loader::LoadHandle;
 use fontdue::FontSettings;
+use hydrate_base::LoadHandle;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler};
 use serde::{Deserialize, Serialize};

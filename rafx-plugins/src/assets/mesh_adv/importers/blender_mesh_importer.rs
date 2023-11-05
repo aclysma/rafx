@@ -4,9 +4,8 @@ use crate::assets::mesh_adv::{
 };
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::{MeshAdvMeshAssetRecord, MeshAdvMeshImportedDataRecord};
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
 use glam::Vec3;
+use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
 use hydrate_model::{
@@ -17,8 +16,6 @@ use hydrate_model::{
 use rafx::api::RafxResourceType;
 use rafx::assets::PushBuffer;
 use rafx::base::b3f::B3FReader;
-use rafx::distill::loader::handle::Handle;
-use rafx::distill::make_handle;
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -87,252 +84,252 @@ fn try_cast_u8_slice<T: Copy + 'static>(data: &[u8]) -> Option<&[T]> {
 
     Some(casted)
 }
-
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "b824818f-7026-412f-ba88-32bc25c1c7f4"]
-pub struct MeshAdvBlenderImporterState {
-    mesh_id: Option<AssetUuid>,
-    vertex_full_buffer_id: Option<AssetUuid>,
-    vertex_position_buffer_id: Option<AssetUuid>,
-    index_buffer_id: Option<AssetUuid>,
-}
-
-#[derive(TypeUuid)]
-#[uuid = "5f2be1a1-b025-4d72-960b-24cb03ff19de"]
-pub struct MeshAdvBlenderImporter;
-impl Importer for MeshAdvBlenderImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        6
-    }
-
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ();
-
-    type State = MeshAdvBlenderImporterState;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
-        &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let mesh_id = state
-            .mesh_id
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        let vertex_full_buffer_id = state
-            .vertex_full_buffer_id
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        let vertex_position_buffer_id = state
-            .vertex_position_buffer_id
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        let index_buffer_id = state
-            .index_buffer_id
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = MeshAdvBlenderImporterState {
-            mesh_id: Some(mesh_id),
-            vertex_full_buffer_id: Some(vertex_full_buffer_id),
-            vertex_position_buffer_id: Some(vertex_position_buffer_id),
-            index_buffer_id: Some(index_buffer_id),
-        };
-        let mut bytes = Vec::new();
-        source.read_to_end(&mut bytes)?;
-
-        let b3f_reader = rafx::base::b3f::B3FReader::new(&bytes)
-            .ok_or("Blender Mesh Import error, mesh file format not recognized")?;
-        let mesh_as_json: MeshJson =
-            serde_json::from_slice(b3f_reader.get_block(0)).map_err(|e| e.to_string())?;
-
-        let mut all_positions = Vec::<glam::Vec3>::with_capacity(1024);
-        let mut all_position_indices = Vec::<u32>::with_capacity(8192);
-
-        let mut all_vertices_full = PushBuffer::new(16384);
-        let mut all_vertices_position = PushBuffer::new(16384);
-        let mut all_indices = PushBuffer::new(16384);
-
-        let mut mesh_parts: Vec<MeshAdvPartAssetData> =
-            Vec::with_capacity(mesh_as_json.mesh_parts.len());
-
-        for mesh_part in &mesh_as_json.mesh_parts {
-            //
-            // Get byte slices of all input data for this mesh part
-            //
-            let positions_bytes =
-                b3f_reader.get_block(mesh_part.position.ok_or("No position data")? as usize);
-            let normals_bytes =
-                b3f_reader.get_block(mesh_part.normal.ok_or("No normal data")? as usize);
-            let tex_coords_bytes = b3f_reader
-                .get_block(*mesh_part.uv.get(0).ok_or("No texture coordinate data")? as usize);
-            let part_indices_bytes = b3f_reader.get_block(mesh_part.indices as usize);
-
-            //
-            // Get strongly typed slices of all input data for this mesh part
-            //
-            let positions = try_cast_u8_slice::<[f32; 3]>(positions_bytes)
-                .ok_or("Could not cast due to alignment")?;
-            let normals = try_cast_u8_slice::<[f32; 3]>(normals_bytes)
-                .ok_or("Could not cast due to alignment")?;
-            let tex_coords = try_cast_u8_slice::<[f32; 2]>(tex_coords_bytes)
-                .ok_or("Could not cast due to alignment")?;
-
-            // Indices may be encoded as u16 or u32, either way copy them out to a Vec<u32>
-            let mut part_indices = Vec::<u32>::default();
-            match mesh_part.index_type {
-                MeshPartJsonIndexType::U16 => {
-                    let part_indices_u16 = try_cast_u8_slice::<u16>(part_indices_bytes)
-                        .ok_or("Could not cast due to alignment")?;
-                    part_indices.reserve(part_indices_u16.len());
-                    for &part_index in part_indices_u16 {
-                        part_indices.push(part_index as u32);
-                    }
-                }
-                MeshPartJsonIndexType::U32 => {
-                    let part_indices_u32 = try_cast_u8_slice::<u32>(part_indices_bytes)
-                        .ok_or("Could not cast due to alignment")?;
-                    part_indices.reserve(part_indices_u32.len());
-                    for &part_index in part_indices_u32 {
-                        part_indices.push(part_index);
-                    }
-                }
-            };
-
-            let part_data = super::mesh_util::process_mesh_part(
-                &part_indices,
-                &positions,
-                &normals,
-                &tex_coords,
-                &mut all_vertices_full,
-                &mut all_vertices_position,
-                &mut all_indices,
-            );
-
-            //
-            // Positions and indices for the visibility system
-            //
-            for index in part_indices {
-                all_position_indices.push(index as u32);
-            }
-
-            for i in 0..positions.len() {
-                all_positions.push(Vec3::new(positions[i][0], positions[i][1], positions[i][2]));
-            }
-
-            let mesh_material = mesh_part.material.clone();
-
-            mesh_parts.push(MeshAdvPartAssetData {
-                mesh_material,
-                vertex_full_buffer_offset_in_bytes: part_data.vertex_full_buffer_offset_in_bytes,
-                vertex_full_buffer_size_in_bytes: part_data.vertex_full_buffer_size_in_bytes,
-                vertex_position_buffer_offset_in_bytes: part_data
-                    .vertex_position_buffer_offset_in_bytes,
-                vertex_position_buffer_size_in_bytes: part_data
-                    .vertex_position_buffer_size_in_bytes,
-                index_buffer_offset_in_bytes: part_data.index_buffer_offset_in_bytes,
-                index_buffer_size_in_bytes: part_data.index_buffer_size_in_bytes,
-                index_type: part_data.index_type,
-            })
-        }
-
-        let mut imported_assets = Vec::with_capacity(3);
-
-        //
-        // Vertex Full Buffer
-        //
-        assert!(!all_vertices_full.is_empty());
-        let vertex_full_buffer_asset = MeshAdvBufferAssetData {
-            resource_type: RafxResourceType::VERTEX_BUFFER,
-            alignment: std::mem::size_of::<MeshVertexFull>() as u32,
-            data: all_vertices_full.into_data(),
-        };
-
-        let vertex_full_buffer_handle = make_handle(vertex_full_buffer_id);
-
-        //
-        // Vertex Position Buffer
-        //
-        assert!(!all_vertices_position.is_empty());
-        let vertex_position_buffer_asset = MeshAdvBufferAssetData {
-            resource_type: RafxResourceType::VERTEX_BUFFER,
-            alignment: std::mem::size_of::<MeshVertexPosition>() as u32,
-            data: all_vertices_position.into_data(),
-        };
-
-        let vertex_position_buffer_handle = make_handle(vertex_position_buffer_id);
-
-        //
-        // Index Buffer
-        //
-        assert!(!all_indices.is_empty());
-        let index_buffer_asset = MeshAdvBufferAssetData {
-            resource_type: RafxResourceType::INDEX_BUFFER,
-            alignment: std::mem::size_of::<u32>() as u32,
-            data: all_indices.into_data(),
-        };
-
-        let index_buffer_handle = make_handle(index_buffer_id);
-
-        let mesh_data = PolygonSoup {
-            vertex_positions: all_positions,
-            index: PolygonSoupIndex::Indexed32(all_position_indices),
-        };
-
-        let asset_data = MeshAdvAssetData {
-            mesh_parts,
-            vertex_full_buffer: vertex_full_buffer_handle,
-            vertex_position_buffer: vertex_position_buffer_handle,
-            index_buffer: index_buffer_handle,
-            visible_bounds: VisibleBounds::from(mesh_data),
-        };
-
-        imported_assets.push(ImportedAsset {
-            id: mesh_id,
-            search_tags: vec![],
-            build_deps: vec![],
-            load_deps: vec![],
-            build_pipeline: None,
-            asset_data: Box::new(asset_data),
-        });
-
-        imported_assets.push(ImportedAsset {
-            id: vertex_full_buffer_id,
-            search_tags: vec![],
-            build_deps: vec![],
-            load_deps: vec![],
-            build_pipeline: None,
-            asset_data: Box::new(vertex_full_buffer_asset),
-        });
-
-        imported_assets.push(ImportedAsset {
-            id: vertex_position_buffer_id,
-            search_tags: vec![],
-            build_deps: vec![],
-            load_deps: vec![],
-            build_pipeline: None,
-            asset_data: Box::new(vertex_position_buffer_asset),
-        });
-
-        imported_assets.push(ImportedAsset {
-            id: index_buffer_id,
-            search_tags: vec![],
-            build_deps: vec![],
-            load_deps: vec![],
-            build_pipeline: None,
-            asset_data: Box::new(index_buffer_asset),
-        });
-
-        Ok(ImporterValue {
-            assets: imported_assets,
-        })
-    }
-}
+//
+// #[derive(TypeUuid, Serialize, Deserialize, Default)]
+// #[uuid = "b824818f-7026-412f-ba88-32bc25c1c7f4"]
+// pub struct MeshAdvBlenderImporterState {
+//     mesh_id: Option<AssetUuid>,
+//     vertex_full_buffer_id: Option<AssetUuid>,
+//     vertex_position_buffer_id: Option<AssetUuid>,
+//     index_buffer_id: Option<AssetUuid>,
+// }
+//
+// #[derive(TypeUuid)]
+// #[uuid = "5f2be1a1-b025-4d72-960b-24cb03ff19de"]
+// pub struct MeshAdvBlenderImporter;
+// impl Importer for MeshAdvBlenderImporter {
+//     fn version_static() -> u32
+//     where
+//         Self: Sized,
+//     {
+//         6
+//     }
+//
+//     fn version(&self) -> u32 {
+//         Self::version_static()
+//     }
+//
+//     type Options = ();
+//
+//     type State = MeshAdvBlenderImporterState;
+//
+//     /// Reads the given bytes and produces assets.
+//     #[profiling::function]
+//     fn import(
+//         &self,
+//         _op: &mut ImportOp,
+//         source: &mut dyn Read,
+//         _options: &Self::Options,
+//         state: &mut Self::State,
+//     ) -> distill::importer::Result<ImporterValue> {
+//         let mesh_id = state
+//             .mesh_id
+//             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+//         let vertex_full_buffer_id = state
+//             .vertex_full_buffer_id
+//             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+//         let vertex_position_buffer_id = state
+//             .vertex_position_buffer_id
+//             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+//         let index_buffer_id = state
+//             .index_buffer_id
+//             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+//         *state = MeshAdvBlenderImporterState {
+//             mesh_id: Some(mesh_id),
+//             vertex_full_buffer_id: Some(vertex_full_buffer_id),
+//             vertex_position_buffer_id: Some(vertex_position_buffer_id),
+//             index_buffer_id: Some(index_buffer_id),
+//         };
+//         let mut bytes = Vec::new();
+//         source.read_to_end(&mut bytes)?;
+//
+//         let b3f_reader = rafx::base::b3f::B3FReader::new(&bytes)
+//             .ok_or("Blender Mesh Import error, mesh file format not recognized")?;
+//         let mesh_as_json: MeshJson =
+//             serde_json::from_slice(b3f_reader.get_block(0)).map_err(|e| e.to_string())?;
+//
+//         let mut all_positions = Vec::<glam::Vec3>::with_capacity(1024);
+//         let mut all_position_indices = Vec::<u32>::with_capacity(8192);
+//
+//         let mut all_vertices_full = PushBuffer::new(16384);
+//         let mut all_vertices_position = PushBuffer::new(16384);
+//         let mut all_indices = PushBuffer::new(16384);
+//
+//         let mut mesh_parts: Vec<MeshAdvPartAssetData> =
+//             Vec::with_capacity(mesh_as_json.mesh_parts.len());
+//
+//         for mesh_part in &mesh_as_json.mesh_parts {
+//             //
+//             // Get byte slices of all input data for this mesh part
+//             //
+//             let positions_bytes =
+//                 b3f_reader.get_block(mesh_part.position.ok_or("No position data")? as usize);
+//             let normals_bytes =
+//                 b3f_reader.get_block(mesh_part.normal.ok_or("No normal data")? as usize);
+//             let tex_coords_bytes = b3f_reader
+//                 .get_block(*mesh_part.uv.get(0).ok_or("No texture coordinate data")? as usize);
+//             let part_indices_bytes = b3f_reader.get_block(mesh_part.indices as usize);
+//
+//             //
+//             // Get strongly typed slices of all input data for this mesh part
+//             //
+//             let positions = try_cast_u8_slice::<[f32; 3]>(positions_bytes)
+//                 .ok_or("Could not cast due to alignment")?;
+//             let normals = try_cast_u8_slice::<[f32; 3]>(normals_bytes)
+//                 .ok_or("Could not cast due to alignment")?;
+//             let tex_coords = try_cast_u8_slice::<[f32; 2]>(tex_coords_bytes)
+//                 .ok_or("Could not cast due to alignment")?;
+//
+//             // Indices may be encoded as u16 or u32, either way copy them out to a Vec<u32>
+//             let mut part_indices = Vec::<u32>::default();
+//             match mesh_part.index_type {
+//                 MeshPartJsonIndexType::U16 => {
+//                     let part_indices_u16 = try_cast_u8_slice::<u16>(part_indices_bytes)
+//                         .ok_or("Could not cast due to alignment")?;
+//                     part_indices.reserve(part_indices_u16.len());
+//                     for &part_index in part_indices_u16 {
+//                         part_indices.push(part_index as u32);
+//                     }
+//                 }
+//                 MeshPartJsonIndexType::U32 => {
+//                     let part_indices_u32 = try_cast_u8_slice::<u32>(part_indices_bytes)
+//                         .ok_or("Could not cast due to alignment")?;
+//                     part_indices.reserve(part_indices_u32.len());
+//                     for &part_index in part_indices_u32 {
+//                         part_indices.push(part_index);
+//                     }
+//                 }
+//             };
+//
+//             let part_data = super::mesh_util::process_mesh_part(
+//                 &part_indices,
+//                 &positions,
+//                 &normals,
+//                 &tex_coords,
+//                 &mut all_vertices_full,
+//                 &mut all_vertices_position,
+//                 &mut all_indices,
+//             );
+//
+//             //
+//             // Positions and indices for the visibility system
+//             //
+//             for index in part_indices {
+//                 all_position_indices.push(index as u32);
+//             }
+//
+//             for i in 0..positions.len() {
+//                 all_positions.push(Vec3::new(positions[i][0], positions[i][1], positions[i][2]));
+//             }
+//
+//             let mesh_material = mesh_part.material.clone();
+//
+//             mesh_parts.push(MeshAdvPartAssetData {
+//                 mesh_material,
+//                 vertex_full_buffer_offset_in_bytes: part_data.vertex_full_buffer_offset_in_bytes,
+//                 vertex_full_buffer_size_in_bytes: part_data.vertex_full_buffer_size_in_bytes,
+//                 vertex_position_buffer_offset_in_bytes: part_data
+//                     .vertex_position_buffer_offset_in_bytes,
+//                 vertex_position_buffer_size_in_bytes: part_data
+//                     .vertex_position_buffer_size_in_bytes,
+//                 index_buffer_offset_in_bytes: part_data.index_buffer_offset_in_bytes,
+//                 index_buffer_size_in_bytes: part_data.index_buffer_size_in_bytes,
+//                 index_type: part_data.index_type,
+//             })
+//         }
+//
+//         let mut imported_assets = Vec::with_capacity(3);
+//
+//         //
+//         // Vertex Full Buffer
+//         //
+//         assert!(!all_vertices_full.is_empty());
+//         let vertex_full_buffer_asset = MeshAdvBufferAssetData {
+//             resource_type: RafxResourceType::VERTEX_BUFFER,
+//             alignment: std::mem::size_of::<MeshVertexFull>() as u32,
+//             data: all_vertices_full.into_data(),
+//         };
+//
+//         let vertex_full_buffer_handle = make_handle(vertex_full_buffer_id);
+//
+//         //
+//         // Vertex Position Buffer
+//         //
+//         assert!(!all_vertices_position.is_empty());
+//         let vertex_position_buffer_asset = MeshAdvBufferAssetData {
+//             resource_type: RafxResourceType::VERTEX_BUFFER,
+//             alignment: std::mem::size_of::<MeshVertexPosition>() as u32,
+//             data: all_vertices_position.into_data(),
+//         };
+//
+//         let vertex_position_buffer_handle = make_handle(vertex_position_buffer_id);
+//
+//         //
+//         // Index Buffer
+//         //
+//         assert!(!all_indices.is_empty());
+//         let index_buffer_asset = MeshAdvBufferAssetData {
+//             resource_type: RafxResourceType::INDEX_BUFFER,
+//             alignment: std::mem::size_of::<u32>() as u32,
+//             data: all_indices.into_data(),
+//         };
+//
+//         let index_buffer_handle = make_handle(index_buffer_id);
+//
+//         let mesh_data = PolygonSoup {
+//             vertex_positions: all_positions,
+//             index: PolygonSoupIndex::Indexed32(all_position_indices),
+//         };
+//
+//         let asset_data = MeshAdvAssetData {
+//             mesh_parts,
+//             vertex_full_buffer: vertex_full_buffer_handle,
+//             vertex_position_buffer: vertex_position_buffer_handle,
+//             index_buffer: index_buffer_handle,
+//             visible_bounds: VisibleBounds::from(mesh_data),
+//         };
+//
+//         imported_assets.push(ImportedAsset {
+//             id: mesh_id,
+//             search_tags: vec![],
+//             build_deps: vec![],
+//             load_deps: vec![],
+//             build_pipeline: None,
+//             asset_data: Box::new(asset_data),
+//         });
+//
+//         imported_assets.push(ImportedAsset {
+//             id: vertex_full_buffer_id,
+//             search_tags: vec![],
+//             build_deps: vec![],
+//             load_deps: vec![],
+//             build_pipeline: None,
+//             asset_data: Box::new(vertex_full_buffer_asset),
+//         });
+//
+//         imported_assets.push(ImportedAsset {
+//             id: vertex_position_buffer_id,
+//             search_tags: vec![],
+//             build_deps: vec![],
+//             load_deps: vec![],
+//             build_pipeline: None,
+//             asset_data: Box::new(vertex_position_buffer_asset),
+//         });
+//
+//         imported_assets.push(ImportedAsset {
+//             id: index_buffer_id,
+//             search_tags: vec![],
+//             build_deps: vec![],
+//             load_deps: vec![],
+//             build_pipeline: None,
+//             asset_data: Box::new(index_buffer_asset),
+//         });
+//
+//         Ok(ImporterValue {
+//             assets: imported_assets,
+//         })
+//     }
+// }
 
 #[derive(TypeUuid, Default)]
 #[uuid = "bdd126da-2f3d-4cbb-b2f2-80088c715753"]

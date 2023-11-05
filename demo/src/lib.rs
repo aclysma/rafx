@@ -4,6 +4,7 @@
 mod main_native;
 
 pub use main_native::*;
+use std::path::PathBuf;
 
 use legion::*;
 use structopt::StructOpt;
@@ -11,16 +12,14 @@ use structopt::StructOpt;
 use rafx::api::{RafxExtents2D, RafxResult, RafxSwapchainHelper};
 use rafx::assets::AssetManager;
 
-pub use crate::daemon_args::AssetDaemonArgs;
 use crate::scenes::SceneManager;
 use crate::time::{PeriodicEvent, TimeState};
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::render_features::ExtractResources;
 use rafx::renderer::{AssetSource, Renderer};
 use rafx::renderer::{RendererConfigResource, ViewportsResource};
 use rafx::visibility::VisibilityResource;
 
-pub mod daemon_args;
 mod demo_ui;
 mod init;
 mod input;
@@ -31,7 +30,7 @@ mod demo_renderer_thread_pool;
 
 use crate::input::InputResource;
 use demo_ui::*;
-use rafx::distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx_plugins::assets::font::FontAsset;
 #[cfg(feature = "egui")]
 use rafx_plugins::features::egui::WinitEguiManager;
@@ -95,34 +94,32 @@ impl Drop for StatsAllocMemoryRegion<'_> {
     }
 }
 
+fn default_build_dir() -> PathBuf {
+    PathBuf::from(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../demo-editor/data/build_data"
+    ))
+}
+
 #[derive(StructOpt)]
 pub struct DemoArgs {
     /// Path to the packfile
     #[structopt(name = "packfile", long, parse(from_os_str))]
-    pub packfile: Option<std::path::PathBuf>,
+    pub build_dir: Option<std::path::PathBuf>,
 
     #[structopt(skip)]
     pub packbuffer: Option<&'static [u8]>,
 
     #[structopt(name = "external-daemon", long)]
     pub external_daemon: bool,
-
-    #[structopt(flatten)]
-    pub daemon_args: AssetDaemonArgs,
 }
 
 impl DemoArgs {
     fn asset_source(&self) -> Option<AssetSource> {
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(packfile) = &self.packfile {
-            return Some(AssetSource::Packfile(packfile.to_path_buf()));
-        }
-
-        {
-            return Some(AssetSource::Daemon {
-                external_daemon: self.external_daemon,
-                daemon_args: self.daemon_args.clone().into(),
-            });
+        if let Some(build_dir) = &self.build_dir {
+            return Some(AssetSource::BuildDir(build_dir.clone()));
+        } else {
+            return Some(AssetSource::BuildDir(default_build_dir()));
         }
     }
 }

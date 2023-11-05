@@ -2,11 +2,11 @@ use crate::phases::{
     DebugPipRenderPhase, DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase,
     ShadowMapRenderPhase, TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
+use hydrate_base::handle::Handle;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::RafxResult;
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::{AssetManager, MaterialAsset};
-use rafx::distill::loader::handle::Handle;
 use rafx::framework::{ImageViewResource, RenderResources, ResourceArc};
 use rafx::graph::PreparedRenderGraph;
 use rafx::render_features::{ExtractResources, RenderRegistryBuilder, RenderView};

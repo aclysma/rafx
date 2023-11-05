@@ -1,6 +1,6 @@
 use super::MeshAdvRenderFeature;
 use crate::assets::mesh_adv::MeshAdvAsset;
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::render_features::RenderObjectSet;
 
 #[derive(Clone)]

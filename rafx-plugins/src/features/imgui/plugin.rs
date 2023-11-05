@@ -2,7 +2,7 @@ use rafx::render_feature_renderer_prelude::*;
 
 use super::*;
 use crate::phases::UiRenderPhase;
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::framework::{ImageViewResource, ResourceArc};
 

@@ -3,8 +3,6 @@ use crate::assets::anim::{
     BoneChannelVec3, Skeleton,
 };
 use crate::schema::{BlenderAnimAssetRecord, BlenderAnimImportedDataRecord};
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
 use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::ObjectId;
@@ -17,7 +15,6 @@ use hydrate_model::{
     JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
 };
 use rafx::api::{RafxError, RafxResult};
-use rafx::distill::importer::Error;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::Read;
@@ -123,112 +120,112 @@ pub struct AnimJsonData {
     actions: Vec<ActionJsonData>,
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
-#[uuid = "da73abc3-aaa9-447e-8726-e5e932383288"]
-pub struct AnimImporterOptions {}
-
-// The asset state is stored in this format using Vecs
-#[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
-#[uuid = "c995f022-8214-4bfe-a8ee-b4bff873901d"]
-pub struct AnimImporterStateStable {
-    anim_asset_uuid: Option<AssetUuid>,
-}
-
-impl From<AnimImporterStateUnstable> for AnimImporterStateStable {
-    fn from(other: AnimImporterStateUnstable) -> Self {
-        let mut stable = AnimImporterStateStable::default();
-        stable.anim_asset_uuid = other.anim_asset_uuid.clone();
-        stable
-    }
-}
-
-#[derive(Default)]
-pub struct AnimImporterStateUnstable {
-    anim_asset_uuid: Option<AssetUuid>,
-}
-
-impl From<AnimImporterStateStable> for AnimImporterStateUnstable {
-    fn from(other: AnimImporterStateStable) -> Self {
-        let mut unstable = AnimImporterStateUnstable::default();
-        unstable.anim_asset_uuid = other.anim_asset_uuid.clone();
-        unstable
-    }
-}
-
-#[derive(TypeUuid)]
-#[uuid = "fe509d69-62ed-40a1-badd-b45d2fbfce07"]
-pub struct BlenderAnimImporter;
-impl Importer for BlenderAnimImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        2
-    }
-
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = AnimImporterOptions;
-
-    type State = AnimImporterStateStable;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
-        &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        stable_state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let mut unstable_state: AnimImporterStateUnstable = stable_state.clone().into();
-
-        //
-        // Assign an ID to this anim file if not already assigned
-        //
-        unstable_state.anim_asset_uuid = Some(
-            unstable_state
-                .anim_asset_uuid
-                .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes())),
-        );
-
-        // Read in the anim file
-        let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_reader(source);
-        if let Err(err) = anim_data {
-            log::error!("anim Import error: {:?}", err);
-            return Err(Error::Boxed(Box::new(err)));
-        }
-
-        let anim_data = anim_data.unwrap();
-
-        let skeleton = parse_skeleton(&anim_data.skeleton).map_err(|e| e.to_string())?;
-
-        let mut clips = Vec::with_capacity(anim_data.actions.len());
-        for action in &anim_data.actions {
-            clips.push(parse_action(&skeleton, action).map_err(|e| e.to_string())?);
-        }
-
-        let asset_data = AnimAssetData { skeleton, clips };
-
-        let mut imported_assets = Vec::<ImportedAsset>::default();
-        imported_assets.push(ImportedAsset {
-            id: unstable_state.anim_asset_uuid.unwrap(),
-            search_tags: vec![],
-            build_deps: vec![],
-            load_deps: vec![],
-            build_pipeline: None,
-            asset_data: Box::new(asset_data),
-        });
-
-        *stable_state = unstable_state.into();
-
-        Ok(ImporterValue {
-            assets: imported_assets,
-        })
-    }
-}
+// #[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
+// #[uuid = "da73abc3-aaa9-447e-8726-e5e932383288"]
+// pub struct AnimImporterOptions {}
+//
+// // The asset state is stored in this format using Vecs
+// #[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
+// #[uuid = "c995f022-8214-4bfe-a8ee-b4bff873901d"]
+// pub struct AnimImporterStateStable {
+//     anim_asset_uuid: Option<AssetUuid>,
+// }
+//
+// impl From<AnimImporterStateUnstable> for AnimImporterStateStable {
+//     fn from(other: AnimImporterStateUnstable) -> Self {
+//         let mut stable = AnimImporterStateStable::default();
+//         stable.anim_asset_uuid = other.anim_asset_uuid.clone();
+//         stable
+//     }
+// }
+//
+// #[derive(Default)]
+// pub struct AnimImporterStateUnstable {
+//     anim_asset_uuid: Option<AssetUuid>,
+// }
+//
+// impl From<AnimImporterStateStable> for AnimImporterStateUnstable {
+//     fn from(other: AnimImporterStateStable) -> Self {
+//         let mut unstable = AnimImporterStateUnstable::default();
+//         unstable.anim_asset_uuid = other.anim_asset_uuid.clone();
+//         unstable
+//     }
+// }
+//
+// #[derive(TypeUuid)]
+// #[uuid = "fe509d69-62ed-40a1-badd-b45d2fbfce07"]
+// pub struct BlenderAnimImporter;
+// impl Importer for BlenderAnimImporter {
+//     fn version_static() -> u32
+//     where
+//         Self: Sized,
+//     {
+//         2
+//     }
+//
+//     fn version(&self) -> u32 {
+//         Self::version_static()
+//     }
+//
+//     type Options = AnimImporterOptions;
+//
+//     type State = AnimImporterStateStable;
+//
+//     /// Reads the given bytes and produces assets.
+//     #[profiling::function]
+//     fn import(
+//         &self,
+//         _op: &mut ImportOp,
+//         source: &mut dyn Read,
+//         _options: &Self::Options,
+//         stable_state: &mut Self::State,
+//     ) -> distill::importer::Result<ImporterValue> {
+//         let mut unstable_state: AnimImporterStateUnstable = stable_state.clone().into();
+//
+//         //
+//         // Assign an ID to this anim file if not already assigned
+//         //
+//         unstable_state.anim_asset_uuid = Some(
+//             unstable_state
+//                 .anim_asset_uuid
+//                 .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes())),
+//         );
+//
+//         // Read in the anim file
+//         let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_reader(source);
+//         if let Err(err) = anim_data {
+//             log::error!("anim Import error: {:?}", err);
+//             return Err(Error::Boxed(Box::new(err)));
+//         }
+//
+//         let anim_data = anim_data.unwrap();
+//
+//         let skeleton = parse_skeleton(&anim_data.skeleton).map_err(|e| e.to_string())?;
+//
+//         let mut clips = Vec::with_capacity(anim_data.actions.len());
+//         for action in &anim_data.actions {
+//             clips.push(parse_action(&skeleton, action).map_err(|e| e.to_string())?);
+//         }
+//
+//         let asset_data = AnimAssetData { skeleton, clips };
+//
+//         let mut imported_assets = Vec::<ImportedAsset>::default();
+//         imported_assets.push(ImportedAsset {
+//             id: unstable_state.anim_asset_uuid.unwrap(),
+//             search_tags: vec![],
+//             build_deps: vec![],
+//             load_deps: vec![],
+//             build_pipeline: None,
+//             asset_data: Box::new(asset_data),
+//         });
+//
+//         *stable_state = unstable_state.into();
+//
+//         Ok(ImporterValue {
+//             assets: imported_assets,
+//         })
+//     }
+// }
 
 fn try_add_bone(
     bone_data: &SkeletonBoneJsonData,

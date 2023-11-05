@@ -5,10 +5,10 @@ use crate::assets::mesh_basic::MeshBasicShaderPassIndices;
 use crate::components::{
     DirectionalLightComponent, PointLightComponent, SpotLightComponent, TransformComponent,
 };
+use hydrate_base::handle::Handle;
 use legion::{Entity, IntoQuery, Read, World};
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrow;
-use rafx::distill::loader::handle::Handle;
 
 pub struct MeshBasicExtractJob<'extract> {
     world: ResourceRefBorrow<'extract, World>,

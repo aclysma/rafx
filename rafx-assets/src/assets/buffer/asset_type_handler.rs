@@ -1,7 +1,7 @@
 use crate::assets::buffer::asset_upload_queue::{
     BufferAssetUploadOpResult, BufferAssetUploadQueue,
 };
-use crate::distill_impl::{AssetResource, ResourceAssetLoader};
+use crate::hydrate_impl::{AssetResource, ResourceAssetLoader};
 use crate::{
     AssetLookup, AssetManager, AssetTypeHandler, BufferAsset, BufferAssetData, DynAssetLookup,
     LoadQueues,

@@ -4,8 +4,8 @@ use super::{ExampleExtractJob, ExampleRenderFeature};
 use crate::features::internal::{ExampleFramePacket, ExampleSubmitPacket};
 use crate::features::jobs::{ExamplePrepareJob, ExampleWriteJob};
 use crate::phases::OpaqueRenderPhase;
+use hydrate_base::handle::Handle;
 use rafx::assets::MaterialAsset;
-use rafx::distill::loader::handle::Handle;
 use rafx_renderer::RendererLoadContext;
 
 pub struct ExampleStaticResources {

@@ -3,7 +3,7 @@ use crate::assets::{BufferAsset, ImageAsset, MaterialAsset};
 use crate::{
     AssetLookup, AssetTypeHandler, BufferAssetData, GenericLoader, MaterialInstanceSlotAssignment,
 };
-use distill::loader::handle::Handle;
+use hydrate_base::handle::{AssetHandle, Handle, LoadState, LoadStateProvider};
 use rafx_framework::{
     DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider, DescriptorSetAllocatorRef,
     DescriptorSetLayoutResource, DescriptorSetWriteSet, DynResourceAllocatorSet,
@@ -17,9 +17,7 @@ use crate::assets::graphics_pipeline::{
 };
 use crate::assets::image::ImageAssetTypeHandler;
 use crate::assets::shader::ShaderAssetTypeHandler;
-use crate::distill_impl::AssetResource;
-use distill::loader::handle::AssetHandle;
-use distill::loader::storage::LoadStatus;
+use crate::hydrate_impl::AssetResource;
 use fnv::FnvHashMap;
 use rafx_api::{RafxDeviceContext, RafxQueue, RafxResult};
 use rafx_framework::descriptor_sets::{
@@ -160,13 +158,13 @@ impl AssetManager {
         TickFn: FnMut(&mut AssetManager, &mut AssetResource) -> RafxResult<()>,
     >(
         &mut self,
-        asset_handle: &distill::loader::handle::Handle<T>,
+        asset_handle: &Handle<T>,
         asset_resource: &mut AssetResource,
         asset_name: &str,
         mut tick_fn: TickFn,
     ) -> RafxResult<()> {
         const PRINT_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1000);
-        let mut last_print_time = None;
+        let mut last_print_time: Option<rafx_base::Instant> = None;
 
         fn on_interval<F: Fn()>(
             interval: std::time::Duration,
@@ -191,45 +189,20 @@ impl AssetManager {
             asset_resource.update();
             self.update_asset_loaders()?;
             (tick_fn)(self, asset_resource)?;
-            match asset_resource.load_status(&asset_handle) {
-                LoadStatus::NotRequested => {
-                    unreachable!();
-                }
-                LoadStatus::Unresolved => {
-                    on_interval(PRINT_INTERVAL, &mut last_print_time, || {
-                        log::info!(
-                            "blocked waiting for asset to resolve {} {:?}",
-                            asset_name,
-                            asset_handle
-                        );
-                    });
-                }
-                LoadStatus::Loading => {
-                    on_interval(PRINT_INTERVAL, &mut last_print_time, || {
-                        log::info!(
-                            "blocked waiting for asset to load {} {:?}",
-                            asset_name,
-                            asset_handle
-                        );
-                    });
-                }
-                LoadStatus::Loaded => {
+
+            match asset_handle.load_state(asset_resource.loader()) {
+                LoadState::Loaded => {
                     break Ok(());
                 }
-                LoadStatus::Unloading => {
+                state @ _ => {
                     on_interval(PRINT_INTERVAL, &mut last_print_time, || {
                         log::info!(
-                            "blocked waiting for asset to unload {} {:?}",
+                            "blocked waiting for asset to resolve {} {:?} {:?}",
                             asset_name,
-                            asset_handle
+                            asset_handle,
+                            state
                         );
                     });
-                }
-                LoadStatus::DoesNotExist => {
-                    println!("Essential asset not found");
-                }
-                LoadStatus::Error(err) => {
-                    println!("Error loading essential asset {:?}", err);
                 }
             }
         }

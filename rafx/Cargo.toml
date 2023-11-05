@@ -56,7 +56,7 @@ static-vulkan = ["rafx-api/static-vulkan"]
 # Nodes: A data structure and job system for gathering and drawing renderables. Includes the concepts of views and
 #        phases.
 # Resources: Object lifetime tracking and render graph
-# Assets: Integrates distill to provide a full asset pipeline
+# Assets: Integrates hydrate to provide a full asset pipeline
 #nodes = ["rafx-nodes", "rafx-visibility"]
 framework = ["rafx-framework"]
 assets = ["rafx-assets", "framework"]

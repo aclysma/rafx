@@ -1,6 +1,6 @@
 use super::MeshBasicRenderFeature;
 use crate::assets::mesh_basic::MeshBasicAsset;
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::render_features::RenderObjectSet;
 
 #[derive(Clone)]

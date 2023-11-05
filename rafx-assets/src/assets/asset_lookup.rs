@@ -1,8 +1,8 @@
-use distill::loader::storage::IndirectionTable;
-use distill::loader::LoadHandle;
-use distill::loader::Loader;
 use downcast_rs::Downcast;
 use fnv::FnvHashMap;
+use hydrate_base::LoadHandle;
+use hydrate_loader::loader::Loader;
+use hydrate_loader::storage::IndirectionTable;
 
 //
 // Represents a single asset which may simultaneously have committed and uncommitted loaded state

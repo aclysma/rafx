@@ -3,7 +3,7 @@ use rafx::render_feature_renderer_prelude::*;
 use super::*;
 
 use crate::phases::TransparentRenderPhase;
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::renderer::RendererLoadContext;
 

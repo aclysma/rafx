@@ -36,7 +36,6 @@ hydrate-data = { path = "../../hydrate/hydrate-data" }
 hydrate-loader = { path = "../../hydrate/hydrate-loader" }
 hydrate-base = { path = "../../hydrate/hydrate-base" }
 
-distill = { version = "=0.0.3", features = ["serde_importers", "distill-daemon"] }
 basis-universal = { version = "0.1.1", optional = true }
 type-uuid = "0.1"
 uuid = "0.8"

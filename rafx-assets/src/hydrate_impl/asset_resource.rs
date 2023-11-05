@@ -127,11 +127,11 @@
 //         handle.asset_version::<T, _>(&self.storage)
 //     }
 //
-//     pub fn load_status<T>(
+//     pub fn load_state<T>(
 //         &self,
 //         handle: &Handle<T>,
 //     ) -> LoadState {
-//         handle.load_status(&self.loader)
+//         handle.load_state(&self.loader)
 //     }
 //
 //     // pub fn load_info<T>(

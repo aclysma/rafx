@@ -1,7 +1,8 @@
-use distill::loader::handle::{AssetHandle, Handle};
+use hydrate_base::handle::AssetHandle;
+use hydrate_base::Handle;
 use legion::{Resources, World};
-use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
+use rafx::assets::AssetResource;
 use rafx::rafx_visibility::VisibleBounds;
 use rafx::renderer::Renderer;
 use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
@@ -65,8 +66,9 @@ impl SpawnablePrefab {
         let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
         let renderer = resources.get::<Renderer>().unwrap();
 
-        let prefab_asset = asset_resource
-            .asset(&self.prefab_asset_handle)
+        let prefab_asset = self
+            .prefab_asset_handle
+            .asset(asset_resource.storage())
             .unwrap()
             .clone();
 
@@ -89,7 +91,7 @@ impl SpawnablePrefab {
         for object in &prefab_asset.inner.objects {
             //log::debug!("create object {:?}", object);
             if let Some(model) = &object.model {
-                let model_asset_handle = asset_resource.asset(&model.model);
+                let model_asset_handle = model.model.asset(asset_resource.storage());
                 if model_asset_handle.is_none() {
                     continue;
                 }

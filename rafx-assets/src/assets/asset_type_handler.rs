@@ -1,8 +1,8 @@
-use crate::distill_impl::{AssetResource, ResourceAssetLoader};
+use crate::hydrate_impl::{AssetResource, ResourceAssetLoader};
 use crate::{AssetLookup, AssetManager, DynAssetLookup, LoadQueues};
 use crossbeam_channel::Sender;
-use distill::loader::storage::AssetLoadOp;
-use distill::loader::LoadHandle;
+use hydrate_base::LoadHandle;
+use hydrate_loader::storage::AssetLoadOp;
 use rafx_api::RafxResult;
 use std::any::TypeId;
 use std::marker::PhantomData;

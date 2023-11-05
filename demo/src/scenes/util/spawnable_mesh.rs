@@ -1,13 +1,14 @@
-use distill::core::AssetUuid;
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
+use hydrate_base::{ArtifactId, AssetUuid};
 use legion::{Resources, World};
-use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
+use rafx::assets::AssetResource;
 use rafx::rafx_visibility::VisibleBounds;
 use rafx::render_features::RenderObjectHandle;
 use rafx::renderer::Renderer;
 use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
 use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
+use uuid::Uuid;
 
 #[cfg(feature = "basic-pipeline")]
 use rafx_plugins::assets::mesh_basic::MeshBasicAsset as MeshAsset;
@@ -99,7 +100,7 @@ impl SpawnableMesh {
         uuid: AssetUuid,
     ) -> SpawnableMesh {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-        let handle = asset_resource.load_asset(uuid);
+        let handle = asset_resource.load_asset(ArtifactId(Uuid::from_bytes(uuid.0).as_u128()));
         Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
     }
 

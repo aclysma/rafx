@@ -2,8 +2,8 @@ use crate::features::internal::{
     ExampleFramePacket, ExamplePerFrameData, ExampleRenderFeatureTypes,
 };
 use crate::TimeState;
+use hydrate_base::handle::Handle;
 use rafx::assets::{AssetManagerRenderResource, MaterialAsset};
-use rafx::distill::loader::handle::Handle;
 use rafx::framework::render_features::ExtractJob;
 use rafx::render_feature_extract_job_predule::*;
 use rafx_assets::AssetManagerExtractRef;

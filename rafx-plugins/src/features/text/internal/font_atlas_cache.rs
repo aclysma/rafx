@@ -1,8 +1,8 @@
 use super::{TextDrawCallMeta, TextDrawCommand, TextVertex};
 use crate::assets::font::{font_cooking, FontAsset};
-use distill::loader::LoadHandle;
 use fnv::{FnvBuildHasher, FnvHashMap, FnvHashSet};
 use fontdue::layout::{GlyphPosition, LayoutSettings, TextStyle};
+use hydrate_base::LoadHandle;
 use rafx::api::{
     RafxBufferDef, RafxExtents3D, RafxFormat, RafxResourceType, RafxResult, RafxTextureDef,
 };

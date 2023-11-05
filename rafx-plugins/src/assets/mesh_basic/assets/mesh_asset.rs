@@ -3,7 +3,7 @@ use crate::features::mesh_basic::MeshBasicUntexturedRenderFeatureFlag;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
 use crate::shaders::mesh_basic::mesh_basic_textured_frag;
 use distill::loader::handle::{AssetHandle, Handle};
-use distill::loader::LoadHandle;
+use hydrate_base::LoadHandle;
 use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, MaterialAsset,

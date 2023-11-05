@@ -1,7 +1,7 @@
 use crate::RenderOptions;
 use legion::IntoQuery;
 use legion::{Read, Resources, World};
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::render_features::{
     RenderFeatureFlagMaskBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,

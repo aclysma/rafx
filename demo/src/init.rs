@@ -3,8 +3,8 @@ use rafx::api::{
     RafxApi, RafxApiDef, RafxDeviceContext, RafxResult, RafxSwapchainColorSpace, RafxSwapchainDef,
     RafxSwapchainHelper,
 };
-use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
+use rafx::assets::AssetResource;
 use rafx::framework::visibility::VisibilityResource;
 use rafx::render_features::{ExtractResources, RenderRegistry};
 use rafx::renderer::{

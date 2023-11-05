@@ -39,9 +39,6 @@ pub use rafx_api::RafxResult;
 #[cfg(feature = "assets")]
 #[doc(inline)]
 pub use rafx_assets as assets;
-#[cfg(feature = "assets")]
-#[doc(inline)]
-pub use rafx_assets::distill;
 
 #[cfg(feature = "framework")]
 #[doc(inline)]
@@ -79,9 +76,9 @@ pub mod render_feature_renderer_prelude {
     pub use rafx_api::extra::upload::RafxTransferUpload;
     pub use rafx_api::RafxResult;
     #[cfg(feature = "assets")]
-    pub use rafx_assets::distill_impl::AssetResource;
-    #[cfg(feature = "assets")]
     pub use rafx_assets::AssetManager;
+    #[cfg(feature = "assets")]
+    pub use rafx_assets::AssetResource;
     pub use rafx_base::resource_map::ResourceMap;
     pub use rafx_framework::render_features::render_features_prelude::*;
     pub use rafx_framework::RenderResources;

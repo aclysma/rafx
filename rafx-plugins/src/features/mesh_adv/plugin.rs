@@ -8,7 +8,7 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
     WireframeRenderPhase,
 };
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::api::{RafxIndexedIndirectCommandSignature, RafxShaderStageFlags};
 use rafx::assets::{ComputePipelineAsset, MaterialAsset};
 use rafx::renderer::RendererLoadContext;
@@ -100,32 +100,32 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let default_pbr_material_handle = asset_resource.load_asset_path::<MaterialAsset, _>(
-            "rafx-plugins/materials/modern_pipeline/mesh_adv.material",
+            "db:/path_file_system/materials/modern_pipeline/mesh_adv.material",
         );
 
-        let depth_material_handle = asset_resource.load_asset_path::<MaterialAsset, _>(
-            "rafx-plugins/materials/modern_pipeline/depth_velocity.material",
-        );
-
-        let shadow_map_atlas_depth_material_handle = asset_resource
-            .load_asset_path::<MaterialAsset, _>(
-                "rafx-plugins/materials/modern_pipeline/shadow_atlas_depth.material",
-            );
-
-        let shadow_map_atlas_clear_tiles_material_handle = asset_resource
-            .load_asset_path::<MaterialAsset, _>(
-                "rafx-plugins/materials/modern_pipeline/shadow_atlas_clear_tiles.material",
-            );
-
-        let lights_bin_compute_pipeline = asset_resource
-            .load_asset_path::<ComputePipelineAsset, _>(
-                "rafx-plugins/compute_pipelines/lights_bin.compute",
-            );
-
-        let lights_build_lists_compute_pipeline = asset_resource
-            .load_asset_path::<ComputePipelineAsset, _>(
-                "rafx-plugins/compute_pipelines/lights_build_lists.compute",
-            );
+        // let depth_material_handle = asset_resource.load_asset_path::<MaterialAsset, _>(
+        //     "db:/path_file_system/materials/modern_pipeline/depth_velocity.material",
+        // );
+        //
+        // let shadow_map_atlas_depth_material_handle = asset_resource
+        //     .load_asset_path::<MaterialAsset, _>(
+        //         "db:/path_file_system/materials/modern_pipeline/shadow_atlas_depth.material",
+        //     );
+        //
+        // let shadow_map_atlas_clear_tiles_material_handle = asset_resource
+        //     .load_asset_path::<MaterialAsset, _>(
+        //         "db:/path_file_system/materials/modern_pipeline/shadow_atlas_clear_tiles.material",
+        //     );
+        //
+        // let lights_bin_compute_pipeline = asset_resource
+        //     .load_asset_path::<ComputePipelineAsset, _>(
+        //         "db:/path_file_system/compute_pipelines/lights_bin.compute",
+        //     );
+        //
+        // let lights_build_lists_compute_pipeline = asset_resource
+        //     .load_asset_path::<ComputePipelineAsset, _>(
+        //         "db:/path_file_system/compute_pipelines/lights_build_lists.compute",
+        //     );
 
         renderer_load_context.wait_for_asset_to_load(
             render_resources,
@@ -134,122 +134,128 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             asset_resource,
             "default_pbr_material",
         )?;
-        renderer_load_context.wait_for_asset_to_load(
-            render_resources,
-            asset_manager,
-            &depth_material_handle,
-            asset_resource,
-            "depth",
-        )?;
-        renderer_load_context.wait_for_asset_to_load(
-            render_resources,
-            asset_manager,
-            &shadow_map_atlas_depth_material_handle,
-            asset_resource,
-            "shadow atlas depth",
-        )?;
-        renderer_load_context.wait_for_asset_to_load(
-            render_resources,
-            asset_manager,
-            &shadow_map_atlas_clear_tiles_material_handle,
-            asset_resource,
-            "shadow atlas clear",
-        )?;
-        renderer_load_context.wait_for_asset_to_load(
-            render_resources,
-            asset_manager,
-            &lights_bin_compute_pipeline,
-            asset_resource,
-            "lights_bin.compute",
-        )?;
-        renderer_load_context.wait_for_asset_to_load(
-            render_resources,
-            asset_manager,
-            &lights_build_lists_compute_pipeline,
-            asset_resource,
-            "lights_build_lists.compute",
-        )?;
+        // renderer_load_context.wait_for_asset_to_load(
+        //     render_resources,
+        //     asset_manager,
+        //     &depth_material_handle,
+        //     asset_resource,
+        //     "depth",
+        // )?;
+        // renderer_load_context.wait_for_asset_to_load(
+        //     render_resources,
+        //     asset_manager,
+        //     &shadow_map_atlas_depth_material_handle,
+        //     asset_resource,
+        //     "shadow atlas depth",
+        // )?;
+        // renderer_load_context.wait_for_asset_to_load(
+        //     render_resources,
+        //     asset_manager,
+        //     &shadow_map_atlas_clear_tiles_material_handle,
+        //     asset_resource,
+        //     "shadow atlas clear",
+        // )?;
+        // renderer_load_context.wait_for_asset_to_load(
+        //     render_resources,
+        //     asset_manager,
+        //     &lights_bin_compute_pipeline,
+        //     asset_resource,
+        //     "lights_bin.compute",
+        // )?;
+        // renderer_load_context.wait_for_asset_to_load(
+        //     render_resources,
+        //     asset_manager,
+        //     &lights_build_lists_compute_pipeline,
+        //     asset_resource,
+        //     "lights_build_lists.compute",
+        // )?;
 
-        let pbr_material = asset_resource.asset(&default_pbr_material_handle).unwrap();
-        let pbr_pass_indices = MeshAdvShaderPassIndices::new(pbr_material);
-        let pbr_root_signature = pbr_material
-            .get_material_pass_by_index(pbr_pass_indices.opaque as usize)
-            .unwrap()
-            .get_raw()
-            .root_signature
-            .get_raw()
-            .root_signature
-            .clone();
-        let wireframe_root_signature = pbr_material
-            .get_material_pass_by_index(pbr_pass_indices.wireframe as usize)
-            .unwrap()
-            .get_raw()
-            .root_signature
-            .get_raw()
-            .root_signature
-            .clone();
+        unimplemented!();
+        /*
+                let pbr_material = default_pbr_material_handle
+                    .asset(asset_resource.storage())
+                    .unwrap();
+                let pbr_pass_indices = MeshAdvShaderPassIndices::new(pbr_material);
+                let pbr_root_signature = pbr_material
+                    .get_material_pass_by_index(pbr_pass_indices.opaque as usize)
+                    .unwrap()
+                    .get_raw()
+                    .root_signature
+                    .get_raw()
+                    .root_signature
+                    .clone();
+                let wireframe_root_signature = pbr_material
+                    .get_material_pass_by_index(pbr_pass_indices.wireframe as usize)
+                    .unwrap()
+                    .get_raw()
+                    .root_signature
+                    .get_raw()
+                    .root_signature
+                    .clone();
 
-        let depth_material = asset_resource.asset(&depth_material_handle).unwrap();
-        let depth_root_signature = depth_material
-            .get_single_material_pass()
-            .unwrap()
-            .get_raw()
-            .root_signature
-            .get_raw()
-            .root_signature
-            .clone();
+                let depth_material = depth_material_handle
+                    .asset(asset_resource.storage())
+                    .unwrap();
+                let depth_root_signature = depth_material
+                    .get_single_material_pass()
+                    .unwrap()
+                    .get_raw()
+                    .root_signature
+                    .get_raw()
+                    .root_signature
+                    .clone();
 
-        let shadow_material = asset_resource
-            .asset(&shadow_map_atlas_depth_material_handle)
-            .unwrap();
-        let shadow_root_signature = shadow_material
-            .get_single_material_pass()
-            .unwrap()
-            .get_raw()
-            .root_signature
-            .get_raw()
-            .root_signature
-            .clone();
+                let shadow_material = shadow_map_atlas_depth_material_handle
+                    .asset(asset_resource.storage())
+                    .unwrap();
+                let shadow_root_signature = shadow_material
+                    .get_single_material_pass()
+                    .unwrap()
+                    .get_raw()
+                    .root_signature
+                    .get_raw()
+                    .root_signature
+                    .clone();
 
-        let pbr_indirect_signature = RafxIndexedIndirectCommandSignature::new(
-            &pbr_root_signature,
-            RafxShaderStageFlags::ALL,
-        )?;
-        let wireframe_indirect_signature = RafxIndexedIndirectCommandSignature::new(
-            &wireframe_root_signature,
-            RafxShaderStageFlags::ALL,
-        )?;
-        let depth_indirect_signature = RafxIndexedIndirectCommandSignature::new(
-            &depth_root_signature,
-            RafxShaderStageFlags::ALL,
-        )?;
-        let shadow_indirect_signature = RafxIndexedIndirectCommandSignature::new(
-            &shadow_root_signature,
-            RafxShaderStageFlags::ALL,
-        )?;
+                let pbr_indirect_signature = RafxIndexedIndirectCommandSignature::new(
+                    &pbr_root_signature,
+                    RafxShaderStageFlags::ALL,
+                )?;
+                let wireframe_indirect_signature = RafxIndexedIndirectCommandSignature::new(
+                    &wireframe_root_signature,
+                    RafxShaderStageFlags::ALL,
+                )?;
+                let depth_indirect_signature = RafxIndexedIndirectCommandSignature::new(
+                    &depth_root_signature,
+                    RafxShaderStageFlags::ALL,
+                )?;
+                let shadow_indirect_signature = RafxIndexedIndirectCommandSignature::new(
+                    &shadow_root_signature,
+                    RafxShaderStageFlags::ALL,
+                )?;
 
-        render_resources.insert(MeshAdvStaticResources {
-            default_pbr_material: default_pbr_material_handle,
-            depth_material: depth_material_handle,
-            shadow_map_atlas_depth_material: shadow_map_atlas_depth_material_handle,
-            shadow_map_atlas_clear_tiles_material: shadow_map_atlas_clear_tiles_material_handle,
-            lights_bin_compute_pipeline,
-            lights_build_lists_compute_pipeline,
-            pbr_indirect_signature,
-            wireframe_indirect_signature,
-            depth_indirect_signature,
-            shadow_indirect_signature,
-        });
+                render_resources.insert(MeshAdvStaticResources {
+                    default_pbr_material: default_pbr_material_handle,
+                    depth_material: depth_material_handle,
+                    shadow_map_atlas_depth_material: shadow_map_atlas_depth_material_handle,
+                    shadow_map_atlas_clear_tiles_material: shadow_map_atlas_clear_tiles_material_handle,
+                    lights_bin_compute_pipeline,
+                    lights_build_lists_compute_pipeline,
+                    pbr_indirect_signature,
+                    wireframe_indirect_signature,
+                    depth_indirect_signature,
+                    shadow_indirect_signature,
+                });
 
-        render_resources.insert(MeshAdvShadowMapResource::default());
-        render_resources.insert(MeshAdvRenderPipelineState::default());
-        render_resources.insert(MeshAdvGpuOcclusionCullRenderResource::default());
+                render_resources.insert(MeshAdvShadowMapResource::default());
+                render_resources.insert(MeshAdvRenderPipelineState::default());
+                render_resources.insert(MeshAdvGpuOcclusionCullRenderResource::default());
 
-        render_resources.insert(MeshAdvLightBinRenderResource::new(
-            &asset_manager.resources(),
-        )?);
-        render_resources.insert(ShadowMapAtlas::new(asset_manager.resources())?);
-
+                render_resources.insert(MeshAdvLightBinRenderResource::new(
+                    &asset_manager.resources(),
+                )?);
+                render_resources.insert(ShadowMapAtlas::new(asset_manager.resources())?);
+        */
         Ok(())
     }
 

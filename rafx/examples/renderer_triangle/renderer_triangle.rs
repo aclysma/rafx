@@ -5,8 +5,8 @@ use crate::phases::OpaqueRenderPhase;
 use glam::Vec3;
 use legion::{Resources, World};
 use rafx::api::*;
-use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
+use rafx::assets::AssetResource;
 use rafx::framework::render_features::{
     ExtractResources, RenderFeatureFlagMask, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
     RenderRegistry, RenderViewDepthRange,

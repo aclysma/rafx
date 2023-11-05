@@ -1,15 +1,12 @@
 use crate::assets::ldtk::{
-    HydrateLdtkAssetData, HydrateLdtkLayerData, HydrateLdtkLayerDataTemp, HydrateLdtkLevelData,
-    HydrateLdtkLevelDataTemp, HydrateLdtkTileSet, HydrateLdtkTileSetTemp, LdtkAssetData,
+    HydrateLdtkLayerDataTemp, HydrateLdtkLevelDataTemp, HydrateLdtkTileSetTemp, LdtkAssetData,
     LdtkLayerData, LdtkLayerDrawCallData, LdtkLevelData, LdtkTileSet, LevelUid, TileSetUid,
 };
 use crate::features::tile_layer::TileLayerVertex;
 use crate::schema::{LdtkAssetRecord, LdtkImportDataRecord};
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
 use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
+use hydrate_base::{Handle, ObjectId};
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
@@ -22,14 +19,9 @@ use itertools::Itertools;
 use ldtk_rust::{LayerInstance, Level, TileInstance};
 use rafx::api::RafxResourceType;
 use rafx::assets::{
-    BufferAssetData, GpuImageImporterSimple, HydrateMaterialInstanceAssetData,
-    HydrateMaterialInstanceSlotAssignment, ImageAsset, MaterialAsset, MaterialInstanceAssetData,
+    BufferAssetData, GpuImageImporterSimple, ImageAsset, MaterialAsset, MaterialInstanceAssetData,
     MaterialInstanceSlotAssignment,
 };
-use rafx::distill::importer::Error;
-use rafx::distill::loader::handle::{Handle, SerdeContext};
-use rafx::distill::loader::AssetRef;
-use rafx::distill::{make_handle, make_handle_from_str};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -37,319 +29,319 @@ use std::str::FromStr;
 use type_uuid::*;
 use uuid::Uuid;
 
-#[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
-#[uuid = "84510429-7e8f-403a-ae51-4defcffe00fb"]
-pub struct LdtkImporterOptions {
-    layer_z_positions: Vec<f32>,
-}
-
-// The asset state is stored in this format using Vecs
-#[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
-#[uuid = "74c12ab4-c836-48ab-b6e8-3e483be60dcf"]
-pub struct LdtkImporterStateStable {
-    // Asset UUIDs for imported image by name. We use vecs here so we can sort by UUID for
-    // deterministic output
-    material_instance_uuids: Vec<(TileSetUid, AssetUuid)>,
-    level_vertex_buffer_uuids: Vec<(LevelUid, AssetUuid)>,
-    level_index_buffer_uuids: Vec<(LevelUid, AssetUuid)>,
-    ldtk_asset_uuid: Option<AssetUuid>,
-}
-
-impl From<LdtkImporterStateUnstable> for LdtkImporterStateStable {
-    fn from(other: LdtkImporterStateUnstable) -> Self {
-        let mut stable = LdtkImporterStateStable::default();
-        stable.material_instance_uuids = other
-            .material_instance_uuids
-            .into_iter()
-            .sorted_by_key(|(id, _uuid)| id.clone())
-            .collect();
-        stable.level_vertex_buffer_uuids = other
-            .level_vertex_buffer_uuids
-            .into_iter()
-            .sorted_by_key(|(id, _uuid)| id.clone())
-            .collect();
-        stable.level_index_buffer_uuids = other
-            .level_index_buffer_uuids
-            .into_iter()
-            .sorted_by_key(|(id, _uuid)| id.clone())
-            .collect();
-        stable.ldtk_asset_uuid = other.ldtk_asset_uuid.clone();
-        stable
-    }
-}
-
-#[derive(Default)]
-pub struct LdtkImporterStateUnstable {
-    material_instance_uuids: FnvHashMap<TileSetUid, AssetUuid>,
-    level_vertex_buffer_uuids: FnvHashMap<LevelUid, AssetUuid>,
-    level_index_buffer_uuids: FnvHashMap<LevelUid, AssetUuid>,
-    ldtk_asset_uuid: Option<AssetUuid>,
-}
-
-impl From<LdtkImporterStateStable> for LdtkImporterStateUnstable {
-    fn from(other: LdtkImporterStateStable) -> Self {
-        let mut unstable = LdtkImporterStateUnstable::default();
-        unstable.material_instance_uuids = other.material_instance_uuids.into_iter().collect();
-        unstable.level_vertex_buffer_uuids = other.level_vertex_buffer_uuids.into_iter().collect();
-        unstable.level_index_buffer_uuids = other.level_index_buffer_uuids.into_iter().collect();
-        unstable.ldtk_asset_uuid = other.ldtk_asset_uuid.clone();
-        unstable
-    }
-}
-
-#[derive(TypeUuid)]
-#[uuid = "dd701f1b-df5c-44e4-bd7b-0456a6c0aa47"]
-pub struct LdtkImporter;
-impl Importer for LdtkImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        4
-    }
-
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = LdtkImporterOptions;
-
-    type State = LdtkImporterStateStable;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
-        &self,
-        op: &mut ImportOp,
-        source: &mut dyn Read,
-        options: &Self::Options,
-        stable_state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let mut unstable_state: LdtkImporterStateUnstable = stable_state.clone().into();
-
-        //
-        // Assign an ID to this ldtk file if not already assigned
-        //
-        unstable_state.ldtk_asset_uuid = Some(
-            unstable_state
-                .ldtk_asset_uuid
-                .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes())),
-        );
-
-        // Read in the LDTK file
-        let project: serde_json::Result<ldtk_rust::Project> = serde_json::from_reader(source);
-        if let Err(err) = project {
-            log::error!("LDTK Import error: {:?}", err);
-            return Err(Error::Boxed(Box::new(err)));
-        }
-
-        let project = project.unwrap();
-
-        // All imported assets
-        let mut imported_assets = Vec::<ImportedAsset>::default();
-        // CPU-form of tileset data
-        let mut tilesets = FnvHashMap::default();
-
-        // The one material we always use for tile layers
-        let material_handle = make_handle_from_str("ae8320e2-9d84-432d-879b-e34ebef90a82")?;
-
-        for tileset in &project.defs.tilesets {
-            //
-            // Get the image asset
-            //
-            let asset_path = AssetRef::Path(tileset.rel_path.clone().into());
-            let image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-                let load_handle = loader_info_provider.get_load_handle(&asset_path).unwrap();
-                Handle::<ImageAsset>::new(ref_op_sender.clone(), load_handle)
-            });
-
-            //
-            // Create a material instance
-            //
-            let material_instance_uuid = *unstable_state
-                .material_instance_uuids
-                .entry(tileset.uid)
-                .or_insert_with(|| op.new_asset_uuid());
-
-            let material_instance_handle = make_handle(material_instance_uuid);
-
-            let mut slot_assignments = vec![];
-            slot_assignments.push(MaterialInstanceSlotAssignment {
-                slot_name: "tilemap_texture".to_string(),
-                array_index: 0,
-                image: Some(image_handle.clone()),
-                sampler: None,
-                buffer_data: None,
-            });
-
-            let material_instance = MaterialInstanceAssetData {
-                material: material_handle.clone(),
-                slot_assignments,
-            };
-
-            //
-            // Add material instance to list of imported assets
-            //
-            imported_assets.push(ImportedAsset {
-                id: material_instance_uuid,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(material_instance),
-            });
-
-            let image_width = tileset.px_wid as _;
-            let image_height = tileset.px_hei as _;
-
-            tilesets.insert(
-                tileset.uid,
-                LdtkTileSet {
-                    image: image_handle,
-                    material_instance: material_instance_handle,
-                    image_width,
-                    image_height,
-                },
-            );
-        }
-
-        let mut levels = FnvHashMap::<LevelUid, LdtkLevelData>::default();
-
-        for level in &project.levels {
-            let mut vertex_data = Vec::<TileLayerVertex>::default();
-            let mut index_data = Vec::<u16>::default();
-
-            let mut layer_data = Vec::default();
-
-            //TODO: Support for levels in separate files
-            for (layer_index, layer) in level.layer_instances.as_ref().unwrap().iter().enumerate() {
-                let tileset_uid = if let Some(tileset_uid) = layer.override_tileset_uid {
-                    Some(tileset_uid)
-                } else if let Some(tileset_uid) = layer.tileset_def_uid {
-                    Some(tileset_uid)
-                } else {
-                    None
-                };
-
-                if let Some(tileset_uid) = tileset_uid {
-                    let tileset = &tilesets[&tileset_uid];
-
-                    let mut layer_draw_call_data: Vec<LdtkLayerDrawCallData> = Vec::default();
-
-                    let z_pos = options
-                        .layer_z_positions
-                        .get(layer_index)
-                        .copied()
-                        .unwrap_or(layer_index as f32);
-                    generate_draw_data(
-                        level,
-                        layer,
-                        z_pos,
-                        &layer.grid_tiles,
-                        tileset,
-                        &mut vertex_data,
-                        &mut index_data,
-                        &mut layer_draw_call_data,
-                    );
-                    generate_draw_data(
-                        level,
-                        layer,
-                        z_pos,
-                        &layer.auto_layer_tiles,
-                        tileset,
-                        &mut vertex_data,
-                        &mut index_data,
-                        &mut layer_draw_call_data,
-                    );
-
-                    layer_data.push(LdtkLayerData {
-                        material_instance: tileset.material_instance.clone(),
-                        draw_call_data: layer_draw_call_data,
-                        z_pos,
-                        world_x_pos: level.world_x + layer.px_total_offset_x,
-                        world_y_pos: level.world_y + layer.px_total_offset_y,
-                        grid_width: layer.c_wid,
-                        grid_height: layer.c_hei,
-                        grid_size: layer.grid_size,
-                    })
-                }
-            }
-
-            let mut vertex_buffer_handle = None;
-            let mut index_buffer_handle = None;
-
-            if !vertex_data.is_empty() & !index_data.is_empty() {
-                //
-                // Create a vertex buffer for the level
-                //
-                let vertex_buffer_asset_data =
-                    BufferAssetData::from_vec(RafxResourceType::VERTEX_BUFFER, &vertex_data);
-                let vertex_buffer_uuid = *unstable_state
-                    .level_vertex_buffer_uuids
-                    .entry(level.uid)
-                    .or_insert_with(|| op.new_asset_uuid());
-
-                imported_assets.push(ImportedAsset {
-                    id: vertex_buffer_uuid,
-                    search_tags: vec![],
-                    build_deps: vec![],
-                    load_deps: vec![],
-                    build_pipeline: None,
-                    asset_data: Box::new(vertex_buffer_asset_data),
-                });
-
-                //
-                // Create an index buffer for the level
-                //
-                let index_buffer_asset_data =
-                    BufferAssetData::from_vec(RafxResourceType::INDEX_BUFFER, &index_data);
-                let index_buffer_uuid = *unstable_state
-                    .level_index_buffer_uuids
-                    .entry(level.uid)
-                    .or_insert_with(|| op.new_asset_uuid());
-
-                imported_assets.push(ImportedAsset {
-                    id: index_buffer_uuid,
-                    search_tags: vec![],
-                    build_deps: vec![],
-                    load_deps: vec![],
-                    build_pipeline: None,
-                    asset_data: Box::new(index_buffer_asset_data),
-                });
-
-                vertex_buffer_handle = Some(make_handle(vertex_buffer_uuid));
-                index_buffer_handle = Some(make_handle(index_buffer_uuid));
-            }
-
-            let old = levels.insert(
-                level.uid,
-                LdtkLevelData {
-                    layer_data,
-                    vertex_data: vertex_buffer_handle,
-                    index_data: index_buffer_handle,
-                },
-            );
-            assert!(old.is_none());
-        }
-
-        let asset_data = LdtkAssetData { tilesets, levels };
-
-        imported_assets.push(ImportedAsset {
-            id: unstable_state.ldtk_asset_uuid.unwrap(),
-            search_tags: vec![],
-            build_deps: vec![],
-            load_deps: vec![],
-            build_pipeline: None,
-            asset_data: Box::new(asset_data),
-        });
-
-        *stable_state = unstable_state.into();
-
-        Ok(ImporterValue {
-            assets: imported_assets,
-        })
-    }
-}
+// #[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
+// #[uuid = "84510429-7e8f-403a-ae51-4defcffe00fb"]
+// pub struct LdtkImporterOptions {
+//     layer_z_positions: Vec<f32>,
+// }
+//
+// // The asset state is stored in this format using Vecs
+// #[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
+// #[uuid = "74c12ab4-c836-48ab-b6e8-3e483be60dcf"]
+// pub struct LdtkImporterStateStable {
+//     // Asset UUIDs for imported image by name. We use vecs here so we can sort by UUID for
+//     // deterministic output
+//     material_instance_uuids: Vec<(TileSetUid, AssetUuid)>,
+//     level_vertex_buffer_uuids: Vec<(LevelUid, AssetUuid)>,
+//     level_index_buffer_uuids: Vec<(LevelUid, AssetUuid)>,
+//     ldtk_asset_uuid: Option<AssetUuid>,
+// }
+//
+// impl From<LdtkImporterStateUnstable> for LdtkImporterStateStable {
+//     fn from(other: LdtkImporterStateUnstable) -> Self {
+//         let mut stable = LdtkImporterStateStable::default();
+//         stable.material_instance_uuids = other
+//             .material_instance_uuids
+//             .into_iter()
+//             .sorted_by_key(|(id, _uuid)| id.clone())
+//             .collect();
+//         stable.level_vertex_buffer_uuids = other
+//             .level_vertex_buffer_uuids
+//             .into_iter()
+//             .sorted_by_key(|(id, _uuid)| id.clone())
+//             .collect();
+//         stable.level_index_buffer_uuids = other
+//             .level_index_buffer_uuids
+//             .into_iter()
+//             .sorted_by_key(|(id, _uuid)| id.clone())
+//             .collect();
+//         stable.ldtk_asset_uuid = other.ldtk_asset_uuid.clone();
+//         stable
+//     }
+// }
+//
+// #[derive(Default)]
+// pub struct LdtkImporterStateUnstable {
+//     material_instance_uuids: FnvHashMap<TileSetUid, AssetUuid>,
+//     level_vertex_buffer_uuids: FnvHashMap<LevelUid, AssetUuid>,
+//     level_index_buffer_uuids: FnvHashMap<LevelUid, AssetUuid>,
+//     ldtk_asset_uuid: Option<AssetUuid>,
+// }
+//
+// impl From<LdtkImporterStateStable> for LdtkImporterStateUnstable {
+//     fn from(other: LdtkImporterStateStable) -> Self {
+//         let mut unstable = LdtkImporterStateUnstable::default();
+//         unstable.material_instance_uuids = other.material_instance_uuids.into_iter().collect();
+//         unstable.level_vertex_buffer_uuids = other.level_vertex_buffer_uuids.into_iter().collect();
+//         unstable.level_index_buffer_uuids = other.level_index_buffer_uuids.into_iter().collect();
+//         unstable.ldtk_asset_uuid = other.ldtk_asset_uuid.clone();
+//         unstable
+//     }
+// }
+//
+// #[derive(TypeUuid)]
+// #[uuid = "dd701f1b-df5c-44e4-bd7b-0456a6c0aa47"]
+// pub struct LdtkImporter;
+// impl Importer for LdtkImporter {
+//     fn version_static() -> u32
+//     where
+//         Self: Sized,
+//     {
+//         4
+//     }
+//
+//     fn version(&self) -> u32 {
+//         Self::version_static()
+//     }
+//
+//     type Options = LdtkImporterOptions;
+//
+//     type State = LdtkImporterStateStable;
+//
+//     /// Reads the given bytes and produces assets.
+//     #[profiling::function]
+//     fn import(
+//         &self,
+//         op: &mut ImportOp,
+//         source: &mut dyn Read,
+//         options: &Self::Options,
+//         stable_state: &mut Self::State,
+//     ) -> distill::importer::Result<ImporterValue> {
+//         let mut unstable_state: LdtkImporterStateUnstable = stable_state.clone().into();
+//
+//         //
+//         // Assign an ID to this ldtk file if not already assigned
+//         //
+//         unstable_state.ldtk_asset_uuid = Some(
+//             unstable_state
+//                 .ldtk_asset_uuid
+//                 .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes())),
+//         );
+//
+//         // Read in the LDTK file
+//         let project: serde_json::Result<ldtk_rust::Project> = serde_json::from_reader(source);
+//         if let Err(err) = project {
+//             log::error!("LDTK Import error: {:?}", err);
+//             return Err(Error::Boxed(Box::new(err)));
+//         }
+//
+//         let project = project.unwrap();
+//
+//         // All imported assets
+//         let mut imported_assets = Vec::<ImportedAsset>::default();
+//         // CPU-form of tileset data
+//         let mut tilesets = FnvHashMap::default();
+//
+//         // The one material we always use for tile layers
+//         let material_handle = make_handle_from_str("ae8320e2-9d84-432d-879b-e34ebef90a82")?;
+//
+//         for tileset in &project.defs.tilesets {
+//             //
+//             // Get the image asset
+//             //
+//             let asset_path = AssetRef::Path(tileset.rel_path.clone().into());
+//             let image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
+//                 let load_handle = loader_info_provider.get_load_handle(&asset_path).unwrap();
+//                 Handle::<ImageAsset>::new(ref_op_sender.clone(), load_handle)
+//             });
+//
+//             //
+//             // Create a material instance
+//             //
+//             let material_instance_uuid = *unstable_state
+//                 .material_instance_uuids
+//                 .entry(tileset.uid)
+//                 .or_insert_with(|| op.new_asset_uuid());
+//
+//             let material_instance_handle = make_handle(material_instance_uuid);
+//
+//             let mut slot_assignments = vec![];
+//             slot_assignments.push(MaterialInstanceSlotAssignment {
+//                 slot_name: "tilemap_texture".to_string(),
+//                 array_index: 0,
+//                 image: Some(image_handle.clone()),
+//                 sampler: None,
+//                 buffer_data: None,
+//             });
+//
+//             let material_instance = MaterialInstanceAssetData {
+//                 material: material_handle.clone(),
+//                 slot_assignments,
+//             };
+//
+//             //
+//             // Add material instance to list of imported assets
+//             //
+//             imported_assets.push(ImportedAsset {
+//                 id: material_instance_uuid,
+//                 search_tags: vec![],
+//                 build_deps: vec![],
+//                 load_deps: vec![],
+//                 build_pipeline: None,
+//                 asset_data: Box::new(material_instance),
+//             });
+//
+//             let image_width = tileset.px_wid as _;
+//             let image_height = tileset.px_hei as _;
+//
+//             tilesets.insert(
+//                 tileset.uid,
+//                 LdtkTileSet {
+//                     image: image_handle,
+//                     material_instance: material_instance_handle,
+//                     image_width,
+//                     image_height,
+//                 },
+//             );
+//         }
+//
+//         let mut levels = FnvHashMap::<LevelUid, LdtkLevelData>::default();
+//
+//         for level in &project.levels {
+//             let mut vertex_data = Vec::<TileLayerVertex>::default();
+//             let mut index_data = Vec::<u16>::default();
+//
+//             let mut layer_data = Vec::default();
+//
+//             //TODO: Support for levels in separate files
+//             for (layer_index, layer) in level.layer_instances.as_ref().unwrap().iter().enumerate() {
+//                 let tileset_uid = if let Some(tileset_uid) = layer.override_tileset_uid {
+//                     Some(tileset_uid)
+//                 } else if let Some(tileset_uid) = layer.tileset_def_uid {
+//                     Some(tileset_uid)
+//                 } else {
+//                     None
+//                 };
+//
+//                 if let Some(tileset_uid) = tileset_uid {
+//                     let tileset = &tilesets[&tileset_uid];
+//
+//                     let mut layer_draw_call_data: Vec<LdtkLayerDrawCallData> = Vec::default();
+//
+//                     let z_pos = options
+//                         .layer_z_positions
+//                         .get(layer_index)
+//                         .copied()
+//                         .unwrap_or(layer_index as f32);
+//                     generate_draw_data(
+//                         level,
+//                         layer,
+//                         z_pos,
+//                         &layer.grid_tiles,
+//                         tileset,
+//                         &mut vertex_data,
+//                         &mut index_data,
+//                         &mut layer_draw_call_data,
+//                     );
+//                     generate_draw_data(
+//                         level,
+//                         layer,
+//                         z_pos,
+//                         &layer.auto_layer_tiles,
+//                         tileset,
+//                         &mut vertex_data,
+//                         &mut index_data,
+//                         &mut layer_draw_call_data,
+//                     );
+//
+//                     layer_data.push(LdtkLayerData {
+//                         material_instance: tileset.material_instance.clone(),
+//                         draw_call_data: layer_draw_call_data,
+//                         z_pos,
+//                         world_x_pos: level.world_x + layer.px_total_offset_x,
+//                         world_y_pos: level.world_y + layer.px_total_offset_y,
+//                         grid_width: layer.c_wid,
+//                         grid_height: layer.c_hei,
+//                         grid_size: layer.grid_size,
+//                     })
+//                 }
+//             }
+//
+//             let mut vertex_buffer_handle = None;
+//             let mut index_buffer_handle = None;
+//
+//             if !vertex_data.is_empty() & !index_data.is_empty() {
+//                 //
+//                 // Create a vertex buffer for the level
+//                 //
+//                 let vertex_buffer_asset_data =
+//                     BufferAssetData::from_vec(RafxResourceType::VERTEX_BUFFER, &vertex_data);
+//                 let vertex_buffer_uuid = *unstable_state
+//                     .level_vertex_buffer_uuids
+//                     .entry(level.uid)
+//                     .or_insert_with(|| op.new_asset_uuid());
+//
+//                 imported_assets.push(ImportedAsset {
+//                     id: vertex_buffer_uuid,
+//                     search_tags: vec![],
+//                     build_deps: vec![],
+//                     load_deps: vec![],
+//                     build_pipeline: None,
+//                     asset_data: Box::new(vertex_buffer_asset_data),
+//                 });
+//
+//                 //
+//                 // Create an index buffer for the level
+//                 //
+//                 let index_buffer_asset_data =
+//                     BufferAssetData::from_vec(RafxResourceType::INDEX_BUFFER, &index_data);
+//                 let index_buffer_uuid = *unstable_state
+//                     .level_index_buffer_uuids
+//                     .entry(level.uid)
+//                     .or_insert_with(|| op.new_asset_uuid());
+//
+//                 imported_assets.push(ImportedAsset {
+//                     id: index_buffer_uuid,
+//                     search_tags: vec![],
+//                     build_deps: vec![],
+//                     load_deps: vec![],
+//                     build_pipeline: None,
+//                     asset_data: Box::new(index_buffer_asset_data),
+//                 });
+//
+//                 vertex_buffer_handle = Some(make_handle(vertex_buffer_uuid));
+//                 index_buffer_handle = Some(make_handle(index_buffer_uuid));
+//             }
+//
+//             let old = levels.insert(
+//                 level.uid,
+//                 LdtkLevelData {
+//                     layer_data,
+//                     vertex_data: vertex_buffer_handle,
+//                     index_data: index_buffer_handle,
+//                 },
+//             );
+//             assert!(old.is_none());
+//         }
+//
+//         let asset_data = LdtkAssetData { tilesets, levels };
+//
+//         imported_assets.push(ImportedAsset {
+//             id: unstable_state.ldtk_asset_uuid.unwrap(),
+//             search_tags: vec![],
+//             build_deps: vec![],
+//             load_deps: vec![],
+//             build_pipeline: None,
+//             asset_data: Box::new(asset_data),
+//         });
+//
+//         *stable_state = unstable_state.into();
+//
+//         Ok(ImporterValue {
+//             assets: imported_assets,
+//         })
+//     }
+// }
 
 fn generate_draw_data(
     level: &Level,
@@ -725,8 +717,6 @@ impl JobProcessor for LdtkJobProcessor {
             .resolve_all_file_references(input.asset_id)
             .unwrap();
 
-        // All imported assets
-        let mut imported_assets = Vec::<ImportedAsset>::default();
         // CPU-form of tileset data
         let mut tilesets_temp = FnvHashMap::default();
 
@@ -756,7 +746,7 @@ impl JobProcessor for LdtkJobProcessor {
                 input.asset_id,
                 Some(material_instance_artifact_name),
                 || {
-                    let material_handle: hydrate_base::Handle<MaterialAsset> =
+                    let material_handle: Handle<MaterialAsset> =
                         job_system::make_handle_to_default_artifact(
                             job_api,
                             ObjectId::from_uuid(
@@ -768,7 +758,7 @@ impl JobProcessor for LdtkJobProcessor {
                         job_system::make_handle_to_default_artifact(job_api, *image_object_id);
 
                     let mut slot_assignments = vec![];
-                    slot_assignments.push(HydrateMaterialInstanceSlotAssignment {
+                    slot_assignments.push(MaterialInstanceSlotAssignment {
                         slot_name: "tilemap_texture".to_string(),
                         array_index: 0,
                         image: Some(image_handle.clone()),
@@ -776,7 +766,7 @@ impl JobProcessor for LdtkJobProcessor {
                         buffer_data: None,
                     });
 
-                    HydrateMaterialInstanceAssetData {
+                    MaterialInstanceAssetData {
                         material: material_handle.clone(),
                         slot_assignments,
                     }
@@ -907,7 +897,7 @@ impl JobProcessor for LdtkJobProcessor {
             for (uid, tileset) in tilesets_temp {
                 tilesets.insert(
                     uid,
-                    HydrateLdtkTileSet {
+                    LdtkTileSet {
                         material_instance: job_system::make_handle_to_artifact_raw(
                             job_api,
                             input.asset_id,
@@ -925,7 +915,7 @@ impl JobProcessor for LdtkJobProcessor {
                 let layers = level
                     .layer_data
                     .into_iter()
-                    .map(|layer| HydrateLdtkLayerData {
+                    .map(|layer| LdtkLayerData {
                         material_instance: job_system::make_handle_to_artifact_raw(
                             job_api,
                             input.asset_id,
@@ -943,7 +933,7 @@ impl JobProcessor for LdtkJobProcessor {
 
                 levels.insert(
                     uid,
-                    HydrateLdtkLevelData {
+                    LdtkLevelData {
                         layer_data: layers,
                         vertex_data: level
                             .vertex_data
@@ -955,7 +945,7 @@ impl JobProcessor for LdtkJobProcessor {
                 );
             }
 
-            HydrateLdtkAssetData { tilesets, levels }
+            LdtkAssetData { tilesets, levels }
         });
 
         LdtkJobOutput {}

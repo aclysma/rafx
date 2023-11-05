@@ -4,13 +4,13 @@ use crate::phases::{
 };
 use crate::shaders::mesh_adv::mesh_culling_comp;
 use crate::shaders::post_adv::luma_average_histogram_comp;
+use hydrate_base::handle::Handle;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::{
     RafxBufferDef, RafxFormat, RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult,
 };
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::{AssetManager, ComputePipelineAsset, ImageAsset, MaterialAsset};
-use rafx::distill::loader::handle::Handle;
 use rafx::framework::{
     BufferResource, ImageViewResource, RenderResources, ResourceArc, MAX_FRAMES_IN_FLIGHT,
 };

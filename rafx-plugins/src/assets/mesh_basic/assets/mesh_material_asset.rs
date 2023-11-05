@@ -1,6 +1,6 @@
 use crate::assets::mesh_basic::MeshBasicMaterialData;
-use distill::loader::handle::Handle;
-use distill::loader::LoadHandle;
+use hydrate_base::handle::Handle;
+use hydrate_base::LoadHandle;
 use rafx::api::RafxResult;
 use rafx::assets::{
     AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset,

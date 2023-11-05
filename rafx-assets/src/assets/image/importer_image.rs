@@ -1,7 +1,6 @@
 use crate::assets::image::{
     ImageAssetColorSpaceConfig, ImageAssetData, ImageAssetDataFormatConfig,
 };
-use crate::distill::importer::ImportSource;
 use crate::schema::{
     GpuCompressedImageAssetRecord, GpuImageAssetRecord, GpuImageBasisCompressionTypeEnum,
     GpuImageColorSpaceEnum, GpuImageImportedDataRecord, GpuImageMipGenerationEnum,
@@ -10,8 +9,6 @@ use crate::{
     ImageAssetBasisCompressionSettings, ImageAssetBasisCompressionType, ImageAssetDataFormat,
     ImageAssetMipGeneration,
 };
-use distill::importer::{Error, ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::ObjectId;
 use hydrate_data::{
@@ -178,102 +175,102 @@ impl ImageImporterConfig {
         }));
     }
 }
-
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "23f90369-6916-4548-81d0-a76e0b162df2"]
-pub struct ImageImporterState(Option<AssetUuid>);
-
-#[derive(TypeUuid)]
-#[uuid = "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251"]
-pub struct ImageImporter(pub ImageFileFormat, pub Arc<ImageImporterConfig>);
-impl Importer for ImageImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        7
-    }
-
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ImageImporterOptions;
-
-    type State = ImageImporterState;
-
-    fn default_options(
-        &self,
-        import_source: ImportSource,
-    ) -> Option<Self::Options> {
-        match import_source {
-            ImportSource::File(path) => {
-                for rule in &self.1.rules {
-                    if let Some(options) = rule.try_apply(path) {
-                        log::trace!("FOUND RULE FOR {:?}", path);
-                        return Some(ImageImporterOptions {
-                            mip_generation: options.mip_generation,
-                            data_format: options.data_format,
-                            color_space: options.color_space,
-                        });
-                    }
-                }
-            }
-        }
-
-        return Some(ImageImporterOptions {
-            mip_generation: self.1.default.mip_generation,
-            data_format: self.1.default.data_format,
-            color_space: self.1.default.color_space,
-        });
-    }
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
-        &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        options: &Self::Options,
-        state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let id = state
-            .0
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = ImageImporterState(Some(id));
-        let mut bytes = Vec::new();
-        source.read_to_end(&mut bytes)?;
-
-        use image::EncodableLayout;
-
-        log::trace!("import with options {:?}", options);
-
-        let decoded_image = image::load_from_memory_with_format(&bytes, self.0.into())
-            .map_err(|e| Error::Boxed(Box::new(e)))?;
-        let (width, height) = decoded_image.dimensions();
-        let asset_data = ImageAssetData::from_raw_rgba32(
-            width,
-            height,
-            options.color_space,
-            options.data_format,
-            options.mip_generation,
-            RafxResourceType::TEXTURE,
-            decoded_image.into_rgba8().as_bytes(),
-        )
-        .unwrap();
-
-        Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(asset_data),
-            }],
-        })
-    }
-}
+//
+// #[derive(TypeUuid, Serialize, Deserialize, Default)]
+// #[uuid = "23f90369-6916-4548-81d0-a76e0b162df2"]
+// pub struct ImageImporterState(Option<AssetUuid>);
+//
+// #[derive(TypeUuid)]
+// #[uuid = "4ae5ddc5-6805-4cf5-aa14-d44c6e0b8251"]
+// pub struct ImageImporter(pub ImageFileFormat, pub Arc<ImageImporterConfig>);
+// impl Importer for ImageImporter {
+//     fn version_static() -> u32
+//     where
+//         Self: Sized,
+//     {
+//         7
+//     }
+//
+//     fn version(&self) -> u32 {
+//         Self::version_static()
+//     }
+//
+//     type Options = ImageImporterOptions;
+//
+//     type State = ImageImporterState;
+//
+//     fn default_options(
+//         &self,
+//         import_source: ImportSource,
+//     ) -> Option<Self::Options> {
+//         match import_source {
+//             ImportSource::File(path) => {
+//                 for rule in &self.1.rules {
+//                     if let Some(options) = rule.try_apply(path) {
+//                         log::trace!("FOUND RULE FOR {:?}", path);
+//                         return Some(ImageImporterOptions {
+//                             mip_generation: options.mip_generation,
+//                             data_format: options.data_format,
+//                             color_space: options.color_space,
+//                         });
+//                     }
+//                 }
+//             }
+//         }
+//
+//         return Some(ImageImporterOptions {
+//             mip_generation: self.1.default.mip_generation,
+//             data_format: self.1.default.data_format,
+//             color_space: self.1.default.color_space,
+//         });
+//     }
+//
+//     /// Reads the given bytes and produces assets.
+//     #[profiling::function]
+//     fn import(
+//         &self,
+//         _op: &mut ImportOp,
+//         source: &mut dyn Read,
+//         options: &Self::Options,
+//         state: &mut Self::State,
+//     ) -> distill::importer::Result<ImporterValue> {
+//         let id = state
+//             .0
+//             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+//         *state = ImageImporterState(Some(id));
+//         let mut bytes = Vec::new();
+//         source.read_to_end(&mut bytes)?;
+//
+//         use image::EncodableLayout;
+//
+//         log::trace!("import with options {:?}", options);
+//
+//         let decoded_image = image::load_from_memory_with_format(&bytes, self.0.into())
+//             .map_err(|e| Error::Boxed(Box::new(e)))?;
+//         let (width, height) = decoded_image.dimensions();
+//         let asset_data = ImageAssetData::from_raw_rgba32(
+//             width,
+//             height,
+//             options.color_space,
+//             options.data_format,
+//             options.mip_generation,
+//             RafxResourceType::TEXTURE,
+//             decoded_image.into_rgba8().as_bytes(),
+//         )
+//         .unwrap();
+//
+//         Ok(ImporterValue {
+//             assets: vec![ImportedAsset {
+//                 id,
+//                 search_tags: vec![],
+//                 build_deps: vec![],
+//                 load_deps: vec![],
+//                 build_pipeline: None,
+//                 asset_data: Box::new(asset_data),
+//             }],
+//         })
+//     }
+// }
 
 #[derive(TypeUuid)]
 #[uuid = "e7c83acb-f73b-4b3c-b14d-fe5cc17c0fa3"]

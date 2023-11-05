@@ -4,9 +4,7 @@ use crate::assets::mesh_basic::{
     PrefabBasicAssetDataObjectLightSpot, PrefabBasicAssetDataObjectModel,
     PrefabBasicAssetDataObjectTransform,
 };
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
-use rafx::distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use type_uuid::*;
@@ -72,107 +70,107 @@ pub struct MeshBasicPrefabJsonFormatObject {
 struct MeshBasicPrefabJsonFormat {
     pub objects: Vec<MeshBasicPrefabJsonFormatObject>,
 }
-
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "8fbf4a7e-5c86-4381-8e5d-61bc439fcf1a"]
-pub struct MeshBasicBlenderPrefabImporterState(Option<AssetUuid>);
-
-#[derive(TypeUuid)]
-#[uuid = "4ce0a6dc-51ee-4c67-be01-707c573cbdf1"]
-pub struct MeshBasicBlenderPrefabImporter;
-impl Importer for MeshBasicBlenderPrefabImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        4
-    }
-
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ();
-
-    type State = MeshBasicBlenderPrefabImporterState;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
-        &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let id = state
-            .0
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = MeshBasicBlenderPrefabImporterState(Some(id));
-
-        let json_format: MeshBasicPrefabJsonFormat = serde_json::from_reader(source)
-            .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
-
-        let mut objects = Vec::with_capacity(json_format.objects.len());
-        for json_object in json_format.objects {
-            let model = if let Some(json_model) = &json_object.model {
-                let model = json_model.model.clone();
-
-                Some(PrefabBasicAssetDataObjectModel { model })
-            } else {
-                None
-            };
-
-            let light = if let Some(json_light) = &json_object.light {
-                let light = json_light.clone();
-                let spot = light
-                    .spot
-                    .as_ref()
-                    .map(|x| PrefabBasicAssetDataObjectLightSpot {
-                        inner_angle: x.inner_angle,
-                        outer_angle: x.outer_angle,
-                    });
-
-                let range = if light.cutoff_distance.unwrap_or(-1.0) < 0.0 {
-                    None
-                } else {
-                    light.cutoff_distance
-                };
-                Some(PrefabBasicAssetDataObjectLight {
-                    color: light.color.into(),
-                    kind: light.kind.into(),
-                    intensity: light.intensity,
-                    range,
-                    spot,
-                })
-            } else {
-                None
-            };
-
-            let transform = PrefabBasicAssetDataObjectTransform {
-                position: json_object.transform.position.into(),
-                rotation: json_object.transform.rotation.into(),
-                scale: json_object.transform.scale.into(),
-            };
-
-            objects.push(PrefabBasicAssetDataObject {
-                transform,
-                model,
-                light,
-            });
-        }
-
-        let asset_data = PrefabBasicAssetData { objects };
-
-        Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(asset_data),
-            }],
-        })
-    }
-}
+//
+// #[derive(TypeUuid, Serialize, Deserialize, Default)]
+// #[uuid = "8fbf4a7e-5c86-4381-8e5d-61bc439fcf1a"]
+// pub struct MeshBasicBlenderPrefabImporterState(Option<AssetUuid>);
+//
+// #[derive(TypeUuid)]
+// #[uuid = "4ce0a6dc-51ee-4c67-be01-707c573cbdf1"]
+// pub struct MeshBasicBlenderPrefabImporter;
+// impl Importer for MeshBasicBlenderPrefabImporter {
+//     fn version_static() -> u32
+//     where
+//         Self: Sized,
+//     {
+//         4
+//     }
+//
+//     fn version(&self) -> u32 {
+//         Self::version_static()
+//     }
+//
+//     type Options = ();
+//
+//     type State = MeshBasicBlenderPrefabImporterState;
+//
+//     /// Reads the given bytes and produces assets.
+//     #[profiling::function]
+//     fn import(
+//         &self,
+//         _op: &mut ImportOp,
+//         source: &mut dyn Read,
+//         _options: &Self::Options,
+//         state: &mut Self::State,
+//     ) -> distill::importer::Result<ImporterValue> {
+//         let id = state
+//             .0
+//             .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
+//         *state = MeshBasicBlenderPrefabImporterState(Some(id));
+//
+//         let json_format: MeshBasicPrefabJsonFormat = serde_json::from_reader(source)
+//             .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
+//
+//         let mut objects = Vec::with_capacity(json_format.objects.len());
+//         for json_object in json_format.objects {
+//             let model = if let Some(json_model) = &json_object.model {
+//                 let model = json_model.model.clone();
+//
+//                 Some(PrefabBasicAssetDataObjectModel { model })
+//             } else {
+//                 None
+//             };
+//
+//             let light = if let Some(json_light) = &json_object.light {
+//                 let light = json_light.clone();
+//                 let spot = light
+//                     .spot
+//                     .as_ref()
+//                     .map(|x| PrefabBasicAssetDataObjectLightSpot {
+//                         inner_angle: x.inner_angle,
+//                         outer_angle: x.outer_angle,
+//                     });
+//
+//                 let range = if light.cutoff_distance.unwrap_or(-1.0) < 0.0 {
+//                     None
+//                 } else {
+//                     light.cutoff_distance
+//                 };
+//                 Some(PrefabBasicAssetDataObjectLight {
+//                     color: light.color.into(),
+//                     kind: light.kind.into(),
+//                     intensity: light.intensity,
+//                     range,
+//                     spot,
+//                 })
+//             } else {
+//                 None
+//             };
+//
+//             let transform = PrefabBasicAssetDataObjectTransform {
+//                 position: json_object.transform.position.into(),
+//                 rotation: json_object.transform.rotation.into(),
+//                 scale: json_object.transform.scale.into(),
+//             };
+//
+//             objects.push(PrefabBasicAssetDataObject {
+//                 transform,
+//                 model,
+//                 light,
+//             });
+//         }
+//
+//         let asset_data = PrefabBasicAssetData { objects };
+//
+//         Ok(ImporterValue {
+//             assets: vec![ImportedAsset {
+//                 id,
+//                 search_tags: vec![],
+//                 build_deps: vec![],
+//                 load_deps: vec![],
+//                 build_pipeline: None,
+//                 asset_data: Box::new(asset_data),
+//             }],
+//         })
+//     }
+// }

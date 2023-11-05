@@ -151,7 +151,7 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
                 None
             };
 
-            let processed_data = HydrateMeshMaterialAdvAssetData {
+            let processed_data = MeshMaterialAdvAssetData {
                 material_data,
                 material_asset,
                 color_texture: color_texture_handle,
@@ -431,7 +431,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
                 let material_handle =
                     job_system::make_handle_to_default_artifact(job_api, material_object_id);
 
-                mesh_parts.push(HydrateMeshAdvPartAssetData {
+                mesh_parts.push(MeshAdvPartAssetData {
                     vertex_full_buffer_offset_in_bytes: part_data
                         .vertex_full_buffer_offset_in_bytes,
                     vertex_full_buffer_size_in_bytes: part_data.vertex_full_buffer_size_in_bytes,
@@ -458,7 +458,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
                 index: PolygonSoupIndex::Indexed32(all_position_indices),
             };
 
-            HydrateMeshAdvAssetData {
+            MeshAdvAssetData {
                 mesh_parts,
                 vertex_full_buffer,
                 vertex_position_buffer,
@@ -552,10 +552,10 @@ impl JobProcessor for MeshAdvModelJobProcessor {
                     lod.mesh().get(&data_container).unwrap(),
                 );
 
-                lods.push(HydrateModelAdvAssetDataLod { mesh: mesh_handle });
+                lods.push(ModelAdvAssetDataLod { mesh: mesh_handle });
             }
 
-            HydrateModelAdvAssetData { lods }
+            ModelAdvAssetData { lods }
         });
 
         MeshAdvModelJobOutput {}
@@ -658,7 +658,7 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
                     let model_handle =
                         job_system::make_handle_to_default_artifact(job_api, *model_object_id);
 
-                    Some(HydratePrefabAdvAssetDataObjectModel {
+                    Some(PrefabAdvAssetDataObjectModel {
                         model: model_handle,
                     })
                 } else {
@@ -697,14 +697,14 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
                     scale: json_object.transform.scale.into(),
                 };
 
-                objects.push(HydratePrefabAdvAssetDataObject {
+                objects.push(PrefabAdvAssetDataObject {
                     transform,
                     model,
                     light,
                 });
             }
 
-            HydratePrefabAdvAssetData { objects }
+            PrefabAdvAssetData { objects }
         });
 
         MeshAdvPrefabJobOutput {}

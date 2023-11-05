@@ -60,7 +60,7 @@ impl RafxCommandPool {
     pub fn device_context(&self) -> RafxDeviceContext {
         match self {
             #[cfg(feature = "rafx-dx12")]
-            RafxCommandPool::Dx12(inner) => unimplemented!(), // RafxDeviceContext::Dx12(inner.device_context().clone()),
+            RafxCommandPool::Dx12(inner) => RafxDeviceContext::Dx12(inner.device_context().clone()),
             #[cfg(feature = "rafx-vulkan")]
             RafxCommandPool::Vk(inner) => RafxDeviceContext::Vk(inner.device_context().clone()),
             #[cfg(feature = "rafx-metal")]
