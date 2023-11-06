@@ -29,7 +29,7 @@ impl PbrTestScene {
 
         let prefab = SpawnablePrefab::blocking_load_from_path(
             resources,
-            "pbr-test/Scene.001.blender_prefab",
+            "db:/path_file_system/demo/pbr-test/Scene.001.blender_prefab",
         );
         prefab.spawn_prefab(world, resources);
 

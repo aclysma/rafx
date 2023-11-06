@@ -19,6 +19,7 @@ use crate::assets::image::ImageAssetTypeHandler;
 use crate::assets::shader::ShaderAssetTypeHandler;
 use crate::hydrate_impl::AssetResource;
 use fnv::FnvHashMap;
+use image::load;
 use rafx_api::{RafxDeviceContext, RafxQueue, RafxResult};
 use rafx_framework::descriptor_sets::{
     DescriptorSetElementKey, DescriptorSetWriteElementBuffer, DescriptorSetWriteElementBufferData,
@@ -191,16 +192,28 @@ impl AssetManager {
             (tick_fn)(self, asset_resource)?;
 
             match asset_handle.load_state(asset_resource.loader()) {
-                LoadState::Loaded => {
+                LoadState::Committed => {
                     break Ok(());
                 }
                 state @ _ => {
+                    let direct_handle = if asset_handle.load_handle().is_indirect() {
+                        asset_resource
+                            .loader()
+                            .indirection_table()
+                            .resolve(asset_handle.load_handle())
+                            .unwrap()
+                    } else {
+                        asset_handle.load_handle()
+                    };
+
                     on_interval(PRINT_INTERVAL, &mut last_print_time, || {
+                        let artifact_id = asset_handle.artifact_id(asset_resource.loader());
                         log::info!(
-                            "blocked waiting for asset to resolve {} {:?} {:?}",
+                            "blocked waiting for asset to resolve Name={} Handle={:?} ArtifactId={:?} State={:?}",
                             asset_name,
-                            asset_handle,
-                            state
+                            direct_handle,
+                            artifact_id,
+                            state,
                         );
                     });
                 }

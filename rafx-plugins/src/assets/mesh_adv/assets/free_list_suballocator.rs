@@ -183,7 +183,7 @@ impl FreeListSuballocator {
                 });
             }
 
-            println!("return allocation {:?}", allocation);
+            log::trace!("return allocation {:?}", allocation);
             return Some(allocation);
         }
 

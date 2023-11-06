@@ -78,6 +78,7 @@ impl hydrate_model::Importer for HydrateMaterialImporter {
         //
         let source = std::fs::read_to_string(path).unwrap();
         let material_ron = ron::de::from_str::<MaterialRon>(&source).unwrap();
+        println!("Importing material {:?}", material_ron);
 
         // let shader_object_id = *importable_objects
         //     .get(&None)
@@ -238,14 +239,14 @@ impl JobProcessor for MaterialJobProcessor {
                         return;
                     }
 
-                    GraphicsPipelineShaderStage {
+                    stages.push(GraphicsPipelineShaderStage {
                         stage,
                         shader_module: job_system::make_handle_to_default_artifact(
                             job_api,
                             shader_module,
                         ),
                         entry_name,
-                    };
+                    });
                 }
 
                 let mut shaders = Vec::default();
@@ -256,23 +257,26 @@ impl JobProcessor for MaterialJobProcessor {
                     job_api,
                     &mut shaders,
                 );
+                read_stage(
+                    MaterialShaderStage::Fragment,
+                    &pass_entry.fragment_stage(),
+                    &data_container,
+                    job_api,
+                    &mut shaders,
+                );
+
+                let name = pass_entry.name().get(&data_container).unwrap();
+                let phase = pass_entry.phase().get(&data_container).unwrap();
 
                 passes.push(MaterialPassData {
-                    name: Some(pass_entry.name().get(&data_container).unwrap()),
-                    phase: Some(pass_entry.phase().get(&data_container).unwrap()),
+                    name: (!name.is_empty()).then(|| name),
+                    phase: (!phase.is_empty()).then(|| phase),
                     fixed_function_state,
                     shaders,
                 });
             }
 
             MaterialAssetData { passes }
-        });
-
-        job_system::produce_asset_with_handles(job_api, input.asset_id, || {
-            //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
-            MaterialAssetData {
-                passes: Default::default(),
-            }
         });
 
         MaterialJobOutput {}

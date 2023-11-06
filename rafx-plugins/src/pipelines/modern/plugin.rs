@@ -155,58 +155,60 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
         //
         // let bloom_extract_material = asset_resource
         //     .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
-        let bloom_extract_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/bloom_extract.material");
+        let bloom_extract_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "db:/path_file_system/rafx-plugins/materials/bloom_extract.material",
+        );
 
         //
         // Bloom blur resources
         //
-        let bloom_blur_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/bloom_blur.material");
+        let bloom_blur_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "db:/path_file_system/rafx-plugins/materials/bloom_blur.material",
+        );
 
         let ssao_material = asset_resource.load_asset_path::<MaterialAsset, _>(
-            "rafx-plugins/materials/modern_pipeline/ssao.material",
+            "db:/path_file_system/rafx-plugins/materials/modern_pipeline/ssao.material",
         );
 
         let blue_noise_texture = asset_resource.load_asset_path::<ImageAsset, _>(
-            "rafx-plugins/images/blue_noise/LDR_RGBA_64_64_0.png",
+            "db:/path_file_system/rafx-plugins/images/blue_noise/LDR_RGBA_64_64_0.png",
         );
 
         let taa_material = asset_resource.load_asset_path::<MaterialAsset, _>(
-            "rafx-plugins/materials/modern_pipeline/taa.material",
+            "db:/path_file_system/rafx-plugins/materials/modern_pipeline/taa.material",
         );
 
         //
         // Bloom combine resources
         //
         let bloom_combine_material = asset_resource.load_asset_path::<MaterialAsset, _>(
-            "rafx-plugins/materials/modern_pipeline/bloom_combine_adv.material",
+            "db:/path_file_system/rafx-plugins/materials/modern_pipeline/bloom_combine_adv.material",
         );
 
         let luma_build_histogram = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
-            "rafx-plugins/compute_pipelines/luma_build_histogram.compute",
+            "db:/path_file_system/rafx-plugins/compute_pipelines/luma_build_histogram.compute",
         );
 
         let luma_average_histogram = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
-            "rafx-plugins/compute_pipelines/luma_average_histogram.compute",
+            "db:/path_file_system/rafx-plugins/compute_pipelines/luma_average_histogram.compute",
         );
 
         let cas_asset_path = if asset_manager.device_context().is_vulkan() {
             //TODO: Validation errors if trying to use f16 on vulkan
-            "rafx-plugins/compute_pipelines/cas32.compute"
+            "db:/path_file_system/rafx-plugins/compute_pipelines/cas32.compute"
         } else {
-            "rafx-plugins/compute_pipelines/cas16.compute"
+            "db:/path_file_system/rafx-plugins/compute_pipelines/cas16.compute"
         };
 
         let cas_pipeline =
             asset_resource.load_asset_path::<ComputePipelineAsset, _>(cas_asset_path);
 
         let mesh_culling_pipeline = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
-            "rafx-plugins/compute_pipelines/mesh_culling.compute",
+            "db:/path_file_system/rafx-plugins/compute_pipelines/mesh_culling.compute",
         );
 
         let depth_pyramid_pipeline = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
-            "rafx-plugins/compute_pipelines/depth_pyramid.compute",
+            "db:/path_file_system/rafx-plugins/compute_pipelines/depth_pyramid.compute",
         );
 
         renderer_load_context.wait_for_asset_to_load(

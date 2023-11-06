@@ -30,17 +30,19 @@ impl SpriteScene {
 
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
-            //asset_resource.load_asset::<ImageAsset>("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38".into())
+            asset_resource
+                .load_asset_path::<ImageAsset, _>("db:/path_file_system/demo/textures/texture2.jpg")
         };
 
         let ldtk_handle = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_path::<LdtkProjectAsset, _>("ldtk/example.ldtk")
-            //asset_resource.load_asset::<LdtkProjectAsset>("e01f536b-0a05-4d14-81cd-f010d4a45e81".into())
+            asset_resource.load_asset_path::<LdtkProjectAsset, _>(
+                "db:/path_file_system/demo/ldtk/example.ldtk",
+            )
         };
 
         let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
+
         for i in 0..100 {
             let position = Vec3::new(
                 ((i / 5) * 100) as f32 + 900.0,

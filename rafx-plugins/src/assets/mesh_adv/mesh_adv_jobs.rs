@@ -400,7 +400,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
             Some(job_system::produce_artifact(
                 job_api,
                 input.asset_id,
-                Some("position"),
+                Some("index"),
                 MeshAdvBufferAssetData {
                     resource_type: RafxResourceType::INDEX_BUFFER,
                     alignment: std::mem::size_of::<u32>() as u32,

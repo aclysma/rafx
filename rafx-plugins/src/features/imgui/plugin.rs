@@ -64,8 +64,9 @@ impl RenderFeaturePlugin for ImGuiRendererPlugin {
         render_resources: &mut RenderResources,
         upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let imgui_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/imgui.material");
+        let imgui_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+            "db:/path_file_system/rafx-plugins/materials/imgui.material",
+        );
 
         asset_manager.wait_for_asset_to_load(&imgui_material, asset_resource, "imgui material")?;
 

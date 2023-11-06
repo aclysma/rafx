@@ -91,7 +91,7 @@ where
         asset_manager: &mut AssetManager,
     ) -> RafxResult<()> {
         for request in self.load_queues.take_load_requests() {
-            log::info!(
+            log::debug!(
                 "Create asset type {} {:?}",
                 std::any::type_name::<AssetT>(),
                 request.load_handle,

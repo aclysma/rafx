@@ -25,16 +25,20 @@ impl TaaTestScene {
         *render_options = RenderOptions::default_3d();
         render_options.show_skybox = false;
         render_options.enable_lighting = false;
-        super::util::setup_skybox(resources, "textures/skybox.basis");
+        super::util::setup_skybox(resources, "db:/path_file_system/demo/textures/skybox.basis");
         super::util::set_ambient_light(resources, glam::Vec3::new(0.005, 0.005, 0.005));
 
-        let container_1 =
-            SpawnableMesh::blocking_load_from_path(resources, "blender/storage_container1.glb");
-        let container_2 =
-            SpawnableMesh::blocking_load_from_path(resources, "blender/storage_container2.glb");
-        let blue_icosphere = SpawnableMesh::blocking_load_from_uuid(
+        let container_1 = SpawnableMesh::blocking_load_from_path(
             resources,
-            "1af1ca58-49a6-4ef7-ac8f-20be3b75b48b".into(),
+            "db:/path_file_system/demo/blender/storage_container1.glb.mesh_Cube",
+        );
+        let container_2 = SpawnableMesh::blocking_load_from_path(
+            resources,
+            "db:/path_file_system/demo/blender/storage_container2.glb.mesh_Cube",
+        );
+        let blue_icosphere = SpawnableMesh::blocking_load_from_path(
+            resources,
+            "db:/path_file_system/demo/blender/icosphere.glb.mesh_Icosphere_Blue",
         );
         //
         // Add some meshes

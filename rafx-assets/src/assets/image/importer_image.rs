@@ -411,7 +411,7 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
                 .set(&mut import_data_container, image_bytes)
                 .unwrap();
             x.width().set(&mut import_data_container, width).unwrap();
-            x.height().set(&mut import_data_container, width).unwrap();
+            x.height().set(&mut import_data_container, height).unwrap();
             import_object
         };
 

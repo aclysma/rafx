@@ -298,11 +298,6 @@ impl DefaultAssetTypeLoadHandler<MeshAdvAssetData, MeshAdvAsset> for MeshAdvLoad
             .mesh_parts
             .iter()
             .map(|mesh_part| {
-                println!(
-                    "load asset {:?} {:?}",
-                    mesh_part.mesh_material,
-                    mesh_part.mesh_material.load_handle()
-                );
                 let mesh_material = asset_manager
                     .latest_asset(&mesh_part.mesh_material)
                     .unwrap();

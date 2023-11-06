@@ -173,7 +173,9 @@ impl DemoApp {
 
         let font = {
             let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-            let font = asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf");
+            let font = asset_resource.load_asset_path::<FontAsset, _>(
+                "db:/path_file_system/rafx-plugins/fonts/mplus-1p-regular.ttf",
+            );
             let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
             let renderer = resources.get::<Renderer>().unwrap();
 

@@ -72,7 +72,7 @@ impl RendererBuilder {
     ) -> RafxResult<RendererBuilderResult> {
         let mut asset_resource = match asset_source {
             AssetSource::BuildDir(build_dir) => {
-                println!("Renderer build dir: {:?}", build_dir);
+                log::info!("Renderer build dir: {:?}", build_dir);
                 AssetResource::new(build_dir).unwrap()
             }
         };

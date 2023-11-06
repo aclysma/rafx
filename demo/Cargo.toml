@@ -24,6 +24,7 @@ egui = { version = "0.15", features = ["default_fonts"], optional = true }
 puffin_egui = { version = "0.11", optional = true }
 legion = { version = "0.4.0", default-features = false, features = ["serialize"] }
 image = "0.23.12"
+serde_json = "1.0"
 
 log = "0.4"
 glam = { version = "0.13.1", features = [ "serde" ] }
