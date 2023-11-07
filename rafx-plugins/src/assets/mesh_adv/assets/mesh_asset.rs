@@ -1,7 +1,6 @@
 use crate::assets::mesh_adv::{MeshAdvBufferAsset, MeshMaterialAdvAsset};
 use crate::features::mesh_adv::MeshAdvUntexturedRenderFeatureFlag;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
-use hydrate_base::handle::AssetHandle;
 use hydrate_base::{Handle, LoadHandle};
 use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::{

@@ -2,18 +2,17 @@ use crate::assets::image::{
     ImageAssetColorSpaceConfig, ImageAssetData, ImageAssetDataFormatConfig,
 };
 use crate::schema::{
-    GpuCompressedImageAssetRecord, GpuImageAssetRecord, GpuImageBasisCompressionTypeEnum,
-    GpuImageColorSpaceEnum, GpuImageImportedDataRecord, GpuImageMipGenerationEnum,
+    GpuImageAssetRecord, GpuImageBasisCompressionTypeEnum, GpuImageColorSpaceEnum,
+    GpuImageImportedDataRecord, GpuImageMipGenerationEnum,
 };
 use crate::{
-    ImageAssetBasisCompressionSettings, ImageAssetBasisCompressionType, ImageAssetDataFormat,
-    ImageAssetMipGeneration,
+    ImageAssetBasisCompressionSettings, ImageAssetBasisCompressionType, ImageAssetMipGeneration,
 };
 use hydrate_base::hashing::HashMap;
 use hydrate_base::ObjectId;
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, DataSetResult, EnumField, Field, PropertyPath,
-    Record, SchemaLinker, SchemaSet, SingleObject,
+    DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaLinker, SchemaSet,
+    SingleObject,
 };
 use hydrate_model::{
     job_system, Builder, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
@@ -22,9 +21,7 @@ use hydrate_model::{
 };
 use image::GenericImageView;
 use rafx_api::RafxResourceType;
-use rafx_framework::upload::GpuImageDataColorSpace;
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 use type_uuid::*;
@@ -371,9 +368,9 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
 
     fn scan_file(
         &self,
-        path: &Path,
+        _path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(GpuImageAssetRecord::schema_name())
@@ -530,8 +527,8 @@ impl JobProcessor for GpuImageJobProcessor {
     fn enumerate_dependencies(
         &self,
         input: &GpuImageJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
@@ -652,7 +649,7 @@ pub struct GpuImageAssetPlugin;
 
 impl hydrate_model::AssetPlugin for GpuImageAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
@@ -697,12 +694,11 @@ impl hydrate_model::AssetPlugin for GpuImageAssetPlugin {
         let image_importer_config = Arc::new(image_importer_config);
 
         importer_registry.register_handler_instance::<GpuImageImporterSimple>(
-            schema_linker,
             GpuImageImporterSimple {
                 image_importer_config,
             },
         );
-        builder_registry.register_handler::<GpuImageBuilder>(schema_linker);
+        builder_registry.register_handler::<GpuImageBuilder>();
         job_processor_registry.register_job_processor::<GpuImageJobProcessor>();
     }
 }

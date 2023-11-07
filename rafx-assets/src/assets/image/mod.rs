@@ -30,7 +30,7 @@ pub struct GpuImageAssetPlugin;
 
 impl hydrate_model::AssetPlugin for GpuImageAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
@@ -75,18 +75,17 @@ impl hydrate_model::AssetPlugin for GpuImageAssetPlugin {
         let image_importer_config = Arc::new(image_importer_config);
 
         importer_registry.register_handler_instance::<GpuImageImporterSimple>(
-            schema_linker,
             GpuImageImporterSimple {
                 image_importer_config,
             },
         );
-        builder_registry.register_handler::<GpuImageBuilder>(schema_linker);
+        builder_registry.register_handler::<GpuImageBuilder>();
         job_processor_registry.register_job_processor::<GpuImageJobProcessor>();
 
-        importer_registry.register_handler::<GpuCompressedImageImporterDds>(schema_linker);
-        importer_registry.register_handler::<GpuCompressedImageImporterBasis>(schema_linker);
+        importer_registry.register_handler::<GpuCompressedImageImporterDds>();
+        importer_registry.register_handler::<GpuCompressedImageImporterBasis>();
 
-        builder_registry.register_handler::<GpuCompressedImageBuilder>(schema_linker);
+        builder_registry.register_handler::<GpuCompressedImageBuilder>();
         job_processor_registry.register_job_processor::<GpuCompressedImageJobProcessor>();
     }
 }

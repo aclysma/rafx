@@ -1,6 +1,5 @@
 use crate::assets::graphics_pipeline::{
-    GraphicsPipelineShaderStage, MaterialAssetData, MaterialInstanceAssetData, MaterialRon,
-    SamplerAssetData,
+    GraphicsPipelineShaderStage, MaterialAssetData, MaterialRon,
 };
 use crate::assets::shader::ShaderPackageImporterCooked;
 use crate::schema::{GraphicsPipelineShaderStageRecord, MaterialAssetRecord};
@@ -11,13 +10,12 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
+    job_system, ImportableObject, ImportedImportable, ImporterRegistry, JobApi,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ReferencedSourceFile,
+    ScannedImportable,
 };
 use rafx_framework::MaterialShaderStage;
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::Path;
 use type_uuid::*;
 use uuid::Uuid;
@@ -35,7 +33,7 @@ impl hydrate_model::Importer for HydrateMaterialImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
@@ -189,9 +187,9 @@ impl JobProcessor for MaterialJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &MaterialJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _input: &MaterialJobInput,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -202,7 +200,7 @@ impl JobProcessor for MaterialJobProcessor {
         input: &MaterialJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<ObjectId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MaterialJobOutput {
         //

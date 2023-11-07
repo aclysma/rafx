@@ -2,7 +2,6 @@ use super::Renderer;
 use super::{RenderFeaturePlugin, RendererPipelinePlugin};
 use crate::renderer_thread_pool_none::RendererThreadPoolNone;
 use crate::{RendererAssetPlugin, RendererThreadPool};
-use fnv::FnvHashSet;
 use rafx_api::{RafxApi, RafxQueueType, RafxResult};
 use rafx_assets::AssetManager;
 use rafx_assets::AssetResource;

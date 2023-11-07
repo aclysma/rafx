@@ -1,10 +1,5 @@
-use crate::assets::mesh_adv::{
-    BlenderMaterialImporter, MeshAdvAssetData, MeshAdvBufferAssetData, MeshAdvPartAssetData,
-    MeshMaterialAdvAsset,
-};
-use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
+use crate::assets::mesh_adv::{BlenderMaterialImporter, MeshMaterialAdvAsset};
 use crate::schema::{MeshAdvMeshAssetRecord, MeshAdvMeshImportedDataRecord};
-use glam::Vec3;
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
@@ -13,12 +8,9 @@ use hydrate_model::{
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
     SchemaLinker,
 };
-use rafx::api::RafxResourceType;
 use rafx::assets::PushBuffer;
 use rafx::base::b3f::B3FReader;
-use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use type_uuid::*;
 use uuid::Uuid;
@@ -344,7 +336,7 @@ impl hydrate_model::Importer for BlenderMeshImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let mesh_adv_asset_type = schema_set
             .find_named_type(MeshAdvMeshAssetRecord::schema_name())
@@ -471,7 +463,7 @@ impl hydrate_model::Importer for BlenderMeshImporter {
                 }
             };
 
-            let mut part_indices = PushBuffer::from_vec(&part_indices_u32).into_data();
+            let part_indices = PushBuffer::from_vec(&part_indices_u32).into_data();
 
             let material_index = *material_slots_lookup.get(&mesh_part.material).unwrap();
 
@@ -551,11 +543,11 @@ pub struct BlenderMeshAssetPlugin;
 
 impl AssetPlugin for BlenderMeshAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
+        _builder_registry: &mut BuilderRegistryBuilder,
+        _job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<BlenderMeshImporter>(schema_linker);
+        importer_registry.register_handler::<BlenderMeshImporter>();
     }
 }

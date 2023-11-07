@@ -14,17 +14,17 @@ pub struct MaterialAssetPlugin;
 
 impl hydrate_model::AssetPlugin for MaterialAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<HydrateMaterialImporter>(schema_linker);
-        builder_registry.register_handler::<MaterialBuilder>(schema_linker);
+        importer_registry.register_handler::<HydrateMaterialImporter>();
+        builder_registry.register_handler::<MaterialBuilder>();
         job_processor_registry.register_job_processor::<MaterialJobProcessor>();
 
-        importer_registry.register_handler::<HydrateMaterialInstanceImporter>(schema_linker);
-        builder_registry.register_handler::<MaterialInstanceBuilder>(schema_linker);
+        importer_registry.register_handler::<HydrateMaterialInstanceImporter>();
+        builder_registry.register_handler::<MaterialInstanceBuilder>();
         job_processor_registry.register_job_processor::<MaterialInstanceJobProcessor>();
     }
 }

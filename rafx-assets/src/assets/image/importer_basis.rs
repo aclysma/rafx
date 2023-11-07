@@ -1,19 +1,12 @@
-use crate::assets::image::{
-    ImageAssetData, ImageAssetDataPayload, ImageAssetDataPayloadSingleBuffer,
-};
 use crate::schema::{
     GpuCompressedImageAssetRecord, GpuCompressedImageImportedDataRecord,
     GpuImageAssetDataFormatEnum,
 };
-use crate::ImageAssetDataFormat;
 #[cfg(feature = "basis-universal")]
 use basis_universal::BasisTextureType;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, Record, SchemaSet};
 use hydrate_model::{ImportableObject, ImportedImportable, ImporterRegistry, ScannedImportable};
-use rafx_api::RafxResourceType;
-use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::Path;
 use type_uuid::*;
 //
@@ -135,9 +128,9 @@ impl hydrate_model::Importer for GpuCompressedImageImporterBasis {
 
     fn scan_file(
         &self,
-        path: &Path,
+        _path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(GpuCompressedImageAssetRecord::schema_name())
@@ -239,7 +232,7 @@ impl hydrate_model::Importer for GpuCompressedImageImporterBasis {
         // Create the default asset
         //
         let default_asset = {
-            let mut default_asset_object =
+            let default_asset_object =
                 GpuCompressedImageAssetRecord::new_single_object(schema_set).unwrap();
 
             // no fields to set

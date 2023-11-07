@@ -1,28 +1,18 @@
-use crate::assets::graphics_pipeline::material_importer::{
-    HydrateMaterialImporter, MaterialJobOutput,
-};
-use crate::assets::graphics_pipeline::{
-    GraphicsPipelineShaderStage, MaterialAssetData, MaterialInstanceAssetData, MaterialInstanceRon,
-    MaterialRon, SamplerAssetData,
-};
-use crate::assets::shader::ShaderPackageImporterCooked;
-use crate::schema::{
-    GraphicsPipelineShaderStageRecord, MaterialAssetRecord, MaterialInstanceAssetRecord,
-};
-use crate::{GpuImageImporterSimple, MaterialInstanceSlotAssignment, MaterialPassData};
+use crate::assets::graphics_pipeline::material_importer::HydrateMaterialImporter;
+use crate::assets::graphics_pipeline::{MaterialInstanceAssetData, MaterialInstanceRon};
+use crate::schema::MaterialInstanceAssetRecord;
+use crate::{GpuImageImporterSimple, MaterialInstanceSlotAssignment};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::ObjectId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
+    job_system, ImportableObject, ImportedImportable, ImporterRegistry, JobApi,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ReferencedSourceFile,
+    ScannedImportable,
 };
-use rafx_framework::MaterialShaderStage;
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::Path;
 use type_uuid::*;
 use uuid::Uuid;
@@ -48,7 +38,7 @@ impl hydrate_model::Importer for HydrateMaterialInstanceImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
@@ -217,9 +207,9 @@ impl JobProcessor for MaterialInstanceJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &MaterialInstanceJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _input: &MaterialInstanceJobInput,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -230,7 +220,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
         input: &MaterialInstanceJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<ObjectId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MaterialInstanceJobOutput {
         //

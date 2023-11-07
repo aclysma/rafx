@@ -3,8 +3,7 @@ use crate::assets::shader::ShaderPackageImporterCooked;
 use crate::schema::ComputePipelineAssetRecord;
 use hydrate_base::ObjectId;
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, HashMap, ImporterId, PropertyPath, Record, SchemaSet,
-    SingleObject,
+    DataContainer, DataContainerMut, DataSet, HashMap, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
     job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
@@ -12,7 +11,6 @@ use hydrate_model::{
     JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::Path;
 use type_uuid::*;
 use uuid::Uuid;
@@ -83,7 +81,7 @@ impl hydrate_model::Importer for HydrateComputePipelineImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
@@ -194,9 +192,9 @@ impl JobProcessor for ComputePipelineJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &ComputePipelineJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _input: &ComputePipelineJobInput,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -207,7 +205,7 @@ impl JobProcessor for ComputePipelineJobProcessor {
         input: &ComputePipelineJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<ObjectId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> ComputePipelineJobOutput {
         //
@@ -264,13 +262,13 @@ pub struct ComputePipelineAssetPlugin;
 
 impl hydrate_model::AssetPlugin for ComputePipelineAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<HydrateComputePipelineImporter>(schema_linker);
-        builder_registry.register_handler::<ComputePipelineBuilder>(schema_linker);
+        importer_registry.register_handler::<HydrateComputePipelineImporter>();
+        builder_registry.register_handler::<ComputePipelineBuilder>();
         job_processor_registry.register_job_processor::<ComputePipelineJobProcessor>();
     }
 }

@@ -13,7 +13,6 @@ use hydrate_model::{
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
-use std::io::Read;
 use std::path::Path;
 use type_uuid::*;
 //
@@ -93,9 +92,9 @@ impl hydrate_model::Importer for HydrateFontImporter {
 
     fn scan_file(
         &self,
-        path: &Path,
+        _path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(FontAssetRecord::schema_name())
@@ -125,7 +124,7 @@ impl hydrate_model::Importer for HydrateFontImporter {
         // Create the default asset
         //
         let default_asset = {
-            let mut default_asset_object = FontAssetRecord::new_single_object(schema_set).unwrap();
+            let default_asset_object = FontAssetRecord::new_single_object(schema_set).unwrap();
             // let mut default_asset_data_container =
             //     DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
             // let x = FontAssetRecord::default();
@@ -189,8 +188,8 @@ impl JobProcessor for FontJobProcessor {
     fn enumerate_dependencies(
         &self,
         input: &FontJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
@@ -202,7 +201,7 @@ impl JobProcessor for FontJobProcessor {
     fn run(
         &self,
         input: &FontJobInput,
-        data_set: &DataSet,
+        _data_set: &DataSet,
         schema_set: &SchemaSet,
         dependency_data: &HashMap<ObjectId, SingleObject>,
         job_api: &dyn JobApi,
@@ -210,8 +209,8 @@ impl JobProcessor for FontJobProcessor {
         //
         // Read asset properties
         //
-        let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
-        let x = FontAssetRecord::default();
+        //let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
+        //let x = FontAssetRecord::default();
 
         //
         // Read imported data
@@ -280,13 +279,13 @@ pub struct FontAssetPlugin;
 
 impl hydrate_model::AssetPlugin for FontAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<HydrateFontImporter>(schema_linker);
-        builder_registry.register_handler::<FontBuilder>(schema_linker);
+        importer_registry.register_handler::<HydrateFontImporter>();
+        builder_registry.register_handler::<FontBuilder>();
         job_processor_registry.register_job_processor::<FontJobProcessor>();
     }
 }

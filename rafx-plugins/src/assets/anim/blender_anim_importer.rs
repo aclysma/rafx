@@ -17,7 +17,6 @@ use hydrate_model::{
 use rafx::api::{RafxError, RafxResult};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use std::io::Read;
 use std::path::Path;
 use type_uuid::*;
 
@@ -364,7 +363,7 @@ impl hydrate_model::Importer for HydrateBlenderAnimImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
@@ -382,7 +381,7 @@ impl hydrate_model::Importer for HydrateBlenderAnimImporter {
             .as_record()
             .unwrap()
             .clone();
-        let mut file_references: Vec<ReferencedSourceFile> = Default::default();
+        let file_references: Vec<ReferencedSourceFile> = Default::default();
         vec![ScannedImportable {
             name: None,
             asset_type,
@@ -410,7 +409,7 @@ impl hydrate_model::Importer for HydrateBlenderAnimImporter {
         // Create the default asset
         //
         let default_asset = {
-            let mut default_asset_object =
+            let default_asset_object =
                 BlenderAnimAssetRecord::new_single_object(schema_set).unwrap();
             // let mut default_asset_data_container =
             //     DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
@@ -478,8 +477,8 @@ impl JobProcessor for BlenderAnimJobProcessor {
     fn enumerate_dependencies(
         &self,
         input: &BlenderAnimJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
@@ -491,7 +490,7 @@ impl JobProcessor for BlenderAnimJobProcessor {
     fn run(
         &self,
         input: &BlenderAnimJobInput,
-        data_set: &DataSet,
+        _data_set: &DataSet,
         schema_set: &SchemaSet,
         dependency_data: &HashMap<ObjectId, SingleObject>,
         job_api: &dyn JobApi,
@@ -565,13 +564,13 @@ pub struct BlenderAnimAssetPlugin;
 
 impl hydrate_model::AssetPlugin for BlenderAnimAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<HydrateBlenderAnimImporter>(schema_linker);
-        builder_registry.register_handler::<BlenderAnimBuilder>(schema_linker);
+        importer_registry.register_handler::<HydrateBlenderAnimImporter>();
+        builder_registry.register_handler::<BlenderAnimBuilder>();
         job_processor_registry.register_job_processor::<BlenderAnimJobProcessor>();
     }
 }

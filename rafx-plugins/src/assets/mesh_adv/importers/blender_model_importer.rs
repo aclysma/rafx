@@ -1,5 +1,4 @@
-use super::ModelAdvAssetData;
-use crate::assets::mesh_adv::{BlenderMeshImporter, MeshAdvAsset, ModelAdvAssetDataLod};
+use crate::assets::mesh_adv::{BlenderMeshImporter, MeshAdvAsset};
 use crate::schema::MeshAdvModelAssetRecord;
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
@@ -10,7 +9,6 @@ use hydrate_model::{
     SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use type_uuid::*;
 use uuid::Uuid;
@@ -110,7 +108,7 @@ impl hydrate_model::Importer for BlenderModelImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
@@ -206,11 +204,11 @@ pub struct BlenderModelAssetPlugin;
 
 impl hydrate_model::AssetPlugin for BlenderModelAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
+        _builder_registry: &mut BuilderRegistryBuilder,
+        _job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<BlenderModelImporter>(schema_linker);
+        importer_registry.register_handler::<BlenderModelImporter>();
     }
 }

@@ -1,7 +1,6 @@
 pub mod asset_loader;
 
 pub use asset_loader::*;
-use std::sync::Arc;
 
 pub mod asset_resource;
 pub use asset_resource::*;

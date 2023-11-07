@@ -1,21 +1,16 @@
-use super::MeshAdvMaterialData;
-use crate::assets::mesh_adv::{MeshAdvBlendMethod, MeshAdvShadowMethod, MeshMaterialAdvAssetData};
 use crate::schema::{MeshAdvBlendMethodEnum, MeshAdvMaterialAssetRecord, MeshAdvShadowMethodEnum};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerMut, Enum, ImporterId, ObjectRefField, Record, SchemaSet};
+use hydrate_data::{DataContainerMut, Enum, ObjectRefField, Record, SchemaSet};
 use hydrate_model::{
     AssetPlugin, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
     SchemaLinker,
 };
-use rafx::assets::{GpuCompressedImageImporterDds, GpuImageImporterSimple, ImageAsset};
+use rafx::assets::ImageAsset;
 use serde::{Deserialize, Serialize};
-use std::ffi::OsStr;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use type_uuid::*;
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 struct HydrateMaterialJsonFileFormat {
@@ -419,11 +414,11 @@ pub struct BlenderMaterialAssetPlugin;
 
 impl AssetPlugin for BlenderMaterialAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
+        _builder_registry: &mut BuilderRegistryBuilder,
+        _job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<BlenderMaterialImporter>(schema_linker);
+        importer_registry.register_handler::<BlenderMaterialImporter>();
     }
 }

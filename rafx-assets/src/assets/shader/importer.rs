@@ -1,8 +1,5 @@
 use crate::assets::shader::ShaderAssetData;
-use crate::schema::{
-    GpuImageAssetRecord, GpuImageImportedDataRecord, ShaderPackageAssetRecord,
-    ShaderPackageImportedDataRecord,
-};
+use crate::schema::{ShaderPackageAssetRecord, ShaderPackageImportedDataRecord};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::ObjectId;
 use hydrate_data::{
@@ -13,10 +10,8 @@ use hydrate_model::{
     ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
     JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
 };
-use image::GenericImageView;
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::Path;
 use type_uuid::*;
 
@@ -194,9 +189,9 @@ impl hydrate_model::Importer for ShaderPackageImporterSpv {
 
     fn scan_file(
         &self,
-        path: &Path,
+        _path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(ShaderPackageAssetRecord::schema_name())
@@ -260,7 +255,7 @@ impl hydrate_model::Importer for ShaderPackageImporterSpv {
         // Create the default asset
         //
         let default_asset = {
-            let mut default_asset_object =
+            let default_asset_object =
                 ShaderPackageAssetRecord::new_single_object(schema_set).unwrap();
             // No fields to write
             default_asset_object
@@ -293,9 +288,9 @@ impl hydrate_model::Importer for ShaderPackageImporterCooked {
 
     fn scan_file(
         &self,
-        path: &Path,
+        _path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(ShaderPackageAssetRecord::schema_name())
@@ -353,7 +348,7 @@ impl hydrate_model::Importer for ShaderPackageImporterCooked {
         // Create the default asset
         //
         let default_asset = {
-            let mut default_asset_object =
+            let default_asset_object =
                 ShaderPackageAssetRecord::new_single_object(schema_set).unwrap();
             // No fields to write
             default_asset_object
@@ -400,8 +395,8 @@ impl JobProcessor for ShaderPackageJobProcessor {
     fn enumerate_dependencies(
         &self,
         input: &ShaderPackageJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
@@ -413,7 +408,7 @@ impl JobProcessor for ShaderPackageJobProcessor {
     fn run(
         &self,
         input: &ShaderPackageJobInput,
-        data_set: &DataSet,
+        _data_set: &DataSet,
         schema_set: &SchemaSet,
         dependency_data: &HashMap<ObjectId, SingleObject>,
         job_api: &dyn JobApi,
@@ -477,14 +472,14 @@ pub struct ShaderPackageAssetPlugin;
 
 impl AssetPlugin for ShaderPackageAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<ShaderPackageImporterSpv>(schema_linker);
-        importer_registry.register_handler::<ShaderPackageImporterCooked>(schema_linker);
-        builder_registry.register_handler::<ShaderPackageBuilder>(schema_linker);
+        importer_registry.register_handler::<ShaderPackageImporterSpv>();
+        importer_registry.register_handler::<ShaderPackageImporterCooked>();
+        builder_registry.register_handler::<ShaderPackageBuilder>();
         job_processor_registry.register_job_processor::<ShaderPackageJobProcessor>();
     }
 }

@@ -1,10 +1,9 @@
 use crate::assets::image::{
-    GpuImageJobOutput, GpuImageJobProcessor, ImageAssetData, ImageAssetDataLayer,
-    ImageAssetDataMipLevel, ImageAssetDataPayload,
+    ImageAssetData, ImageAssetDataLayer, ImageAssetDataMipLevel, ImageAssetDataPayload,
 };
 use crate::schema::{
     GpuCompressedImageAssetRecord, GpuCompressedImageImportedDataRecord,
-    GpuImageAssetDataFormatEnum, GpuImageAssetRecord, GpuImageImportedDataRecord,
+    GpuImageAssetDataFormatEnum,
 };
 use crate::{
     ImageAssetDataFormat, ImageAssetDataPayloadSingleBuffer, ImageAssetDataPayloadSubresources,
@@ -19,10 +18,8 @@ use hydrate_model::{
     job_system, Builder, ImportableObject, ImportedImportable, ImporterRegistry, JobApi,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ScannedImportable,
 };
-use image::GenericImageView;
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::Path;
 use type_uuid::*;
 //
@@ -199,9 +196,9 @@ impl hydrate_model::Importer for GpuCompressedImageImporterDds {
 
     fn scan_file(
         &self,
-        path: &Path,
+        _path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         let asset_type = schema_set
             .find_named_type(GpuCompressedImageAssetRecord::schema_name())
@@ -417,7 +414,7 @@ impl hydrate_model::Importer for GpuCompressedImageImporterDds {
         // Create the default asset
         //
         let default_asset = {
-            let mut default_asset_object =
+            let default_asset_object =
                 GpuCompressedImageAssetRecord::new_single_object(schema_set).unwrap();
 
             // no fields to set
@@ -466,8 +463,8 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
     fn enumerate_dependencies(
         &self,
         input: &GpuCompressedImageJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
@@ -479,7 +476,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
     fn run(
         &self,
         input: &GpuCompressedImageJobInput,
-        data_set: &DataSet,
+        _data_set: &DataSet,
         schema_set: &SchemaSet,
         dependency_data: &HashMap<ObjectId, SingleObject>,
         job_api: &dyn JobApi,

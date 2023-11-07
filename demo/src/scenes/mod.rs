@@ -58,9 +58,9 @@ pub enum Scene {
 }
 
 pub const ALL_SCENES: [Scene; 12] = [
-    Scene::Bistro, // Uncomment to enable the bistro scene
-    Scene::ScifiBase,
     Scene::Dungeon,
+    Scene::ScifiBase,
+    Scene::Bistro, // Uncomment to enable the bistro scene
     Scene::Shadows,
     Scene::PbrTest,
     Scene::Sprite,

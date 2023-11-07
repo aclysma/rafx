@@ -38,8 +38,7 @@ impl Record for GpuCompressedImageAssetRecord {
     }
 }
 
-impl GpuCompressedImageAssetRecord {
-}
+impl GpuCompressedImageAssetRecord {}
 #[derive(Default)]
 pub struct GpuCompressedImageImportedDataRecord(PropertyPath);
 
@@ -56,7 +55,7 @@ impl Record for GpuCompressedImageImportedDataRecord {
 }
 
 impl GpuCompressedImageImportedDataRecord {
-    pub fn data_layers(&self) -> DynamicArrayField::<GpuImageSubresourceLayerRecord> {
+    pub fn data_layers(&self) -> DynamicArrayField<GpuImageSubresourceLayerRecord> {
         DynamicArrayField::<GpuImageSubresourceLayerRecord>::new(self.0.push("data_layers"))
     }
 
@@ -64,7 +63,7 @@ impl GpuCompressedImageImportedDataRecord {
         BytesField::new(self.0.push("data_single_buffer"))
     }
 
-    pub fn format(&self) -> EnumField::<GpuImageAssetDataFormatEnum> {
+    pub fn format(&self) -> EnumField<GpuImageAssetDataFormatEnum> {
         EnumField::<GpuImageAssetDataFormatEnum>::new(self.0.push("format"))
     }
 
@@ -104,15 +103,16 @@ impl GpuImageAssetRecord {
         GpuImageBasisCompressionSettingsRecord::new(self.0.push("basis_compression_settings"))
     }
 
-    pub fn color_space(&self) -> EnumField::<GpuImageColorSpaceEnum> {
+    pub fn color_space(&self) -> EnumField<GpuImageColorSpaceEnum> {
         EnumField::<GpuImageColorSpaceEnum>::new(self.0.push("color_space"))
     }
 
-    pub fn mip_generation(&self) -> EnumField::<GpuImageMipGenerationEnum> {
+    pub fn mip_generation(&self) -> EnumField<GpuImageMipGenerationEnum> {
         EnumField::<GpuImageMipGenerationEnum>::new(self.0.push("mip_generation"))
     }
 }
 #[derive(Copy, Clone)]
+#[allow(non_camel_case_types)]
 pub enum GpuImageAssetDataFormatEnum {
     RGBA32_Linear,
     RGBA32_Srgb,
@@ -204,7 +204,7 @@ impl Record for GpuImageBasisCompressionSettingsRecord {
 }
 
 impl GpuImageBasisCompressionSettingsRecord {
-    pub fn compression_type(&self) -> EnumField::<GpuImageBasisCompressionTypeEnum> {
+    pub fn compression_type(&self) -> EnumField<GpuImageBasisCompressionTypeEnum> {
         EnumField::<GpuImageBasisCompressionTypeEnum>::new(self.0.push("compression_type"))
     }
 
@@ -343,7 +343,7 @@ impl Record for GpuImageSubresourceLayerRecord {
 }
 
 impl GpuImageSubresourceLayerRecord {
-    pub fn mip_levels(&self) -> DynamicArrayField::<GpuImageSubresourceMipLevelRecord> {
+    pub fn mip_levels(&self) -> DynamicArrayField<GpuImageSubresourceMipLevelRecord> {
         DynamicArrayField::<GpuImageSubresourceMipLevelRecord>::new(self.0.push("mip_levels"))
     }
 }
@@ -415,7 +415,7 @@ impl Record for MaterialAssetRecord {
 }
 
 impl MaterialAssetRecord {
-    pub fn passes(&self) -> DynamicArrayField::<MaterialPassRecord> {
+    pub fn passes(&self) -> DynamicArrayField<MaterialPassRecord> {
         DynamicArrayField::<MaterialPassRecord>::new(self.0.push("passes"))
     }
 }
@@ -439,8 +439,10 @@ impl MaterialInstanceAssetRecord {
         ObjectRefField::new(self.0.push("material"))
     }
 
-    pub fn slot_assignments(&self) -> DynamicArrayField::<MaterialInstanceSlotAssignmentRecord> {
-        DynamicArrayField::<MaterialInstanceSlotAssignmentRecord>::new(self.0.push("slot_assignments"))
+    pub fn slot_assignments(&self) -> DynamicArrayField<MaterialInstanceSlotAssignmentRecord> {
+        DynamicArrayField::<MaterialInstanceSlotAssignmentRecord>::new(
+            self.0.push("slot_assignments"),
+        )
     }
 }
 #[derive(Default)]
@@ -463,7 +465,7 @@ impl MaterialInstanceSlotAssignmentRecord {
         U32Field::new(self.0.push("array_index"))
     }
 
-    pub fn buffer_data(&self) -> NullableField::<BytesField> {
+    pub fn buffer_data(&self) -> NullableField<BytesField> {
         NullableField::<BytesField>::new(self.0.push("buffer_data"))
     }
 
@@ -530,8 +532,7 @@ impl Record for ShaderPackageAssetRecord {
     }
 }
 
-impl ShaderPackageAssetRecord {
-}
+impl ShaderPackageAssetRecord {}
 #[derive(Default)]
 pub struct ShaderPackageImportedDataRecord(PropertyPath);
 

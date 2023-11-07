@@ -1,6 +1,7 @@
+#![allow(dead_code)]
+
 use crate::assets::mesh_adv::{MeshAdvBlendMethod, MeshAdvShadowMethod};
 use hydrate_data::*;
-use hydrate_model::{DataContainer, DataContainerMut, DataSetResult};
 use rafx::assets::schema::*;
 
 include!("schema_codegen.rs");

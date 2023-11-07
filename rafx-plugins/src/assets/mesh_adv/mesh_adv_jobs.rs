@@ -1,16 +1,13 @@
 pub use super::*;
 use glam::Vec3;
 use rafx::api::RafxResourceType;
-use std::path::Path;
 
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::*;
-use hydrate_base::{AssetUuid, BuiltObjectMetadata};
-use hydrate_model::pipeline::{AssetPlugin, Builder, BuiltAsset};
-use hydrate_model::pipeline::{ImportedImportable, Importer, ScannedImportable};
+use hydrate_model::pipeline::{AssetPlugin, Builder};
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, DataContainer, DataContainerMut, DataSet, Enum, HashMap,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    job_system, BuilderRegistryBuilder, DataContainer, DataSet, HashMap, ImporterRegistryBuilder,
+    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ObjectId, Record, SchemaLinker, SchemaSet, SingleObject,
 };
 use rafx::assets::PushBuffer;
@@ -43,9 +40,9 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &MeshAdvMaterialJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _input: &MeshAdvMaterialJobInput,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -56,7 +53,7 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
         input: &MeshAdvMaterialJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<ObjectId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MeshAdvMaterialJobOutput {
         //
@@ -239,8 +236,8 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
     fn enumerate_dependencies(
         &self,
         input: &MeshAdvMeshPreprocessJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
@@ -491,7 +488,7 @@ impl Builder for MeshAdvMeshBuilder {
         // Produce buffers for various vertex types
         // Some day I might want to look at the materials to decide what vertex buffers should exist
 
-        let preprocess_job_id = job_system::enqueue_job::<MeshAdvMeshJobProcessor>(
+        job_system::enqueue_job::<MeshAdvMeshJobProcessor>(
             data_set,
             schema_set,
             job_api,
@@ -524,9 +521,9 @@ impl JobProcessor for MeshAdvModelJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &MeshAdvModelJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _input: &MeshAdvModelJobInput,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -537,7 +534,7 @@ impl JobProcessor for MeshAdvModelJobProcessor {
         input: &MeshAdvModelJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<ObjectId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MeshAdvModelJobOutput {
         job_system::produce_asset_with_handles(job_api, input.asset_id, || {
@@ -616,8 +613,8 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
     fn enumerate_dependencies(
         &self,
         input: &MeshAdvPrefabJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
+        _data_set: &DataSet,
+        _schema_set: &SchemaSet,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
@@ -665,8 +662,7 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
                     None
                 };
 
-                let light = if let Some(json_light) = &json_object.light {
-                    let light = json_light.clone();
+                let light = if let Some(light) = &json_object.light {
                     let spot = light
                         .spot
                         .as_ref()
@@ -744,21 +740,21 @@ pub struct MeshAdvAssetPlugin;
 
 impl AssetPlugin for MeshAdvAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
-        importer_registry: &mut ImporterRegistryBuilder,
+        _schema_linker: &mut SchemaLinker,
+        _importer_registry: &mut ImporterRegistryBuilder,
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        builder_registry.register_handler::<MeshAdvMaterialBuilder>(schema_linker);
+        builder_registry.register_handler::<MeshAdvMaterialBuilder>();
         job_processor_registry.register_job_processor::<MeshAdvMaterialJobProcessor>();
 
-        builder_registry.register_handler::<MeshAdvMeshBuilder>(schema_linker);
+        builder_registry.register_handler::<MeshAdvMeshBuilder>();
         job_processor_registry.register_job_processor::<MeshAdvMeshJobProcessor>();
 
-        builder_registry.register_handler::<MeshAdvModelBuilder>(schema_linker);
+        builder_registry.register_handler::<MeshAdvModelBuilder>();
         job_processor_registry.register_job_processor::<MeshAdvModelJobProcessor>();
 
-        builder_registry.register_handler::<MeshAdvPrefabBuilder>(schema_linker);
+        builder_registry.register_handler::<MeshAdvPrefabBuilder>();
         job_processor_registry.register_job_processor::<MeshAdvPrefabJobProcessor>();
     }
 }

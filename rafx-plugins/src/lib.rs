@@ -25,8 +25,6 @@ pub fn register_default_hydrate_plugins(
     mut registration_helper: AssetPluginRegistrationHelper,
     schema_linker: &mut SchemaLinker,
 ) -> AssetPluginRegistrationHelper {
-    use crate::assets::*;
-
     registration_helper = registration_helper
         .register_plugin::<LdtkAssetPlugin>(schema_linker)
         .register_plugin::<FontAssetPlugin>(schema_linker)

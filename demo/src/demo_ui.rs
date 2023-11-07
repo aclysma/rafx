@@ -484,7 +484,6 @@ pub fn draw_ui(resources: &Resources) {
                     });
                     for info in asset_info {
                         if let Some(info) = info {
-                            let id = info.asset_id;
                             ui.label(format!(
                                 "{}:{}",
                                 //info.file_name.unwrap_or_else(|| "???".to_string()),

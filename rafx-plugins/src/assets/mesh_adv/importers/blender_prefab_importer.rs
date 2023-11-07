@@ -1,12 +1,7 @@
 use crate::assets::mesh_adv::{
-    BlenderModelImporter, ModelAdvAsset, PrefabAdvAssetData, PrefabAdvAssetDataObject,
-    PrefabAdvAssetDataObjectLight, PrefabAdvAssetDataObjectLightKind,
-    PrefabAdvAssetDataObjectLightSpot, PrefabAdvAssetDataObjectModel,
-    PrefabAdvAssetDataObjectTransform,
+    BlenderModelImporter, ModelAdvAsset, PrefabAdvAssetDataObjectLightKind,
 };
-use crate::schema::{
-    MeshAdvModelAssetRecord, MeshAdvPrefabAssetRecord, MeshAdvPrefabImportDataRecord,
-};
+use crate::schema::{MeshAdvPrefabAssetRecord, MeshAdvPrefabImportDataRecord};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
@@ -16,7 +11,6 @@ use hydrate_model::{
     SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use type_uuid::*;
 use uuid::Uuid;
@@ -215,7 +209,7 @@ impl hydrate_model::Importer for BlenderPrefabImporter {
         &self,
         path: &Path,
         schema_set: &SchemaSet,
-        importer_registry: &ImporterRegistry,
+        _importer_registry: &ImporterRegistry,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
@@ -270,7 +264,7 @@ impl hydrate_model::Importer for BlenderPrefabImporter {
         // Create the default asset
         //
         let default_asset = {
-            let mut default_asset_object =
+            let default_asset_object =
                 MeshAdvPrefabAssetRecord::new_single_object(schema_set).unwrap();
             // let mut default_asset_data_container =
             //     DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
@@ -315,11 +309,11 @@ pub struct BlenderPrefabAssetPlugin;
 
 impl hydrate_model::AssetPlugin for BlenderPrefabAssetPlugin {
     fn setup(
-        schema_linker: &mut SchemaLinker,
+        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
+        _builder_registry: &mut BuilderRegistryBuilder,
+        _job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<BlenderPrefabImporter>(schema_linker);
+        importer_registry.register_handler::<BlenderPrefabImporter>();
     }
 }
