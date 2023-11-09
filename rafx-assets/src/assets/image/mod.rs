@@ -5,9 +5,6 @@ use hydrate_data::SchemaLinker;
 use hydrate_model::{BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder};
 use std::sync::Arc;
 
-//mod importer;
-//pub use importer::*;
-
 mod asset_upload_queue;
 
 mod asset_type_handler;
@@ -23,8 +20,13 @@ pub use importer_basis::*;
 
 #[cfg(feature = "ddsfile")]
 mod importer_dds;
+use crate::assets::image::builder_compressed_image::{
+    GpuCompressedImageBuilder, GpuCompressedImageJobProcessor,
+};
 #[cfg(feature = "ddsfile")]
 pub use importer_dds::*;
+
+mod builder_compressed_image;
 
 pub struct GpuImageAssetPlugin;
 
@@ -82,7 +84,9 @@ impl hydrate_model::AssetPlugin for GpuImageAssetPlugin {
         builder_registry.register_handler::<GpuImageBuilder>();
         job_processor_registry.register_job_processor::<GpuImageJobProcessor>();
 
+        #[cfg(feature = "ddsfile")]
         importer_registry.register_handler::<GpuCompressedImageImporterDds>();
+        #[cfg(feature = "basis-universal")]
         importer_registry.register_handler::<GpuCompressedImageImporterBasis>();
 
         builder_registry.register_handler::<GpuCompressedImageBuilder>();

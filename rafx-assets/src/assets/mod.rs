@@ -1,9 +1,7 @@
 mod image;
-// #[cfg(feature = "basis-universal")]
-// pub use self::image::BasisImageImporter;
-// #[cfg(feature = "ddsfile")]
-// pub use self::image::DdsImageImporter;
+#[cfg(feature = "basis-universal")]
 pub use self::image::GpuCompressedImageImporterBasis;
+#[cfg(feature = "ddsfile")]
 pub use self::image::GpuCompressedImageImporterDds;
 pub use self::image::GpuImageAssetPlugin;
 pub use self::image::GpuImageImporterSimple;

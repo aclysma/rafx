@@ -75,7 +75,7 @@ impl Default for MeshAdvMaterialData {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MeshAdvPartAssetData {
     pub vertex_full_buffer_offset_in_bytes: u32,
     pub vertex_full_buffer_size_in_bytes: u32,
@@ -97,7 +97,18 @@ pub struct MeshAdvAssetData {
     pub visible_bounds: VisibleBounds,
 }
 
-#[derive(Clone)]
+impl std::fmt::Debug for MeshAdvAssetData {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("MeshAdvAssetData")
+            .field("mesh_parts", &self.mesh_parts)
+            .finish()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct MeshAdvShaderPassIndices {
     //pub depth_prepass: u8,
     ////pub depth_prepass_backface: u8,
@@ -223,6 +234,7 @@ impl MeshAdvShaderPassIndices {
     }
 }
 
+#[derive(Debug)]
 pub struct MeshAdvAssetPart {
     pub mesh_material: MeshMaterialAdvAsset,
     pub pass_indices: MeshAdvShaderPassIndices,
@@ -260,6 +272,7 @@ impl MeshAdvAssetPart {
     }
 }
 
+#[derive(Debug)]
 pub struct MeshAdvAssetInner {
     pub mesh_parts: Vec<MeshAdvAssetPart>,
     pub asset_data: MeshAdvAssetData,

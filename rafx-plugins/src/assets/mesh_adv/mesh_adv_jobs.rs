@@ -352,7 +352,6 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         // Vertex Full Buffer
         //
-        println!("asset id {:?}", input.asset_id);
         let vertex_buffer_full_artifact_id = if !all_vertices_full.is_empty() {
             Some(job_system::produce_artifact(
                 job_api,
@@ -425,6 +424,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
 
                 let material_slot_index = entry.material_index().get(&data_container).unwrap();
                 let material_object_id = materials[material_slot_index as usize];
+
                 let material_handle =
                     job_system::make_handle_to_default_artifact(job_api, material_object_id);
 

@@ -48,6 +48,17 @@ pub struct MeshMaterialAdvAsset {
     pub inner: Arc<MeshMaterialAdvAssetInner>,
 }
 
+impl std::fmt::Debug for MeshMaterialAdvAsset {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("MeshMaterialAdvAsset")
+            .field("material_data", &self.inner.material.data())
+            .finish()
+    }
+}
+
 impl MeshMaterialAdvAsset {
     pub fn material_data(&self) -> &MeshAdvMaterialData {
         self.inner.material.data()
