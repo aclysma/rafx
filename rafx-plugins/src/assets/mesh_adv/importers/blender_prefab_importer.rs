@@ -6,7 +6,7 @@ use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
 use hydrate_model::{
-    BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
+    BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
     SchemaLinker,
 };
@@ -144,7 +144,7 @@ impl hydrate_model::Importer for BlenderPrefabImporter {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //

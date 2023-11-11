@@ -6,7 +6,7 @@ use crate::schema::{
 use basis_universal::BasisTextureType;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, Record, SchemaSet};
-use hydrate_model::{ImportableObject, ImportedImportable, ImporterRegistry, ScannedImportable};
+use hydrate_model::{ImportableAsset, ImportedImportable, ImporterRegistry, ScannedImportable};
 use std::path::Path;
 use type_uuid::*;
 
@@ -41,7 +41,7 @@ impl hydrate_model::Importer for GpuCompressedImageImporterBasis {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         let bytes = std::fs::read(path).unwrap();

@@ -1,12 +1,12 @@
 use crate::assets::shader::ShaderAssetData;
 use crate::schema::{ShaderPackageAssetRecord, ShaderPackageImportedDataRecord};
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
+use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, AssetPlugin, Builder, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
+    job_system, AssetPlugin, Builder, BuilderRegistryBuilder, ImportableAsset, ImportedImportable,
     ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
     JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
 };
@@ -46,7 +46,7 @@ impl hydrate_model::Importer for ShaderPackageImporterSpv {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
@@ -145,7 +145,7 @@ impl hydrate_model::Importer for ShaderPackageImporterCooked {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
@@ -209,7 +209,7 @@ impl hydrate_model::Importer for ShaderPackageImporterCooked {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct ShaderPackageJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for ShaderPackageJobInput {}
 
@@ -247,14 +247,14 @@ impl JobProcessor for ShaderPackageJobProcessor {
         input: &ShaderPackageJobInput,
         _data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> ShaderPackageJobOutput {
         //
         // Read imported data
         //
         let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::new_single_object(&imported_data, schema_set);
+        let data_container = DataContainer::from_single_object(&imported_data, schema_set);
         let x = ShaderPackageImportedDataRecord::new(PropertyPath::default());
 
         let shader_package =
@@ -287,12 +287,12 @@ impl Builder for ShaderPackageBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
     ) {
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = ShaderPackageAssetRecord::default();
 
         //Future: Might produce jobs per-platform

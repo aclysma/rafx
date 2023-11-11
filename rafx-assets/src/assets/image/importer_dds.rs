@@ -1,25 +1,13 @@
-use crate::assets::image::{
-    ImageAssetData, ImageAssetDataLayer, ImageAssetDataMipLevel, ImageAssetDataPayload,
-};
+use crate::assets::image::{ImageAssetDataLayer, ImageAssetDataMipLevel};
 use crate::schema::{
     GpuCompressedImageAssetRecord, GpuCompressedImageImportedDataRecord,
     GpuImageAssetDataFormatEnum,
 };
-use crate::{
-    ImageAssetDataFormat, ImageAssetDataPayloadSingleBuffer, ImageAssetDataPayloadSubresources,
-};
+use crate::ImageAssetDataFormat;
 use ddsfile::DxgiFormat;
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
-use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
-};
-use hydrate_model::{
-    job_system, Builder, ImportableObject, ImportedImportable, ImporterRegistry, JobApi,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ScannedImportable,
-};
-use rafx_api::RafxResourceType;
-use serde::{Deserialize, Serialize};
+use hydrate_data::{DataContainerMut, Record, SchemaSet};
+use hydrate_model::{ImportableAsset, ImportedImportable, ImporterRegistry, ScannedImportable};
 use std::path::Path;
 use type_uuid::*;
 
@@ -54,7 +42,7 @@ impl hydrate_model::Importer for GpuCompressedImageImporterDds {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         let dds_bytes = std::fs::read(path).unwrap();

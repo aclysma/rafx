@@ -6,9 +6,9 @@ use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::*;
 use hydrate_model::pipeline::{AssetPlugin, Builder};
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, DataContainer, DataSet, HashMap, ImporterRegistryBuilder,
-    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ObjectId, Record, SchemaLinker, SchemaSet, SingleObject,
+    job_system, AssetId, BuilderRegistryBuilder, DataContainer, DataSet, HashMap,
+    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, Record, SchemaLinker, SchemaSet, SingleObject,
 };
 use rafx::assets::PushBuffer;
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
@@ -18,7 +18,7 @@ use uuid::Uuid;
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct MeshAdvMaterialJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for MeshAdvMaterialJobInput {}
 
@@ -53,13 +53,13 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
         input: &MeshAdvMaterialJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        _dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MeshAdvMaterialJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
         let x = MeshAdvMaterialAssetRecord::default();
 
         let base_color_factor = x.base_color_factor().get_vec4(&data_container).unwrap();
@@ -107,7 +107,7 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
         job_system::produce_asset_with_handles(job_api, input.asset_id, || {
             let material_asset = job_system::make_handle_to_default_artifact(
                 job_api,
-                ObjectId::from_uuid(
+                AssetId::from_uuid(
                     Uuid::parse_str("07ab9227-432d-49c8-8899-146acd803235").unwrap(),
                 ),
             );
@@ -180,7 +180,7 @@ impl Builder for MeshAdvMaterialBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
@@ -213,7 +213,7 @@ fn try_cast_u8_slice<T: Copy + 'static>(data: &[u8]) -> Option<&[T]> {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct MeshAdvMeshPreprocessJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for MeshAdvMeshPreprocessJobInput {}
 
@@ -251,13 +251,13 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         input: &MeshAdvMeshPreprocessJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MeshAdvMeshPreprocessJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
         let x = MeshAdvMeshAssetRecord::default();
         let mut materials = Vec::default();
         for entry in x
@@ -277,7 +277,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         // Read import data
         //
         let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::new_single_object(imported_data, schema_set);
+        let data_container = DataContainer::from_single_object(imported_data, schema_set);
         let x = MeshAdvMeshImportedDataRecord::default();
 
         let mut all_positions = Vec::<glam::Vec3>::with_capacity(1024);
@@ -479,7 +479,7 @@ impl Builder for MeshAdvMeshBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
@@ -499,7 +499,7 @@ impl Builder for MeshAdvMeshBuilder {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct MeshAdvModelJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for MeshAdvModelJobInput {}
 
@@ -534,11 +534,11 @@ impl JobProcessor for MeshAdvModelJobProcessor {
         input: &MeshAdvModelJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        _dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MeshAdvModelJobOutput {
         job_system::produce_asset_with_handles(job_api, input.asset_id, || {
-            let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
+            let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
             let x = MeshAdvModelAssetRecord::default();
 
             let mut lods = Vec::default();
@@ -570,12 +570,12 @@ impl hydrate_model::Builder for MeshAdvModelBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
     ) {
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = MeshAdvModelAssetRecord::default();
 
         //Future: Might produce jobs per-platform
@@ -590,7 +590,7 @@ impl hydrate_model::Builder for MeshAdvModelBuilder {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct MeshAdvPrefabJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for MeshAdvPrefabJobInput {}
 
@@ -628,14 +628,14 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
         input: &MeshAdvPrefabJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MeshAdvPrefabJobOutput {
         //
         // Read import data
         //
         let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::new_single_object(imported_data, schema_set);
+        let data_container = DataContainer::from_single_object(imported_data, schema_set);
         let x = MeshAdvPrefabImportDataRecord::default();
 
         let json_str = x.json_data().get(&data_container).unwrap();
@@ -718,12 +718,12 @@ impl hydrate_model::Builder for MeshAdvPrefabBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
     ) {
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = MeshAdvPrefabAssetRecord::default();
 
         //Future: Might produce jobs per-platform

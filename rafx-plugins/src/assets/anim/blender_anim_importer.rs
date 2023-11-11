@@ -5,12 +5,12 @@ use crate::assets::anim::{
 use crate::schema::{BlenderAnimAssetRecord, BlenderAnimImportedDataRecord};
 use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
+use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
+    job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
 };
@@ -285,7 +285,7 @@ impl hydrate_model::Importer for HydrateBlenderAnimImporter {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
@@ -347,7 +347,7 @@ impl hydrate_model::Importer for HydrateBlenderAnimImporter {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct BlenderAnimJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for BlenderAnimJobInput {}
 
@@ -385,14 +385,14 @@ impl JobProcessor for BlenderAnimJobProcessor {
         input: &BlenderAnimJobInput,
         _data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> BlenderAnimJobOutput {
         //
         // Read imported data
         //
         let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::new_single_object(&imported_data, schema_set);
+        let data_container = DataContainer::from_single_object(&imported_data, schema_set);
         let x = BlenderAnimImportedDataRecord::new(PropertyPath::default());
 
         let json_str = x.json_string().get(&data_container).unwrap();
@@ -435,12 +435,12 @@ impl hydrate_model::Builder for BlenderAnimBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
     ) {
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = BlenderAnimAssetRecord::default();
 
         //Future: Might produce jobs per-platform

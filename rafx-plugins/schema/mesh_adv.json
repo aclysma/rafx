@@ -64,23 +64,23 @@
       },
       {
         "name": "color_texture",
-        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+        "type": { "name": "asset_ref", "inner_type": "GpuImageAsset" }
       },
       {
         "name": "metallic_roughness_texture",
-        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+        "type": { "name": "asset_ref", "inner_type": "GpuImageAsset" }
       },
       {
         "name": "normal_texture",
-        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+        "type": { "name": "asset_ref", "inner_type": "GpuImageAsset" }
       },
       {
         "name": "emissive_texture",
-        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+        "type": { "name": "asset_ref", "inner_type": "GpuImageAsset" }
       },
       {
         "name": "occlusion_texture",
-        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+        "type": { "name": "asset_ref", "inner_type": "GpuImageAsset" }
       },
       {
         "name": "shadow_method",
@@ -160,7 +160,7 @@
     "fields": [
       {
         "name": "material_slots",
-        "type": { "name": "dynamic_array", "inner_type": { "name": "object_ref", "inner_type": "MeshAdvMaterialAsset" }}
+        "type": { "name": "dynamic_array", "inner_type": { "name": "asset_ref", "inner_type": "MeshAdvMaterialAsset" }}
       }
     ]
   },
@@ -170,7 +170,7 @@
     "fields": [
       {
         "name": "mesh",
-        "type": { "name": "object_ref", "inner_type": "MeshAdvMeshAsset" }
+        "type": { "name": "asset_ref", "inner_type": "MeshAdvMeshAsset" }
       }
     ]
   },

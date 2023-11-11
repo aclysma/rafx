@@ -9,13 +9,13 @@ use crate::{
     ImageAssetBasisCompressionSettings, ImageAssetBasisCompressionType, ImageAssetMipGeneration,
 };
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
+use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaLinker, SchemaSet,
     SingleObject,
 };
 use hydrate_model::{
-    job_system, Builder, BuilderRegistryBuilder, ImportableObject, ImportedImportable,
+    job_system, Builder, BuilderRegistryBuilder, ImportableAsset, ImportedImportable,
     ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
     JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScannedImportable,
 };
@@ -292,7 +292,7 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         let decoded_image = ::image::open(path).unwrap();
@@ -408,7 +408,7 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct GpuImageJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for GpuImageJobInput {}
 
@@ -446,13 +446,13 @@ impl JobProcessor for GpuImageJobProcessor {
         input: &GpuImageJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> GpuImageJobOutput {
         //
         // Read asset properties
         //
-        let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
         let x = GpuImageAssetRecord::default();
         let basis_compression = x.basis_compression().get(&data_container).unwrap();
         let color_space = match x.color_space().get(&data_container).unwrap() {
@@ -493,7 +493,7 @@ impl JobProcessor for GpuImageJobProcessor {
         // Read imported data
         //
         let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::new_single_object(&imported_data, schema_set);
+        let data_container = DataContainer::from_single_object(&imported_data, schema_set);
         let x = GpuImageImportedDataRecord::new(PropertyPath::default());
 
         let image_bytes = x.image_bytes().get(&data_container).unwrap().clone();
@@ -534,7 +534,7 @@ impl Builder for GpuImageBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,

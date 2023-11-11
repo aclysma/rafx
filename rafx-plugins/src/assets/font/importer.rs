@@ -2,12 +2,12 @@ use crate::assets::font::FontAssetData;
 use crate::schema::{FontAssetRecord, FontImportedDataRecord};
 use fnv::FnvHasher;
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
+use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
+    job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
 };
@@ -47,7 +47,7 @@ impl hydrate_model::Importer for HydrateFontImporter {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
@@ -100,7 +100,7 @@ impl hydrate_model::Importer for HydrateFontImporter {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct FontJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for FontJobInput {}
 
@@ -138,20 +138,20 @@ impl JobProcessor for FontJobProcessor {
         input: &FontJobInput,
         _data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> FontJobOutput {
         //
         // Read asset properties
         //
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
         //let x = FontAssetRecord::default();
 
         //
         // Read imported data
         //
         let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::new_single_object(&imported_data, schema_set);
+        let data_container = DataContainer::from_single_object(&imported_data, schema_set);
         let x = FontImportedDataRecord::new(PropertyPath::default());
 
         let font_bytes = x.bytes().get(&data_container).unwrap().clone();
@@ -192,12 +192,12 @@ impl hydrate_model::Builder for FontBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
     ) {
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = FontAssetRecord::default();
 
         //Future: Might produce jobs per-platform

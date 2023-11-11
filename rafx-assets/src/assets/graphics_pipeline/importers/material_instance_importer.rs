@@ -3,12 +3,12 @@ use crate::assets::graphics_pipeline::{MaterialInstanceAssetData, MaterialInstan
 use crate::schema::MaterialInstanceAssetRecord;
 use crate::{GpuImageImporterSimple, MaterialInstanceSlotAssignment};
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
+use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, ImportableObject, ImportedImportable, ImporterRegistry, JobApi,
+    job_system, ImportableAsset, ImportedImportable, ImporterRegistry, JobApi,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ReferencedSourceFile,
     ScannedImportable,
 };
@@ -79,7 +79,7 @@ impl hydrate_model::Importer for HydrateMaterialInstanceImporter {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
@@ -88,7 +88,7 @@ impl hydrate_model::Importer for HydrateMaterialInstanceImporter {
         let source = std::fs::read_to_string(path).unwrap();
         let material_ron = ron::de::from_str::<MaterialInstanceRon>(&source).unwrap();
 
-        // let shader_object_id = *importable_objects
+        // let shader_object_id = *importable_assets
         //     .get(&None)
         //     .unwrap()
         //     .referenced_paths
@@ -124,7 +124,7 @@ impl hydrate_model::Importer for HydrateMaterialInstanceImporter {
                     .unwrap();
 
                 if let Some(image) = &slot_assignment.image {
-                    let image = *importable_objects
+                    let image = *importable_assets
                         .get(&None)
                         .unwrap()
                         .referenced_paths
@@ -153,7 +153,7 @@ impl hydrate_model::Importer for HydrateMaterialInstanceImporter {
                 }
             }
 
-            let material = *importable_objects
+            let material = *importable_assets
                 .get(&None)
                 .unwrap()
                 .referenced_paths
@@ -185,7 +185,7 @@ impl hydrate_model::Importer for HydrateMaterialInstanceImporter {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct MaterialInstanceJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for MaterialInstanceJobInput {}
 
@@ -220,13 +220,13 @@ impl JobProcessor for MaterialInstanceJobProcessor {
         input: &MaterialInstanceJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        _dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MaterialInstanceJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
         let x = MaterialInstanceAssetRecord::default();
 
         job_system::produce_asset_with_handles(job_api, input.asset_id, || {
@@ -305,12 +305,12 @@ impl hydrate_model::Builder for MaterialInstanceBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
     ) {
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = MaterialInstanceAssetRecord::default();
 
         //Future: Might produce jobs per-platform

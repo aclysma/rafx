@@ -5,12 +5,12 @@ use crate::assets::shader::ShaderPackageImporterCooked;
 use crate::schema::{GraphicsPipelineShaderStageRecord, MaterialAssetRecord};
 use crate::MaterialPassData;
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
+use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, ImportableObject, ImportedImportable, ImporterRegistry, JobApi,
+    job_system, ImportableAsset, ImportedImportable, ImporterRegistry, JobApi,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ReferencedSourceFile,
     ScannedImportable,
 };
@@ -68,7 +68,7 @@ impl hydrate_model::Importer for HydrateMaterialImporter {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
@@ -78,7 +78,7 @@ impl hydrate_model::Importer for HydrateMaterialImporter {
         let material_ron = ron::de::from_str::<MaterialRon>(&source).unwrap();
         println!("Importing material {:?}", material_ron);
 
-        // let shader_object_id = *importable_objects
+        // let shader_object_id = *importable_assets
         //     .get(&None)
         //     .unwrap()
         //     .referenced_paths
@@ -132,7 +132,7 @@ impl hydrate_model::Importer for HydrateMaterialImporter {
                     x.shader_module()
                         .set(
                             &mut default_asset_data_container,
-                            *importable_objects
+                            *importable_assets
                                 .get(&None)
                                 .unwrap()
                                 .referenced_paths
@@ -165,7 +165,7 @@ impl hydrate_model::Importer for HydrateMaterialImporter {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct MaterialJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for MaterialJobInput {}
 
@@ -200,13 +200,13 @@ impl JobProcessor for MaterialJobProcessor {
         input: &MaterialJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        _dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> MaterialJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
         let x = MaterialAssetRecord::default();
 
         job_system::produce_asset_with_handles(job_api, input.asset_id, || {
@@ -292,12 +292,12 @@ impl hydrate_model::Builder for MaterialBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
     ) {
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = MaterialAssetRecord::default();
 
         //Future: Might produce jobs per-platform

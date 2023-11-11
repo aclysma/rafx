@@ -6,10 +6,10 @@ use fnv::FnvHashMap;
 use gltf::buffer::Data as GltfBufferData;
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
+use hydrate_base::AssetId;
 use hydrate_data::{DataContainerMut, Record, SchemaSet};
 use hydrate_model::{
-    AssetPlugin, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
+    AssetPlugin, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
 };
 use rafx::assets::schema::{GpuImageAssetRecord, GpuImageImportedDataRecord};
@@ -268,7 +268,7 @@ fn hydrate_import_material(
     schema_set: &SchemaSet,
     material: &gltf::Material,
     imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
-    image_object_ids: &HashMap<usize, ObjectId>,
+    image_object_ids: &HashMap<usize, AssetId>,
 ) {
     //
     // Create the default asset
@@ -392,12 +392,12 @@ fn hydrate_import_mesh(
     schema_set: &SchemaSet,
     mesh: &gltf::Mesh,
     imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
-    material_index_to_object_id: &HashMap<Option<usize>, ObjectId>,
+    material_index_to_asset_id: &HashMap<Option<usize>, AssetId>,
 ) {
     //
     // Set up material slots (we find unique materials in this mesh and assign them a slot
     //
-    let mut material_slots: Vec<ObjectId> = Vec::default();
+    let mut material_slots: Vec<AssetId> = Vec::default();
     let mut material_slots_lookup: HashMap<Option<usize>, u32> = HashMap::default();
     for primitive in mesh.primitives() {
         let material_index = primitive.material().index();
@@ -405,9 +405,9 @@ fn hydrate_import_mesh(
 
         if !material_slots_lookup.contains_key(&material_index) {
             let slot_index = material_slots.len() as u32;
-            //TODO: This implies we always import materials, we'd need a different way to get the ObjectId
+            //TODO: This implies we always import materials, we'd need a different way to get the AssetId
             // of an already imported material from this file.
-            material_slots.push(*material_index_to_object_id.get(&material_index).unwrap());
+            material_slots.push(*material_index_to_asset_id.get(&material_index).unwrap());
             material_slots_lookup.insert(material_index, slot_index);
         }
     }
@@ -648,7 +648,7 @@ impl hydrate_model::Importer for GltfImporter {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
         //import_info: &ImportInfo,
     ) -> HashMap<Option<String>, ImportedImportable> {
@@ -667,7 +667,7 @@ impl hydrate_model::Importer for GltfImporter {
 
         for (i, image) in doc.images().enumerate() {
             let asset_name = name_or_index("image", image.name(), i);
-            if let Some(importable_object) = importable_objects.get(&Some(asset_name.clone())) {
+            if let Some(importable_object) = importable_assets.get(&Some(asset_name.clone())) {
                 image_index_to_object_id.insert(image.index(), importable_object.id);
                 hydrate_import_image(
                     &asset_name,
@@ -682,7 +682,7 @@ impl hydrate_model::Importer for GltfImporter {
 
         for (i, material) in doc.materials().enumerate() {
             let asset_name = name_or_index("material", material.name(), i);
-            if let Some(importable_object) = importable_objects.get(&Some(asset_name.clone())) {
+            if let Some(importable_object) = importable_assets.get(&Some(asset_name.clone())) {
                 material_index_to_object_id.insert(material.index(), importable_object.id);
                 hydrate_import_material(
                     &asset_name,
@@ -696,7 +696,7 @@ impl hydrate_model::Importer for GltfImporter {
 
         for (i, mesh) in doc.meshes().enumerate() {
             let asset_name = name_or_index("mesh", mesh.name(), i);
-            if importable_objects.contains_key(&Some(asset_name.clone())) {
+            if importable_assets.contains_key(&Some(asset_name.clone())) {
                 hydrate_import_mesh(
                     &asset_name,
                     &buffers,

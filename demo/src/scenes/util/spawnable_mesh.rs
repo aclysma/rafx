@@ -1,5 +1,5 @@
 use hydrate_base::handle::Handle;
-use hydrate_base::{ArtifactId, AssetUuid};
+use hydrate_base::ArtifactId;
 use legion::{Resources, World};
 use rafx::assets::AssetManager;
 use rafx::assets::AssetResource;
@@ -8,7 +8,6 @@ use rafx::render_features::RenderObjectHandle;
 use rafx::renderer::Renderer;
 use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
 use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
-use uuid::Uuid;
 
 #[cfg(feature = "basic-pipeline")]
 use rafx_plugins::assets::mesh_basic::MeshBasicAsset as MeshAsset;
@@ -97,10 +96,10 @@ impl SpawnableMesh {
 
     pub fn blocking_load_from_uuid(
         resources: &Resources,
-        uuid: AssetUuid,
+        artifact_id: ArtifactId,
     ) -> SpawnableMesh {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-        let handle = asset_resource.load_asset(ArtifactId(Uuid::from_bytes(uuid.0).as_u128()));
+        let handle = asset_resource.load_asset(artifact_id);
         Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
     }
 

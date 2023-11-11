@@ -9,7 +9,7 @@
       },
       {
         "name": "shader_module",
-        "type": { "name": "object_ref", "inner_type": "ShaderPackageAsset" }
+        "type": { "name": "asset_ref", "inner_type": "ShaderPackageAsset" }
       }
     ]
   },
@@ -63,7 +63,7 @@
       },
       {
         "name": "image",
-        "type": { "name": "object_ref", "inner_type": "GpuImageAsset" }
+        "type": { "name": "asset_ref", "inner_type": "GpuImageAsset" }
       },
       {
         "name": "sampler",
@@ -85,7 +85,7 @@
       },
       {
         "name": "material",
-        "type": { "name": "object_ref", "inner_type": "MaterialAsset" }
+        "type": { "name": "asset_ref", "inner_type": "MaterialAsset" }
       }
     ]
   }

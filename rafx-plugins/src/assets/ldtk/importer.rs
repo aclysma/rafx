@@ -6,12 +6,12 @@ use crate::features::tile_layer::TileLayerVertex;
 use crate::schema::{LdtkAssetRecord, LdtkImportDataRecord};
 use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
-use hydrate_base::{Handle, ObjectId};
+use hydrate_base::{AssetId, Handle};
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
+    job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
 };
@@ -180,7 +180,7 @@ impl hydrate_model::Importer for HydrateLdtkImporter {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
@@ -241,7 +241,7 @@ impl hydrate_model::Importer for HydrateLdtkImporter {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct LdtkJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for LdtkJobInput {}
 
@@ -279,14 +279,14 @@ impl JobProcessor for LdtkJobProcessor {
         input: &LdtkJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> LdtkJobOutput {
         //
         // Read import data
         //
         let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::new_single_object(imported_data, schema_set);
+        let data_container = DataContainer::from_single_object(imported_data, schema_set);
         let x = LdtkImportDataRecord::default();
 
         let json_str = x.json_data().get(&data_container).unwrap();
@@ -334,7 +334,7 @@ impl JobProcessor for LdtkJobProcessor {
                     let material_handle: Handle<MaterialAsset> =
                         job_system::make_handle_to_default_artifact(
                             job_api,
-                            ObjectId::from_uuid(
+                            AssetId::from_uuid(
                                 Uuid::parse_str("843a3b00-00d2-424f-94d8-629ca6060471").unwrap(),
                             ),
                         );
@@ -547,12 +547,12 @@ impl hydrate_model::Builder for LdtkBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
     ) {
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = LdtkAssetRecord::default();
 
         //Future: Might produce jobs per-platform

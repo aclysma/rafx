@@ -9,7 +9,7 @@ use crate::{
     ImageAssetDataFormat, ImageAssetDataPayloadSingleBuffer, ImageAssetDataPayloadSubresources,
 };
 use hydrate_base::hashing::HashMap;
-use hydrate_base::ObjectId;
+use hydrate_base::AssetId;
 use hydrate_data::{DataContainer, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject};
 use hydrate_model::{
     job_system, Builder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
@@ -20,7 +20,7 @@ use type_uuid::*;
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct GpuCompressedImageJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for GpuCompressedImageJobInput {}
 
@@ -58,7 +58,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         input: &GpuCompressedImageJobInput,
         _data_set: &DataSet,
         schema_set: &SchemaSet,
-        dependency_data: &HashMap<ObjectId, SingleObject>,
+        dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> GpuCompressedImageJobOutput {
         //
@@ -69,7 +69,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         // Read imported data
         //
         let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::new_single_object(&imported_data, schema_set);
+        let data_container = DataContainer::from_single_object(&imported_data, schema_set);
         let x = GpuCompressedImageImportedDataRecord::new(PropertyPath::default());
 
         let width = x.width().get(&data_container).unwrap();
@@ -158,7 +158,7 @@ impl Builder for GpuCompressedImageBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,

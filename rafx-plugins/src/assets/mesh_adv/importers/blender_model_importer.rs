@@ -4,7 +4,7 @@ use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
 use hydrate_model::{
-    BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
+    BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
     SchemaLinker,
 };
@@ -80,7 +80,7 @@ impl hydrate_model::Importer for BlenderModelImporter {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
@@ -105,7 +105,7 @@ impl hydrate_model::Importer for BlenderModelImporter {
             let lod_entry = x.lods().entry(entry);
 
             for lod in &json_format.lods {
-                let mesh_object_id = *importable_objects
+                let mesh_object_id = *importable_assets
                     .get(&None)
                     .unwrap()
                     .referenced_paths

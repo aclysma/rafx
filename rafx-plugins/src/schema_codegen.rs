@@ -14,8 +14,7 @@ impl Record for BlenderAnimAssetRecord {
     }
 }
 
-impl BlenderAnimAssetRecord {
-}
+impl BlenderAnimAssetRecord {}
 #[derive(Default)]
 pub struct BlenderAnimImportedDataRecord(PropertyPath);
 
@@ -51,8 +50,7 @@ impl Record for FontAssetRecord {
     }
 }
 
-impl FontAssetRecord {
-}
+impl FontAssetRecord {}
 #[derive(Default)]
 pub struct FontImportedDataRecord(PropertyPath);
 
@@ -88,8 +86,7 @@ impl Record for LdtkAssetRecord {
     }
 }
 
-impl LdtkAssetRecord {
-}
+impl LdtkAssetRecord {}
 #[derive(Default)]
 pub struct LdtkImportDataRecord(PropertyPath);
 
@@ -201,12 +198,12 @@ impl MeshAdvMaterialAssetRecord {
         Vec4Record::new(self.0.push("base_color_factor"))
     }
 
-    pub fn blend_method(&self) -> EnumField::<MeshAdvBlendMethodEnum> {
+    pub fn blend_method(&self) -> EnumField<MeshAdvBlendMethodEnum> {
         EnumField::<MeshAdvBlendMethodEnum>::new(self.0.push("blend_method"))
     }
 
-    pub fn color_texture(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("color_texture"))
+    pub fn color_texture(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("color_texture"))
     }
 
     pub fn color_texture_has_alpha_channel(&self) -> BooleanField {
@@ -217,35 +214,35 @@ impl MeshAdvMaterialAssetRecord {
         Vec3Record::new(self.0.push("emissive_factor"))
     }
 
-    pub fn emissive_texture(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("emissive_texture"))
+    pub fn emissive_texture(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("emissive_texture"))
     }
 
     pub fn metallic_factor(&self) -> F32Field {
         F32Field::new(self.0.push("metallic_factor"))
     }
 
-    pub fn metallic_roughness_texture(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("metallic_roughness_texture"))
+    pub fn metallic_roughness_texture(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("metallic_roughness_texture"))
     }
 
-    pub fn normal_texture(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("normal_texture"))
+    pub fn normal_texture(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("normal_texture"))
     }
 
     pub fn normal_texture_scale(&self) -> F32Field {
         F32Field::new(self.0.push("normal_texture_scale"))
     }
 
-    pub fn occlusion_texture(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("occlusion_texture"))
+    pub fn occlusion_texture(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("occlusion_texture"))
     }
 
     pub fn roughness_factor(&self) -> F32Field {
         F32Field::new(self.0.push("roughness_factor"))
     }
 
-    pub fn shadow_method(&self) -> EnumField::<MeshAdvShadowMethodEnum> {
+    pub fn shadow_method(&self) -> EnumField<MeshAdvShadowMethodEnum> {
         EnumField::<MeshAdvShadowMethodEnum>::new(self.0.push("shadow_method"))
     }
 }
@@ -264,8 +261,7 @@ impl Record for MeshAdvMaterialImportedDataRecord {
     }
 }
 
-impl MeshAdvMaterialImportedDataRecord {
-}
+impl MeshAdvMaterialImportedDataRecord {}
 #[derive(Default)]
 pub struct MeshAdvMeshAssetRecord(PropertyPath);
 
@@ -282,8 +278,8 @@ impl Record for MeshAdvMeshAssetRecord {
 }
 
 impl MeshAdvMeshAssetRecord {
-    pub fn material_slots(&self) -> DynamicArrayField::<ObjectRefField> {
-        DynamicArrayField::<ObjectRefField>::new(self.0.push("material_slots"))
+    pub fn material_slots(&self) -> DynamicArrayField<AssetRefField> {
+        DynamicArrayField::<AssetRefField>::new(self.0.push("material_slots"))
     }
 }
 #[derive(Default)]
@@ -302,7 +298,7 @@ impl Record for MeshAdvMeshImportedDataRecord {
 }
 
 impl MeshAdvMeshImportedDataRecord {
-    pub fn mesh_parts(&self) -> DynamicArrayField::<MeshAdvMeshImportedDataMeshPartRecord> {
+    pub fn mesh_parts(&self) -> DynamicArrayField<MeshAdvMeshImportedDataMeshPartRecord> {
         DynamicArrayField::<MeshAdvMeshImportedDataMeshPartRecord>::new(self.0.push("mesh_parts"))
     }
 }
@@ -358,7 +354,7 @@ impl Record for MeshAdvModelAssetRecord {
 }
 
 impl MeshAdvModelAssetRecord {
-    pub fn lods(&self) -> DynamicArrayField::<MeshAdvModelLodRecord> {
+    pub fn lods(&self) -> DynamicArrayField<MeshAdvModelLodRecord> {
         DynamicArrayField::<MeshAdvModelLodRecord>::new(self.0.push("lods"))
     }
 }
@@ -378,8 +374,8 @@ impl Record for MeshAdvModelLodRecord {
 }
 
 impl MeshAdvModelLodRecord {
-    pub fn mesh(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("mesh"))
+    pub fn mesh(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("mesh"))
     }
 }
 #[derive(Default)]
@@ -397,8 +393,7 @@ impl Record for MeshAdvPrefabAssetRecord {
     }
 }
 
-impl MeshAdvPrefabAssetRecord {
-}
+impl MeshAdvPrefabAssetRecord {}
 #[derive(Default)]
 pub struct MeshAdvPrefabImportDataRecord(PropertyPath);
 

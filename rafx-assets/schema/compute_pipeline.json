@@ -9,7 +9,7 @@
       },
       {
         "name": "shader_module",
-        "type": { "name": "object_ref", "inner_type": "ShaderPackageAsset" }
+        "type": { "name": "asset_ref", "inner_type": "ShaderPackageAsset" }
       }
     ]
   }

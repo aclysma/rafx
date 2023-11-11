@@ -3,7 +3,7 @@ use fnv::FnvHashMap;
 use glam::Vec3;
 use hydrate_base::handle::Handle;
 use hydrate_base::LoadHandle;
-use hydrate_base::{ArtifactId, ObjectId};
+use hydrate_base::{ArtifactId, AssetId};
 use rafx::api::RafxResult;
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset,
@@ -73,7 +73,7 @@ pub struct HydrateLdtkLevelDataTemp {
 
 #[derive(Clone, Debug)]
 pub struct HydrateLdtkTileSetTemp {
-    pub image: ObjectId,
+    pub image: AssetId,
     pub material_instance: ArtifactId,
     pub image_width: u32,
     pub image_height: u32,

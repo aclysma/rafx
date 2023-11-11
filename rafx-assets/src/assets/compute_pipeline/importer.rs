@@ -1,12 +1,12 @@
 use crate::assets::compute_pipeline::{ComputePipelineAssetData, ComputePipelineRon};
 use crate::assets::shader::ShaderPackageImporterCooked;
 use crate::schema::ComputePipelineAssetRecord;
-use hydrate_base::ObjectId;
+use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, HashMap, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_model::{
-    job_system, BuilderRegistryBuilder, ImportableObject, ImportedImportable, ImporterRegistry,
+    job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
 };
@@ -59,7 +59,7 @@ impl hydrate_model::Importer for HydrateComputePipelineImporter {
     fn import_file(
         &self,
         path: &Path,
-        importable_objects: &HashMap<Option<String>, ImportableObject>,
+        importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
@@ -68,7 +68,7 @@ impl hydrate_model::Importer for HydrateComputePipelineImporter {
         let source = std::fs::read_to_string(path).unwrap();
         let compute_pipeline_asset_data = ron::de::from_str::<ComputePipelineRon>(&source).unwrap();
 
-        let shader_object_id = *importable_objects
+        let shader_object_id = *importable_assets
             .get(&None)
             .unwrap()
             .referenced_paths
@@ -117,7 +117,7 @@ impl hydrate_model::Importer for HydrateComputePipelineImporter {
 
 #[derive(Hash, Serialize, Deserialize)]
 pub struct ComputePipelineJobInput {
-    pub asset_id: ObjectId,
+    pub asset_id: AssetId,
 }
 impl JobInput for ComputePipelineJobInput {}
 
@@ -152,13 +152,13 @@ impl JobProcessor for ComputePipelineJobProcessor {
         input: &ComputePipelineJobInput,
         data_set: &DataSet,
         schema_set: &SchemaSet,
-        _dependency_data: &HashMap<ObjectId, SingleObject>,
+        _dependency_data: &HashMap<AssetId, SingleObject>,
         job_api: &dyn JobApi,
     ) -> ComputePipelineJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::new_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
         let x = ComputePipelineAssetRecord::default();
 
         let shader_module = x.shader_module().get(&data_container).unwrap();
@@ -187,12 +187,12 @@ impl hydrate_model::Builder for ComputePipelineBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: ObjectId,
+        asset_id: AssetId,
         data_set: &DataSet,
         schema_set: &SchemaSet,
         job_api: &dyn JobApi,
     ) {
-        //let data_container = DataContainer::new_dataset(data_set, schema_set, asset_id);
+        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = ComputePipelineAssetRecord::default();
 
         //Future: Might produce jobs per-platform

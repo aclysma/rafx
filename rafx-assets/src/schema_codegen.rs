@@ -19,8 +19,8 @@ impl ComputePipelineAssetRecord {
         StringField::new(self.0.push("entry_name"))
     }
 
-    pub fn shader_module(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("shader_module"))
+    pub fn shader_module(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("shader_module"))
     }
 }
 #[derive(Default)]
@@ -395,8 +395,8 @@ impl GraphicsPipelineShaderStageRecord {
         StringField::new(self.0.push("entry_name"))
     }
 
-    pub fn shader_module(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("shader_module"))
+    pub fn shader_module(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("shader_module"))
     }
 }
 #[derive(Default)]
@@ -435,8 +435,8 @@ impl Record for MaterialInstanceAssetRecord {
 }
 
 impl MaterialInstanceAssetRecord {
-    pub fn material(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("material"))
+    pub fn material(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("material"))
     }
 
     pub fn slot_assignments(&self) -> DynamicArrayField<MaterialInstanceSlotAssignmentRecord> {
@@ -469,8 +469,8 @@ impl MaterialInstanceSlotAssignmentRecord {
         NullableField::<BytesField>::new(self.0.push("buffer_data"))
     }
 
-    pub fn image(&self) -> ObjectRefField {
-        ObjectRefField::new(self.0.push("image"))
+    pub fn image(&self) -> AssetRefField {
+        AssetRefField::new(self.0.push("image"))
     }
 
     pub fn sampler(&self) -> StringField {
