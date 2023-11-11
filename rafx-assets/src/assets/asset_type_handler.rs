@@ -1,4 +1,4 @@
-use crate::hydrate_impl::{AssetResource, ResourceAssetLoader};
+use crate::hydrate_impl::{AssetResource, RafxResourceAssetLoader};
 use crate::{AssetLookup, AssetManager, DynAssetLookup, LoadQueues};
 use crossbeam_channel::Sender;
 use hydrate_base::LoadHandle;
@@ -68,7 +68,7 @@ where
         let load_queues = LoadQueues::<AssetDataT, AssetT>::default();
 
         asset_resource.add_storage_with_loader::<AssetDataT, AssetT, _>(Box::new(
-            ResourceAssetLoader(load_queues.create_loader()),
+            RafxResourceAssetLoader(load_queues.create_loader()),
         ));
 
         Ok(Box::new(Self {

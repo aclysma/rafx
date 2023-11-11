@@ -1,7 +1,8 @@
 use crate::assets::ImageAssetData;
 use crate::assets::{BufferAsset, ImageAsset, MaterialAsset};
 use crate::{
-    AssetLookup, AssetTypeHandler, BufferAssetData, GenericLoader, MaterialInstanceSlotAssignment,
+    AssetLookup, AssetTypeHandler, BufferAssetData, MaterialInstanceSlotAssignment,
+    RafxGenericLoadEventHandler,
 };
 use hydrate_base::handle::{AssetHandle, Handle, LoadState};
 use rafx_framework::{
@@ -42,8 +43,8 @@ pub struct AssetManagerMetrics {
 }
 
 pub struct AssetManagerLoaders {
-    pub image_loader: GenericLoader<ImageAssetData, ImageAsset>,
-    pub buffer_loader: GenericLoader<BufferAssetData, BufferAsset>,
+    pub image_loader: RafxGenericLoadEventHandler<ImageAssetData, ImageAsset>,
+    pub buffer_loader: RafxGenericLoadEventHandler<BufferAssetData, BufferAsset>,
 }
 
 pub struct AssetManager {

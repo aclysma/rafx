@@ -79,9 +79,9 @@ pub use asset_type_handler::DefaultAssetTypeLoadHandler;
 pub use asset_type_handler::StorageOnlyAssetTypeHandler;
 
 pub mod load_queue_hydrate;
-pub use load_queue_hydrate::GenericLoader;
 pub use load_queue_hydrate::LoadQueues;
 pub use load_queue_hydrate::LoadRequest;
+pub use load_queue_hydrate::RafxGenericLoadEventHandler;
 
 mod material_descriptor_sets;
 pub use material_descriptor_sets::DynMaterialInstance;

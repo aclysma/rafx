@@ -1,5 +1,5 @@
-use crate::resource_loader_hydrate::ResourceLoadResult;
-use crate::resource_loader_hydrate::ResourceLoader;
+use crate::resource_loader::RafxLoadEventHandler;
+use crate::resource_loader::RafxResourceLoadResult;
 use crossbeam_channel::{Receiver, Sender};
 use hydrate_base::LoadHandle;
 use hydrate_loader::storage::AssetLoadOp;
@@ -72,8 +72,8 @@ where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static + Send + Clone,
     AssetT: TypeUuid + 'static + Send,
 {
-    pub fn create_loader(&self) -> GenericLoader<AssetDataT, AssetT> {
-        GenericLoader {
+    pub fn create_loader(&self) -> RafxGenericLoadEventHandler<AssetDataT, AssetT> {
+        RafxGenericLoadEventHandler {
             load_queues: self.tx.clone(),
         }
     }
@@ -102,9 +102,10 @@ impl<AssetDataT, AssetT> Default for LoadQueues<AssetDataT, AssetT> {
 }
 
 //
-// A generic load handler that allows routing load/commit/free events
+// A generic load handler that allows routing load/commit/free events to load queues owned by asset
+// type handlers
 //
-pub struct GenericLoader<AssetDataT, AssetT>
+pub struct RafxGenericLoadEventHandler<AssetDataT, AssetT>
 where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static + Send,
     AssetT: TypeUuid + 'static + Send,
@@ -112,7 +113,8 @@ where
     load_queues: LoadQueuesTx<AssetDataT, AssetT>,
 }
 
-impl<AssetDataT, AssetT> ResourceLoader<AssetDataT, AssetT> for GenericLoader<AssetDataT, AssetT>
+impl<AssetDataT, AssetT> RafxLoadEventHandler<AssetDataT, AssetT>
+    for RafxGenericLoadEventHandler<AssetDataT, AssetT>
 where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static + Send,
     AssetT: TypeUuid + 'static + Send,
@@ -122,7 +124,7 @@ where
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
         asset: AssetDataT,
-    ) -> ResourceLoadResult<AssetT> {
+    ) -> RafxResourceLoadResult<AssetT> {
         log::trace!(
             "GenericLoader update_asset {} {:?}",
             core::any::type_name::<AssetDataT>(),
@@ -139,7 +141,7 @@ where
         };
 
         self.load_queues.load_request_tx.send(request).unwrap();
-        ResourceLoadResult::new(result_rx)
+        RafxResourceLoadResult::new(result_rx)
     }
 
     fn commit_asset_version(

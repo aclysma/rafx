@@ -1,7 +1,7 @@
 use crate::assets::buffer::asset_upload_queue::{
     BufferAssetUploadOpResult, BufferAssetUploadQueue,
 };
-use crate::hydrate_impl::{AssetResource, ResourceAssetLoader};
+use crate::hydrate_impl::{AssetResource, RafxResourceAssetLoader};
 use crate::{
     AssetLookup, AssetManager, AssetTypeHandler, BufferAsset, BufferAssetData, DynAssetLookup,
     LoadQueues,
@@ -24,7 +24,7 @@ impl BufferAssetTypeHandler {
         let load_queues = LoadQueues::<BufferAssetData, BufferAsset>::default();
 
         asset_resource.add_storage_with_loader::<BufferAssetData, BufferAsset, _>(Box::new(
-            ResourceAssetLoader(load_queues.create_loader()),
+            RafxResourceAssetLoader(load_queues.create_loader()),
         ));
 
         let buffer_upload_queue =

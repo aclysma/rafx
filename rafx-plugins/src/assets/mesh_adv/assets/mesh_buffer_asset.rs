@@ -3,7 +3,7 @@ use crossbeam_channel::{Receiver, Sender};
 use fnv::FnvHashMap;
 use hydrate_base::LoadHandle;
 use rafx::api::{RafxBufferDef, RafxMemoryUsage, RafxQueueType, RafxResourceType};
-use rafx::assets::ResourceAssetLoader;
+use rafx::assets::RafxResourceAssetLoader;
 use rafx::assets::{
     asset_type_handler, AssetLookup, AssetManager, AssetTypeHandler, DynAssetLookup, LoadQueues,
     LoadRequest, PushBuffer, UploadAssetOp, UploadAssetOpResult,
@@ -82,7 +82,7 @@ impl MeshAdvBufferAssetTypeHandler {
         let load_queues = LoadQueues::<MeshAdvBufferAssetData, MeshAdvBufferAsset>::default();
 
         asset_resource.add_storage_with_loader::<MeshAdvBufferAssetData, MeshAdvBufferAsset, _>(
-            Box::new(ResourceAssetLoader(load_queues.create_loader())),
+            Box::new(RafxResourceAssetLoader(load_queues.create_loader())),
         );
 
         let buffer_upload_queue =

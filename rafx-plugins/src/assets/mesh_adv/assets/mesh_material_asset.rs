@@ -7,7 +7,7 @@ use fnv::FnvHashMap;
 use hydrate_base::handle::Handle;
 use hydrate_base::LoadHandle;
 use rafx::api::RafxResult;
-use rafx::assets::ResourceAssetLoader;
+use rafx::assets::RafxResourceAssetLoader;
 use rafx::assets::{
     asset_type_handler, AssetLookup, AssetManager, AssetTypeHandler, DynAssetLookup, ImageAsset,
     LoadQueues, MaterialAsset, UploadAssetOp, UploadAssetOpResult,
@@ -90,7 +90,7 @@ impl MeshAdvMaterialAssetTypeHandler {
 
         asset_resource
             .add_storage_with_loader::<MeshMaterialAdvAssetData, MeshMaterialAdvAsset, _>(
-                Box::new(ResourceAssetLoader(load_queues.create_loader())),
+                Box::new(RafxResourceAssetLoader(load_queues.create_loader())),
             );
 
         let material_upload_queue = MaterialDBUploadQueue::new();

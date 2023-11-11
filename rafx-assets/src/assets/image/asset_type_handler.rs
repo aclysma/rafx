@@ -1,5 +1,5 @@
 use super::asset_upload_queue::{ImageAssetUploadOpResult, ImageAssetUploadQueue};
-use crate::hydrate_impl::{AssetResource, ResourceAssetLoader};
+use crate::hydrate_impl::{AssetResource, RafxResourceAssetLoader};
 use crate::{
     AssetLookup, AssetManager, AssetTypeHandler, DynAssetLookup, ImageAsset, ImageAssetData,
     LoadQueues,
@@ -21,7 +21,7 @@ impl ImageAssetTypeHandler {
         let load_queues = LoadQueues::<ImageAssetData, ImageAsset>::default();
 
         asset_resource.add_storage_with_loader::<ImageAssetData, ImageAsset, _>(Box::new(
-            ResourceAssetLoader(load_queues.create_loader()),
+            RafxResourceAssetLoader(load_queues.create_loader()),
         ));
 
         let image_upload_queue = ImageAssetUploadQueue::new(

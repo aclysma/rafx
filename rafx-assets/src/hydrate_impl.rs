@@ -1,24 +1,29 @@
-use super::asset_storage::{DynAssetLoader, UpdateAssetResult};
-use crate::load_queue_hydrate::GenericLoader;
-use crate::resource_loader_hydrate::ResourceLoader;
+pub use hydrate_loader::asset_storage::{DynAssetLoader, UpdateAssetResult};
+pub use hydrate_loader::AssetManager as AssetResource;
+
+use crate::load_queue_hydrate::RafxGenericLoadEventHandler;
+use crate::resource_loader::RafxLoadEventHandler;
 use crossbeam_channel::Sender;
 use hydrate_base::handle::LoaderInfoProvider;
 use hydrate_base::handle::RefOp;
 use hydrate_base::handle::SerdeContext;
 use hydrate_base::LoadHandle;
 use hydrate_loader::storage::AssetLoadOp;
+use hydrate_model::{AssetPluginRegistrationHelper, SchemaLinker};
 use std::error::Error;
 use type_uuid::TypeUuid;
 
 //TODO: Seems like we can remove asset_resource and asset_storage so we just
 // have ResourceAssetLoader, rename the file to resource_asset_loader and move up.
 
-pub struct ResourceAssetLoader<AssetDataT, AssetT>(pub GenericLoader<AssetDataT, AssetT>)
+pub struct RafxResourceAssetLoader<AssetDataT, AssetT>(
+    pub RafxGenericLoadEventHandler<AssetDataT, AssetT>,
+)
 where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static + Send,
     AssetT: TypeUuid + 'static + Send;
 
-impl<AssetDataT, AssetT> DynAssetLoader<AssetT> for ResourceAssetLoader<AssetDataT, AssetT>
+impl<AssetDataT, AssetT> DynAssetLoader<AssetT> for RafxResourceAssetLoader<AssetDataT, AssetT>
 where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static + Send,
     AssetT: TypeUuid + 'static + Send,
