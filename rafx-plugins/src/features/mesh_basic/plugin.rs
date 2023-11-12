@@ -87,11 +87,11 @@ impl RenderFeaturePlugin for MeshBasicRendererPlugin {
         render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let default_pbr_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let default_pbr_material = asset_resource.load_asset_symbol_name::<MaterialAsset, _>(
             "db:/path_file_system/rafx-plugins/materials/basic_pipeline/mesh_basic.material",
         );
 
-        let depth_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let depth_material = asset_resource.load_asset_symbol_name::<MaterialAsset, _>(
             "db:/path_file_system/rafx-plugins/materials/basic_pipeline/depth.material",
         );
 

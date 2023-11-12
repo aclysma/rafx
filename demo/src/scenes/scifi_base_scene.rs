@@ -35,7 +35,7 @@ impl ScifiBaseScene {
         demo_camera.fly_camera.yaw = 2.9897811;
         demo_camera.fly_camera.lock_view = true;
 
-        let prefab = SpawnablePrefab::blocking_load_from_path(
+        let prefab = SpawnablePrefab::blocking_load_from_symbol_name(
             resources,
             "db:/path_file_system/demo/scifi_base/base_full/Scene.blender_prefab",
         );

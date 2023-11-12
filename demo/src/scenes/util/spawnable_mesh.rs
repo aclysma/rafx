@@ -94,12 +94,21 @@ impl SpawnableMesh {
         }
     }
 
-    pub fn blocking_load_from_uuid(
+    pub fn blocking_load_from_artifact_id(
         resources: &Resources,
         artifact_id: ArtifactId,
     ) -> SpawnableMesh {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
         let handle = asset_resource.load_asset(artifact_id);
+        Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
+    }
+
+    pub fn blocking_load_from_symbol_name(
+        resources: &Resources,
+        symbol_name: &'static str,
+    ) -> SpawnableMesh {
+        let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
+        let handle = asset_resource.load_asset_symbol_name(symbol_name);
         Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
     }
 

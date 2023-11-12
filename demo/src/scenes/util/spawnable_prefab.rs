@@ -33,15 +33,16 @@ pub struct SpawnablePrefab {
 }
 
 impl SpawnablePrefab {
-    pub fn blocking_load_from_path<T: Into<String>>(
+    pub fn blocking_load_from_symbol_name(
         resources: &Resources,
-        path: T,
+        symbol_name: &'static str,
     ) -> Self {
         let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
         let renderer = resources.get::<Renderer>().unwrap();
 
-        let prefab_asset_handle: Handle<PrefabAsset> = asset_resource.load_asset_path(path);
+        let prefab_asset_handle: Handle<PrefabAsset> =
+            asset_resource.load_asset_symbol_name(symbol_name);
         renderer
             .wait_for_asset_to_load(
                 &mut asset_manager,

@@ -66,7 +66,7 @@ impl RenderFeaturePlugin for SpriteRendererPlugin {
         render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let sprite_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let sprite_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
             "db:/path_file_system/rafx-plugins/materials/sprite.material",
         );
 

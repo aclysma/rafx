@@ -5,6 +5,7 @@ use crate::phases::{
 use crate::shaders::mesh_adv::mesh_culling_comp;
 use crate::shaders::post_adv::luma_average_histogram_comp;
 use hydrate_base::handle::Handle;
+use hydrate_base::StringHash;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::{
     RafxBufferDef, RafxFormat, RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult,
@@ -154,42 +155,42 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
         // Bloom extract resources
         //
         // let bloom_extract_material = asset_resource
-        //     .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
-        let bloom_extract_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        //     .load_asset_symbol_name::<MaterialAsset, _>("pipelines/bloom_extract.material");
+        let bloom_extract_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
             "db:/path_file_system/rafx-plugins/materials/bloom_extract.material",
         );
 
         //
         // Bloom blur resources
         //
-        let bloom_blur_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let bloom_blur_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
             "db:/path_file_system/rafx-plugins/materials/bloom_blur.material",
         );
 
-        let ssao_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let ssao_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
             "db:/path_file_system/rafx-plugins/materials/modern_pipeline/ssao.material",
         );
 
-        let blue_noise_texture = asset_resource.load_asset_path::<ImageAsset, _>(
+        let blue_noise_texture = asset_resource.load_asset_symbol_name::<ImageAsset>(
             "db:/path_file_system/rafx-plugins/images/blue_noise/LDR_RGBA_64_64_0.png",
         );
 
-        let taa_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let taa_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
             "db:/path_file_system/rafx-plugins/materials/modern_pipeline/taa.material",
         );
 
         //
         // Bloom combine resources
         //
-        let bloom_combine_material = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let bloom_combine_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
             "db:/path_file_system/rafx-plugins/materials/modern_pipeline/bloom_combine_adv.material",
         );
 
-        let luma_build_histogram = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
+        let luma_build_histogram = asset_resource.load_asset_symbol_name::<ComputePipelineAsset>(
             "db:/path_file_system/rafx-plugins/compute_pipelines/luma_build_histogram.compute",
         );
 
-        let luma_average_histogram = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
+        let luma_average_histogram = asset_resource.load_asset_symbol_name::<ComputePipelineAsset>(
             "db:/path_file_system/rafx-plugins/compute_pipelines/luma_average_histogram.compute",
         );
 
@@ -201,13 +202,13 @@ impl RendererPipelinePlugin for ModernPipelineRendererPlugin {
         };
 
         let cas_pipeline =
-            asset_resource.load_asset_path::<ComputePipelineAsset, _>(cas_asset_path);
+            asset_resource.load_asset_symbol_name::<ComputePipelineAsset>(cas_asset_path);
 
-        let mesh_culling_pipeline = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
+        let mesh_culling_pipeline = asset_resource.load_asset_symbol_name::<ComputePipelineAsset>(
             "db:/path_file_system/rafx-plugins/compute_pipelines/mesh_culling.compute",
         );
 
-        let depth_pyramid_pipeline = asset_resource.load_asset_path::<ComputePipelineAsset, _>(
+        let depth_pyramid_pipeline = asset_resource.load_asset_symbol_name::<ComputePipelineAsset>(
             "db:/path_file_system/rafx-plugins/compute_pipelines/depth_pyramid.compute",
         );
 

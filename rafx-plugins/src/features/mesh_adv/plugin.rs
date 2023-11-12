@@ -99,31 +99,31 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
         render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let default_pbr_material_handle = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let default_pbr_material_handle = asset_resource.load_asset_symbol_name::<MaterialAsset>(
             "db:/path_file_system/rafx-plugins/materials/modern_pipeline/mesh_adv.material",
         );
 
-        let depth_material_handle = asset_resource.load_asset_path::<MaterialAsset, _>(
+        let depth_material_handle = asset_resource.load_asset_symbol_name::<MaterialAsset>(
             "db:/path_file_system/rafx-plugins/materials/modern_pipeline/depth_velocity.material",
         );
 
         let shadow_map_atlas_depth_material_handle = asset_resource
-            .load_asset_path::<MaterialAsset, _>(
+            .load_asset_symbol_name::<MaterialAsset>(
                 "db:/path_file_system/rafx-plugins/materials/modern_pipeline/shadow_atlas_depth.material",
             );
 
         let shadow_map_atlas_clear_tiles_material_handle = asset_resource
-            .load_asset_path::<MaterialAsset, _>(
+            .load_asset_symbol_name::<MaterialAsset>(
                 "db:/path_file_system/rafx-plugins/materials/modern_pipeline/shadow_atlas_clear_tiles.material",
             );
 
         let lights_bin_compute_pipeline = asset_resource
-            .load_asset_path::<ComputePipelineAsset, _>(
+            .load_asset_symbol_name::<ComputePipelineAsset>(
                 "db:/path_file_system/rafx-plugins/compute_pipelines/lights_bin.compute",
             );
 
         let lights_build_lists_compute_pipeline = asset_resource
-            .load_asset_path::<ComputePipelineAsset, _>(
+            .load_asset_symbol_name::<ComputePipelineAsset>(
                 "db:/path_file_system/rafx-plugins/compute_pipelines/lights_build_lists.compute",
             );
 

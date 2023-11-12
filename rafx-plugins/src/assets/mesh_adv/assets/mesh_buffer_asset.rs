@@ -69,8 +69,8 @@ pub struct MeshAdvBufferAssetTypeHandler {
     offset_lookup: FnvHashMap<LoadHandle, FreeListSuballocatorAllocation>,
 }
 
-const VERTEX_BUFFER_SIZE: u32 = 256 * 1024 * 1024;
-const INDEX_BUFFER_SIZE: u32 = 64 * 1024 * 1024;
+const VERTEX_BUFFER_SIZE: u32 = 512 * 1024 * 1024;
+const INDEX_BUFFER_SIZE: u32 = 128 * 1024 * 1024;
 const BUFFER_ALIGNMENT: u32 = 1024;
 
 impl MeshAdvBufferAssetTypeHandler {

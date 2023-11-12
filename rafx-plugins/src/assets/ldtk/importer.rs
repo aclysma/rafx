@@ -445,7 +445,7 @@ impl JobProcessor for LdtkJobProcessor {
                 let vb_artifact = job_system::produce_artifact(
                     job_api,
                     input.asset_id,
-                    Some(("vertex_buffer", level.uid)),
+                    Some(format!("vertex_buffer,{:?}", level.uid)),
                     vertex_buffer_asset_data,
                 );
 
@@ -457,7 +457,7 @@ impl JobProcessor for LdtkJobProcessor {
                 let ib_artifact = job_system::produce_artifact(
                     job_api,
                     input.asset_id,
-                    Some(("index_buffer", level.uid)),
+                    Some(format!("index_buffer,{:?}", level.uid)),
                     index_buffer_asset_data,
                 );
 

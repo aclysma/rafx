@@ -31,7 +31,7 @@ impl DungeonScene {
 
         let demo_camera = DemoCamera::new_with_path(camera_path_data);
 
-        let prefab = SpawnablePrefab::blocking_load_from_path(
+        let prefab = SpawnablePrefab::blocking_load_from_symbol_name(
             resources,
             "db:/path_file_system/demo/synty_simple_dungeon/scene/imported_scene.blender_prefab",
         );

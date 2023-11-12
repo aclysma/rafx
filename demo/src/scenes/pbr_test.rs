@@ -27,7 +27,7 @@ impl PbrTestScene {
         fly_camera.yaw = std::f32::consts::FRAC_PI_2;
         fly_camera.lock_view = true;
 
-        let prefab = SpawnablePrefab::blocking_load_from_path(
+        let prefab = SpawnablePrefab::blocking_load_from_symbol_name(
             resources,
             "db:/path_file_system/demo/pbr-test/Scene.001.blender_prefab",
         );

@@ -26,19 +26,19 @@ impl ShadowsScene {
         super::util::setup_skybox(resources, "db:/path_file_system/demo/textures/skybox.basis");
         super::util::set_ambient_light(resources, glam::Vec3::new(0.05, 0.05, 0.05));
 
-        let floor_mesh = SpawnableMesh::blocking_load_from_path(
+        let floor_mesh = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
             "db:/path_file_system/demo/blender/cement_floor.glb.mesh_Cube",
         );
-        let container_1 = SpawnableMesh::blocking_load_from_path(
+        let container_1 = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
             "db:/path_file_system/demo/blender/storage_container1.glb.mesh_Cube",
         );
-        let container_2 = SpawnableMesh::blocking_load_from_path(
+        let container_2 = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
             "db:/path_file_system/demo/blender/storage_container2.glb.mesh_Cube",
         );
-        let blue_icosphere = SpawnableMesh::blocking_load_from_path(
+        let blue_icosphere = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
             "db:/path_file_system/demo/blender/icosphere.glb.mesh_Icosphere_Blue",
         );

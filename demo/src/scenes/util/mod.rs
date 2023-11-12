@@ -267,12 +267,12 @@ pub fn default_main_view_masks(
 }
 
 //"textures/skybox.basis"
-pub fn setup_skybox<T: Into<String>>(
+pub fn setup_skybox(
     resources: &Resources,
-    path: T,
+    symbol_name: &'static str,
 ) {
     let asset_resource = resources.get::<AssetResource>().unwrap();
-    let skybox_texture = asset_resource.load_asset_path::<ImageAsset, _>(path);
+    let skybox_texture = asset_resource.load_asset_symbol_name::<ImageAsset>(symbol_name);
 
     *resources
         .get_mut::<SkyboxResource>()

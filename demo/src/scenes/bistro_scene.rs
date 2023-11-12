@@ -30,7 +30,7 @@ impl BistroScene {
         demo_camera.fly_camera.yaw = -0.16778418;
         demo_camera.fly_camera.lock_view = true;
 
-        let prefab = SpawnablePrefab::blocking_load_from_path(
+        let prefab = SpawnablePrefab::blocking_load_from_symbol_name(
             resources,
             "db:/path_file_system/demo/bistro_merged/Scene.blender_prefab",
         );
