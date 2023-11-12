@@ -1,4 +1,4 @@
-use hydrate_base::handle::AssetHandle;
+use hydrate_base::handle::ArtifactHandle;
 use hydrate_base::Handle;
 use legion::{Resources, World};
 use rafx::assets::AssetManager;
@@ -69,7 +69,7 @@ impl SpawnablePrefab {
 
         let prefab_asset = self
             .prefab_asset_handle
-            .asset(asset_resource.storage())
+            .artifact(asset_resource.storage())
             .unwrap()
             .clone();
 
@@ -92,7 +92,7 @@ impl SpawnablePrefab {
         for object in &prefab_asset.inner.objects {
             //log::debug!("create object {:?}", object);
             if let Some(model) = &object.model {
-                let model_asset_handle = model.model.asset(asset_resource.storage());
+                let model_asset_handle = model.model.artifact(asset_resource.storage());
                 if model_asset_handle.is_none() {
                     continue;
                 }

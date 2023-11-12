@@ -4,7 +4,7 @@ use crate::{
     AssetLookup, AssetTypeHandler, BufferAssetData, MaterialInstanceSlotAssignment,
     RafxGenericLoadEventHandler,
 };
-use hydrate_base::handle::{AssetHandle, Handle, LoadState};
+use hydrate_base::handle::{ArtifactHandle, Handle, LoadState};
 use rafx_framework::{
     DescriptorSetAllocatorMetrics, DescriptorSetAllocatorProvider, DescriptorSetAllocatorRef,
     DescriptorSetLayoutResource, DescriptorSetWriteSet, DynResourceAllocatorSet,

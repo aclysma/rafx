@@ -9,7 +9,6 @@ use hydrate_base::handle::RefOp;
 use hydrate_base::handle::SerdeContext;
 use hydrate_base::LoadHandle;
 use hydrate_loader::storage::AssetLoadOp;
-use hydrate_model::{AssetPluginRegistrationHelper, SchemaLinker};
 use std::error::Error;
 use type_uuid::TypeUuid;
 

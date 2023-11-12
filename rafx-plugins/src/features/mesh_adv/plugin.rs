@@ -171,7 +171,7 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
         )?;
 
         let pbr_material = default_pbr_material_handle
-            .asset(asset_resource.storage())
+            .artifact(asset_resource.storage())
             .unwrap();
         let pbr_pass_indices = MeshAdvShaderPassIndices::new(pbr_material);
         let pbr_root_signature = pbr_material
@@ -192,7 +192,7 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             .clone();
 
         let depth_material = depth_material_handle
-            .asset(asset_resource.storage())
+            .artifact(asset_resource.storage())
             .unwrap();
         let depth_root_signature = depth_material
             .get_single_material_pass()
@@ -204,7 +204,7 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             .clone();
 
         let shadow_material = shadow_map_atlas_depth_material_handle
-            .asset(asset_resource.storage())
+            .artifact(asset_resource.storage())
             .unwrap();
         let shadow_root_signature = shadow_material
             .get_single_material_pass()

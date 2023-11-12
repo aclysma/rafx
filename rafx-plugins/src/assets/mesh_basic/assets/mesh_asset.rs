@@ -2,7 +2,7 @@ use crate::assets::mesh_basic::MeshMaterialBasicAsset;
 use crate::features::mesh_basic::MeshBasicUntexturedRenderFeatureFlag;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
 use crate::shaders::mesh_basic::mesh_basic_textured_frag;
-use distill::loader::handle::{AssetHandle, Handle};
+use distill::loader::handle::{ArtifactHandle, Handle};
 use hydrate_base::LoadHandle;
 use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::{

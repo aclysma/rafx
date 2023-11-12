@@ -5,7 +5,6 @@ use crate::phases::{
 use crate::shaders::mesh_adv::mesh_culling_comp;
 use crate::shaders::post_adv::luma_average_histogram_comp;
 use hydrate_base::handle::Handle;
-use hydrate_base::StringHash;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::{
     RafxBufferDef, RafxFormat, RafxMemoryUsage, RafxQueueType, RafxResourceType, RafxResult,

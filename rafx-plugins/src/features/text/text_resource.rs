@@ -1,7 +1,7 @@
 use super::{TextDrawCommand, TextDrawData};
 use crate::assets::font::FontAsset;
 use fnv::FnvHashMap;
-use hydrate_base::handle::{AssetHandle, Handle};
+use hydrate_base::handle::{ArtifactHandle, Handle};
 use hydrate_base::LoadHandle;
 
 pub struct AppendText<'a>(&'a mut TextResource, glam::Vec3);
