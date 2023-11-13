@@ -35,6 +35,11 @@ pub fn job_data_path() -> PathBuf {
 }
 
 fn main() {
+    #[cfg(feature = "profile-with-tracy")]
+    profiling::tracy_client::Client::start();
+    #[cfg(feature = "profile-with-tracy")]
+    profiling::tracy_client::set_thread_name!("Main Thread");
+
     // Setup logging
     env_logger::Builder::default()
         .write_style(env_logger::WriteStyle::Always)

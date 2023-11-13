@@ -12,3 +12,27 @@ rafx-plugins = { path = "../rafx-plugins", features = ["legion", "egui", "egui-w
 
 log = "0.4"
 env_logger = "0.6"
+
+profiling = "1.0.1"
+
+[features]
+default = [
+    # Profiling options
+    #"profile-with-puffin",
+    #"profile-with-optick",
+    "profile-with-tracy",
+    #"profile-with-tracy-memory", # Cannot be enabled with "stats_alloc".
+    #"profile-with-superluminal"
+]
+
+profile-with-optick = [
+    "profiling/profile-with-optick",
+]
+profile-with-superluminal = [
+    "profiling/profile-with-superluminal",
+]
+profile-with-tracy = ["profiling/profile-with-tracy"]
+profile-with-tracy-memory = [
+    "profiling/profile-with-tracy",
+    "profile-with-tracy"
+]

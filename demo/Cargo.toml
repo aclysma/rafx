@@ -64,9 +64,9 @@ default = [
     "rafx-plugins/meshopt",
 
     # Profiling options
-    "profile-with-puffin",
+    #"profile-with-puffin",
     #"profile-with-optick",
-    #"profile-with-tracy",
+    "profile-with-tracy",
     #"profile-with-tracy-memory", # Cannot be enabled with "stats_alloc".
     #"profile-with-superluminal"
 

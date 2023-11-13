@@ -138,7 +138,9 @@ impl DemoApp {
         window: &winit::window::Window,
     ) -> RafxResult<Self> {
         #[cfg(feature = "profile-with-tracy")]
-        profiling::tracy_client::set_thread_name("Main Thread");
+        profiling::tracy_client::Client::start();
+        #[cfg(feature = "profile-with-tracy")]
+        profiling::tracy_client::set_thread_name!("Main Thread");
         #[cfg(feature = "profile-with-optick")]
         profiling::optick::register_thread("Main Thread");
 

@@ -295,9 +295,13 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
         importable_assets: &HashMap<Option<String>, ImportableAsset>,
         schema_set: &SchemaSet,
     ) -> HashMap<Option<String>, ImportedImportable> {
-        let decoded_image = ::image::open(path).unwrap();
-        let (width, height) = decoded_image.dimensions();
-        let image_bytes = decoded_image.into_rgba8().to_vec();
+        let (image_bytes, width, height) = {
+            profiling::scope!("Load Image from Disk");
+            let decoded_image = ::image::open(path).unwrap();
+            let (width, height) = decoded_image.dimensions();
+            let image_bytes = decoded_image.into_rgba8().to_vec();
+            (image_bytes, width, height)
+        };
 
         //
         // Create import data
