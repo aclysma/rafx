@@ -219,7 +219,7 @@ fn hydrate_import_image(
     let default_asset = {
         let mut default_asset_object = GpuImageAssetRecord::new_single_object(schema_set).unwrap();
         let mut default_asset_data_container =
-            DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+            DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
         let x = GpuImageAssetRecord::default();
 
         GpuImageImporterSimple::set_default_asset_properties(
@@ -234,7 +234,7 @@ fn hydrate_import_image(
     let import_data = {
         let mut import_data = GpuImageImportedDataRecord::new_single_object(schema_set).unwrap();
         let mut import_data_container =
-            DataContainerMut::new_single_object(&mut import_data, schema_set);
+            DataContainerMut::from_single_object(&mut import_data, schema_set);
         let x = GpuImageImportedDataRecord::default();
 
         x.image_bytes()
@@ -277,7 +277,7 @@ fn hydrate_import_material(
         let mut default_asset_object =
             MeshAdvMaterialAssetRecord::new_single_object(schema_set).unwrap();
         let mut default_asset_data_container =
-            DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+            DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
         let x = MeshAdvMaterialAssetRecord::default();
         x.base_color_factor()
             .set_vec4(
@@ -419,7 +419,7 @@ fn hydrate_import_mesh(
         let mut default_asset_object =
             MeshAdvMeshAssetRecord::new_single_object(schema_set).unwrap();
         let mut default_asset_data_container =
-            DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+            DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
         let x = MeshAdvMeshAssetRecord::default();
 
         for material_slot in material_slots {
@@ -440,7 +440,7 @@ fn hydrate_import_mesh(
     //
     let mut import_data = MeshAdvMeshImportedDataRecord::new_single_object(schema_set).unwrap();
     let mut import_data_container =
-        DataContainerMut::new_single_object(&mut import_data, schema_set);
+        DataContainerMut::from_single_object(&mut import_data, schema_set);
     let x = MeshAdvMeshImportedDataRecord::default();
 
     //

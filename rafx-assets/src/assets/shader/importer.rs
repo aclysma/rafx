@@ -80,7 +80,7 @@ impl hydrate_model::Importer for ShaderPackageImporterSpv {
             let mut import_object =
                 ShaderPackageImportedDataRecord::new_single_object(schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::new_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, schema_set);
             let x = ShaderPackageImportedDataRecord::default();
             x.bytes()
                 .set(&mut import_data_container, package_bytes)
@@ -173,7 +173,7 @@ impl hydrate_model::Importer for ShaderPackageImporterCooked {
             let mut import_object =
                 ShaderPackageImportedDataRecord::new_single_object(schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::new_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, schema_set);
             let x = ShaderPackageImportedDataRecord::default();
             x.bytes()
                 .set(&mut import_data_container, package_bytes)

@@ -98,7 +98,7 @@ impl hydrate_model::Importer for BlenderModelImporter {
             let mut default_asset_object =
                 MeshAdvModelAssetRecord::new_single_object(schema_set).unwrap();
             let mut default_asset_data_container =
-                DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+                DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             let x = MeshAdvModelAssetRecord::default();
 
             let entry = x.lods().add_entry(&mut default_asset_data_container);

@@ -163,7 +163,7 @@ impl hydrate_model::Importer for BlenderPrefabImporter {
             let default_asset_object =
                 MeshAdvPrefabAssetRecord::new_single_object(schema_set).unwrap();
             // let mut default_asset_data_container =
-            //     DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+            //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             // let x = MeshAdvPrefabAssetRecord::default();
 
             // No fields to write
@@ -174,7 +174,7 @@ impl hydrate_model::Importer for BlenderPrefabImporter {
             let mut import_data_object =
                 MeshAdvPrefabImportDataRecord::new_single_object(schema_set).unwrap();
             let mut import_data_data_container =
-                DataContainerMut::new_single_object(&mut import_data_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_data_object, schema_set);
             let x = MeshAdvPrefabImportDataRecord::default();
 
             x.json_data()

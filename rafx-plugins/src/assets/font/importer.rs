@@ -61,7 +61,7 @@ impl hydrate_model::Importer for HydrateFontImporter {
         let default_asset = {
             let default_asset_object = FontAssetRecord::new_single_object(schema_set).unwrap();
             // let mut default_asset_data_container =
-            //     DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+            //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             // let x = FontAssetRecord::default();
 
             // No fields to write
@@ -74,7 +74,7 @@ impl hydrate_model::Importer for HydrateFontImporter {
         let import_data = {
             let mut import_object = FontImportedDataRecord::new_single_object(schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::new_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, schema_set);
             let x = FontImportedDataRecord::default();
             x.bytes()
                 .set(&mut import_data_container, font_bytes)

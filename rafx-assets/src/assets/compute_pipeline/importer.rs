@@ -82,7 +82,7 @@ impl hydrate_model::Importer for HydrateComputePipelineImporter {
             let mut default_asset_object =
                 ComputePipelineAssetRecord::new_single_object(schema_set).unwrap();
             let mut default_asset_data_container =
-                DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+                DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             let x = ComputePipelineAssetRecord::default();
 
             x.entry_name()

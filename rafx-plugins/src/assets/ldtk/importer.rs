@@ -201,7 +201,7 @@ impl hydrate_model::Importer for HydrateLdtkImporter {
         let default_asset = {
             let default_asset_object = LdtkAssetRecord::new_single_object(schema_set).unwrap();
             // let mut default_asset_data_container =
-            //     DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+            //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             // let x = LdtkAssetRecord::default();
 
             // No fields to write
@@ -212,7 +212,7 @@ impl hydrate_model::Importer for HydrateLdtkImporter {
             let mut import_data_object =
                 LdtkImportDataRecord::new_single_object(schema_set).unwrap();
             let mut import_data_data_container =
-                DataContainerMut::new_single_object(&mut import_data_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_data_object, schema_set);
             let x = LdtkImportDataRecord::default();
 
             x.json_data()

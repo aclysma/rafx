@@ -310,7 +310,7 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
             let mut import_object =
                 GpuImageImportedDataRecord::new_single_object(schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::new_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, schema_set);
             let x = GpuImageImportedDataRecord::default();
             x.image_bytes()
                 .set(&mut import_data_container, image_bytes)
@@ -329,7 +329,7 @@ impl hydrate_model::Importer for GpuImageImporterSimple {
             let mut default_asset_object =
                 GpuImageAssetRecord::new_single_object(schema_set).unwrap();
             let mut default_asset_data_container =
-                DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+                DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             let x = GpuImageAssetRecord::default();
 
             GpuImageImporterSimple::set_default_asset_properties(

@@ -305,7 +305,7 @@ impl hydrate_model::Importer for HydrateBlenderAnimImporter {
             let default_asset_object =
                 BlenderAnimAssetRecord::new_single_object(schema_set).unwrap();
             // let mut default_asset_data_container =
-            //     DataContainerMut::new_single_object(&mut default_asset_object, schema_set);
+            //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             // let x = BlenderAnimAssetRecord::default();
 
             // No fields to write
@@ -319,7 +319,7 @@ impl hydrate_model::Importer for HydrateBlenderAnimImporter {
             let mut import_object =
                 BlenderAnimImportedDataRecord::new_single_object(schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::new_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, schema_set);
             let x = BlenderAnimImportedDataRecord::default();
 
             x.json_string()

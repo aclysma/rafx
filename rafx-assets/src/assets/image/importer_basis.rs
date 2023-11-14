@@ -96,7 +96,7 @@ impl hydrate_model::Importer for GpuCompressedImageImporterBasis {
             let mut import_object =
                 GpuCompressedImageImportedDataRecord::new_single_object(schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::new_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, schema_set);
             let x = GpuCompressedImageImportedDataRecord::default();
 
             x.height()
