@@ -997,7 +997,7 @@ fn extract_meshes_to_import(
 
         // Verify that we iterate meshes in order so that our resulting assets are in order
         assert!(mesh.index() == meshes_to_import.len());
-        log::debug!(
+        log::trace!(
             "Importing Mesh name: {:?} index: {} mesh_parts count: {}",
             mesh.name(),
             mesh.index(),

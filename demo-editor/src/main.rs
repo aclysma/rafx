@@ -43,6 +43,7 @@ fn main() {
     // Setup logging
     env_logger::Builder::default()
         .write_style(env_logger::WriteStyle::Always)
+        .filter_module("globset", log::LevelFilter::Trace)
         .filter_level(log::LevelFilter::Debug)
         .init();
 
@@ -84,7 +85,7 @@ fn main() {
     );
 
     let (importer_registry, builder_registry, job_processor_registry) =
-        asset_plugin_registration_helper.finish(&*schema_set);
+        asset_plugin_registration_helper.finish(&schema_set);
 
     let mut imports_to_queue = Vec::default();
     let mut db_state = hydrate::editor::DbState::load_or_init_empty(
@@ -97,6 +98,7 @@ fn main() {
     );
 
     let mut asset_engine = hydrate::model::AssetEngine::new(
+        &schema_set,
         importer_registry,
         builder_registry,
         job_processor_registry,

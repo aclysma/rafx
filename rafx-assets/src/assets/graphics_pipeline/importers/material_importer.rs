@@ -76,7 +76,6 @@ impl hydrate_model::Importer for HydrateMaterialImporter {
         //
         let source = std::fs::read_to_string(path).unwrap();
         let material_ron = ron::de::from_str::<MaterialRon>(&source).unwrap();
-        println!("Importing material {:?}", material_ron);
 
         // let shader_object_id = *importable_assets
         //     .get(&None)
