@@ -95,7 +95,10 @@ impl hydrate_model::Importer for HydrateMaterialImporter {
             let x = MaterialAssetRecord::default();
 
             for pass in material_ron.passes {
-                let entry = x.passes().add_entry(&mut default_asset_data_container);
+                let entry = x
+                    .passes()
+                    .add_entry(&mut default_asset_data_container)
+                    .unwrap();
                 let x = x.passes().entry(entry);
                 x.name()
                     .set(
@@ -211,7 +214,12 @@ impl JobProcessor for MaterialJobProcessor {
         job_system::produce_asset_with_handles(job_api, input.asset_id, || {
             //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
             let mut passes = Vec::default();
-            for pass_entry in x.passes().resolve_entries(&data_container).into_iter() {
+            for pass_entry in x
+                .passes()
+                .resolve_entries(&data_container)
+                .unwrap()
+                .into_iter()
+            {
                 let pass_entry = x.passes().entry(*pass_entry);
 
                 let fixed_function_state = ron::de::from_str(

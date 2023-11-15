@@ -263,6 +263,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         for entry in x
             .material_slots()
             .resolve_entries(&data_container)
+            .unwrap()
             .into_iter()
         {
             let entry = x
@@ -288,7 +289,12 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         let mut all_indices = PushBuffer::new(16384);
 
         let mut mesh_part_data = Vec::default();
-        for entry in x.mesh_parts().resolve_entries(&data_container).into_iter() {
+        for entry in x
+            .mesh_parts()
+            .resolve_entries(&data_container)
+            .unwrap()
+            .into_iter()
+        {
             let entry = x.mesh_parts().entry(*entry);
 
             //
@@ -417,6 +423,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
             for (entry, part_data) in x
                 .mesh_parts()
                 .resolve_entries(&data_container)
+                .unwrap()
                 .into_iter()
                 .zip(mesh_part_data)
             {
@@ -542,7 +549,12 @@ impl JobProcessor for MeshAdvModelJobProcessor {
             let x = MeshAdvModelAssetRecord::default();
 
             let mut lods = Vec::default();
-            for entry in x.lods().resolve_entries(&data_container).into_iter() {
+            for entry in x
+                .lods()
+                .resolve_entries(&data_container)
+                .unwrap()
+                .into_iter()
+            {
                 let lod = x.lods().entry(*entry);
                 let mesh_handle = job_system::make_handle_to_default_artifact(
                     job_api,

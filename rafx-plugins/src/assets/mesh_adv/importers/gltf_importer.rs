@@ -425,7 +425,8 @@ fn hydrate_import_mesh(
         for material_slot in material_slots {
             let entry = x
                 .material_slots()
-                .add_entry(&mut default_asset_data_container);
+                .add_entry(&mut default_asset_data_container)
+                .unwrap();
             x.material_slots()
                 .entry(entry)
                 .set(&mut default_asset_data_container, material_slot)
@@ -482,7 +483,10 @@ fn hydrate_import_mesh(
             //     )));
             // };
 
-            let entry_uuid = x.mesh_parts().add_entry(&mut import_data_container);
+            let entry_uuid = x
+                .mesh_parts()
+                .add_entry(&mut import_data_container)
+                .unwrap();
             let entry = x.mesh_parts().entry(entry_uuid);
             entry
                 .positions()

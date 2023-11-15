@@ -5,7 +5,8 @@ use crate::{GpuImageImporterSimple, MaterialInstanceSlotAssignment};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
+    DataContainer, DataContainerMut, DataSet, ImporterId, NullOverride, Record, SchemaSet,
+    SingleObject,
 };
 use hydrate_model::{
     job_system, ImportableAsset, ImportedImportable, ImporterRegistry, JobApi,
@@ -108,7 +109,8 @@ impl hydrate_model::Importer for HydrateMaterialInstanceImporter {
             for slot_assignment in material_ron.slot_assignments {
                 let entry_uuid = x
                     .slot_assignments()
-                    .add_entry(&mut default_asset_data_container);
+                    .add_entry(&mut default_asset_data_container)
+                    .unwrap();
                 let entry = x.slot_assignments().entry(entry_uuid);
 
                 entry
@@ -147,7 +149,12 @@ impl hydrate_model::Importer for HydrateMaterialInstanceImporter {
                 if let Some(buffer_data) = slot_assignment.buffer_data {
                     entry
                         .buffer_data()
-                        .set_not_null(&mut default_asset_data_container)
+                        .set_null_override(
+                            &mut default_asset_data_container,
+                            NullOverride::SetNonNull,
+                        )
+                        .unwrap()
+                        .unwrap()
                         .set(&mut default_asset_data_container, buffer_data)
                         .unwrap();
                 }
@@ -239,6 +246,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
             for slot_assignent_entry in x
                 .slot_assignments()
                 .resolve_entries(&data_container)
+                .unwrap()
                 .into_iter()
             {
                 let slot_assignment = x.slot_assignments().entry(*slot_assignent_entry);
@@ -267,8 +275,10 @@ impl JobProcessor for MaterialInstanceJobProcessor {
                     Some(sampler)
                 };
 
-                let buffer_data = if let Some(buffer_data) =
-                    slot_assignment.buffer_data().resolve_null(&data_container)
+                let buffer_data = if let Some(buffer_data) = slot_assignment
+                    .buffer_data()
+                    .resolve_null(&data_container)
+                    .unwrap()
                 {
                     Some(buffer_data.get(&data_container).unwrap().clone())
                 } else {

@@ -100,7 +100,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
             RafxResourceType::TEXTURE
         };
 
-        let layer_entries = x.data_layers().resolve_entries(&data_container);
+        let layer_entries = x.data_layers().resolve_entries(&data_container).unwrap();
         let payload = if layer_entries.is_empty() {
             ImageAssetDataPayload::SingleBuffer(ImageAssetDataPayloadSingleBuffer {
                 buffer: x.data_single_buffer().get(&data_container).unwrap().clone(),
@@ -109,7 +109,8 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
             let mut layers = Vec::default();
             for &layer_entry in layer_entries.into_iter() {
                 let layer = x.data_layers().entry(layer_entry);
-                let mip_level_entries = layer.mip_levels().resolve_entries(&data_container);
+                let mip_level_entries =
+                    layer.mip_levels().resolve_entries(&data_container).unwrap();
                 let mut mip_levels = Vec::default();
                 for &mip_level_entry in mip_level_entries.into_iter() {
                     let mip_level = layer.mip_levels().entry(mip_level_entry);

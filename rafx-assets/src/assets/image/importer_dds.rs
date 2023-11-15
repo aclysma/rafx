@@ -209,13 +209,17 @@ impl hydrate_model::Importer for GpuCompressedImageImporterDds {
                 .unwrap();
 
             for layer in layers_asset_data {
-                let layer_entry = x.data_layers().add_entry(&mut import_data_container);
+                let layer_entry = x
+                    .data_layers()
+                    .add_entry(&mut import_data_container)
+                    .unwrap();
                 let layer_record = x.data_layers().entry(layer_entry);
 
                 for mip_level in layer.mip_levels {
                     let mip_level_entry = layer_record
                         .mip_levels()
-                        .add_entry(&mut import_data_container);
+                        .add_entry(&mut import_data_container)
+                        .unwrap();
 
                     let mip_record = layer_record.mip_levels().entry(mip_level_entry);
                     mip_record
