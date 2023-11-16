@@ -40,7 +40,7 @@ itertools = "0.8"
 
 # GLTF asset type
 gltf = "0.16"
-image = "0.23.12"
+image = { version = "0.23.12", default-features = false, features = ["gif", "jpeg", "ico", "png", "pnm", "tga", "tiff", "bmp"] }
 
 meshopt = { version = "0.1.9", optional = true }
 

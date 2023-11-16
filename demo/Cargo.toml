@@ -23,7 +23,7 @@ egui = { version = "0.15", features = ["default_fonts"], optional = true }
 #clipboard = { version = "0.5", optional = true }
 puffin_egui = { version = "0.11", optional = true }
 legion = { version = "0.4.0", default-features = false, features = ["serialize"] }
-image = "0.23.12"
+image = { version = "0.23.12", default-features = false, features = ["gif", "jpeg", "ico", "png", "pnm", "tga", "tiff", "bmp"] }
 serde_json = "1.0"
 
 log = "0.4"
