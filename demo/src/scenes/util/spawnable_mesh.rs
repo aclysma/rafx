@@ -111,13 +111,4 @@ impl SpawnableMesh {
         let handle = asset_resource.load_asset_symbol_name(symbol_name);
         Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
     }
-
-    pub fn blocking_load_from_path<T: Into<String>>(
-        resources: &Resources,
-        path: T,
-    ) -> SpawnableMesh {
-        let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-        let handle = asset_resource.load_asset_path(path);
-        Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
-    }
 }
