@@ -5,7 +5,7 @@ use crate::schema::{MeshAdvPrefabAssetRecord, MeshAdvPrefabImportDataRecord};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
-use hydrate_model::{
+use hydrate_pipeline::{
     BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
     SchemaLinker,
@@ -96,7 +96,7 @@ pub struct HydrateMeshAdvPrefabJsonFormat {
 #[uuid = "a40a442f-285e-4bb8-81f4-43d761b9f140"]
 pub struct BlenderPrefabImporter;
 
-impl hydrate_model::Importer for BlenderPrefabImporter {
+impl hydrate_pipeline::Importer for BlenderPrefabImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_prefab"]
     }
@@ -203,7 +203,7 @@ impl hydrate_model::Importer for BlenderPrefabImporter {
 
 pub struct BlenderPrefabAssetPlugin;
 
-impl hydrate_model::AssetPlugin for BlenderPrefabAssetPlugin {
+impl hydrate_pipeline::AssetPlugin for BlenderPrefabAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

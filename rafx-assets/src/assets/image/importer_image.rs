@@ -14,7 +14,7 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaLinker, SchemaSet,
     SingleObject,
 };
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, Builder, BuilderRegistryBuilder, ImportableAsset, ImportedImportable,
     ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
     JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScannedImportable,
@@ -265,7 +265,7 @@ impl GpuImageImporterSimple {
     }
 }
 
-impl hydrate_model::Importer for GpuImageImporterSimple {
+impl hydrate_pipeline::Importer for GpuImageImporterSimple {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["png", "jpg", "jpeg", "tga", "tif", "tiff", "bmp"]
     }
@@ -555,7 +555,7 @@ impl Builder for GpuImageBuilder {
 
 pub struct GpuImageAssetPlugin;
 
-impl hydrate_model::AssetPlugin for GpuImageAssetPlugin {
+impl hydrate_pipeline::AssetPlugin for GpuImageAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

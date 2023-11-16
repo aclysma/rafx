@@ -9,7 +9,7 @@ use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
@@ -247,7 +247,7 @@ fn parse_action(
 #[uuid = "238792bf-7078-4675-9f4d-cf53305806c6"]
 pub struct HydrateBlenderAnimImporter;
 
-impl hydrate_model::Importer for HydrateBlenderAnimImporter {
+impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_anim"]
     }
@@ -428,7 +428,7 @@ impl JobProcessor for BlenderAnimJobProcessor {
 #[uuid = "77a09407-3ec8-440d-bd01-408b84b4516c"]
 pub struct BlenderAnimBuilder {}
 
-impl hydrate_model::Builder for BlenderAnimBuilder {
+impl hydrate_pipeline::Builder for BlenderAnimBuilder {
     fn asset_type(&self) -> &'static str {
         BlenderAnimAssetRecord::schema_name()
     }
@@ -455,7 +455,7 @@ impl hydrate_model::Builder for BlenderAnimBuilder {
 
 pub struct BlenderAnimAssetPlugin;
 
-impl hydrate_model::AssetPlugin for BlenderAnimAssetPlugin {
+impl hydrate_pipeline::AssetPlugin for BlenderAnimAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

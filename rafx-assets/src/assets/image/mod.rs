@@ -2,7 +2,9 @@ pub mod assets;
 
 pub use assets::*;
 use hydrate_data::SchemaLinker;
-use hydrate_model::{BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder};
+use hydrate_pipeline::{
+    BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
+};
 use std::sync::Arc;
 
 mod asset_upload_queue;
@@ -30,7 +32,7 @@ mod builder_compressed_image;
 
 pub struct GpuImageAssetPlugin;
 
-impl hydrate_model::AssetPlugin for GpuImageAssetPlugin {
+impl hydrate_pipeline::AssetPlugin for GpuImageAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

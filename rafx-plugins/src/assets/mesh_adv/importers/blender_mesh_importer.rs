@@ -3,7 +3,7 @@ use crate::schema::{MeshAdvMeshAssetRecord, MeshAdvMeshImportedDataRecord};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
-use hydrate_model::{
+use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
     SchemaLinker,
@@ -81,7 +81,7 @@ fn try_cast_u8_slice<T: Copy + 'static>(data: &[u8]) -> Option<&[T]> {
 #[uuid = "bdd126da-2f3d-4cbb-b2f2-80088c715753"]
 pub struct BlenderMeshImporter;
 
-impl hydrate_model::Importer for BlenderMeshImporter {
+impl hydrate_pipeline::Importer for BlenderMeshImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_mesh"]
     }

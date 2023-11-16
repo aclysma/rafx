@@ -14,7 +14,7 @@ use crate::assets::mesh_adv::{
     BlenderMaterialAssetPlugin, BlenderMeshAssetPlugin, BlenderModelAssetPlugin,
     BlenderPrefabAssetPlugin, GltfAssetPlugin, MeshAdvAssetPlugin,
 };
-use hydrate_model::{AssetPluginRegistrationHelper, SchemaLinker};
+use hydrate_pipeline::{AssetPluginRegistrationHelper, SchemaLinker};
 use std::path::PathBuf;
 
 pub fn schema_def_path() -> PathBuf {

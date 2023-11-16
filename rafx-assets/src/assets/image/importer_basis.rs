@@ -6,7 +6,7 @@ use crate::schema::{
 use basis_universal::BasisTextureType;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, Record, SchemaSet};
-use hydrate_model::{ImportableAsset, ImportedImportable, ImporterRegistry, ScannedImportable};
+use hydrate_pipeline::{ImportableAsset, ImportedImportable, ImporterRegistry, ScannedImportable};
 use std::path::Path;
 use type_uuid::*;
 
@@ -14,7 +14,7 @@ use type_uuid::*;
 #[uuid = "b40fd7a0-adae-48c1-972d-650ae3c08f5f"]
 pub struct GpuCompressedImageImporterBasis;
 
-impl hydrate_model::Importer for GpuCompressedImageImporterBasis {
+impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["basis"]
     }

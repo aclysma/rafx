@@ -4,12 +4,12 @@ use rafx::api::RafxResourceType;
 
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::*;
-use hydrate_model::pipeline::{AssetPlugin, Builder};
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, AssetId, BuilderRegistryBuilder, DataContainer, DataSet, HashMap,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, Record, SchemaLinker, SchemaSet, SingleObject,
 };
+use hydrate_pipeline::{AssetPlugin, Builder};
 use rafx::assets::PushBuffer;
 use rafx::rafx_visibility::{PolygonSoup, PolygonSoupIndex, VisibleBounds};
 use serde::{Deserialize, Serialize};
@@ -575,7 +575,7 @@ impl JobProcessor for MeshAdvModelJobProcessor {
 #[uuid = "1190eda4-e0c7-4851-ba1e-0ba56d1dc384"]
 pub struct MeshAdvModelBuilder {}
 
-impl hydrate_model::Builder for MeshAdvModelBuilder {
+impl hydrate_pipeline::Builder for MeshAdvModelBuilder {
     fn asset_type(&self) -> &'static str {
         MeshAdvModelAssetRecord::schema_name()
     }
@@ -723,7 +723,7 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
 #[uuid = "e5e3879c-5ff6-4823-b53d-a209a1fed82f"]
 pub struct MeshAdvPrefabBuilder {}
 
-impl hydrate_model::Builder for MeshAdvPrefabBuilder {
+impl hydrate_pipeline::Builder for MeshAdvPrefabBuilder {
     fn asset_type(&self) -> &'static str {
         MeshAdvPrefabAssetRecord::schema_name()
     }

@@ -6,7 +6,7 @@ use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
@@ -20,7 +20,7 @@ use type_uuid::*;
 #[uuid = "b99453db-4d59-4801-8b89-c86ba6fb4620"]
 pub struct HydrateFontImporter;
 
-impl hydrate_model::Importer for HydrateFontImporter {
+impl hydrate_pipeline::Importer for HydrateFontImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["ttf"]
     }
@@ -185,7 +185,7 @@ impl JobProcessor for FontJobProcessor {
 #[uuid = "834e2100-00b6-4d7b-8fbd-196ee8b998f1"]
 pub struct FontBuilder {}
 
-impl hydrate_model::Builder for FontBuilder {
+impl hydrate_pipeline::Builder for FontBuilder {
     fn asset_type(&self) -> &'static str {
         FontAssetRecord::schema_name()
     }
@@ -212,7 +212,7 @@ impl hydrate_model::Builder for FontBuilder {
 
 pub struct FontAssetPlugin;
 
-impl hydrate_model::AssetPlugin for FontAssetPlugin {
+impl hydrate_pipeline::AssetPlugin for FontAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

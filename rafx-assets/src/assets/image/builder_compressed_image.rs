@@ -11,7 +11,7 @@ use crate::{
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{DataContainer, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject};
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, Builder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
 };
 use rafx_api::RafxResourceType;

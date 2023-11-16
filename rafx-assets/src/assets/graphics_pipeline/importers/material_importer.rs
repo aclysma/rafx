@@ -9,7 +9,7 @@ use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, ImportableAsset, ImportedImportable, ImporterRegistry, JobApi,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ReferencedSourceFile,
     ScannedImportable,
@@ -24,7 +24,7 @@ use uuid::Uuid;
 #[uuid = "64d8deb9-5aa5-48e6-9110-9b356e2bce3b"]
 pub struct HydrateMaterialImporter;
 
-impl hydrate_model::Importer for HydrateMaterialImporter {
+impl hydrate_pipeline::Importer for HydrateMaterialImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["material"]
     }
@@ -292,7 +292,7 @@ impl JobProcessor for MaterialJobProcessor {
 #[uuid = "8fe3e85c-2adf-4424-9197-9391c2c8f3ce"]
 pub struct MaterialBuilder {}
 
-impl hydrate_model::Builder for MaterialBuilder {
+impl hydrate_pipeline::Builder for MaterialBuilder {
     fn asset_type(&self) -> &'static str {
         MaterialAssetRecord::schema_name()
     }

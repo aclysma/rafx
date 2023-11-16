@@ -7,7 +7,7 @@ use crate::ImageAssetDataFormat;
 use ddsfile::DxgiFormat;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, Record, SchemaSet};
-use hydrate_model::{ImportableAsset, ImportedImportable, ImporterRegistry, ScannedImportable};
+use hydrate_pipeline::{ImportableAsset, ImportedImportable, ImporterRegistry, ScannedImportable};
 use std::path::Path;
 use type_uuid::*;
 
@@ -15,7 +15,7 @@ use type_uuid::*;
 #[uuid = "a66a5767-0a03-4c3e-ac06-ce02c1a0a561"]
 pub struct GpuCompressedImageImporterDds;
 
-impl hydrate_model::Importer for GpuCompressedImageImporterDds {
+impl hydrate_pipeline::Importer for GpuCompressedImageImporterDds {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["dds"]
     }

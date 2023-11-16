@@ -8,7 +8,7 @@ use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{DataContainerMut, Record, SchemaSet};
-use hydrate_model::{
+use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
 };
@@ -561,7 +561,7 @@ fn name_or_index(
 #[uuid = "01d71c49-867c-4d96-ad16-7c08b6cbfaf9"]
 pub struct GltfImporter;
 
-impl hydrate_model::Importer for GltfImporter {
+impl hydrate_pipeline::Importer for GltfImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["gltf", "glb"]
     }

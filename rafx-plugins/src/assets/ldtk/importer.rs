@@ -10,7 +10,7 @@ use hydrate_base::{AssetId, Handle};
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
@@ -130,7 +130,7 @@ fn generate_draw_data(
 #[uuid = "7d507fac-ccb8-47fb-a4af-15da5e751601"]
 pub struct HydrateLdtkImporter;
 
-impl hydrate_model::Importer for HydrateLdtkImporter {
+impl hydrate_pipeline::Importer for HydrateLdtkImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["ldtk"]
     }
@@ -540,7 +540,7 @@ impl JobProcessor for LdtkJobProcessor {
 #[uuid = "a0cc5ab1-430c-4052-b082-074f63539fbe"]
 pub struct LdtkBuilder {}
 
-impl hydrate_model::Builder for LdtkBuilder {
+impl hydrate_pipeline::Builder for LdtkBuilder {
     fn asset_type(&self) -> &'static str {
         LdtkAssetRecord::schema_name()
     }
@@ -567,7 +567,7 @@ impl hydrate_model::Builder for LdtkBuilder {
 
 pub struct LdtkAssetPlugin;
 
-impl hydrate_model::AssetPlugin for LdtkAssetPlugin {
+impl hydrate_pipeline::AssetPlugin for LdtkAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

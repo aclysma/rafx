@@ -3,7 +3,7 @@ use crate::schema::MeshAdvModelAssetRecord;
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
-use hydrate_model::{
+use hydrate_pipeline::{
     BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
     SchemaLinker,
@@ -37,7 +37,7 @@ struct HydrateModelJsonFormat {
 #[uuid = "a97c46e9-1deb-4ca2-9f70-b4ce97a74cf2"]
 pub struct BlenderModelImporter;
 
-impl hydrate_model::Importer for BlenderModelImporter {
+impl hydrate_pipeline::Importer for BlenderModelImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_model"]
     }
@@ -143,7 +143,7 @@ impl hydrate_model::Importer for BlenderModelImporter {
 
 pub struct BlenderModelAssetPlugin;
 
-impl hydrate_model::AssetPlugin for BlenderModelAssetPlugin {
+impl hydrate_pipeline::AssetPlugin for BlenderModelAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

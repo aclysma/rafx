@@ -97,7 +97,7 @@ fn main() {
         &mut imports_to_queue,
     );
 
-    let mut asset_engine = hydrate::model::AssetEngine::new(
+    let mut asset_engine = hydrate::pipeline::AssetEngine::new(
         &schema_set,
         importer_registry,
         builder_registry,

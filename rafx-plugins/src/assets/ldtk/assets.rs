@@ -67,8 +67,8 @@ pub struct HydrateLdtkLayerDataTemp {
 #[derive(Clone, Debug)]
 pub struct HydrateLdtkLevelDataTemp {
     pub layer_data: Vec<HydrateLdtkLayerDataTemp>,
-    pub vertex_data: Option<hydrate_model::AssetArtifactIdPair>,
-    pub index_data: Option<hydrate_model::AssetArtifactIdPair>,
+    pub vertex_data: Option<hydrate_pipeline::AssetArtifactIdPair>,
+    pub index_data: Option<hydrate_pipeline::AssetArtifactIdPair>,
 }
 
 #[derive(Clone, Debug)]

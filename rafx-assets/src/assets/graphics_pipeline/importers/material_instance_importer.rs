@@ -8,7 +8,7 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, NullOverride, Record, SchemaSet,
     SingleObject,
 };
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, ImportableAsset, ImportedImportable, ImporterRegistry, JobApi,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ReferencedSourceFile,
     ScannedImportable,
@@ -30,7 +30,7 @@ pub struct HydrateMaterialInstanceImporter;
 //     }
 // }
 
-impl hydrate_model::Importer for HydrateMaterialInstanceImporter {
+impl hydrate_pipeline::Importer for HydrateMaterialInstanceImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["materialinstance"]
     }
@@ -308,7 +308,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
 #[uuid = "0cfe8812-b0cd-4b72-bfa2-8ac3d30af7dd"]
 pub struct MaterialInstanceBuilder {}
 
-impl hydrate_model::Builder for MaterialInstanceBuilder {
+impl hydrate_pipeline::Builder for MaterialInstanceBuilder {
     fn asset_type(&self) -> &'static str {
         MaterialInstanceAssetRecord::schema_name()
     }

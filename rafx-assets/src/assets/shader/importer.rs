@@ -5,7 +5,7 @@ use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, AssetPlugin, Builder, BuilderRegistryBuilder, ImportableAsset, ImportedImportable,
     ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
     JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
@@ -19,7 +19,7 @@ use type_uuid::*;
 #[uuid = "f0070e09-088b-4387-ba65-075657023733"]
 pub struct ShaderPackageImporterSpv;
 
-impl hydrate_model::Importer for ShaderPackageImporterSpv {
+impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["spv"]
     }
@@ -118,7 +118,7 @@ impl hydrate_model::Importer for ShaderPackageImporterSpv {
 #[uuid = "ac37987a-6c92-41b1-ba46-a5cf575dee9f"]
 pub struct ShaderPackageImporterCooked;
 
-impl hydrate_model::Importer for ShaderPackageImporterCooked {
+impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["cookedshaderpackage"]
     }

@@ -31,7 +31,7 @@ rafx-api = { version = "0.0.15", path = "../rafx-api" }
 rafx-base = { version = "0.0.15", path = "../rafx-base" }
 rafx-framework = { version = "0.0.15", path = "../rafx-framework" }
 
-hydrate-model = { path = "../../hydrate/hydrate-model" }
+hydrate-pipeline = { path = "../../hydrate/hydrate-pipeline" }
 hydrate-data = { path = "../../hydrate/hydrate-data" }
 hydrate-loader = { path = "../../hydrate/hydrate-loader" }
 hydrate-base = { path = "../../hydrate/hydrate-base" }

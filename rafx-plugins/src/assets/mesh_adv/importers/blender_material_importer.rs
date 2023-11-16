@@ -2,7 +2,7 @@ use crate::schema::{MeshAdvBlendMethodEnum, MeshAdvMaterialAssetRecord, MeshAdvS
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{AssetRefField, DataContainerMut, Enum, Record, SchemaSet};
-use hydrate_model::{
+use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
     SchemaLinker,
@@ -74,7 +74,7 @@ struct MaterialJsonFileFormat {
 #[uuid = "e76bab79-654a-476f-93b1-88cd5fee7d1f"]
 pub struct BlenderMaterialImporter;
 
-impl hydrate_model::Importer for BlenderMaterialImporter {
+impl hydrate_pipeline::Importer for BlenderMaterialImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_material"]
     }

@@ -5,7 +5,7 @@ use hydrate_base::AssetId;
 use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, HashMap, ImporterId, Record, SchemaSet, SingleObject,
 };
-use hydrate_model::{
+use hydrate_pipeline::{
     job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
     JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
@@ -19,7 +19,7 @@ use uuid::Uuid;
 #[uuid = "a78c8ec9-11bf-45aa-886b-0080f3a52b40"]
 pub struct HydrateComputePipelineImporter;
 
-impl hydrate_model::Importer for HydrateComputePipelineImporter {
+impl hydrate_pipeline::Importer for HydrateComputePipelineImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["compute"]
     }
@@ -180,7 +180,7 @@ impl JobProcessor for ComputePipelineJobProcessor {
 #[uuid = "d3e81f20-1f66-4e65-b542-1861a15b24b6"]
 pub struct ComputePipelineBuilder {}
 
-impl hydrate_model::Builder for ComputePipelineBuilder {
+impl hydrate_pipeline::Builder for ComputePipelineBuilder {
     fn asset_type(&self) -> &'static str {
         ComputePipelineAssetRecord::schema_name()
     }
@@ -207,7 +207,7 @@ impl hydrate_model::Builder for ComputePipelineBuilder {
 
 pub struct ComputePipelineAssetPlugin;
 
-impl hydrate_model::AssetPlugin for ComputePipelineAssetPlugin {
+impl hydrate_pipeline::AssetPlugin for ComputePipelineAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
