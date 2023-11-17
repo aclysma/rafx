@@ -17,8 +17,8 @@ use hydrate_data::{
 use hydrate_pipeline::{
     job_system, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
-    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, RunContext, ScanContext, ScannedImportable,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    RunContext, ScanContext, ScannedImportable,
 };
 use image::GenericImageView;
 use rafx_api::RafxResourceType;
@@ -517,7 +517,7 @@ impl JobProcessor for GpuImageJobProcessor {
         //
         // Serialize and return
         //
-        job_system::produce_asset(context.job_api, context.input.asset_id, processed_data);
+        context.produce_default_artifact(context.input.asset_id, processed_data);
 
         GpuImageJobOutput {}
     }
@@ -537,7 +537,7 @@ impl Builder for GpuImageBuilder {
         context: BuilderContext,
     ) {
         //Future: Might produce jobs per-platform
-        job_system::enqueue_job::<GpuImageJobProcessor>(
+        context.enqueue_job::<GpuImageJobProcessor>(
             context.data_set,
             context.schema_set,
             context.job_api,

@@ -10,9 +10,9 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, BuilderContext, EnumerateDependenciesContext, ImportContext, ImportableAsset,
-    ImportedImportable, ImporterRegistry, JobApi, JobEnumeratedDependencies, JobInput, JobOutput,
-    JobProcessor, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
+    job_system, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext,
+    ImportableAsset, ImportedImportable, ImporterRegistry, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
 };
 use rafx_framework::MaterialShaderStage;
 use serde::{Deserialize, Serialize};
@@ -207,7 +207,7 @@ impl JobProcessor for MaterialJobProcessor {
         );
         let x = MaterialAssetRecord::default();
 
-        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
+        context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
             //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
             let mut passes = Vec::default();
             for pass_entry in x
@@ -230,8 +230,8 @@ impl JobProcessor for MaterialJobProcessor {
                     stage: MaterialShaderStage,
                     record: &GraphicsPipelineShaderStageRecord,
                     data_container: &DataContainer,
-                    job_api: &dyn JobApi,
                     stages: &mut Vec<GraphicsPipelineShaderStage>,
+                    handle_factory: HandleFactory,
                 ) {
                     let entry_name = record.entry_name().get(&data_container).unwrap();
                     let shader_module = record.shader_module().get(&data_container).unwrap();
@@ -242,10 +242,8 @@ impl JobProcessor for MaterialJobProcessor {
 
                     stages.push(GraphicsPipelineShaderStage {
                         stage,
-                        shader_module: job_system::make_handle_to_default_artifact(
-                            job_api,
-                            shader_module,
-                        ),
+                        shader_module: handle_factory
+                            .make_handle_to_default_artifact(shader_module),
                         entry_name,
                     });
                 }
@@ -255,15 +253,15 @@ impl JobProcessor for MaterialJobProcessor {
                     MaterialShaderStage::Vertex,
                     &pass_entry.vertex_stage(),
                     &data_container,
-                    context.job_api,
                     &mut shaders,
+                    handle_factory,
                 );
                 read_stage(
                     MaterialShaderStage::Fragment,
                     &pass_entry.fragment_stage(),
                     &data_container,
-                    context.job_api,
                     &mut shaders,
+                    handle_factory,
                 );
 
                 let name = pass_entry.name().get(&data_container).unwrap();
@@ -301,7 +299,7 @@ impl hydrate_pipeline::Builder for MaterialBuilder {
         //let x = MaterialAssetRecord::default();
 
         //Future: Might produce jobs per-platform
-        job_system::enqueue_job::<MaterialJobProcessor>(
+        context.enqueue_job::<MaterialJobProcessor>(
             context.data_set,
             context.schema_set,
             context.job_api,

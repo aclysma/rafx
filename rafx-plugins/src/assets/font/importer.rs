@@ -9,8 +9,8 @@ use hydrate_data::{
 use hydrate_pipeline::{
     job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
-    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, RunContext, ScanContext, ScannedImportable, SchemaLinker,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    RunContext, ScanContext, ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -169,7 +169,7 @@ impl JobProcessor for FontJobProcessor {
         //
         // Serialize and return
         //
-        job_system::produce_asset(context.job_api, context.input.asset_id, processed_data);
+        context.produce_default_artifact(context.input.asset_id, processed_data);
 
         FontJobOutput {}
     }
@@ -192,7 +192,7 @@ impl hydrate_pipeline::Builder for FontBuilder {
         //let x = FontAssetRecord::default();
 
         //Future: Might produce jobs per-platform
-        job_system::enqueue_job::<FontJobProcessor>(
+        context.enqueue_job::<FontJobProcessor>(
             context.data_set,
             context.schema_set,
             context.job_api,

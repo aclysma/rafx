@@ -10,7 +10,7 @@ use hydrate_data::{
 };
 use hydrate_pipeline::{
     job_system, BuilderContext, EnumerateDependenciesContext, ImportContext, ImportableAsset,
-    ImportedImportable, ImporterRegistry, JobApi, JobEnumeratedDependencies, JobInput, JobOutput,
+    ImportedImportable, ImporterRegistry, JobEnumeratedDependencies, JobInput, JobOutput,
     JobProcessor, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
 };
 use serde::{Deserialize, Serialize};
@@ -233,11 +233,9 @@ impl JobProcessor for MaterialInstanceJobProcessor {
         );
         let x = MaterialInstanceAssetRecord::default();
 
-        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
-            let material = job_system::make_handle_to_default_artifact(
-                context.job_api,
-                x.material().get(&data_container).unwrap(),
-            );
+        context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
+            let material = handle_factory
+                .make_handle_to_default_artifact(x.material().get(&data_container).unwrap());
 
             let mut slot_assignments = Vec::default();
             for slot_assignent_entry in x
@@ -256,10 +254,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
                 let image = if image_object_id.is_null() {
                     None
                 } else {
-                    Some(job_system::make_handle_to_default_artifact(
-                        context.job_api,
-                        image_object_id,
-                    ))
+                    Some(handle_factory.make_handle_to_default_artifact(image_object_id))
                 };
 
                 let sampler_ron = slot_assignment.sampler().get(&data_container).unwrap();
@@ -318,7 +313,7 @@ impl hydrate_pipeline::Builder for MaterialInstanceBuilder {
         //let x = MaterialInstanceAssetRecord::default();
 
         //Future: Might produce jobs per-platform
-        job_system::enqueue_job::<MaterialInstanceJobProcessor>(
+        context.enqueue_job::<MaterialInstanceJobProcessor>(
             context.data_set,
             context.schema_set,
             context.job_api,

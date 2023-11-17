@@ -13,9 +13,8 @@ use hydrate_data::{
 use hydrate_pipeline::{
     job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
-    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
-    SchemaLinker,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    ReferencedSourceFile, RunContext, ScanContext, ScannedImportable, SchemaLinker,
 };
 use ldtk_rust::{LayerInstance, Level, TileInstance};
 use rafx::api::RafxResourceType;
@@ -321,23 +320,17 @@ impl JobProcessor for LdtkJobProcessor {
                 .unwrap();
 
             let material_instance_artifact_name = format!("mi_{}", tileset.uid);
-            let material_instance_artifact_id = job_system::produce_artifact_with_handles(
-                context.job_api,
+            let material_instance_artifact_id = context.produce_artifact_with_handles(
                 context.input.asset_id,
                 Some(material_instance_artifact_name),
-                || {
-                    let material_handle: Handle<MaterialAsset> =
-                        job_system::make_handle_to_default_artifact(
-                            context.job_api,
-                            AssetId::from_uuid(
-                                Uuid::parse_str("843a3b00-00d2-424f-94d8-629ca6060471").unwrap(),
-                            ),
-                        );
+                |handle_factory| {
+                    let material_handle: Handle<MaterialAsset> = handle_factory
+                        .make_handle_to_default_artifact(AssetId::from_uuid(
+                            Uuid::parse_str("843a3b00-00d2-424f-94d8-629ca6060471").unwrap(),
+                        ));
 
-                    let image_handle = job_system::make_handle_to_default_artifact(
-                        context.job_api,
-                        *image_object_id,
-                    );
+                    let image_handle =
+                        handle_factory.make_handle_to_default_artifact(*image_object_id);
 
                     let mut slot_assignments = vec![];
                     slot_assignments.push(MaterialInstanceSlotAssignment {
@@ -439,8 +432,7 @@ impl JobProcessor for LdtkJobProcessor {
                 //
                 let vertex_buffer_asset_data =
                     BufferAssetData::from_vec(RafxResourceType::VERTEX_BUFFER, &vertex_data);
-                let vb_artifact = job_system::produce_artifact(
-                    context.job_api,
+                let vb_artifact = context.produce_artifact(
                     context.input.asset_id,
                     Some(format!("vertex_buffer,{:?}", level.uid)),
                     vertex_buffer_asset_data,
@@ -451,8 +443,7 @@ impl JobProcessor for LdtkJobProcessor {
                 //
                 let index_buffer_asset_data =
                     BufferAssetData::from_vec(RafxResourceType::INDEX_BUFFER, &index_data);
-                let ib_artifact = job_system::produce_artifact(
-                    context.job_api,
+                let ib_artifact = context.produce_artifact(
                     context.input.asset_id,
                     Some(format!("index_buffer,{:?}", level.uid)),
                     index_buffer_asset_data,
@@ -473,21 +464,17 @@ impl JobProcessor for LdtkJobProcessor {
             assert!(old.is_none());
         }
 
-        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
+        context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
             let mut tilesets = FnvHashMap::default();
             for (uid, tileset) in tilesets_temp {
                 tilesets.insert(
                     uid,
                     LdtkTileSet {
-                        material_instance: job_system::make_handle_to_artifact_raw(
-                            context.job_api,
+                        material_instance: handle_factory.make_handle_to_artifact_raw(
                             context.input.asset_id,
                             tileset.material_instance,
                         ),
-                        image: job_system::make_handle_to_default_artifact(
-                            context.job_api,
-                            tileset.image,
-                        ),
+                        image: handle_factory.make_handle_to_default_artifact(tileset.image),
                         image_width: tileset.image_width,
                         image_height: tileset.image_height,
                     },
@@ -500,8 +487,7 @@ impl JobProcessor for LdtkJobProcessor {
                     .layer_data
                     .into_iter()
                     .map(|layer| LdtkLayerData {
-                        material_instance: job_system::make_handle_to_artifact_raw(
-                            context.job_api,
+                        material_instance: handle_factory.make_handle_to_artifact_raw(
                             context.input.asset_id,
                             layer.material_instance,
                         ),
@@ -521,10 +507,10 @@ impl JobProcessor for LdtkJobProcessor {
                         layer_data: layers,
                         vertex_data: level
                             .vertex_data
-                            .map(|x| job_system::make_handle_to_artifact(context.job_api, x)),
+                            .map(|x| handle_factory.make_handle_to_artifact(x)),
                         index_data: level
                             .index_data
-                            .map(|x| job_system::make_handle_to_artifact(context.job_api, x)),
+                            .map(|x| handle_factory.make_handle_to_artifact(x)),
                     },
                 );
             }
@@ -553,7 +539,7 @@ impl hydrate_pipeline::Builder for LdtkBuilder {
         //let x = LdtkAssetRecord::default();
 
         //Future: Might produce jobs per-platform
-        job_system::enqueue_job::<LdtkJobProcessor>(
+        context.enqueue_job::<LdtkJobProcessor>(
             context.data_set,
             context.schema_set,
             context.job_api,

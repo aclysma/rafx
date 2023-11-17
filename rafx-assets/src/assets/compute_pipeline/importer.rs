@@ -8,9 +8,8 @@ use hydrate_data::{
 use hydrate_pipeline::{
     job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
-    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
-    SchemaLinker,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    ReferencedSourceFile, RunContext, ScanContext, ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -162,9 +161,8 @@ impl JobProcessor for ComputePipelineJobProcessor {
         let shader_module = x.shader_module().get(&data_container).unwrap();
         let entry_name = x.entry_name().get(&data_container).unwrap();
 
-        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
-            let shader_module =
-                job_system::make_handle_to_default_artifact(context.job_api, shader_module);
+        context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
+            let shader_module = handle_factory.make_handle_to_default_artifact(shader_module);
             ComputePipelineAssetData {
                 entry_name,
                 shader_module,
@@ -192,7 +190,7 @@ impl hydrate_pipeline::Builder for ComputePipelineBuilder {
         //let x = ComputePipelineAssetRecord::default();
 
         //Future: Might produce jobs per-platform
-        job_system::enqueue_job::<ComputePipelineJobProcessor>(
+        context.enqueue_job::<ComputePipelineJobProcessor>(
             context.data_set,
             context.schema_set,
             context.job_api,

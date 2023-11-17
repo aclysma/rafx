@@ -12,8 +12,8 @@ use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{DataContainer, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject};
 use hydrate_pipeline::{
-    job_system, Builder, BuilderContext, EnumerateDependenciesContext, JobApi,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, RunContext,
+    job_system, Builder, BuilderContext, EnumerateDependenciesContext, JobEnumeratedDependencies,
+    JobInput, JobOutput, JobProcessor, RunContext,
 };
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
@@ -137,7 +137,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         //
         // Serialize and return
         //
-        job_system::produce_asset(context.job_api, context.input.asset_id, processed_data);
+        context.produce_default_artifact(context.input.asset_id, processed_data);
 
         GpuCompressedImageJobOutput {}
     }
@@ -157,7 +157,7 @@ impl Builder for GpuCompressedImageBuilder {
         context: BuilderContext,
     ) {
         //Future: Might produce jobs per-platform
-        job_system::enqueue_job::<GpuCompressedImageJobProcessor>(
+        context.enqueue_job::<GpuCompressedImageJobProcessor>(
             context.data_set,
             context.schema_set,
             context.job_api,

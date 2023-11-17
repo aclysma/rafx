@@ -12,9 +12,8 @@ use hydrate_data::{
 use hydrate_pipeline::{
     job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
-    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
-    SchemaLinker,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    ReferencedSourceFile, RunContext, ScanContext, ScannedImportable, SchemaLinker,
 };
 use rafx::api::{RafxError, RafxResult};
 use serde::{Deserialize, Serialize};
@@ -411,11 +410,7 @@ impl JobProcessor for BlenderAnimJobProcessor {
             );
         }
 
-        job_system::produce_asset(
-            context.job_api,
-            context.input.asset_id,
-            AnimAssetData { skeleton, clips },
-        );
+        context.produce_default_artifact(context.input.asset_id, AnimAssetData { skeleton, clips });
 
         BlenderAnimJobOutput {}
     }
@@ -438,7 +433,7 @@ impl hydrate_pipeline::Builder for BlenderAnimBuilder {
         //let x = BlenderAnimAssetRecord::default();
 
         //Future: Might produce jobs per-platform
-        job_system::enqueue_job::<BlenderAnimJobProcessor>(
+        context.enqueue_job::<BlenderAnimJobProcessor>(
             context.data_set,
             context.schema_set,
             context.job_api,

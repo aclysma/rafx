@@ -8,9 +8,9 @@ use hydrate_data::{
 use hydrate_pipeline::{
     job_system, AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder,
     EnumerateDependenciesContext, ImportContext, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, RunContext, ScanContext,
-    ScannedImportable, SchemaLinker,
+    ImporterRegistry, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput, JobOutput,
+    JobProcessor, JobProcessorRegistryBuilder, RunContext, ScanContext, ScannedImportable,
+    SchemaLinker,
 };
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
@@ -260,7 +260,7 @@ impl JobProcessor for ShaderPackageJobProcessor {
         //
         // Serialize and return
         //
-        job_system::produce_asset(context.job_api, context.input.asset_id, processed_data);
+        context.produce_default_artifact(context.input.asset_id, processed_data);
 
         ShaderPackageJobOutput {}
     }
@@ -283,7 +283,7 @@ impl Builder for ShaderPackageBuilder {
         //let x = ShaderPackageAssetRecord::default();
 
         //Future: Might produce jobs per-platform
-        job_system::enqueue_job::<ShaderPackageJobProcessor>(
+        context.enqueue_job::<ShaderPackageJobProcessor>(
             context.data_set,
             context.schema_set,
             context.job_api,
