@@ -6,10 +6,11 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, HashMap, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
-    ScannedImportable, SchemaLinker,
+    job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
+    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
+    SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -138,9 +139,7 @@ impl JobProcessor for ComputePipelineJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        _input: &ComputePipelineJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -148,23 +147,24 @@ impl JobProcessor for ComputePipelineJobProcessor {
 
     fn run(
         &self,
-        input: &ComputePipelineJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        _dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> ComputePipelineJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(
+            context.data_set,
+            context.schema_set,
+            context.input.asset_id,
+        );
         let x = ComputePipelineAssetRecord::default();
 
         let shader_module = x.shader_module().get(&data_container).unwrap();
         let entry_name = x.entry_name().get(&data_container).unwrap();
 
-        job_system::produce_asset_with_handles(job_api, input.asset_id, || {
-            let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
+        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
+            let shader_module =
+                job_system::make_handle_to_default_artifact(context.job_api, shader_module);
             ComputePipelineAssetData {
                 entry_name,
                 shader_module,
@@ -186,20 +186,19 @@ impl hydrate_pipeline::Builder for ComputePipelineBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = ComputePipelineAssetRecord::default();
 
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<ComputePipelineJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            ComputePipelineJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            ComputePipelineJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }

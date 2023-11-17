@@ -10,10 +10,11 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
-    ScannedImportable, SchemaLinker,
+    job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
+    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
+    SchemaLinker,
 };
 use rafx::api::{RafxError, RafxResult};
 use serde::{Deserialize, Serialize};
@@ -367,30 +368,24 @@ impl JobProcessor for BlenderAnimJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &BlenderAnimJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
-            import_data: vec![input.asset_id],
+            import_data: vec![context.input.asset_id],
             upstream_jobs: Default::default(),
         }
     }
 
     fn run(
         &self,
-        input: &BlenderAnimJobInput,
-        _data_set: &DataSet,
-        schema_set: &SchemaSet,
-        dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> BlenderAnimJobOutput {
         //
         // Read imported data
         //
-        let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::from_single_object(&imported_data, schema_set);
+        let imported_data = &context.dependency_data[&context.input.asset_id];
+        let data_container = DataContainer::from_single_object(&imported_data, context.schema_set);
         let x = BlenderAnimImportedDataRecord::new(PropertyPath::default());
 
         let json_str = x.json_string().get(&data_container).unwrap();
@@ -416,7 +411,11 @@ impl JobProcessor for BlenderAnimJobProcessor {
             );
         }
 
-        job_system::produce_asset(job_api, input.asset_id, AnimAssetData { skeleton, clips });
+        job_system::produce_asset(
+            context.job_api,
+            context.input.asset_id,
+            AnimAssetData { skeleton, clips },
+        );
 
         BlenderAnimJobOutput {}
     }
@@ -433,20 +432,19 @@ impl hydrate_pipeline::Builder for BlenderAnimBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = BlenderAnimAssetRecord::default();
 
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<BlenderAnimJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            BlenderAnimJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            BlenderAnimJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }

@@ -10,9 +10,9 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, JobApi,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ReferencedSourceFile,
-    ScanContext, ScannedImportable,
+    job_system, BuilderContext, EnumerateDependenciesContext, ImportContext, ImportableAsset,
+    ImportedImportable, ImporterRegistry, JobApi, JobEnumeratedDependencies, JobInput, JobOutput,
+    JobProcessor, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
 };
 use rafx_framework::MaterialShaderStage;
 use serde::{Deserialize, Serialize};
@@ -187,9 +187,7 @@ impl JobProcessor for MaterialJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        _input: &MaterialJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -197,19 +195,19 @@ impl JobProcessor for MaterialJobProcessor {
 
     fn run(
         &self,
-        input: &MaterialJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        _dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> MaterialJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(
+            context.data_set,
+            context.schema_set,
+            context.input.asset_id,
+        );
         let x = MaterialAssetRecord::default();
 
-        job_system::produce_asset_with_handles(job_api, input.asset_id, || {
+        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
             //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
             let mut passes = Vec::default();
             for pass_entry in x
@@ -257,14 +255,14 @@ impl JobProcessor for MaterialJobProcessor {
                     MaterialShaderStage::Vertex,
                     &pass_entry.vertex_stage(),
                     &data_container,
-                    job_api,
+                    context.job_api,
                     &mut shaders,
                 );
                 read_stage(
                     MaterialShaderStage::Fragment,
                     &pass_entry.fragment_stage(),
                     &data_container,
-                    job_api,
+                    context.job_api,
                     &mut shaders,
                 );
 
@@ -297,20 +295,19 @@ impl hydrate_pipeline::Builder for MaterialBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = MaterialAssetRecord::default();
 
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<MaterialJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            MaterialJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            MaterialJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }

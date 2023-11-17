@@ -9,9 +9,9 @@ use hydrate_data::{
     SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, JobApi,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, ReferencedSourceFile,
-    ScanContext, ScannedImportable,
+    job_system, BuilderContext, EnumerateDependenciesContext, ImportContext, ImportableAsset,
+    ImportedImportable, ImporterRegistry, JobApi, JobEnumeratedDependencies, JobInput, JobOutput,
+    JobProcessor, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -213,9 +213,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        _input: &MaterialInstanceJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -223,21 +221,21 @@ impl JobProcessor for MaterialInstanceJobProcessor {
 
     fn run(
         &self,
-        input: &MaterialInstanceJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        _dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> MaterialInstanceJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(
+            context.data_set,
+            context.schema_set,
+            context.input.asset_id,
+        );
         let x = MaterialInstanceAssetRecord::default();
 
-        job_system::produce_asset_with_handles(job_api, input.asset_id, || {
+        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
             let material = job_system::make_handle_to_default_artifact(
-                job_api,
+                context.job_api,
                 x.material().get(&data_container).unwrap(),
             );
 
@@ -259,7 +257,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
                     None
                 } else {
                     Some(job_system::make_handle_to_default_artifact(
-                        job_api,
+                        context.job_api,
                         image_object_id,
                     ))
                 };
@@ -314,20 +312,19 @@ impl hydrate_pipeline::Builder for MaterialInstanceBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = MaterialInstanceAssetRecord::default();
 
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<MaterialInstanceJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            MaterialInstanceJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            MaterialInstanceJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }

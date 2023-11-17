@@ -5,9 +5,10 @@ use rafx::api::RafxResourceType;
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::*;
 use hydrate_pipeline::{
-    job_system, AssetId, BuilderRegistryBuilder, DataContainer, DataSet, HashMap,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, Record, SchemaLinker, SchemaSet, SingleObject,
+    job_system, AssetId, BuilderContext, BuilderRegistryBuilder, DataContainer, DataSet,
+    EnumerateDependenciesContext, HashMap, ImporterRegistryBuilder, JobApi,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    Record, RunContext, SchemaLinker, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{AssetPlugin, Builder};
 use rafx::assets::PushBuffer;
@@ -40,9 +41,7 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        _input: &MeshAdvMaterialJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -50,16 +49,16 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
 
     fn run(
         &self,
-        input: &MeshAdvMaterialJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        _dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> MeshAdvMaterialJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(
+            context.data_set,
+            context.schema_set,
+            context.input.asset_id,
+        );
         let x = MeshAdvMaterialAssetRecord::default();
 
         let base_color_factor = x.base_color_factor().get_vec4(&data_container).unwrap();
@@ -104,9 +103,9 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
             backface_culling,
         };
 
-        job_system::produce_asset_with_handles(job_api, input.asset_id, || {
+        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
             let material_asset = job_system::make_handle_to_default_artifact(
-                job_api,
+                context.job_api,
                 AssetId::from_uuid(
                     Uuid::parse_str("07ab9227-432d-49c8-8899-146acd803235").unwrap(),
                 ),
@@ -114,7 +113,7 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
 
             let color_texture_handle = if !color_texture.is_null() {
                 Some(job_system::make_handle_to_default_artifact(
-                    job_api,
+                    context.job_api,
                     color_texture,
                 ))
             } else {
@@ -123,7 +122,7 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
 
             let metallic_roughness_texture_handle = if !metallic_roughness_texture.is_null() {
                 Some(job_system::make_handle_to_default_artifact(
-                    job_api,
+                    context.job_api,
                     metallic_roughness_texture,
                 ))
             } else {
@@ -132,7 +131,7 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
 
             let normal_texture_handle = if !normal_texture.is_null() {
                 Some(job_system::make_handle_to_default_artifact(
-                    job_api,
+                    context.job_api,
                     normal_texture,
                 ))
             } else {
@@ -141,7 +140,7 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
 
             let emissive_texture_handle = if !emissive_texture.is_null() {
                 Some(job_system::make_handle_to_default_artifact(
-                    job_api,
+                    context.job_api,
                     emissive_texture,
                 ))
             } else {
@@ -180,17 +179,16 @@ impl Builder for MeshAdvMaterialBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<MeshAdvMaterialJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            MeshAdvMaterialJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            MeshAdvMaterialJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }
@@ -235,29 +233,27 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &MeshAdvMeshPreprocessJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
-            import_data: vec![input.asset_id],
+            import_data: vec![context.input.asset_id],
             upstream_jobs: Vec::default(),
         }
     }
 
     fn run(
         &self,
-        input: &MeshAdvMeshPreprocessJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> MeshAdvMeshPreprocessJobOutput {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(
+            context.data_set,
+            context.schema_set,
+            context.input.asset_id,
+        );
         let x = MeshAdvMeshAssetRecord::default();
         let mut materials = Vec::default();
         for entry in x
@@ -277,8 +273,8 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         // Read import data
         //
-        let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::from_single_object(imported_data, schema_set);
+        let imported_data = &context.dependency_data[&context.input.asset_id];
+        let data_container = DataContainer::from_single_object(imported_data, context.schema_set);
         let x = MeshAdvMeshImportedDataRecord::default();
 
         let mut all_positions = Vec::<glam::Vec3>::with_capacity(1024);
@@ -360,8 +356,8 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         let vertex_buffer_full_artifact_id = if !all_vertices_full.is_empty() {
             Some(job_system::produce_artifact(
-                job_api,
-                input.asset_id,
+                context.job_api,
+                context.input.asset_id,
                 Some("full"),
                 MeshAdvBufferAssetData {
                     resource_type: RafxResourceType::VERTEX_BUFFER,
@@ -380,8 +376,8 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         let vertex_buffer_position_artifact_id = if !all_vertices_position.is_empty() {
             Some(job_system::produce_artifact(
-                job_api,
-                input.asset_id,
+                context.job_api,
+                context.input.asset_id,
                 Some("position"),
                 MeshAdvBufferAssetData {
                     resource_type: RafxResourceType::VERTEX_BUFFER,
@@ -400,8 +396,8 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         let index_buffer_artifact_id = if !all_indices.is_empty() {
             Some(job_system::produce_artifact(
-                job_api,
-                input.asset_id,
+                context.job_api,
+                context.input.asset_id,
                 Some("index"),
                 MeshAdvBufferAssetData {
                     resource_type: RafxResourceType::INDEX_BUFFER,
@@ -418,7 +414,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         // Mesh asset
         //
-        job_system::produce_asset_with_handles(job_api, input.asset_id, || {
+        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
             let mut mesh_parts = Vec::default();
             for (entry, part_data) in x
                 .mesh_parts()
@@ -432,8 +428,10 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
                 let material_slot_index = entry.material_index().get(&data_container).unwrap();
                 let material_object_id = materials[material_slot_index as usize];
 
-                let material_handle =
-                    job_system::make_handle_to_default_artifact(job_api, material_object_id);
+                let material_handle = job_system::make_handle_to_default_artifact(
+                    context.job_api,
+                    material_object_id,
+                );
 
                 mesh_parts.push(MeshAdvPartAssetData {
                     vertex_full_buffer_offset_in_bytes: part_data
@@ -450,12 +448,16 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
                 })
             }
 
-            let vertex_full_buffer =
-                job_system::make_handle_to_artifact(job_api, vertex_buffer_full_artifact_id);
-            let vertex_position_buffer =
-                job_system::make_handle_to_artifact(job_api, vertex_buffer_position_artifact_id);
+            let vertex_full_buffer = job_system::make_handle_to_artifact(
+                context.job_api,
+                vertex_buffer_full_artifact_id,
+            );
+            let vertex_position_buffer = job_system::make_handle_to_artifact(
+                context.job_api,
+                vertex_buffer_position_artifact_id,
+            );
             let index_buffer =
-                job_system::make_handle_to_artifact(job_api, index_buffer_artifact_id);
+                job_system::make_handle_to_artifact(context.job_api, index_buffer_artifact_id);
 
             let visible_bounds = PolygonSoup {
                 vertex_positions: all_positions,
@@ -486,20 +488,19 @@ impl Builder for MeshAdvMeshBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         // Produce an intermediate with all data
         // Produce buffers for various vertex types
         // Some day I might want to look at the materials to decide what vertex buffers should exist
 
         job_system::enqueue_job::<MeshAdvMeshJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            MeshAdvMeshPreprocessJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            MeshAdvMeshPreprocessJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }
@@ -528,9 +529,7 @@ impl JobProcessor for MeshAdvModelJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        _input: &MeshAdvModelJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies::default()
@@ -538,14 +537,14 @@ impl JobProcessor for MeshAdvModelJobProcessor {
 
     fn run(
         &self,
-        input: &MeshAdvModelJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        _dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> MeshAdvModelJobOutput {
-        job_system::produce_asset_with_handles(job_api, input.asset_id, || {
-            let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
+        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
+            let data_container = DataContainer::from_dataset(
+                context.data_set,
+                context.schema_set,
+                context.input.asset_id,
+            );
             let x = MeshAdvModelAssetRecord::default();
 
             let mut lods = Vec::default();
@@ -557,7 +556,7 @@ impl JobProcessor for MeshAdvModelJobProcessor {
             {
                 let lod = x.lods().entry(*entry);
                 let mesh_handle = job_system::make_handle_to_default_artifact(
-                    job_api,
+                    context.job_api,
                     lod.mesh().get(&data_container).unwrap(),
                 );
 
@@ -582,20 +581,19 @@ impl hydrate_pipeline::Builder for MeshAdvModelBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = MeshAdvModelAssetRecord::default();
 
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<MeshAdvModelJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            MeshAdvModelJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            MeshAdvModelJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }
@@ -624,30 +622,24 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &MeshAdvPrefabJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
-            import_data: vec![input.asset_id],
+            import_data: vec![context.input.asset_id],
             upstream_jobs: Default::default(),
         }
     }
 
     fn run(
         &self,
-        input: &MeshAdvPrefabJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> MeshAdvPrefabJobOutput {
         //
         // Read import data
         //
-        let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::from_single_object(imported_data, schema_set);
+        let imported_data = &context.dependency_data[&context.input.asset_id];
+        let data_container = DataContainer::from_single_object(imported_data, context.schema_set);
         let x = MeshAdvPrefabImportDataRecord::default();
 
         let json_str = x.json_data().get(&data_container).unwrap();
@@ -655,17 +647,20 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
             .map_err(|x| format!("Blender Material Import error: {:?}", x))
             .unwrap();
 
-        let file_references = data_set
-            .resolve_all_file_references(input.asset_id)
+        let file_references = context
+            .data_set
+            .resolve_all_file_references(context.input.asset_id)
             .unwrap();
 
-        job_system::produce_asset_with_handles(job_api, input.asset_id, || {
+        job_system::produce_asset_with_handles(context.job_api, context.input.asset_id, || {
             let mut objects = Vec::with_capacity(json_format.objects.len());
             for json_object in json_format.objects {
                 let model = if let Some(json_model) = &json_object.model {
                     let model_object_id = file_references.get(&json_model.model).unwrap();
-                    let model_handle =
-                        job_system::make_handle_to_default_artifact(job_api, *model_object_id);
+                    let model_handle = job_system::make_handle_to_default_artifact(
+                        context.job_api,
+                        *model_object_id,
+                    );
 
                     Some(PrefabAdvAssetDataObjectModel {
                         model: model_handle,
@@ -730,20 +725,19 @@ impl hydrate_pipeline::Builder for MeshAdvPrefabBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = MeshAdvPrefabAssetRecord::default();
 
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<MeshAdvPrefabJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            MeshAdvPrefabJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            MeshAdvPrefabJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }

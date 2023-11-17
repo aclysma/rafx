@@ -15,10 +15,10 @@ use hydrate_data::{
     SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, Builder, BuilderRegistryBuilder, ImportContext, ImportableAsset,
-    ImportedImportable, ImporterRegistry, ImporterRegistryBuilder, JobApi,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    ScanContext, ScannedImportable,
+    job_system, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
+    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, RunContext, ScanContext, ScannedImportable,
 };
 use image::GenericImageView;
 use rafx_api::RafxResourceType;
@@ -432,29 +432,27 @@ impl JobProcessor for GpuImageJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &GpuImageJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
-            import_data: vec![input.asset_id],
+            import_data: vec![context.input.asset_id],
             upstream_jobs: Vec::default(),
         }
     }
 
     fn run(
         &self,
-        input: &GpuImageJobInput,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> GpuImageJobOutput {
         //
         // Read asset properties
         //
-        let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
+        let data_container = DataContainer::from_dataset(
+            context.data_set,
+            context.schema_set,
+            context.input.asset_id,
+        );
         let x = GpuImageAssetRecord::default();
         let basis_compression = x.basis_compression().get(&data_container).unwrap();
         let color_space = match x.color_space().get(&data_container).unwrap() {
@@ -494,8 +492,8 @@ impl JobProcessor for GpuImageJobProcessor {
         //
         // Read imported data
         //
-        let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::from_single_object(&imported_data, schema_set);
+        let imported_data = &context.dependency_data[&context.input.asset_id];
+        let data_container = DataContainer::from_single_object(&imported_data, context.schema_set);
         let x = GpuImageImportedDataRecord::new(PropertyPath::default());
 
         let image_bytes = x.image_bytes().get(&data_container).unwrap().clone();
@@ -519,7 +517,7 @@ impl JobProcessor for GpuImageJobProcessor {
         //
         // Serialize and return
         //
-        job_system::produce_asset(job_api, input.asset_id, processed_data);
+        job_system::produce_asset(context.job_api, context.input.asset_id, processed_data);
 
         GpuImageJobOutput {}
     }
@@ -536,17 +534,16 @@ impl Builder for GpuImageBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<GpuImageJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            GpuImageJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            GpuImageJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }

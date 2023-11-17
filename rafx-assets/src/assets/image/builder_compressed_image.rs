@@ -12,7 +12,8 @@ use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{DataContainer, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject};
 use hydrate_pipeline::{
-    job_system, Builder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    job_system, Builder, BuilderContext, EnumerateDependenciesContext, JobApi,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, RunContext,
 };
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
@@ -42,24 +43,18 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &GpuCompressedImageJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
-            import_data: vec![input.asset_id],
+            import_data: vec![context.input.asset_id],
             upstream_jobs: Vec::default(),
         }
     }
 
     fn run(
         &self,
-        input: &GpuCompressedImageJobInput,
-        _data_set: &DataSet,
-        schema_set: &SchemaSet,
-        dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> GpuCompressedImageJobOutput {
         //
         // Read asset properties
@@ -68,8 +63,8 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         //
         // Read imported data
         //
-        let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::from_single_object(&imported_data, schema_set);
+        let imported_data = &context.dependency_data[&context.input.asset_id];
+        let data_container = DataContainer::from_single_object(&imported_data, context.schema_set);
         let x = GpuCompressedImageImportedDataRecord::new(PropertyPath::default());
 
         let width = x.width().get(&data_container).unwrap();
@@ -142,7 +137,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         //
         // Serialize and return
         //
-        job_system::produce_asset(job_api, input.asset_id, processed_data);
+        job_system::produce_asset(context.job_api, context.input.asset_id, processed_data);
 
         GpuCompressedImageJobOutput {}
     }
@@ -159,17 +154,16 @@ impl Builder for GpuCompressedImageBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<GpuCompressedImageJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            GpuCompressedImageJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            GpuCompressedImageJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }

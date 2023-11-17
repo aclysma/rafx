@@ -7,10 +7,10 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScanContext, ScannedImportable,
-    SchemaLinker,
+    job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
+    JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, RunContext, ScanContext, ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -122,24 +122,18 @@ impl JobProcessor for FontJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        input: &FontJobInput,
-        _data_set: &DataSet,
-        _schema_set: &SchemaSet,
+        context: EnumerateDependenciesContext<Self::InputT>,
     ) -> JobEnumeratedDependencies {
         // No dependencies
         JobEnumeratedDependencies {
-            import_data: vec![input.asset_id],
+            import_data: vec![context.input.asset_id],
             upstream_jobs: Default::default(),
         }
     }
 
     fn run(
         &self,
-        input: &FontJobInput,
-        _data_set: &DataSet,
-        schema_set: &SchemaSet,
-        dependency_data: &HashMap<AssetId, SingleObject>,
-        job_api: &dyn JobApi,
+        context: RunContext<Self::InputT>,
     ) -> FontJobOutput {
         //
         // Read asset properties
@@ -150,8 +144,8 @@ impl JobProcessor for FontJobProcessor {
         //
         // Read imported data
         //
-        let imported_data = &dependency_data[&input.asset_id];
-        let data_container = DataContainer::from_single_object(&imported_data, schema_set);
+        let imported_data = &context.dependency_data[&context.input.asset_id];
+        let data_container = DataContainer::from_single_object(&imported_data, context.schema_set);
         let x = FontImportedDataRecord::new(PropertyPath::default());
 
         let font_bytes = x.bytes().get(&data_container).unwrap().clone();
@@ -175,7 +169,7 @@ impl JobProcessor for FontJobProcessor {
         //
         // Serialize and return
         //
-        job_system::produce_asset(job_api, input.asset_id, processed_data);
+        job_system::produce_asset(context.job_api, context.input.asset_id, processed_data);
 
         FontJobOutput {}
     }
@@ -192,20 +186,19 @@ impl hydrate_pipeline::Builder for FontBuilder {
 
     fn start_jobs(
         &self,
-        asset_id: AssetId,
-        data_set: &DataSet,
-        schema_set: &SchemaSet,
-        job_api: &dyn JobApi,
+        context: BuilderContext,
     ) {
         //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
         //let x = FontAssetRecord::default();
 
         //Future: Might produce jobs per-platform
         job_system::enqueue_job::<FontJobProcessor>(
-            data_set,
-            schema_set,
-            job_api,
-            FontJobInput { asset_id },
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            FontJobInput {
+                asset_id: context.asset_id,
+            },
         );
     }
 }
