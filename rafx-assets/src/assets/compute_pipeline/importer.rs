@@ -6,9 +6,10 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, HashMap, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
+    job_system, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
+    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
+    ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -26,17 +27,16 @@ impl hydrate_pipeline::Importer for HydrateComputePipelineImporter {
 
     fn scan_file(
         &self,
-        path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(path).unwrap();
+        let source = std::fs::read_to_string(context.path).unwrap();
         let parsed_source = ron::de::from_str::<ComputePipelineRon>(&source).unwrap();
 
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(ComputePipelineAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -58,17 +58,16 @@ impl hydrate_pipeline::Importer for HydrateComputePipelineImporter {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(path).unwrap();
+        let source = std::fs::read_to_string(context.path).unwrap();
         let compute_pipeline_asset_data = ron::de::from_str::<ComputePipelineRon>(&source).unwrap();
 
-        let shader_object_id = *importable_assets
+        let shader_object_id = *context
+            .importable_assets
             .get(&None)
             .unwrap()
             .referenced_paths
@@ -80,9 +79,9 @@ impl hydrate_pipeline::Importer for HydrateComputePipelineImporter {
         //
         let default_asset = {
             let mut default_asset_object =
-                ComputePipelineAssetRecord::new_single_object(schema_set).unwrap();
+                ComputePipelineAssetRecord::new_single_object(context.schema_set).unwrap();
             let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
+                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
             let x = ComputePipelineAssetRecord::default();
 
             x.entry_name()

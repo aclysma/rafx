@@ -4,9 +4,9 @@ use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
 use hydrate_pipeline::{
-    BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
-    SchemaLinker,
+    BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
+    ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -44,19 +44,18 @@ impl hydrate_pipeline::Importer for BlenderModelImporter {
 
     fn scan_file(
         &self,
-        path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(path).unwrap();
+        let source = std::fs::read_to_string(context.path).unwrap();
         let json_format: HydrateModelJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Model Import error: {:?}", x))
             .unwrap();
 
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(MeshAdvModelAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -79,14 +78,12 @@ impl hydrate_pipeline::Importer for BlenderModelImporter {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(path).unwrap();
+        let source = std::fs::read_to_string(context.path).unwrap();
         let json_format: HydrateModelJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Model Import error: {:?}", x))
             .unwrap();
@@ -96,9 +93,9 @@ impl hydrate_pipeline::Importer for BlenderModelImporter {
         //
         let default_asset = {
             let mut default_asset_object =
-                MeshAdvModelAssetRecord::new_single_object(schema_set).unwrap();
+                MeshAdvModelAssetRecord::new_single_object(context.schema_set).unwrap();
             let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
+                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
             let x = MeshAdvModelAssetRecord::default();
 
             let entry = x
@@ -108,7 +105,8 @@ impl hydrate_pipeline::Importer for BlenderModelImporter {
             let lod_entry = x.lods().entry(entry);
 
             for lod in &json_format.lods {
-                let mesh_object_id = *importable_assets
+                let mesh_object_id = *context
+                    .importable_assets
                     .get(&None)
                     .unwrap()
                     .referenced_paths

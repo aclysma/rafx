@@ -6,9 +6,10 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, AssetPlugin, Builder, BuilderRegistryBuilder, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
+    job_system, AssetPlugin, Builder, BuilderRegistryBuilder, ImportContext, ImportableAsset,
+    ImportedImportable, ImporterRegistry, ImporterRegistryBuilder, JobApi,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    ScanContext, ScannedImportable, SchemaLinker,
 };
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
@@ -26,11 +27,10 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
 
     fn scan_file(
         &self,
-        _path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(ShaderPackageAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -45,14 +45,12 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let spv_bytes = std::fs::read(path).unwrap();
+        let spv_bytes = std::fs::read(context.path).unwrap();
 
         // The hash is used in some places identify the shader
         let shader_package = RafxShaderPackage {
@@ -78,9 +76,9 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
         //
         let import_data = {
             let mut import_object =
-                ShaderPackageImportedDataRecord::new_single_object(schema_set).unwrap();
+                ShaderPackageImportedDataRecord::new_single_object(context.schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
             let x = ShaderPackageImportedDataRecord::default();
             x.bytes()
                 .set(&mut import_data_container, package_bytes)
@@ -93,7 +91,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
         //
         let default_asset = {
             let default_asset_object =
-                ShaderPackageAssetRecord::new_single_object(schema_set).unwrap();
+                ShaderPackageAssetRecord::new_single_object(context.schema_set).unwrap();
             // No fields to write
             default_asset_object
         };
@@ -125,11 +123,10 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
 
     fn scan_file(
         &self,
-        _path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(ShaderPackageAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -144,14 +141,12 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let cooked_shader_bytes = std::fs::read(path).unwrap();
+        let cooked_shader_bytes = std::fs::read(context.path).unwrap();
 
         let hashed_shader_package: RafxHashedShaderPackage =
             bincode::deserialize::<RafxHashedShaderPackage>(&cooked_shader_bytes)
@@ -160,7 +155,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
 
         log::trace!(
             "Import shader asset {:?} with hash {:?}",
-            path,
+            context.path,
             hashed_shader_package.shader_package_hash(),
         );
 
@@ -171,9 +166,9 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
         //
         let import_data = {
             let mut import_object =
-                ShaderPackageImportedDataRecord::new_single_object(schema_set).unwrap();
+                ShaderPackageImportedDataRecord::new_single_object(context.schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
             let x = ShaderPackageImportedDataRecord::default();
             x.bytes()
                 .set(&mut import_data_container, package_bytes)
@@ -186,7 +181,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
         //
         let default_asset = {
             let default_asset_object =
-                ShaderPackageAssetRecord::new_single_object(schema_set).unwrap();
+                ShaderPackageAssetRecord::new_single_object(context.schema_set).unwrap();
             // No fields to write
             default_asset_object
         };

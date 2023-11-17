@@ -9,8 +9,9 @@ use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{DataContainerMut, Record, SchemaSet};
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
+    ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder, ScanContext,
+    ScannedImportable, SchemaLinker,
 };
 use rafx::assets::schema::{GpuImageAssetRecord, GpuImageImportedDataRecord};
 use rafx::assets::PushBuffer;
@@ -568,32 +569,33 @@ impl hydrate_pipeline::Importer for GltfImporter {
 
     fn scan_file(
         &self,
-        path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
-        let mesh_asset_type = schema_set
+        let mesh_asset_type = context
+            .schema_set
             .find_named_type(MeshAdvMeshAssetRecord::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
             .clone();
 
-        let material_asset_type = schema_set
+        let material_asset_type = context
+            .schema_set
             .find_named_type(MeshAdvMaterialAssetRecord::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
             .clone();
 
-        let image_asset_type = schema_set
+        let image_asset_type = context
+            .schema_set
             .find_named_type(GpuImageAssetRecord::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
             .clone();
 
-        let (doc, _buffers, _images) = ::gltf::import(path).unwrap();
+        let (doc, _buffers, _images) = ::gltf::import(context.path).unwrap();
 
         let mut importables = Vec::default();
 
@@ -651,15 +653,13 @@ impl hydrate_pipeline::Importer for GltfImporter {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
         //import_info: &ImportInfo,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let (doc, buffers, images) = ::gltf::import(path).unwrap();
+        let (doc, buffers, images) = ::gltf::import(context.path).unwrap();
 
         let mut imported_objects = HashMap::default();
 
@@ -671,11 +671,13 @@ impl hydrate_pipeline::Importer for GltfImporter {
 
         for (i, image) in doc.images().enumerate() {
             let asset_name = name_or_index("image", image.name(), i);
-            if let Some(importable_object) = importable_assets.get(&Some(asset_name.clone())) {
+            if let Some(importable_object) =
+                context.importable_assets.get(&Some(asset_name.clone()))
+            {
                 image_index_to_object_id.insert(image.index(), importable_object.id);
                 hydrate_import_image(
                     &asset_name,
-                    schema_set,
+                    context.schema_set,
                     &image,
                     &images,
                     &mut imported_objects,
@@ -686,11 +688,13 @@ impl hydrate_pipeline::Importer for GltfImporter {
 
         for (i, material) in doc.materials().enumerate() {
             let asset_name = name_or_index("material", material.name(), i);
-            if let Some(importable_object) = importable_assets.get(&Some(asset_name.clone())) {
+            if let Some(importable_object) =
+                context.importable_assets.get(&Some(asset_name.clone()))
+            {
                 material_index_to_object_id.insert(material.index(), importable_object.id);
                 hydrate_import_material(
                     &asset_name,
-                    schema_set,
+                    context.schema_set,
                     &material,
                     &mut imported_objects,
                     &image_index_to_object_id,
@@ -700,11 +704,14 @@ impl hydrate_pipeline::Importer for GltfImporter {
 
         for (i, mesh) in doc.meshes().enumerate() {
             let asset_name = name_or_index("mesh", mesh.name(), i);
-            if importable_assets.contains_key(&Some(asset_name.clone())) {
+            if context
+                .importable_assets
+                .contains_key(&Some(asset_name.clone()))
+            {
                 hydrate_import_mesh(
                     &asset_name,
                     &buffers,
-                    schema_set,
+                    context.schema_set,
                     &mesh,
                     &mut imported_objects,
                     &material_index_to_object_id,

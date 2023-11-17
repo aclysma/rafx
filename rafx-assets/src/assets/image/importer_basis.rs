@@ -6,7 +6,10 @@ use crate::schema::{
 use basis_universal::BasisTextureType;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, Record, SchemaSet};
-use hydrate_pipeline::{ImportableAsset, ImportedImportable, ImporterRegistry, ScannedImportable};
+use hydrate_pipeline::{
+    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ScanContext,
+    ScannedImportable,
+};
 use std::path::Path;
 use type_uuid::*;
 
@@ -21,11 +24,10 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
 
     fn scan_file(
         &self,
-        _path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(GpuCompressedImageAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -40,11 +42,9 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
-        let bytes = std::fs::read(path).unwrap();
+        let bytes = std::fs::read(context.path).unwrap();
 
         let transcoder = basis_universal::Transcoder::new();
         let texture_type = transcoder.basis_texture_type(&bytes);
@@ -94,9 +94,10 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
         //
         let import_data = {
             let mut import_object =
-                GpuCompressedImageImportedDataRecord::new_single_object(schema_set).unwrap();
+                GpuCompressedImageImportedDataRecord::new_single_object(context.schema_set)
+                    .unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
             let x = GpuCompressedImageImportedDataRecord::default();
 
             x.height()
@@ -126,7 +127,7 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
         //
         let default_asset = {
             let default_asset_object =
-                GpuCompressedImageAssetRecord::new_single_object(schema_set).unwrap();
+                GpuCompressedImageAssetRecord::new_single_object(context.schema_set).unwrap();
 
             // no fields to set
 

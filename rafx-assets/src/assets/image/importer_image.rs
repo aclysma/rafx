@@ -15,9 +15,10 @@ use hydrate_data::{
     SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, Builder, BuilderRegistryBuilder, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScannedImportable,
+    job_system, Builder, BuilderRegistryBuilder, ImportContext, ImportableAsset,
+    ImportedImportable, ImporterRegistry, ImporterRegistryBuilder, JobApi,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    ScanContext, ScannedImportable,
 };
 use image::GenericImageView;
 use rafx_api::RafxResourceType;
@@ -272,11 +273,10 @@ impl hydrate_pipeline::Importer for GpuImageImporterSimple {
 
     fn scan_file(
         &self,
-        _path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(GpuImageAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -291,13 +291,11 @@ impl hydrate_pipeline::Importer for GpuImageImporterSimple {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         let (image_bytes, width, height) = {
             profiling::scope!("Load Image from Disk");
-            let decoded_image = ::image::open(path).unwrap();
+            let decoded_image = ::image::open(context.path).unwrap();
             let (width, height) = decoded_image.dimensions();
             let image_bytes = decoded_image.into_rgba8().to_vec();
             (image_bytes, width, height)
@@ -308,9 +306,9 @@ impl hydrate_pipeline::Importer for GpuImageImporterSimple {
         //
         let import_data = {
             let mut import_object =
-                GpuImageImportedDataRecord::new_single_object(schema_set).unwrap();
+                GpuImageImportedDataRecord::new_single_object(context.schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
             let x = GpuImageImportedDataRecord::default();
             x.image_bytes()
                 .set(&mut import_data_container, image_bytes)
@@ -324,12 +322,12 @@ impl hydrate_pipeline::Importer for GpuImageImporterSimple {
         // Create the default asset
         //
         let default_asset = {
-            let default_settings = self.default_settings(path);
+            let default_settings = self.default_settings(context.path);
 
             let mut default_asset_object =
-                GpuImageAssetRecord::new_single_object(schema_set).unwrap();
+                GpuImageAssetRecord::new_single_object(context.schema_set).unwrap();
             let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
+                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
             let x = GpuImageAssetRecord::default();
 
             GpuImageImporterSimple::set_default_asset_properties(

@@ -4,9 +4,9 @@ use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
-    SchemaLinker,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
+    ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile,
+    ScanContext, ScannedImportable, SchemaLinker,
 };
 use rafx::assets::PushBuffer;
 use rafx::base::b3f::B3FReader;
@@ -88,18 +88,17 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
 
     fn scan_file(
         &self,
-        path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
-        let mesh_adv_asset_type = schema_set
+        let mesh_adv_asset_type = context
+            .schema_set
             .find_named_type(MeshAdvMeshAssetRecord::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
             .clone();
 
-        let bytes = std::fs::read(path).unwrap();
+        let bytes = std::fs::read(context.path).unwrap();
 
         let b3f_reader = B3FReader::new(&bytes)
             .ok_or("Blender Mesh Import error, mesh file format not recognized")
@@ -139,14 +138,12 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let bytes = std::fs::read(path).unwrap();
+        let bytes = std::fs::read(context.path).unwrap();
 
         let b3f_reader = B3FReader::new(&bytes)
             .ok_or("Blender Mesh Import error, mesh file format not recognized")
@@ -155,9 +152,10 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let mut import_data = MeshAdvMeshImportedDataRecord::new_single_object(schema_set).unwrap();
+        let mut import_data =
+            MeshAdvMeshImportedDataRecord::new_single_object(context.schema_set).unwrap();
         let mut import_data_container =
-            DataContainerMut::from_single_object(&mut import_data, schema_set);
+            DataContainerMut::from_single_object(&mut import_data, context.schema_set);
         let x = MeshAdvMeshImportedDataRecord::default();
 
         //
@@ -253,16 +251,17 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
         //
         let default_asset = {
             let mut default_asset_object =
-                MeshAdvMeshAssetRecord::new_single_object(schema_set).unwrap();
+                MeshAdvMeshAssetRecord::new_single_object(context.schema_set).unwrap();
             let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
+                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
             let x = MeshAdvMeshAssetRecord::default();
 
             //
             // Set up the material slots
             //
             for material_slot in material_slots {
-                let object_id = importable_assets
+                let object_id = context
+                    .importable_assets
                     .get(&None)
                     .unwrap()
                     .referenced_paths

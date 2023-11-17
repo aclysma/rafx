@@ -11,9 +11,10 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
+    job_system, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
+    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
+    ScannedImportable, SchemaLinker,
 };
 use ldtk_rust::{LayerInstance, Level, TileInstance};
 use rafx::api::RafxResourceType;
@@ -137,14 +138,12 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
 
     fn scan_file(
         &self,
-        path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(path).unwrap();
+        let source = std::fs::read_to_string(context.path).unwrap();
         let project: serde_json::Result<ldtk_rust::Project> = serde_json::from_str(&source);
         if let Err(err) = project {
             panic!("LDTK Import error: {:?}", err);
@@ -153,7 +152,8 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
 
         let project = project.unwrap();
 
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(LdtkAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -179,14 +179,12 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(path).unwrap();
+        let source = std::fs::read_to_string(context.path).unwrap();
         let project: serde_json::Result<ldtk_rust::Project> = serde_json::from_str(&source);
         if let Err(err) = project {
             panic!("LDTK Import error: {:?}", err);
@@ -199,7 +197,8 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
         // Create the default asset
         //
         let default_asset = {
-            let default_asset_object = LdtkAssetRecord::new_single_object(schema_set).unwrap();
+            let default_asset_object =
+                LdtkAssetRecord::new_single_object(context.schema_set).unwrap();
             // let mut default_asset_data_container =
             //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             // let x = LdtkAssetRecord::default();
@@ -210,9 +209,9 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
 
         let import_data = {
             let mut import_data_object =
-                LdtkImportDataRecord::new_single_object(schema_set).unwrap();
+                LdtkImportDataRecord::new_single_object(context.schema_set).unwrap();
             let mut import_data_data_container =
-                DataContainerMut::from_single_object(&mut import_data_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_data_object, context.schema_set);
             let x = LdtkImportDataRecord::default();
 
             x.json_data()

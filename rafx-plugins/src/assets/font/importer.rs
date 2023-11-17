@@ -7,9 +7,10 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ScannedImportable, SchemaLinker,
+    job_system, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
+    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ScanContext, ScannedImportable,
+    SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -27,11 +28,10 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
 
     fn scan_file(
         &self,
-        _path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(FontAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -46,20 +46,19 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let font_bytes = std::fs::read(path).unwrap();
+        let font_bytes = std::fs::read(context.path).unwrap();
 
         //
         // Create the default asset
         //
         let default_asset = {
-            let default_asset_object = FontAssetRecord::new_single_object(schema_set).unwrap();
+            let default_asset_object =
+                FontAssetRecord::new_single_object(context.schema_set).unwrap();
             // let mut default_asset_data_container =
             //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             // let x = FontAssetRecord::default();
@@ -72,9 +71,10 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
         // Create import data
         //
         let import_data = {
-            let mut import_object = FontImportedDataRecord::new_single_object(schema_set).unwrap();
+            let mut import_object =
+                FontImportedDataRecord::new_single_object(context.schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
             let x = FontImportedDataRecord::default();
             x.bytes()
                 .set(&mut import_data_container, font_bytes)

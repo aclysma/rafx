@@ -6,9 +6,9 @@ use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
 use hydrate_pipeline::{
-    BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable,
-    SchemaLinker,
+    BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
+    ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -103,19 +103,18 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
 
     fn scan_file(
         &self,
-        path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(path).unwrap();
+        let source = std::fs::read_to_string(context.path).unwrap();
         let json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Prefab Import error: {:?}", x))
             .unwrap();
 
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(MeshAdvPrefabAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -143,14 +142,12 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(path).unwrap();
+        let source = std::fs::read_to_string(context.path).unwrap();
         // We don't actually need to parse this now but worth doing to make sure it's well-formed at import time
         let _json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Prefab Import error: {:?}", x))
@@ -161,7 +158,7 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
         //
         let default_asset = {
             let default_asset_object =
-                MeshAdvPrefabAssetRecord::new_single_object(schema_set).unwrap();
+                MeshAdvPrefabAssetRecord::new_single_object(context.schema_set).unwrap();
             // let mut default_asset_data_container =
             //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             // let x = MeshAdvPrefabAssetRecord::default();
@@ -172,9 +169,9 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
 
         let import_data = {
             let mut import_data_object =
-                MeshAdvPrefabImportDataRecord::new_single_object(schema_set).unwrap();
+                MeshAdvPrefabImportDataRecord::new_single_object(context.schema_set).unwrap();
             let mut import_data_data_container =
-                DataContainerMut::from_single_object(&mut import_data_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_data_object, context.schema_set);
             let x = MeshAdvPrefabImportDataRecord::default();
 
             x.json_data()

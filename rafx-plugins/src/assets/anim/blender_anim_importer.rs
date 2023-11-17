@@ -10,9 +10,10 @@ use hydrate_data::{
     DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
-    job_system, BuilderRegistryBuilder, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, ReferencedSourceFile, ScannedImportable, SchemaLinker,
+    job_system, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
+    ImporterRegistry, ImporterRegistryBuilder, JobApi, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
+    ScannedImportable, SchemaLinker,
 };
 use rafx::api::{RafxError, RafxResult};
 use serde::{Deserialize, Serialize};
@@ -254,21 +255,20 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
 
     fn scan_file(
         &self,
-        path: &Path,
-        schema_set: &SchemaSet,
-        _importer_registry: &ImporterRegistry,
+        context: ScanContext,
     ) -> Vec<ScannedImportable> {
         //
         // Read the file
         //
-        let json_str = std::fs::read_to_string(path).unwrap();
+        let json_str = std::fs::read_to_string(context.path).unwrap();
         let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_str(&json_str);
         if let Err(err) = anim_data {
             panic!("anim Import error: {:?}", err);
             //return Err(Error::Boxed(Box::new(err)));
         }
 
-        let asset_type = schema_set
+        let asset_type = context
+            .schema_set
             .find_named_type(BlenderAnimAssetRecord::schema_name())
             .unwrap()
             .as_record()
@@ -284,14 +284,12 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
 
     fn import_file(
         &self,
-        path: &Path,
-        importable_assets: &HashMap<Option<String>, ImportableAsset>,
-        schema_set: &SchemaSet,
+        context: ImportContext,
     ) -> HashMap<Option<String>, ImportedImportable> {
         //
         // Read the file
         //
-        let json_str = std::fs::read_to_string(path).unwrap();
+        let json_str = std::fs::read_to_string(context.path).unwrap();
         let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_str(&json_str);
         if let Err(err) = anim_data {
             panic!("anim Import error: {:?}", err);
@@ -303,7 +301,7 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
         //
         let default_asset = {
             let default_asset_object =
-                BlenderAnimAssetRecord::new_single_object(schema_set).unwrap();
+                BlenderAnimAssetRecord::new_single_object(context.schema_set).unwrap();
             // let mut default_asset_data_container =
             //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
             // let x = BlenderAnimAssetRecord::default();
@@ -317,9 +315,9 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
         //
         let import_data = {
             let mut import_object =
-                BlenderAnimImportedDataRecord::new_single_object(schema_set).unwrap();
+                BlenderAnimImportedDataRecord::new_single_object(context.schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, schema_set);
+                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
             let x = BlenderAnimImportedDataRecord::default();
 
             x.json_string()
