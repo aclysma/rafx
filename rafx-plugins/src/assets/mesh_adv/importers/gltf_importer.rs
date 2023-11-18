@@ -539,7 +539,7 @@ fn hydrate_import_mesh(
     // // Verify that we iterate meshes in order so that our resulting assets are in order
     // assert!(mesh.index() == meshes_to_import.len());
 
-    log::debug!(
+    log::trace!(
         "Importing Mesh name: {:?} index: {}",
         mesh.name(),
         mesh.index(),
