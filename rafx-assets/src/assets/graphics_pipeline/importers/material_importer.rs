@@ -247,7 +247,7 @@ impl JobProcessor for MaterialJobProcessor {
                         stage,
                         shader_module: handle_factory
                             .make_handle_to_default_artifact(shader_module),
-                        entry_name,
+                        entry_name: (*entry_name).clone(),
                     });
                 }
 
@@ -271,8 +271,8 @@ impl JobProcessor for MaterialJobProcessor {
                 let phase = pass_entry.phase().get(data_container).unwrap();
 
                 passes.push(MaterialPassData {
-                    name: (!name.is_empty()).then(|| name),
-                    phase: (!phase.is_empty()).then(|| phase),
+                    name: (!name.is_empty()).then(|| (*name).clone()),
+                    phase: (!phase.is_empty()).then(|| (*phase).clone()),
                     fixed_function_state,
                     shaders,
                 });

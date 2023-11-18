@@ -16,6 +16,7 @@ use hydrate_pipeline::{
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::path::Path;
+use std::sync::Arc;
 use type_uuid::*;
 
 #[derive(TypeUuid, Default)]
@@ -78,7 +79,7 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
                 DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
             let x = FontImportedDataAccessor::default();
             x.bytes()
-                .set(&mut import_data_container, font_bytes)
+                .set(&mut import_data_container, Arc::new(font_bytes))
                 .unwrap();
             import_object
         };

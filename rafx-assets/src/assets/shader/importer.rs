@@ -16,6 +16,7 @@ use hydrate_pipeline::{
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::sync::Arc;
 use type_uuid::*;
 
 #[derive(TypeUuid, Default)]
@@ -71,7 +72,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
 
         let hashed_shader_package = RafxHashedShaderPackage::new(shader_package);
 
-        let package_bytes = bincode::serialize(&hashed_shader_package).unwrap();
+        let package_bytes = Arc::new(bincode::serialize(&hashed_shader_package).unwrap());
 
         //
         // Create import data
@@ -161,7 +162,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
             hashed_shader_package.shader_package_hash(),
         );
 
-        let package_bytes = bincode::serialize(&hashed_shader_package).unwrap();
+        let package_bytes = Arc::new(bincode::serialize(&hashed_shader_package).unwrap());
 
         //
         // Create import data

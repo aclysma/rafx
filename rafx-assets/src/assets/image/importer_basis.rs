@@ -11,6 +11,7 @@ use hydrate_pipeline::{
     ScannedImportable,
 };
 use std::path::Path;
+use std::sync::Arc;
 use type_uuid::*;
 
 #[derive(TypeUuid, Default)]
@@ -116,7 +117,7 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
                 .set(&mut import_data_container, is_cube_texture)
                 .unwrap();
             x.data_single_buffer()
-                .set(&mut import_data_container, bytes)
+                .set(&mut import_data_container, Arc::new(bytes))
                 .unwrap();
 
             import_object

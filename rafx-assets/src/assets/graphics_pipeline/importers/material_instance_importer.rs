@@ -15,6 +15,7 @@ use hydrate_pipeline::{
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::sync::Arc;
 use type_uuid::*;
 use uuid::Uuid;
 
@@ -155,7 +156,7 @@ impl hydrate_pipeline::Importer for HydrateMaterialInstanceImporter {
                         )
                         .unwrap()
                         .unwrap()
-                        .set(&mut default_asset_data_container, buffer_data)
+                        .set(&mut default_asset_data_container, Arc::new(buffer_data))
                         .unwrap();
                 }
             }
@@ -280,7 +281,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
                 };
 
                 slot_assignments.push(MaterialInstanceSlotAssignment {
-                    slot_name,
+                    slot_name: (*slot_name).clone(),
                     array_index,
                     image,
                     sampler,

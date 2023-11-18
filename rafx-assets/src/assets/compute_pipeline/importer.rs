@@ -167,7 +167,7 @@ impl JobProcessor for ComputePipelineJobProcessor {
         context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
             let shader_module = handle_factory.make_handle_to_default_artifact(shader_module);
             ComputePipelineAssetData {
-                entry_name,
+                entry_name: (*entry_name).clone(),
                 shader_module,
             }
         });

@@ -311,7 +311,7 @@ impl hydrate_pipeline::Importer for GpuImageImporterSimple {
                 DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
             let x = GpuImageImportedDataAccessor::default();
             x.image_bytes()
-                .set(&mut import_data_container, image_bytes)
+                .set(&mut import_data_container, Arc::new(image_bytes))
                 .unwrap();
             x.width().set(&mut import_data_container, width).unwrap();
             x.height().set(&mut import_data_container, height).unwrap();

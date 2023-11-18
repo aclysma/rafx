@@ -19,6 +19,7 @@ use rafx::assets::{GpuImageImporterSimple, ImageAsset, ImageImporterOptions};
 use rafx::assets::{ImageAssetColorSpaceConfig, ImageAssetData};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::sync::Arc;
 use type_uuid::*;
 
 //TODO: These are extensions that might be interesting to try supporting. In particular, lights,
@@ -240,7 +241,10 @@ fn hydrate_import_image(
         let x = GpuImageImportedDataAccessor::default();
 
         x.image_bytes()
-            .set(&mut import_data_container, converted_image.to_vec())
+            .set(
+                &mut import_data_container,
+                Arc::new(converted_image.to_vec()),
+            )
             .unwrap();
         x.width()
             .set(&mut import_data_container, converted_image.width())
@@ -492,19 +496,25 @@ fn hydrate_import_mesh(
             let entry = x.mesh_parts().entry(entry_uuid);
             entry
                 .positions()
-                .set(&mut import_data_container, positions_bytes.to_vec())
+                .set(
+                    &mut import_data_container,
+                    Arc::new(positions_bytes.to_vec()),
+                )
                 .unwrap();
             entry
                 .normals()
-                .set(&mut import_data_container, normals_bytes.to_vec())
+                .set(&mut import_data_container, Arc::new(normals_bytes.to_vec()))
                 .unwrap();
             entry
                 .texture_coordinates()
-                .set(&mut import_data_container, tex_coords_bytes.to_vec())
+                .set(
+                    &mut import_data_container,
+                    Arc::new(tex_coords_bytes.to_vec()),
+                )
                 .unwrap();
             entry
                 .indices()
-                .set(&mut import_data_container, part_indices_bytes)
+                .set(&mut import_data_container, Arc::new(part_indices_bytes))
                 .unwrap();
             entry
                 .material_index()

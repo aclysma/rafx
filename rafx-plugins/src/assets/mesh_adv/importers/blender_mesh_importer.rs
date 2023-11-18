@@ -12,6 +12,7 @@ use rafx::assets::PushBuffer;
 use rafx::base::b3f::B3FReader;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use type_uuid::*;
 use uuid::Uuid;
 
@@ -226,19 +227,25 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
             let entry = x.mesh_parts().entry(entry_uuid);
             entry
                 .positions()
-                .set(&mut import_data_container, positions_bytes.to_vec())
+                .set(
+                    &mut import_data_container,
+                    Arc::new(positions_bytes.to_vec()),
+                )
                 .unwrap();
             entry
                 .normals()
-                .set(&mut import_data_container, normals_bytes.to_vec())
+                .set(&mut import_data_container, Arc::new(normals_bytes.to_vec()))
                 .unwrap();
             entry
                 .texture_coordinates()
-                .set(&mut import_data_container, tex_coords_bytes.to_vec())
+                .set(
+                    &mut import_data_container,
+                    Arc::new(tex_coords_bytes.to_vec()),
+                )
                 .unwrap();
             entry
                 .indices()
-                .set(&mut import_data_container, part_indices)
+                .set(&mut import_data_container, Arc::new(part_indices))
                 .unwrap();
             entry
                 .material_index()
