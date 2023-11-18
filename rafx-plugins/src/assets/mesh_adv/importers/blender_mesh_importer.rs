@@ -1,8 +1,8 @@
 use crate::assets::mesh_adv::{BlenderMaterialImporter, MeshMaterialAdvAsset};
-use crate::schema::{MeshAdvMeshAssetRecord, MeshAdvMeshImportedDataRecord};
+use crate::schema::{MeshAdvMeshAssetAccessor, MeshAdvMeshImportedDataAccessor};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
+use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor, SchemaSet};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
     ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile,
@@ -92,7 +92,7 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
     ) -> Vec<ScannedImportable> {
         let mesh_adv_asset_type = context
             .schema_set
-            .find_named_type(MeshAdvMeshAssetRecord::schema_name())
+            .find_named_type(MeshAdvMeshAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -153,10 +153,10 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
             .unwrap();
 
         let mut import_data =
-            MeshAdvMeshImportedDataRecord::new_single_object(context.schema_set).unwrap();
+            MeshAdvMeshImportedDataAccessor::new_single_object(context.schema_set).unwrap();
         let mut import_data_container =
-            DataContainerMut::from_single_object(&mut import_data, context.schema_set);
-        let x = MeshAdvMeshImportedDataRecord::default();
+            DataContainerRefMut::from_single_object(&mut import_data, context.schema_set);
+        let x = MeshAdvMeshImportedDataAccessor::default();
 
         //
         // Find the materials and assign them unique slot indexes
@@ -251,10 +251,12 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
         //
         let default_asset = {
             let mut default_asset_object =
-                MeshAdvMeshAssetRecord::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
-            let x = MeshAdvMeshAssetRecord::default();
+                MeshAdvMeshAssetAccessor::new_single_object(context.schema_set).unwrap();
+            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
+                &mut default_asset_object,
+                context.schema_set,
+            );
+            let x = MeshAdvMeshAssetAccessor::default();
 
             //
             // Set up the material slots

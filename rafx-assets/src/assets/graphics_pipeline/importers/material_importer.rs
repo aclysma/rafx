@@ -2,12 +2,13 @@ use crate::assets::graphics_pipeline::{
     GraphicsPipelineShaderStage, MaterialAssetData, MaterialRon,
 };
 use crate::assets::shader::ShaderPackageImporterCooked;
-use crate::schema::{GraphicsPipelineShaderStageRecord, MaterialAssetRecord};
+use crate::schema::{GraphicsPipelineShaderStageAccessor, MaterialAssetAccessor};
 use crate::MaterialPassData;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, DataSet, ImporterId, RecordAccessor, SchemaSet,
+    SingleObject,
 };
 use hydrate_pipeline::{
     job_system, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext,
@@ -41,7 +42,7 @@ impl hydrate_pipeline::Importer for HydrateMaterialImporter {
 
         let asset_type = context
             .schema_set
-            .find_named_type(MaterialAssetRecord::schema_name())
+            .find_named_type(MaterialAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -86,10 +87,12 @@ impl hydrate_pipeline::Importer for HydrateMaterialImporter {
         //
         let default_asset = {
             let mut default_asset_object =
-                MaterialAssetRecord::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
-            let x = MaterialAssetRecord::default();
+                MaterialAssetAccessor::new_single_object(context.schema_set).unwrap();
+            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
+                &mut default_asset_object,
+                context.schema_set,
+            );
+            let x = MaterialAssetAccessor::default();
 
             for pass in material_ron.passes {
                 let entry = x
@@ -200,19 +203,19 @@ impl JobProcessor for MaterialJobProcessor {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(
+        let data_container = DataContainerRef::from_dataset(
             context.data_set,
             context.schema_set,
             context.input.asset_id,
         );
-        let x = MaterialAssetRecord::default();
+        let x = MaterialAssetAccessor::default();
 
         context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
             //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
             let mut passes = Vec::default();
             for pass_entry in x
                 .passes()
-                .resolve_entries(&data_container)
+                .resolve_entries(data_container)
                 .unwrap()
                 .into_iter()
             {
@@ -221,20 +224,20 @@ impl JobProcessor for MaterialJobProcessor {
                 let fixed_function_state = ron::de::from_str(
                     &pass_entry
                         .fixed_function_state()
-                        .get(&data_container)
+                        .get(data_container)
                         .unwrap(),
                 )
                 .unwrap();
 
                 fn read_stage(
                     stage: MaterialShaderStage,
-                    record: &GraphicsPipelineShaderStageRecord,
-                    data_container: &DataContainer,
+                    record: &GraphicsPipelineShaderStageAccessor,
+                    data_container: DataContainerRef,
                     stages: &mut Vec<GraphicsPipelineShaderStage>,
                     handle_factory: HandleFactory,
                 ) {
-                    let entry_name = record.entry_name().get(&data_container).unwrap();
-                    let shader_module = record.shader_module().get(&data_container).unwrap();
+                    let entry_name = record.entry_name().get(data_container).unwrap();
+                    let shader_module = record.shader_module().get(data_container).unwrap();
 
                     if entry_name.is_empty() && shader_module.is_null() {
                         return;
@@ -252,20 +255,20 @@ impl JobProcessor for MaterialJobProcessor {
                 read_stage(
                     MaterialShaderStage::Vertex,
                     &pass_entry.vertex_stage(),
-                    &data_container,
+                    data_container,
                     &mut shaders,
                     handle_factory,
                 );
                 read_stage(
                     MaterialShaderStage::Fragment,
                     &pass_entry.fragment_stage(),
-                    &data_container,
+                    data_container,
                     &mut shaders,
                     handle_factory,
                 );
 
-                let name = pass_entry.name().get(&data_container).unwrap();
-                let phase = pass_entry.phase().get(&data_container).unwrap();
+                let name = pass_entry.name().get(data_container).unwrap();
+                let phase = pass_entry.phase().get(data_container).unwrap();
 
                 passes.push(MaterialPassData {
                     name: (!name.is_empty()).then(|| name),
@@ -288,15 +291,15 @@ pub struct MaterialBuilder {}
 
 impl hydrate_pipeline::Builder for MaterialBuilder {
     fn asset_type(&self) -> &'static str {
-        MaterialAssetRecord::schema_name()
+        MaterialAssetAccessor::schema_name()
     }
 
     fn start_jobs(
         &self,
         context: BuilderContext,
     ) {
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
-        //let x = MaterialAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
+        //let x = MaterialAssetAccessor::default();
 
         //Future: Might produce jobs per-platform
         context.enqueue_job::<MaterialJobProcessor>(

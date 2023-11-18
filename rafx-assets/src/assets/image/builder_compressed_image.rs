@@ -2,7 +2,7 @@ use crate::assets::image::{
     ImageAssetData, ImageAssetDataLayer, ImageAssetDataMipLevel, ImageAssetDataPayload,
 };
 use crate::schema::{
-    GpuCompressedImageAssetRecord, GpuCompressedImageImportedDataRecord,
+    GpuCompressedImageAssetAccessor, GpuCompressedImageImportedDataAccessor,
     GpuImageAssetDataFormatEnum,
 };
 use crate::{
@@ -10,7 +10,9 @@ use crate::{
 };
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{DataContainer, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject};
+use hydrate_data::{
+    DataContainerRef, DataSet, FieldAccessor, PropertyPath, RecordAccessor, SchemaSet, SingleObject,
+};
 use hydrate_pipeline::{
     job_system, Builder, BuilderContext, EnumerateDependenciesContext, JobEnumeratedDependencies,
     JobInput, JobOutput, JobProcessor, RunContext,
@@ -64,12 +66,13 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         // Read imported data
         //
         let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container = DataContainer::from_single_object(&imported_data, context.schema_set);
-        let x = GpuCompressedImageImportedDataRecord::new(PropertyPath::default());
+        let data_container =
+            DataContainerRef::from_single_object(&imported_data, context.schema_set);
+        let x = GpuCompressedImageImportedDataAccessor::new(PropertyPath::default());
 
-        let width = x.width().get(&data_container).unwrap();
-        let height = x.height().get(&data_container).unwrap();
-        let format = match x.format().get(&data_container).unwrap() {
+        let width = x.width().get(data_container).unwrap();
+        let height = x.height().get(data_container).unwrap();
+        let format = match x.format().get(data_container).unwrap() {
             GpuImageAssetDataFormatEnum::RGBA32_Linear => ImageAssetDataFormat::RGBA32_Linear,
             GpuImageAssetDataFormatEnum::RGBA32_Srgb => ImageAssetDataFormat::RGBA32_Srgb,
             GpuImageAssetDataFormatEnum::Basis_Linear => ImageAssetDataFormat::Basis_Linear,
@@ -89,13 +92,13 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
             GpuImageAssetDataFormatEnum::BC7_Unorm_Linear => ImageAssetDataFormat::BC7_Unorm_Linear,
             GpuImageAssetDataFormatEnum::BC7_Unorm_Srgb => ImageAssetDataFormat::BC7_Unorm_Srgb,
         };
-        let resource_type = if x.is_cube_texture().get(&data_container).unwrap() {
+        let resource_type = if x.is_cube_texture().get(data_container).unwrap() {
             RafxResourceType::TEXTURE_CUBE
         } else {
             RafxResourceType::TEXTURE
         };
 
-        let layer_entries = x.data_layers().resolve_entries(&data_container).unwrap();
+        let layer_entries = x.data_layers().resolve_entries(data_container).unwrap();
         let payload = if layer_entries.is_empty() {
             ImageAssetDataPayload::SingleBuffer(ImageAssetDataPayloadSingleBuffer {
                 buffer: x.data_single_buffer().get(&data_container).unwrap().clone(),
@@ -104,14 +107,13 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
             let mut layers = Vec::default();
             for &layer_entry in layer_entries.into_iter() {
                 let layer = x.data_layers().entry(layer_entry);
-                let mip_level_entries =
-                    layer.mip_levels().resolve_entries(&data_container).unwrap();
+                let mip_level_entries = layer.mip_levels().resolve_entries(data_container).unwrap();
                 let mut mip_levels = Vec::default();
                 for &mip_level_entry in mip_level_entries.into_iter() {
                     let mip_level = layer.mip_levels().entry(mip_level_entry);
                     mip_levels.push(ImageAssetDataMipLevel {
-                        width: mip_level.width().get(&data_container).unwrap(),
-                        height: mip_level.height().get(&data_container).unwrap(),
+                        width: mip_level.width().get(data_container).unwrap(),
+                        height: mip_level.height().get(data_container).unwrap(),
                         bytes: mip_level.bytes().get(&data_container).unwrap().clone(),
                     });
                 }
@@ -149,7 +151,7 @@ pub struct GpuCompressedImageBuilder {}
 
 impl Builder for GpuCompressedImageBuilder {
     fn asset_type(&self) -> &'static str {
-        GpuCompressedImageAssetRecord::schema_name()
+        GpuCompressedImageAssetAccessor::schema_name()
     }
 
     fn start_jobs(

@@ -5,9 +5,9 @@ use rafx::api::RafxResourceType;
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::*;
 use hydrate_pipeline::{
-    job_system, AssetId, BuilderContext, BuilderRegistryBuilder, DataContainer, DataSet,
+    job_system, AssetId, BuilderContext, BuilderRegistryBuilder, DataContainerRef, DataSet,
     EnumerateDependenciesContext, HashMap, ImporterRegistryBuilder, JobEnumeratedDependencies,
-    JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder, Record, RunContext,
+    JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder, RecordAccessor, RunContext,
     SchemaLinker, SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{AssetPlugin, Builder};
@@ -54,33 +54,33 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(
+        let data_container = DataContainerRef::from_dataset(
             context.data_set,
             context.schema_set,
             context.input.asset_id,
         );
-        let x = MeshAdvMaterialAssetRecord::default();
+        let x = MeshAdvMaterialAssetAccessor::default();
 
-        let base_color_factor = x.base_color_factor().get_vec4(&data_container).unwrap();
-        let emissive_factor = x.emissive_factor().get_vec3(&data_container).unwrap();
+        let base_color_factor = x.base_color_factor().get_vec4(data_container).unwrap();
+        let emissive_factor = x.emissive_factor().get_vec3(data_container).unwrap();
 
-        let metallic_factor = x.metallic_factor().get(&data_container).unwrap();
-        let roughness_factor = x.roughness_factor().get(&data_container).unwrap();
-        let normal_texture_scale = x.normal_texture_scale().get(&data_container).unwrap();
+        let metallic_factor = x.metallic_factor().get(data_container).unwrap();
+        let roughness_factor = x.roughness_factor().get(data_container).unwrap();
+        let normal_texture_scale = x.normal_texture_scale().get(data_container).unwrap();
 
-        let color_texture = x.color_texture().get(&data_container).unwrap();
+        let color_texture = x.color_texture().get(data_container).unwrap();
         let metallic_roughness_texture =
-            x.metallic_roughness_texture().get(&data_container).unwrap();
-        let normal_texture = x.normal_texture().get(&data_container).unwrap();
-        let emissive_texture = x.emissive_texture().get(&data_container).unwrap();
-        let shadow_method = x.shadow_method().get(&data_container).unwrap();
-        let blend_method = x.blend_method().get(&data_container).unwrap();
+            x.metallic_roughness_texture().get(data_container).unwrap();
+        let normal_texture = x.normal_texture().get(data_container).unwrap();
+        let emissive_texture = x.emissive_texture().get(data_container).unwrap();
+        let shadow_method = x.shadow_method().get(data_container).unwrap();
+        let blend_method = x.blend_method().get(data_container).unwrap();
 
-        let alpha_threshold = x.alpha_threshold().get(&data_container).unwrap();
-        let backface_culling = x.backface_culling().get(&data_container).unwrap();
+        let alpha_threshold = x.alpha_threshold().get(data_container).unwrap();
+        let backface_culling = x.backface_culling().get(data_container).unwrap();
         let color_texture_has_alpha_channel = x
             .color_texture_has_alpha_channel()
-            .get(&data_container)
+            .get(data_container)
             .unwrap();
 
         //
@@ -160,7 +160,7 @@ pub struct MeshAdvMaterialBuilder {}
 
 impl Builder for MeshAdvMaterialBuilder {
     fn asset_type(&self) -> &'static str {
-        MeshAdvMaterialAssetRecord::schema_name()
+        MeshAdvMaterialAssetAccessor::schema_name()
     }
 
     fn start_jobs(
@@ -235,23 +235,23 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(
+        let data_container = DataContainerRef::from_dataset(
             context.data_set,
             context.schema_set,
             context.input.asset_id,
         );
-        let x = MeshAdvMeshAssetRecord::default();
+        let x = MeshAdvMeshAssetAccessor::default();
         let mut materials = Vec::default();
         for entry in x
             .material_slots()
-            .resolve_entries(&data_container)
+            .resolve_entries(data_container)
             .unwrap()
             .into_iter()
         {
             let entry = x
                 .material_slots()
                 .entry(*entry)
-                .get(&data_container)
+                .get(data_container)
                 .unwrap();
             materials.push(entry);
         }
@@ -260,8 +260,9 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         // Read import data
         //
         let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container = DataContainer::from_single_object(imported_data, context.schema_set);
-        let x = MeshAdvMeshImportedDataRecord::default();
+        let data_container =
+            DataContainerRef::from_single_object(imported_data, context.schema_set);
+        let x = MeshAdvMeshImportedDataAccessor::default();
 
         let mut all_positions = Vec::<glam::Vec3>::with_capacity(1024);
         let mut all_position_indices = Vec::<u32>::with_capacity(8192);
@@ -273,7 +274,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         let mut mesh_part_data = Vec::default();
         for entry in x
             .mesh_parts()
-            .resolve_entries(&data_container)
+            .resolve_entries(data_container)
             .unwrap()
             .into_iter()
         {
@@ -401,14 +402,14 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
             let mut mesh_parts = Vec::default();
             for (entry, part_data) in x
                 .mesh_parts()
-                .resolve_entries(&data_container)
+                .resolve_entries(data_container)
                 .unwrap()
                 .into_iter()
                 .zip(mesh_part_data)
             {
                 let entry = x.mesh_parts().entry(*entry);
 
-                let material_slot_index = entry.material_index().get(&data_container).unwrap();
+                let material_slot_index = entry.material_index().get(data_container).unwrap();
                 let material_object_id = materials[material_slot_index as usize];
 
                 let material_handle =
@@ -459,7 +460,7 @@ pub struct MeshAdvMeshBuilder {}
 
 impl Builder for MeshAdvMeshBuilder {
     fn asset_type(&self) -> &'static str {
-        MeshAdvMeshAssetRecord::schema_name()
+        MeshAdvMeshAssetAccessor::schema_name()
     }
 
     fn start_jobs(
@@ -516,23 +517,23 @@ impl JobProcessor for MeshAdvModelJobProcessor {
         context: RunContext<Self::InputT>,
     ) -> MeshAdvModelJobOutput {
         context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
-            let data_container = DataContainer::from_dataset(
+            let data_container = DataContainerRef::from_dataset(
                 context.data_set,
                 context.schema_set,
                 context.input.asset_id,
             );
-            let x = MeshAdvModelAssetRecord::default();
+            let x = MeshAdvModelAssetAccessor::default();
 
             let mut lods = Vec::default();
             for entry in x
                 .lods()
-                .resolve_entries(&data_container)
+                .resolve_entries(data_container)
                 .unwrap()
                 .into_iter()
             {
                 let lod = x.lods().entry(*entry);
                 let mesh_handle = handle_factory
-                    .make_handle_to_default_artifact(lod.mesh().get(&data_container).unwrap());
+                    .make_handle_to_default_artifact(lod.mesh().get(data_container).unwrap());
 
                 lods.push(ModelAdvAssetDataLod { mesh: mesh_handle });
             }
@@ -550,15 +551,15 @@ pub struct MeshAdvModelBuilder {}
 
 impl hydrate_pipeline::Builder for MeshAdvModelBuilder {
     fn asset_type(&self) -> &'static str {
-        MeshAdvModelAssetRecord::schema_name()
+        MeshAdvModelAssetAccessor::schema_name()
     }
 
     fn start_jobs(
         &self,
         context: BuilderContext,
     ) {
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
-        //let x = MeshAdvModelAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
+        //let x = MeshAdvModelAssetAccessor::default();
 
         //Future: Might produce jobs per-platform
         context.enqueue_job::<MeshAdvModelJobProcessor>(
@@ -613,10 +614,11 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
         // Read import data
         //
         let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container = DataContainer::from_single_object(imported_data, context.schema_set);
-        let x = MeshAdvPrefabImportDataRecord::default();
+        let data_container =
+            DataContainerRef::from_single_object(imported_data, context.schema_set);
+        let x = MeshAdvPrefabImportDataAccessor::default();
 
-        let json_str = x.json_data().get(&data_container).unwrap();
+        let json_str = x.json_data().get(data_container).unwrap();
         let json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&json_str)
             .map_err(|x| format!("Blender Material Import error: {:?}", x))
             .unwrap();
@@ -692,15 +694,15 @@ pub struct MeshAdvPrefabBuilder {}
 
 impl hydrate_pipeline::Builder for MeshAdvPrefabBuilder {
     fn asset_type(&self) -> &'static str {
-        MeshAdvPrefabAssetRecord::schema_name()
+        MeshAdvPrefabAssetAccessor::schema_name()
     }
 
     fn start_jobs(
         &self,
         context: BuilderContext,
     ) {
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
-        //let x = MeshAdvPrefabAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
+        //let x = MeshAdvPrefabAssetAccessor::default();
 
         //Future: Might produce jobs per-platform
         context.enqueue_job::<MeshAdvPrefabJobProcessor>(

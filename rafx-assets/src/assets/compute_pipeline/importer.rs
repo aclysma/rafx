@@ -1,9 +1,10 @@
 use crate::assets::compute_pipeline::{ComputePipelineAssetData, ComputePipelineRon};
 use crate::assets::shader::ShaderPackageImporterCooked;
-use crate::schema::ComputePipelineAssetRecord;
+use crate::schema::ComputePipelineAssetAccessor;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, HashMap, ImporterId, Record, SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, DataSet, HashMap, ImporterId, RecordAccessor, SchemaSet,
+    SingleObject,
 };
 use hydrate_pipeline::{
     job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
@@ -37,7 +38,7 @@ impl hydrate_pipeline::Importer for HydrateComputePipelineImporter {
 
         let asset_type = context
             .schema_set
-            .find_named_type(ComputePipelineAssetRecord::schema_name())
+            .find_named_type(ComputePipelineAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -79,10 +80,12 @@ impl hydrate_pipeline::Importer for HydrateComputePipelineImporter {
         //
         let default_asset = {
             let mut default_asset_object =
-                ComputePipelineAssetRecord::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
-            let x = ComputePipelineAssetRecord::default();
+                ComputePipelineAssetAccessor::new_single_object(context.schema_set).unwrap();
+            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
+                &mut default_asset_object,
+                context.schema_set,
+            );
+            let x = ComputePipelineAssetAccessor::default();
 
             x.entry_name()
                 .set(
@@ -151,15 +154,15 @@ impl JobProcessor for ComputePipelineJobProcessor {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(
+        let data_container = DataContainerRef::from_dataset(
             context.data_set,
             context.schema_set,
             context.input.asset_id,
         );
-        let x = ComputePipelineAssetRecord::default();
+        let x = ComputePipelineAssetAccessor::default();
 
-        let shader_module = x.shader_module().get(&data_container).unwrap();
-        let entry_name = x.entry_name().get(&data_container).unwrap();
+        let shader_module = x.shader_module().get(data_container).unwrap();
+        let entry_name = x.entry_name().get(data_container).unwrap();
 
         context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
             let shader_module = handle_factory.make_handle_to_default_artifact(shader_module);
@@ -179,15 +182,15 @@ pub struct ComputePipelineBuilder {}
 
 impl hydrate_pipeline::Builder for ComputePipelineBuilder {
     fn asset_type(&self) -> &'static str {
-        ComputePipelineAssetRecord::schema_name()
+        ComputePipelineAssetAccessor::schema_name()
     }
 
     fn start_jobs(
         &self,
         context: BuilderContext,
     ) {
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
-        //let x = ComputePipelineAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
+        //let x = ComputePipelineAssetAccessor::default();
 
         //Future: Might produce jobs per-platform
         context.enqueue_job::<ComputePipelineJobProcessor>(

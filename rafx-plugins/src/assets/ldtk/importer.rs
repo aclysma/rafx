@@ -3,12 +3,13 @@ use crate::assets::ldtk::{
     LdtkLayerData, LdtkLayerDrawCallData, LdtkLevelData, LdtkTileSet, LevelUid,
 };
 use crate::features::tile_layer::TileLayerVertex;
-use crate::schema::{LdtkAssetRecord, LdtkImportDataRecord};
+use crate::schema::{LdtkAssetAccessor, LdtkImportDataAccessor};
 use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::{AssetId, Handle};
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, ImporterId, Record, SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, DataSet, ImporterId, RecordAccessor, SchemaSet,
+    SingleObject,
 };
 use hydrate_pipeline::{
     job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
@@ -154,7 +155,7 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
 
         let asset_type = context
             .schema_set
-            .find_named_type(LdtkAssetRecord::schema_name())
+            .find_named_type(LdtkAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -198,10 +199,10 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
         //
         let default_asset = {
             let default_asset_object =
-                LdtkAssetRecord::new_single_object(context.schema_set).unwrap();
+                LdtkAssetAccessor::new_single_object(context.schema_set).unwrap();
             // let mut default_asset_data_container =
-            //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
-            // let x = LdtkAssetRecord::default();
+            //     DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
+            // let x = LdtkAssetAccessor::default();
 
             // No fields to write
             default_asset_object
@@ -209,10 +210,12 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
 
         let import_data = {
             let mut import_data_object =
-                LdtkImportDataRecord::new_single_object(context.schema_set).unwrap();
-            let mut import_data_data_container =
-                DataContainerMut::from_single_object(&mut import_data_object, context.schema_set);
-            let x = LdtkImportDataRecord::default();
+                LdtkImportDataAccessor::new_single_object(context.schema_set).unwrap();
+            let mut import_data_data_container = DataContainerRefMut::from_single_object(
+                &mut import_data_object,
+                context.schema_set,
+            );
+            let x = LdtkImportDataAccessor::default();
 
             x.json_data()
                 .set(&mut import_data_data_container, source)
@@ -279,10 +282,11 @@ impl JobProcessor for LdtkJobProcessor {
         // Read import data
         //
         let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container = DataContainer::from_single_object(imported_data, context.schema_set);
-        let x = LdtkImportDataRecord::default();
+        let data_container =
+            DataContainerRef::from_single_object(imported_data, context.schema_set);
+        let x = LdtkImportDataAccessor::default();
 
-        let json_str = x.json_data().get(&data_container).unwrap();
+        let json_str = x.json_data().get(data_container).unwrap();
         let project: serde_json::Result<ldtk_rust::Project> = serde_json::from_str(&json_str);
         if let Err(err) = project {
             panic!("LDTK Import error: {:?}", err);
@@ -528,15 +532,15 @@ pub struct LdtkBuilder {}
 
 impl hydrate_pipeline::Builder for LdtkBuilder {
     fn asset_type(&self) -> &'static str {
-        LdtkAssetRecord::schema_name()
+        LdtkAssetAccessor::schema_name()
     }
 
     fn start_jobs(
         &self,
         context: BuilderContext,
     ) {
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
-        //let x = LdtkAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
+        //let x = LdtkAssetAccessor::default();
 
         //Future: Might produce jobs per-platform
         context.enqueue_job::<LdtkJobProcessor>(

@@ -1,11 +1,11 @@
 use crate::schema::{
-    GpuCompressedImageAssetRecord, GpuCompressedImageImportedDataRecord,
+    GpuCompressedImageAssetAccessor, GpuCompressedImageImportedDataAccessor,
     GpuImageAssetDataFormatEnum,
 };
 #[cfg(feature = "basis-universal")]
 use basis_universal::BasisTextureType;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerMut, Record, SchemaSet};
+use hydrate_data::{DataContainerRefMut, RecordAccessor, SchemaSet};
 use hydrate_pipeline::{
     ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ScanContext,
     ScannedImportable,
@@ -28,7 +28,7 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
     ) -> Vec<ScannedImportable> {
         let asset_type = context
             .schema_set
-            .find_named_type(GpuCompressedImageAssetRecord::schema_name())
+            .find_named_type(GpuCompressedImageAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -94,11 +94,11 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
         //
         let import_data = {
             let mut import_object =
-                GpuCompressedImageImportedDataRecord::new_single_object(context.schema_set)
+                GpuCompressedImageImportedDataAccessor::new_single_object(context.schema_set)
                     .unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
-            let x = GpuCompressedImageImportedDataRecord::default();
+                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
+            let x = GpuCompressedImageImportedDataAccessor::default();
 
             x.height()
                 .set(&mut import_data_container, level_info.original_height)
@@ -127,7 +127,7 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
         //
         let default_asset = {
             let default_asset_object =
-                GpuCompressedImageAssetRecord::new_single_object(context.schema_set).unwrap();
+                GpuCompressedImageAssetAccessor::new_single_object(context.schema_set).unwrap();
 
             // no fields to set
 

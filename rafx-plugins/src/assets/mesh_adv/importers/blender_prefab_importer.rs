@@ -1,10 +1,10 @@
 use crate::assets::mesh_adv::{
     BlenderModelImporter, ModelAdvAsset, PrefabAdvAssetDataObjectLightKind,
 };
-use crate::schema::{MeshAdvPrefabAssetRecord, MeshAdvPrefabImportDataRecord};
+use crate::schema::{MeshAdvPrefabAssetAccessor, MeshAdvPrefabImportDataAccessor};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
+use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor, SchemaSet};
 use hydrate_pipeline::{
     BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
@@ -115,7 +115,7 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
 
         let asset_type = context
             .schema_set
-            .find_named_type(MeshAdvPrefabAssetRecord::schema_name())
+            .find_named_type(MeshAdvPrefabAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -158,10 +158,10 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
         //
         let default_asset = {
             let default_asset_object =
-                MeshAdvPrefabAssetRecord::new_single_object(context.schema_set).unwrap();
+                MeshAdvPrefabAssetAccessor::new_single_object(context.schema_set).unwrap();
             // let mut default_asset_data_container =
-            //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
-            // let x = MeshAdvPrefabAssetRecord::default();
+            //     DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
+            // let x = MeshAdvPrefabAssetAccessor::default();
 
             // No fields to write
             default_asset_object
@@ -169,10 +169,12 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
 
         let import_data = {
             let mut import_data_object =
-                MeshAdvPrefabImportDataRecord::new_single_object(context.schema_set).unwrap();
-            let mut import_data_data_container =
-                DataContainerMut::from_single_object(&mut import_data_object, context.schema_set);
-            let x = MeshAdvPrefabImportDataRecord::default();
+                MeshAdvPrefabImportDataAccessor::new_single_object(context.schema_set).unwrap();
+            let mut import_data_data_container = DataContainerRefMut::from_single_object(
+                &mut import_data_object,
+                context.schema_set,
+            );
+            let x = MeshAdvPrefabImportDataAccessor::default();
 
             x.json_data()
                 .set(&mut import_data_data_container, source)

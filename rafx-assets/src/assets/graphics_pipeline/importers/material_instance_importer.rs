@@ -1,12 +1,12 @@
 use crate::assets::graphics_pipeline::material_importer::HydrateMaterialImporter;
 use crate::assets::graphics_pipeline::{MaterialInstanceAssetData, MaterialInstanceRon};
-use crate::schema::MaterialInstanceAssetRecord;
+use crate::schema::MaterialInstanceAssetAccessor;
 use crate::{GpuImageImporterSimple, MaterialInstanceSlotAssignment};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, ImporterId, NullOverride, Record, SchemaSet,
-    SingleObject,
+    DataContainerRef, DataContainerRefMut, DataSet, ImporterId, NullOverride, RecordAccessor,
+    SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
     job_system, BuilderContext, EnumerateDependenciesContext, ImportContext, ImportableAsset,
@@ -47,7 +47,7 @@ impl hydrate_pipeline::Importer for HydrateMaterialInstanceImporter {
 
         let asset_type = context
             .schema_set
-            .find_named_type(MaterialInstanceAssetRecord::schema_name())
+            .find_named_type(MaterialInstanceAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -98,10 +98,12 @@ impl hydrate_pipeline::Importer for HydrateMaterialInstanceImporter {
         //
         let default_asset = {
             let mut default_asset_object =
-                MaterialInstanceAssetRecord::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
-            let x = MaterialInstanceAssetRecord::default();
+                MaterialInstanceAssetAccessor::new_single_object(context.schema_set).unwrap();
+            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
+                &mut default_asset_object,
+                context.schema_set,
+            );
+            let x = MaterialInstanceAssetAccessor::default();
 
             for slot_assignment in material_ron.slot_assignments {
                 let entry_uuid = x
@@ -226,50 +228,50 @@ impl JobProcessor for MaterialInstanceJobProcessor {
         //
         // Read asset data
         //
-        let data_container = DataContainer::from_dataset(
+        let data_container = DataContainerRef::from_dataset(
             context.data_set,
             context.schema_set,
             context.input.asset_id,
         );
-        let x = MaterialInstanceAssetRecord::default();
+        let x = MaterialInstanceAssetAccessor::default();
 
         context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
             let material = handle_factory
-                .make_handle_to_default_artifact(x.material().get(&data_container).unwrap());
+                .make_handle_to_default_artifact(x.material().get(data_container).unwrap());
 
             let mut slot_assignments = Vec::default();
             for slot_assignent_entry in x
                 .slot_assignments()
-                .resolve_entries(&data_container)
+                .resolve_entries(data_container)
                 .unwrap()
                 .into_iter()
             {
                 let slot_assignment = x.slot_assignments().entry(*slot_assignent_entry);
 
-                let slot_name = slot_assignment.slot_name().get(&data_container).unwrap();
+                let slot_name = slot_assignment.slot_name().get(data_container).unwrap();
                 let array_index =
-                    slot_assignment.array_index().get(&data_container).unwrap() as usize;
+                    slot_assignment.array_index().get(data_container).unwrap() as usize;
 
-                let image_object_id = slot_assignment.image().get(&data_container).unwrap();
+                let image_object_id = slot_assignment.image().get(data_container).unwrap();
                 let image = if image_object_id.is_null() {
                     None
                 } else {
                     Some(handle_factory.make_handle_to_default_artifact(image_object_id))
                 };
 
-                let sampler_ron = slot_assignment.sampler().get(&data_container).unwrap();
+                let sampler_ron = slot_assignment.sampler().get(data_container).unwrap();
                 let sampler = if sampler_ron.is_empty() {
                     None
                 } else {
                     let sampler =
-                        ron::de::from_str(&slot_assignment.sampler().get(&data_container).unwrap())
+                        ron::de::from_str(&slot_assignment.sampler().get(data_container).unwrap())
                             .unwrap();
                     Some(sampler)
                 };
 
                 let buffer_data = if let Some(buffer_data) = slot_assignment
                     .buffer_data()
-                    .resolve_null(&data_container)
+                    .resolve_null(data_container)
                     .unwrap()
                 {
                     Some(buffer_data.get(&data_container).unwrap().clone())
@@ -302,15 +304,15 @@ pub struct MaterialInstanceBuilder {}
 
 impl hydrate_pipeline::Builder for MaterialInstanceBuilder {
     fn asset_type(&self) -> &'static str {
-        MaterialInstanceAssetRecord::schema_name()
+        MaterialInstanceAssetAccessor::schema_name()
     }
 
     fn start_jobs(
         &self,
         context: BuilderContext,
     ) {
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
-        //let x = MaterialInstanceAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
+        //let x = MaterialInstanceAssetAccessor::default();
 
         //Future: Might produce jobs per-platform
         context.enqueue_job::<MaterialInstanceJobProcessor>(

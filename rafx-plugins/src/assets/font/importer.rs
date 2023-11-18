@@ -1,10 +1,11 @@
 use crate::assets::font::FontAssetData;
-use crate::schema::{FontAssetRecord, FontImportedDataRecord};
+use crate::schema::{FontAssetAccessor, FontImportedDataAccessor};
 use fnv::FnvHasher;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, DataSet, FieldAccessor, PropertyPath, RecordAccessor,
+    SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
     job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
@@ -32,7 +33,7 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
     ) -> Vec<ScannedImportable> {
         let asset_type = context
             .schema_set
-            .find_named_type(FontAssetRecord::schema_name())
+            .find_named_type(FontAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -58,10 +59,10 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
         //
         let default_asset = {
             let default_asset_object =
-                FontAssetRecord::new_single_object(context.schema_set).unwrap();
+                FontAssetAccessor::new_single_object(context.schema_set).unwrap();
             // let mut default_asset_data_container =
-            //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
-            // let x = FontAssetRecord::default();
+            //     DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
+            // let x = FontAssetAccessor::default();
 
             // No fields to write
             default_asset_object
@@ -72,10 +73,10 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
         //
         let import_data = {
             let mut import_object =
-                FontImportedDataRecord::new_single_object(context.schema_set).unwrap();
+                FontImportedDataAccessor::new_single_object(context.schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
-            let x = FontImportedDataRecord::default();
+                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
+            let x = FontImportedDataAccessor::default();
             x.bytes()
                 .set(&mut import_data_container, font_bytes)
                 .unwrap();
@@ -138,15 +139,16 @@ impl JobProcessor for FontJobProcessor {
         //
         // Read asset properties
         //
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, input.asset_id);
-        //let x = FontAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, input.asset_id);
+        //let x = FontAssetAccessor::default();
 
         //
         // Read imported data
         //
         let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container = DataContainer::from_single_object(&imported_data, context.schema_set);
-        let x = FontImportedDataRecord::new(PropertyPath::default());
+        let data_container =
+            DataContainerRef::from_single_object(&imported_data, context.schema_set);
+        let x = FontImportedDataAccessor::new(PropertyPath::default());
 
         let font_bytes = x.bytes().get(&data_container).unwrap().clone();
 
@@ -181,15 +183,15 @@ pub struct FontBuilder {}
 
 impl hydrate_pipeline::Builder for FontBuilder {
     fn asset_type(&self) -> &'static str {
-        FontAssetRecord::schema_name()
+        FontAssetAccessor::schema_name()
     }
 
     fn start_jobs(
         &self,
         context: BuilderContext,
     ) {
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
-        //let x = FontAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
+        //let x = FontAssetAccessor::default();
 
         //Future: Might produce jobs per-platform
         context.enqueue_job::<FontJobProcessor>(

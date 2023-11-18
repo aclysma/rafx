@@ -1,9 +1,10 @@
 use crate::assets::shader::ShaderAssetData;
-use crate::schema::{ShaderPackageAssetRecord, ShaderPackageImportedDataRecord};
+use crate::schema::{ShaderPackageAssetAccessor, ShaderPackageImportedDataAccessor};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, DataSet, FieldAccessor, PropertyPath, RecordAccessor,
+    SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
     job_system, AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder,
@@ -32,7 +33,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
     ) -> Vec<ScannedImportable> {
         let asset_type = context
             .schema_set
-            .find_named_type(ShaderPackageAssetRecord::schema_name())
+            .find_named_type(ShaderPackageAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -77,10 +78,10 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
         //
         let import_data = {
             let mut import_object =
-                ShaderPackageImportedDataRecord::new_single_object(context.schema_set).unwrap();
+                ShaderPackageImportedDataAccessor::new_single_object(context.schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
-            let x = ShaderPackageImportedDataRecord::default();
+                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
+            let x = ShaderPackageImportedDataAccessor::default();
             x.bytes()
                 .set(&mut import_data_container, package_bytes)
                 .unwrap();
@@ -92,7 +93,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
         //
         let default_asset = {
             let default_asset_object =
-                ShaderPackageAssetRecord::new_single_object(context.schema_set).unwrap();
+                ShaderPackageAssetAccessor::new_single_object(context.schema_set).unwrap();
             // No fields to write
             default_asset_object
         };
@@ -128,7 +129,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
     ) -> Vec<ScannedImportable> {
         let asset_type = context
             .schema_set
-            .find_named_type(ShaderPackageAssetRecord::schema_name())
+            .find_named_type(ShaderPackageAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -167,10 +168,10 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
         //
         let import_data = {
             let mut import_object =
-                ShaderPackageImportedDataRecord::new_single_object(context.schema_set).unwrap();
+                ShaderPackageImportedDataAccessor::new_single_object(context.schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
-            let x = ShaderPackageImportedDataRecord::default();
+                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
+            let x = ShaderPackageImportedDataAccessor::default();
             x.bytes()
                 .set(&mut import_data_container, package_bytes)
                 .unwrap();
@@ -182,7 +183,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
         //
         let default_asset = {
             let default_asset_object =
-                ShaderPackageAssetRecord::new_single_object(context.schema_set).unwrap();
+                ShaderPackageAssetAccessor::new_single_object(context.schema_set).unwrap();
             // No fields to write
             default_asset_object
         };
@@ -244,8 +245,9 @@ impl JobProcessor for ShaderPackageJobProcessor {
         // Read imported data
         //
         let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container = DataContainer::from_single_object(&imported_data, context.schema_set);
-        let x = ShaderPackageImportedDataRecord::new(PropertyPath::default());
+        let data_container =
+            DataContainerRef::from_single_object(&imported_data, context.schema_set);
+        let x = ShaderPackageImportedDataAccessor::new(PropertyPath::default());
 
         let shader_package =
             bincode::deserialize(&x.bytes().get(&data_container).unwrap()).unwrap();
@@ -272,15 +274,15 @@ pub struct ShaderPackageBuilder {}
 
 impl Builder for ShaderPackageBuilder {
     fn asset_type(&self) -> &'static str {
-        ShaderPackageAssetRecord::schema_name()
+        ShaderPackageAssetAccessor::schema_name()
     }
 
     fn start_jobs(
         &self,
         context: BuilderContext,
     ) {
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
-        //let x = ShaderPackageAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
+        //let x = ShaderPackageAssetAccessor::default();
 
         //Future: Might produce jobs per-platform
         context.enqueue_job::<ShaderPackageJobProcessor>(

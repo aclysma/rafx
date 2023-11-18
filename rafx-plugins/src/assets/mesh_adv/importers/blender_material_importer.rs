@@ -1,7 +1,9 @@
-use crate::schema::{MeshAdvBlendMethodEnum, MeshAdvMaterialAssetRecord, MeshAdvShadowMethodEnum};
+use crate::schema::{
+    MeshAdvBlendMethodEnum, MeshAdvMaterialAssetAccessor, MeshAdvShadowMethodEnum,
+};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{AssetRefField, DataContainerMut, Enum, Record, SchemaSet};
+use hydrate_data::{AssetRefFieldAccessor, DataContainerRefMut, Enum, RecordAccessor, SchemaSet};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
     ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile,
@@ -85,7 +87,7 @@ impl hydrate_pipeline::Importer for BlenderMaterialImporter {
     ) -> Vec<ScannedImportable> {
         let asset_type = context
             .schema_set
-            .find_named_type(MeshAdvMaterialAssetRecord::schema_name())
+            .find_named_type(MeshAdvMaterialAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -182,10 +184,12 @@ impl hydrate_pipeline::Importer for BlenderMaterialImporter {
         //
         let default_asset = {
             let mut default_asset_object =
-                MeshAdvMaterialAssetRecord::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
-            let x = MeshAdvMaterialAssetRecord::default();
+                MeshAdvMaterialAssetAccessor::new_single_object(context.schema_set).unwrap();
+            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
+                &mut default_asset_object,
+                context.schema_set,
+            );
+            let x = MeshAdvMaterialAssetAccessor::default();
             x.base_color_factor()
                 .set_vec4(
                     &mut default_asset_data_container,
@@ -213,8 +217,8 @@ impl hydrate_pipeline::Importer for BlenderMaterialImporter {
 
             fn try_find_file_reference(
                 importable_assets: &HashMap<Option<String>, ImportableAsset>,
-                data_container: &mut DataContainerMut,
-                ref_field: AssetRefField,
+                data_container: &mut DataContainerRefMut,
+                ref_field: AssetRefFieldAccessor,
                 path_as_string: &Option<PathBuf>,
             ) {
                 if let Some(path_as_string) = path_as_string {

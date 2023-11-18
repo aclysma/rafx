@@ -3,6 +3,8 @@
 use crate::assets::mesh_adv::{MeshAdvBlendMethod, MeshAdvShadowMethod};
 use hydrate_data::*;
 use rafx::assets::schema::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 include!("schema_codegen.rs");
 

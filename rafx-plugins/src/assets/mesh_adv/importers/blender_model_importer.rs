@@ -1,8 +1,8 @@
 use crate::assets::mesh_adv::{BlenderMeshImporter, MeshAdvAsset};
-use crate::schema::MeshAdvModelAssetRecord;
+use crate::schema::MeshAdvModelAssetAccessor;
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerMut, ImporterId, Record, SchemaSet};
+use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor, SchemaSet};
 use hydrate_pipeline::{
     BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
@@ -56,7 +56,7 @@ impl hydrate_pipeline::Importer for BlenderModelImporter {
 
         let asset_type = context
             .schema_set
-            .find_named_type(MeshAdvModelAssetRecord::schema_name())
+            .find_named_type(MeshAdvModelAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -93,10 +93,12 @@ impl hydrate_pipeline::Importer for BlenderModelImporter {
         //
         let default_asset = {
             let mut default_asset_object =
-                MeshAdvModelAssetRecord::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container =
-                DataContainerMut::from_single_object(&mut default_asset_object, context.schema_set);
-            let x = MeshAdvModelAssetRecord::default();
+                MeshAdvModelAssetAccessor::new_single_object(context.schema_set).unwrap();
+            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
+                &mut default_asset_object,
+                context.schema_set,
+            );
+            let x = MeshAdvModelAssetAccessor::default();
 
             let entry = x
                 .lods()

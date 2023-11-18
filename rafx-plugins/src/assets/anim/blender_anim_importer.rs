@@ -2,12 +2,13 @@ use crate::assets::anim::{
     AnimAssetData, AnimClip, AnimInterpolationMode, Bone, BoneChannelGroup, BoneChannelQuat,
     BoneChannelVec3, Skeleton,
 };
-use crate::schema::{BlenderAnimAssetRecord, BlenderAnimImportedDataRecord};
+use crate::schema::{BlenderAnimAssetAccessor, BlenderAnimImportedDataAccessor};
 use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainer, DataContainerMut, DataSet, Field, PropertyPath, Record, SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, DataSet, FieldAccessor, PropertyPath, RecordAccessor,
+    SchemaSet, SingleObject,
 };
 use hydrate_pipeline::{
     job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
@@ -269,7 +270,7 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
 
         let asset_type = context
             .schema_set
-            .find_named_type(BlenderAnimAssetRecord::schema_name())
+            .find_named_type(BlenderAnimAssetAccessor::schema_name())
             .unwrap()
             .as_record()
             .unwrap()
@@ -301,10 +302,10 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
         //
         let default_asset = {
             let default_asset_object =
-                BlenderAnimAssetRecord::new_single_object(context.schema_set).unwrap();
+                BlenderAnimAssetAccessor::new_single_object(context.schema_set).unwrap();
             // let mut default_asset_data_container =
-            //     DataContainerMut::from_single_object(&mut default_asset_object, schema_set);
-            // let x = BlenderAnimAssetRecord::default();
+            //     DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
+            // let x = BlenderAnimAssetAccessor::default();
 
             // No fields to write
             default_asset_object
@@ -315,10 +316,10 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
         //
         let import_data = {
             let mut import_object =
-                BlenderAnimImportedDataRecord::new_single_object(context.schema_set).unwrap();
+                BlenderAnimImportedDataAccessor::new_single_object(context.schema_set).unwrap();
             let mut import_data_container =
-                DataContainerMut::from_single_object(&mut import_object, context.schema_set);
-            let x = BlenderAnimImportedDataRecord::default();
+                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
+            let x = BlenderAnimImportedDataAccessor::default();
 
             x.json_string()
                 .set(&mut import_data_container, json_str)
@@ -384,10 +385,11 @@ impl JobProcessor for BlenderAnimJobProcessor {
         // Read imported data
         //
         let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container = DataContainer::from_single_object(&imported_data, context.schema_set);
-        let x = BlenderAnimImportedDataRecord::new(PropertyPath::default());
+        let data_container =
+            DataContainerRef::from_single_object(&imported_data, context.schema_set);
+        let x = BlenderAnimImportedDataAccessor::new(PropertyPath::default());
 
-        let json_str = x.json_string().get(&data_container).unwrap();
+        let json_str = x.json_string().get(data_container).unwrap();
 
         let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_str(&json_str);
         if let Err(err) = anim_data {
@@ -422,15 +424,15 @@ pub struct BlenderAnimBuilder {}
 
 impl hydrate_pipeline::Builder for BlenderAnimBuilder {
     fn asset_type(&self) -> &'static str {
-        BlenderAnimAssetRecord::schema_name()
+        BlenderAnimAssetAccessor::schema_name()
     }
 
     fn start_jobs(
         &self,
         context: BuilderContext,
     ) {
-        //let data_container = DataContainer::from_dataset(data_set, schema_set, asset_id);
-        //let x = BlenderAnimAssetRecord::default();
+        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
+        //let x = BlenderAnimAssetAccessor::default();
 
         //Future: Might produce jobs per-platform
         context.enqueue_job::<BlenderAnimJobProcessor>(
