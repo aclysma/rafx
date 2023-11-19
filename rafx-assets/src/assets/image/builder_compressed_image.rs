@@ -8,14 +8,11 @@ use crate::schema::{
 use crate::{
     ImageAssetDataFormat, ImageAssetDataPayloadSingleBuffer, ImageAssetDataPayloadSubresources,
 };
-use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{
-    DataContainerRef, DataSet, FieldAccessor, PropertyPath, RecordAccessor, SchemaSet, SingleObject,
-};
+use hydrate_data::{DataContainerRef, FieldAccessor, PropertyPath, RecordAccessor};
 use hydrate_pipeline::{
-    job_system, Builder, BuilderContext, EnumerateDependenciesContext, JobEnumeratedDependencies,
-    JobInput, JobOutput, JobProcessor, RunContext,
+    Builder, BuilderContext, EnumerateDependenciesContext, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, PipelineResult, RunContext,
 };
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
@@ -46,18 +43,18 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
     fn enumerate_dependencies(
         &self,
         context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> JobEnumeratedDependencies {
+    ) -> PipelineResult<JobEnumeratedDependencies> {
         // No dependencies
-        JobEnumeratedDependencies {
+        Ok(JobEnumeratedDependencies {
             import_data: vec![context.input.asset_id],
             upstream_jobs: Vec::default(),
-        }
+        })
     }
 
     fn run(
         &self,
         context: RunContext<Self::InputT>,
-    ) -> GpuCompressedImageJobOutput {
+    ) -> PipelineResult<GpuCompressedImageJobOutput> {
         //
         // Read asset properties
         //
@@ -101,7 +98,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         let layer_entries = x.data_layers().resolve_entries(data_container).unwrap();
         let payload = if layer_entries.is_empty() {
             ImageAssetDataPayload::SingleBuffer(ImageAssetDataPayloadSingleBuffer {
-                buffer: x.data_single_buffer().get(&data_container).unwrap().clone(),
+                buffer: (**x.data_single_buffer().get(&data_container).unwrap()).clone(),
             })
         } else {
             let mut layers = Vec::default();
@@ -114,7 +111,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
                     mip_levels.push(ImageAssetDataMipLevel {
                         width: mip_level.width().get(data_container).unwrap(),
                         height: mip_level.height().get(data_container).unwrap(),
-                        bytes: mip_level.bytes().get(&data_container).unwrap().clone(),
+                        bytes: (**mip_level.bytes().get(&data_container).unwrap()).clone(),
                     });
                 }
 
@@ -139,9 +136,9 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         //
         // Serialize and return
         //
-        context.produce_default_artifact(context.input.asset_id, processed_data);
+        context.produce_default_artifact(context.input.asset_id, processed_data)?;
 
-        GpuCompressedImageJobOutput {}
+        Ok(GpuCompressedImageJobOutput {})
     }
 }
 
@@ -157,7 +154,7 @@ impl Builder for GpuCompressedImageBuilder {
     fn start_jobs(
         &self,
         context: BuilderContext,
-    ) {
+    ) -> PipelineResult<()> {
         //Future: Might produce jobs per-platform
         context.enqueue_job::<GpuCompressedImageJobProcessor>(
             context.data_set,
@@ -166,6 +163,7 @@ impl Builder for GpuCompressedImageBuilder {
             GpuCompressedImageJobInput {
                 asset_id: context.asset_id,
             },
-        );
+        )?;
+        Ok(())
     }
 }

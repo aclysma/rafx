@@ -3,19 +3,16 @@ use crate::schema::{ShaderPackageAssetAccessor, ShaderPackageImportedDataAccesso
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, DataSet, FieldAccessor, PropertyPath, RecordAccessor,
-    SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, FieldAccessor, PropertyPath, RecordAccessor,
 };
 use hydrate_pipeline::{
-    job_system, AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder,
-    EnumerateDependenciesContext, ImportContext, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput, JobOutput,
-    JobProcessor, JobProcessorRegistryBuilder, RunContext, ScanContext, ScannedImportable,
-    SchemaLinker,
+    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    PipelineResult, RunContext, ScanContext, ScannedImportable, SchemaLinker,
 };
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::sync::Arc;
 use type_uuid::*;
 
@@ -23,7 +20,7 @@ use type_uuid::*;
 #[uuid = "f0070e09-088b-4387-ba65-075657023733"]
 pub struct ShaderPackageImporterSpv;
 
-impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
+impl Importer for ShaderPackageImporterSpv {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["spv"]
     }
@@ -31,7 +28,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
             .find_named_type(ShaderPackageAssetAccessor::schema_name())
@@ -39,17 +36,17 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
             .as_record()
             .unwrap()
             .clone();
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references: Default::default(),
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -111,7 +108,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
@@ -119,7 +116,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterSpv {
 #[uuid = "ac37987a-6c92-41b1-ba46-a5cf575dee9f"]
 pub struct ShaderPackageImporterCooked;
 
-impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
+impl Importer for ShaderPackageImporterCooked {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["cookedshaderpackage"]
     }
@@ -127,7 +124,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
             .find_named_type(ShaderPackageAssetAccessor::schema_name())
@@ -135,17 +132,17 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
             .as_record()
             .unwrap()
             .clone();
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references: Default::default(),
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -201,7 +198,7 @@ impl hydrate_pipeline::Importer for ShaderPackageImporterCooked {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
@@ -230,18 +227,18 @@ impl JobProcessor for ShaderPackageJobProcessor {
     fn enumerate_dependencies(
         &self,
         context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> JobEnumeratedDependencies {
+    ) -> PipelineResult<JobEnumeratedDependencies> {
         // No dependencies
-        JobEnumeratedDependencies {
+        Ok(JobEnumeratedDependencies {
             import_data: vec![context.input.asset_id],
             upstream_jobs: Vec::default(),
-        }
+        })
     }
 
     fn run(
         &self,
         context: RunContext<Self::InputT>,
-    ) -> ShaderPackageJobOutput {
+    ) -> PipelineResult<ShaderPackageJobOutput> {
         //
         // Read imported data
         //
@@ -263,9 +260,9 @@ impl JobProcessor for ShaderPackageJobProcessor {
         //
         // Serialize and return
         //
-        context.produce_default_artifact(context.input.asset_id, processed_data);
+        context.produce_default_artifact(context.input.asset_id, processed_data)?;
 
-        ShaderPackageJobOutput {}
+        Ok(ShaderPackageJobOutput {})
     }
 }
 
@@ -281,7 +278,7 @@ impl Builder for ShaderPackageBuilder {
     fn start_jobs(
         &self,
         context: BuilderContext,
-    ) {
+    ) -> PipelineResult<()> {
         //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
         //let x = ShaderPackageAssetAccessor::default();
 
@@ -293,7 +290,8 @@ impl Builder for ShaderPackageBuilder {
             ShaderPackageJobInput {
                 asset_id: context.asset_id,
             },
-        );
+        )?;
+        Ok(())
     }
 }
 

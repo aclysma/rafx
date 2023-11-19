@@ -2,23 +2,21 @@ use crate::assets::image::{
     ImageAssetColorSpaceConfig, ImageAssetData, ImageAssetDataFormatConfig,
 };
 use crate::schema::{
-    GpuImageAssetAccessor, GpuImageBasisCompressionTypeEnum, GpuImageColorSpaceEnum,
-    GpuImageImportedDataAccessor, GpuImageMipGenerationEnum,
+    GpuImageAssetAccessor, GpuImageAssetOwned, GpuImageAssetReader,
+    GpuImageBasisCompressionTypeEnum, GpuImageColorSpaceEnum, GpuImageImportedDataOwned,
+    GpuImageImportedDataReader, GpuImageMipGenerationEnum,
 };
 use crate::{
     ImageAssetBasisCompressionSettings, ImageAssetBasisCompressionType, ImageAssetMipGeneration,
 };
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, DataSet, FieldAccessor, PropertyPath, RecordAccessor,
-    SchemaLinker, SchemaSet, SingleObject,
-};
+use hydrate_data::{RecordAccessor, RecordBuilder, RecordOwned, SchemaLinker};
 use hydrate_pipeline::{
-    job_system, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
+    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    RunContext, ScanContext, ScannedImportable,
+    PipelineResult, RunContext, ScanContext, ScannedImportable,
 };
 use image::GenericImageView;
 use rafx_api::RafxResourceType;
@@ -204,69 +202,53 @@ impl GpuImageImporterSimple {
 
     pub fn set_default_asset_properties(
         default_settings: &ImageImporterOptions,
-        default_asset_data_container: &mut DataContainerRefMut,
-        asset_record: &GpuImageAssetAccessor,
+        asset_record: &mut RecordBuilder<GpuImageAssetOwned>,
     ) {
         match default_settings.data_format {
             ImageAssetDataFormatConfig::Uncompressed => {
-                asset_record
-                    .basis_compression()
-                    .set(default_asset_data_container, false)
-                    .unwrap();
+                asset_record.basis_compression().set(false).unwrap();
             }
             ImageAssetDataFormatConfig::BasisCompressed(settings) => {
-                asset_record
-                    .basis_compression()
-                    .set(default_asset_data_container, true)
-                    .unwrap();
+                asset_record.basis_compression().set(true).unwrap();
 
                 asset_record
                     .basis_compression_settings()
                     .compression_type()
-                    .set(
-                        default_asset_data_container,
-                        match settings.compression_type {
-                            ImageAssetBasisCompressionType::Etc1S => {
-                                GpuImageBasisCompressionTypeEnum::Etc1S
-                            }
-                            ImageAssetBasisCompressionType::Uastc => {
-                                GpuImageBasisCompressionTypeEnum::Uastc
-                            }
-                        },
-                    )
+                    .set(match settings.compression_type {
+                        ImageAssetBasisCompressionType::Etc1S => {
+                            GpuImageBasisCompressionTypeEnum::Etc1S
+                        }
+                        ImageAssetBasisCompressionType::Uastc => {
+                            GpuImageBasisCompressionTypeEnum::Uastc
+                        }
+                    })
                     .unwrap();
                 asset_record
                     .basis_compression_settings()
                     .quality()
-                    .set(default_asset_data_container, settings.quality)
+                    .set(settings.quality)
                     .unwrap();
             }
         }
         asset_record
             .color_space()
-            .set(
-                default_asset_data_container,
-                match default_settings.color_space {
-                    ImageAssetColorSpaceConfig::Srgb => GpuImageColorSpaceEnum::Srgb,
-                    ImageAssetColorSpaceConfig::Linear => GpuImageColorSpaceEnum::Linear,
-                },
-            )
+            .set(match default_settings.color_space {
+                ImageAssetColorSpaceConfig::Srgb => GpuImageColorSpaceEnum::Srgb,
+                ImageAssetColorSpaceConfig::Linear => GpuImageColorSpaceEnum::Linear,
+            })
             .unwrap();
         asset_record
             .mip_generation()
-            .set(
-                default_asset_data_container,
-                match default_settings.mip_generation {
-                    ImageAssetMipGeneration::NoMips => GpuImageMipGenerationEnum::NoMips,
-                    ImageAssetMipGeneration::Precomupted => GpuImageMipGenerationEnum::Precomputed,
-                    ImageAssetMipGeneration::Runtime => GpuImageMipGenerationEnum::Runtime,
-                },
-            )
+            .set(match default_settings.mip_generation {
+                ImageAssetMipGeneration::NoMips => GpuImageMipGenerationEnum::NoMips,
+                ImageAssetMipGeneration::Precomupted => GpuImageMipGenerationEnum::Precomputed,
+                ImageAssetMipGeneration::Runtime => GpuImageMipGenerationEnum::Runtime,
+            })
             .unwrap();
     }
 }
 
-impl hydrate_pipeline::Importer for GpuImageImporterSimple {
+impl Importer for GpuImageImporterSimple {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["png", "jpg", "jpeg", "tga", "tif", "tiff", "bmp"]
     }
@@ -274,7 +256,7 @@ impl hydrate_pipeline::Importer for GpuImageImporterSimple {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
             .find_named_type(GpuImageAssetAccessor::schema_name())
@@ -282,17 +264,17 @@ impl hydrate_pipeline::Importer for GpuImageImporterSimple {
             .as_record()
             .unwrap()
             .clone();
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references: Default::default(),
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         let (image_bytes, width, height) = {
             profiling::scope!("Load Image from Disk");
             let decoded_image = ::image::open(context.path).unwrap();
@@ -304,95 +286,21 @@ impl hydrate_pipeline::Importer for GpuImageImporterSimple {
         //
         // Create import data
         //
-        let import_data = {
-            let mut import_object =
-                GpuImageImportedDataAccessor::new_single_object(context.schema_set).unwrap();
-            let mut import_data_container =
-                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
-            let x = GpuImageImportedDataAccessor::default();
-            x.image_bytes()
-                .set(&mut import_data_container, Arc::new(image_bytes))
-                .unwrap();
-            x.width().set(&mut import_data_container, width).unwrap();
-            x.height().set(&mut import_data_container, height).unwrap();
-            import_object
-        };
+        let import_data = GpuImageImportedDataOwned::new_builder(context.schema_set);
+        import_data
+            .image_bytes()
+            .set(Arc::new(image_bytes))
+            .unwrap();
+        import_data.width().set(width).unwrap();
+        import_data.height().set(height).unwrap();
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let default_settings = self.default_settings(context.path);
+        let mut default_asset = GpuImageAssetOwned::new_builder(context.schema_set);
+        let default_settings = self.default_settings(context.path);
 
-            let mut default_asset_object =
-                GpuImageAssetAccessor::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
-                &mut default_asset_object,
-                context.schema_set,
-            );
-            let x = GpuImageAssetAccessor::default();
-
-            GpuImageImporterSimple::set_default_asset_properties(
-                &default_settings,
-                &mut default_asset_data_container,
-                &x,
-            );
-
-            // match default_settings.data_format {
-            //     ImageAssetDataFormatConfig::Uncompressed => {
-            //         x.basis_compression()
-            //             .set(&mut default_asset_data_container, false)
-            //             .unwrap();
-            //     }
-            //     ImageAssetDataFormatConfig::BasisCompressed(settings) => {
-            //         x.basis_compression()
-            //             .set(&mut default_asset_data_container, true)
-            //             .unwrap();
-            //
-            //         x.basis_compression_settings()
-            //             .compression_type()
-            //             .set(
-            //                 &mut default_asset_data_container,
-            //                 match settings.compression_type {
-            //                     ImageAssetBasisCompressionType::Etc1S => {
-            //                         GpuImageBasisCompressionTypeEnum::Etc1S
-            //                     }
-            //                     ImageAssetBasisCompressionType::Uastc => {
-            //                         GpuImageBasisCompressionTypeEnum::Uastc
-            //                     }
-            //                 },
-            //             )
-            //             .unwrap();
-            //         x.basis_compression_settings()
-            //             .quality()
-            //             .set(&mut default_asset_data_container, settings.quality)
-            //             .unwrap();
-            //     }
-            // }
-            // x.color_space()
-            //     .set(
-            //         &mut default_asset_data_container,
-            //         match default_settings.color_space {
-            //             ImageAssetColorSpaceConfig::Srgb => GpuImageColorSpaceEnum::Srgb,
-            //             ImageAssetColorSpaceConfig::Linear => GpuImageColorSpaceEnum::Linear,
-            //         },
-            //     )
-            //     .unwrap();
-            // x.mip_generation()
-            //     .set(
-            //         &mut default_asset_data_container,
-            //         match default_settings.mip_generation {
-            //             ImageAssetMipGeneration::NoMips => GpuImageMipGenerationEnum::NoMips,
-            //             ImageAssetMipGeneration::Precomupted => {
-            //                 GpuImageMipGenerationEnum::Precomputed
-            //             }
-            //             ImageAssetMipGeneration::Runtime => GpuImageMipGenerationEnum::Runtime,
-            //         },
-            //     )
-            //     .unwrap();
-
-            default_asset_object
-        };
+        GpuImageImporterSimple::set_default_asset_properties(&default_settings, &mut default_asset);
 
         //
         // Return the created objects
@@ -402,11 +310,11 @@ impl hydrate_pipeline::Importer for GpuImageImporterSimple {
             None,
             ImportedImportable {
                 file_references: Default::default(),
-                import_data: Some(import_data),
-                default_asset: Some(default_asset),
+                import_data: Some(import_data.into_inner().unwrap()),
+                default_asset: Some(default_asset.into_inner().unwrap()),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
@@ -435,52 +343,49 @@ impl JobProcessor for GpuImageJobProcessor {
     fn enumerate_dependencies(
         &self,
         context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> JobEnumeratedDependencies {
+    ) -> PipelineResult<JobEnumeratedDependencies> {
         // No dependencies
-        JobEnumeratedDependencies {
+        Ok(JobEnumeratedDependencies {
             import_data: vec![context.input.asset_id],
             upstream_jobs: Vec::default(),
-        }
+        })
     }
 
     fn run(
         &self,
         context: RunContext<Self::InputT>,
-    ) -> GpuImageJobOutput {
+    ) -> PipelineResult<GpuImageJobOutput> {
         //
         // Read asset properties
         //
-        let data_container = DataContainerRef::from_dataset(
-            context.data_set,
-            context.schema_set,
-            context.input.asset_id,
-        );
-        let x = GpuImageAssetAccessor::default();
-        let basis_compression = x.basis_compression().get(data_container).unwrap();
-        let color_space = match x.color_space().get(data_container).unwrap() {
+        let asset_data = context
+            .asset::<GpuImageAssetReader>(context.input.asset_id)
+            .unwrap();
+        let basis_compression = asset_data.basis_compression().get().unwrap();
+        let color_space = match asset_data.color_space().get().unwrap() {
             GpuImageColorSpaceEnum::Srgb => ImageAssetColorSpaceConfig::Srgb,
             GpuImageColorSpaceEnum::Linear => ImageAssetColorSpaceConfig::Linear,
         };
-        let mip_generation = match x.mip_generation().get(data_container).unwrap() {
+        let mip_generation = match asset_data.mip_generation().get().unwrap() {
             GpuImageMipGenerationEnum::NoMips => ImageAssetMipGeneration::NoMips,
             GpuImageMipGenerationEnum::Precomputed => ImageAssetMipGeneration::Precomupted,
             GpuImageMipGenerationEnum::Runtime => ImageAssetMipGeneration::Runtime,
         };
 
         let format_config = if basis_compression {
-            let compression_type = match x
+            let compression_type = match asset_data
                 .basis_compression_settings()
                 .compression_type()
-                .get(data_container)
+                .get()
                 .unwrap()
             {
                 GpuImageBasisCompressionTypeEnum::Uastc => ImageAssetBasisCompressionType::Uastc,
                 GpuImageBasisCompressionTypeEnum::Etc1S => ImageAssetBasisCompressionType::Etc1S,
             };
-            let quality = x
+            let quality = asset_data
                 .basis_compression_settings()
                 .quality()
-                .get(data_container)
+                .get()
                 .unwrap();
 
             ImageAssetDataFormatConfig::BasisCompressed(ImageAssetBasisCompressionSettings {
@@ -494,14 +399,13 @@ impl JobProcessor for GpuImageJobProcessor {
         //
         // Read imported data
         //
-        let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container =
-            DataContainerRef::from_single_object(&imported_data, context.schema_set);
-        let x = GpuImageImportedDataAccessor::new(PropertyPath::default());
+        let import_data = context
+            .imported_data::<GpuImageImportedDataReader>(context.input.asset_id)
+            .unwrap();
 
-        let image_bytes = x.image_bytes().get(&data_container).unwrap().clone();
-        let width = x.width().get(data_container).unwrap();
-        let height = x.height().get(data_container).unwrap();
+        let image_bytes = import_data.image_bytes().get().unwrap().clone();
+        let width = import_data.width().get().unwrap();
+        let height = import_data.height().get().unwrap();
 
         //
         // Create the processed data
@@ -520,9 +424,9 @@ impl JobProcessor for GpuImageJobProcessor {
         //
         // Serialize and return
         //
-        context.produce_default_artifact(context.input.asset_id, processed_data);
+        context.produce_default_artifact(context.input.asset_id, processed_data)?;
 
-        GpuImageJobOutput {}
+        Ok(GpuImageJobOutput {})
     }
 }
 
@@ -538,7 +442,7 @@ impl Builder for GpuImageBuilder {
     fn start_jobs(
         &self,
         context: BuilderContext,
-    ) {
+    ) -> PipelineResult<()> {
         //Future: Might produce jobs per-platform
         context.enqueue_job::<GpuImageJobProcessor>(
             context.data_set,
@@ -547,13 +451,14 @@ impl Builder for GpuImageBuilder {
             GpuImageJobInput {
                 asset_id: context.asset_id,
             },
-        );
+        )?;
+        Ok(())
     }
 }
 
 pub struct GpuImageAssetPlugin;
 
-impl hydrate_pipeline::AssetPlugin for GpuImageAssetPlugin {
+impl AssetPlugin for GpuImageAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

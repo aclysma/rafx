@@ -1,17 +1,15 @@
 use crate::assets::image::{ImageAssetDataLayer, ImageAssetDataMipLevel};
 use crate::schema::{
-    GpuCompressedImageAssetAccessor, GpuCompressedImageImportedDataAccessor,
-    GpuImageAssetDataFormatEnum,
+    GpuCompressedImageAssetAccessor, GpuCompressedImageAssetOwned,
+    GpuCompressedImageImportedDataOwned, GpuImageAssetDataFormatEnum,
 };
 use crate::ImageAssetDataFormat;
 use ddsfile::DxgiFormat;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerRefMut, RecordAccessor, SchemaSet};
+use hydrate_data::{RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
-    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ScanContext,
-    ScannedImportable,
+    ImportContext, ImportedImportable, Importer, PipelineResult, ScanContext, ScannedImportable,
 };
-use std::path::Path;
 use std::sync::Arc;
 use type_uuid::*;
 
@@ -19,7 +17,7 @@ use type_uuid::*;
 #[uuid = "a66a5767-0a03-4c3e-ac06-ce02c1a0a561"]
 pub struct GpuCompressedImageImporterDds;
 
-impl hydrate_pipeline::Importer for GpuCompressedImageImporterDds {
+impl Importer for GpuCompressedImageImporterDds {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["dds"]
     }
@@ -27,7 +25,7 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterDds {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
             .find_named_type(GpuCompressedImageAssetAccessor::schema_name())
@@ -35,17 +33,17 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterDds {
             .as_record()
             .unwrap()
             .clone();
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references: Default::default(),
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         let dds_bytes = std::fs::read(context.path).unwrap();
         let dds = ddsfile::Dds::read(&mut &dds_bytes[..]).unwrap();
 
@@ -148,111 +146,60 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterDds {
         //
         // Create import data
         //
-        let import_data = {
-            let mut import_object =
-                GpuCompressedImageImportedDataAccessor::new_single_object(context.schema_set)
-                    .unwrap();
-            let mut import_data_container =
-                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
-            let x = GpuCompressedImageImportedDataAccessor::default();
+        let import_data = GpuCompressedImageImportedDataOwned::new_builder(context.schema_set);
 
-            x.height().set(&mut import_data_container, height).unwrap();
-            x.width().set(&mut import_data_container, width).unwrap();
-            x.format()
-                .set(
-                    &mut import_data_container,
-                    match format {
-                        ImageAssetDataFormat::RGBA32_Linear => {
-                            GpuImageAssetDataFormatEnum::RGBA32_Linear
-                        }
-                        ImageAssetDataFormat::RGBA32_Srgb => {
-                            GpuImageAssetDataFormatEnum::RGBA32_Srgb
-                        }
-                        ImageAssetDataFormat::Basis_Linear => {
-                            GpuImageAssetDataFormatEnum::Basis_Linear
-                        }
-                        ImageAssetDataFormat::Basis_Srgb => GpuImageAssetDataFormatEnum::Basis_Srgb,
-                        ImageAssetDataFormat::BC1_UNorm_Linear => {
-                            GpuImageAssetDataFormatEnum::BC1_UNorm_Linear
-                        }
-                        ImageAssetDataFormat::BC1_UNorm_Srgb => {
-                            GpuImageAssetDataFormatEnum::BC1_UNorm_Srgb
-                        }
-                        ImageAssetDataFormat::BC2_UNorm_Linear => {
-                            GpuImageAssetDataFormatEnum::BC2_UNorm_Linear
-                        }
-                        ImageAssetDataFormat::BC2_UNorm_Srgb => {
-                            GpuImageAssetDataFormatEnum::BC2_UNorm_Srgb
-                        }
-                        ImageAssetDataFormat::BC3_UNorm_Linear => {
-                            GpuImageAssetDataFormatEnum::BC3_UNorm_Linear
-                        }
-                        ImageAssetDataFormat::BC3_UNorm_Srgb => {
-                            GpuImageAssetDataFormatEnum::BC3_UNorm_Srgb
-                        }
-                        ImageAssetDataFormat::BC4_UNorm => GpuImageAssetDataFormatEnum::BC4_UNorm,
-                        ImageAssetDataFormat::BC4_SNorm => GpuImageAssetDataFormatEnum::BC4_SNorm,
-                        ImageAssetDataFormat::BC5_UNorm => GpuImageAssetDataFormatEnum::BC5_UNorm,
-                        ImageAssetDataFormat::BC5_SNorm => GpuImageAssetDataFormatEnum::BC5_SNorm,
-                        ImageAssetDataFormat::BC6H_UFloat => {
-                            GpuImageAssetDataFormatEnum::BC6H_UFloat
-                        }
-                        ImageAssetDataFormat::BC6H_SFloat => {
-                            GpuImageAssetDataFormatEnum::BC6H_SFloat
-                        }
-                        ImageAssetDataFormat::BC7_Unorm_Linear => {
-                            GpuImageAssetDataFormatEnum::BC7_Unorm_Linear
-                        }
-                        ImageAssetDataFormat::BC7_Unorm_Srgb => {
-                            GpuImageAssetDataFormatEnum::BC7_Unorm_Srgb
-                        }
-                    },
-                )
-                .unwrap();
-
-            for layer in layers_asset_data {
-                let layer_entry = x
-                    .data_layers()
-                    .add_entry(&mut import_data_container)
-                    .unwrap();
-                let layer_record = x.data_layers().entry(layer_entry);
-
-                for mip_level in layer.mip_levels {
-                    let mip_level_entry = layer_record
-                        .mip_levels()
-                        .add_entry(&mut import_data_container)
-                        .unwrap();
-
-                    let mip_record = layer_record.mip_levels().entry(mip_level_entry);
-                    mip_record
-                        .width()
-                        .set(&mut import_data_container, mip_level.width)
-                        .unwrap();
-                    mip_record
-                        .height()
-                        .set(&mut import_data_container, mip_level.height)
-                        .unwrap();
-                    mip_record
-                        .bytes()
-                        .set(&mut import_data_container, Arc::new(mip_level.bytes))
-                        .unwrap();
+        import_data.height().set(height).unwrap();
+        import_data.width().set(width).unwrap();
+        import_data
+            .format()
+            .set(match format {
+                ImageAssetDataFormat::RGBA32_Linear => GpuImageAssetDataFormatEnum::RGBA32_Linear,
+                ImageAssetDataFormat::RGBA32_Srgb => GpuImageAssetDataFormatEnum::RGBA32_Srgb,
+                ImageAssetDataFormat::Basis_Linear => GpuImageAssetDataFormatEnum::Basis_Linear,
+                ImageAssetDataFormat::Basis_Srgb => GpuImageAssetDataFormatEnum::Basis_Srgb,
+                ImageAssetDataFormat::BC1_UNorm_Linear => {
+                    GpuImageAssetDataFormatEnum::BC1_UNorm_Linear
                 }
-            }
+                ImageAssetDataFormat::BC1_UNorm_Srgb => GpuImageAssetDataFormatEnum::BC1_UNorm_Srgb,
+                ImageAssetDataFormat::BC2_UNorm_Linear => {
+                    GpuImageAssetDataFormatEnum::BC2_UNorm_Linear
+                }
+                ImageAssetDataFormat::BC2_UNorm_Srgb => GpuImageAssetDataFormatEnum::BC2_UNorm_Srgb,
+                ImageAssetDataFormat::BC3_UNorm_Linear => {
+                    GpuImageAssetDataFormatEnum::BC3_UNorm_Linear
+                }
+                ImageAssetDataFormat::BC3_UNorm_Srgb => GpuImageAssetDataFormatEnum::BC3_UNorm_Srgb,
+                ImageAssetDataFormat::BC4_UNorm => GpuImageAssetDataFormatEnum::BC4_UNorm,
+                ImageAssetDataFormat::BC4_SNorm => GpuImageAssetDataFormatEnum::BC4_SNorm,
+                ImageAssetDataFormat::BC5_UNorm => GpuImageAssetDataFormatEnum::BC5_UNorm,
+                ImageAssetDataFormat::BC5_SNorm => GpuImageAssetDataFormatEnum::BC5_SNorm,
+                ImageAssetDataFormat::BC6H_UFloat => GpuImageAssetDataFormatEnum::BC6H_UFloat,
+                ImageAssetDataFormat::BC6H_SFloat => GpuImageAssetDataFormatEnum::BC6H_SFloat,
+                ImageAssetDataFormat::BC7_Unorm_Linear => {
+                    GpuImageAssetDataFormatEnum::BC7_Unorm_Linear
+                }
+                ImageAssetDataFormat::BC7_Unorm_Srgb => GpuImageAssetDataFormatEnum::BC7_Unorm_Srgb,
+            })
+            .unwrap();
 
-            import_object
-        };
+        for layer in layers_asset_data {
+            let layer_entry = import_data.data_layers().add_entry().unwrap();
+            let layer_record = import_data.data_layers().entry(layer_entry);
+
+            for mip_level in layer.mip_levels {
+                let mip_level_entry = layer_record.mip_levels().add_entry().unwrap();
+
+                let mip_record = layer_record.mip_levels().entry(mip_level_entry);
+                mip_record.width().set(mip_level.width).unwrap();
+                mip_record.height().set(mip_level.height).unwrap();
+                mip_record.bytes().set(Arc::new(mip_level.bytes)).unwrap();
+            }
+        }
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let default_asset_object =
-                GpuCompressedImageAssetAccessor::new_single_object(context.schema_set).unwrap();
-
-            // no fields to set
-
-            default_asset_object
-        };
+        let default_asset = GpuCompressedImageAssetOwned::new_builder(context.schema_set);
 
         //
         // Return the created objects
@@ -262,10 +209,10 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterDds {
             None,
             ImportedImportable {
                 file_references: Default::default(),
-                import_data: Some(import_data),
-                default_asset: Some(default_asset),
+                import_data: Some(import_data.into_inner().unwrap()),
+                default_asset: Some(default_asset.into_inner().unwrap()),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }

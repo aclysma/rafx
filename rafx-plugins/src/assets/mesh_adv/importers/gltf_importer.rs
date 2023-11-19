@@ -7,18 +7,17 @@ use gltf::buffer::Data as GltfBufferData;
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{DataContainerRefMut, RecordAccessor, SchemaSet};
+use hydrate_data::{DataContainerRefMut, RecordAccessor, RecordBuilder, RecordOwned, SchemaSet};
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder, ScanContext,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
     ScannedImportable, SchemaLinker,
 };
-use rafx::assets::schema::{GpuImageAssetAccessor, GpuImageImportedDataAccessor};
+use rafx::assets::schema::{GpuImageAssetAccessor, GpuImageAssetOwned, GpuImageImportedDataOwned};
 use rafx::assets::PushBuffer;
 use rafx::assets::{GpuImageImporterSimple, ImageAsset, ImageImporterOptions};
 use rafx::assets::{ImageAssetColorSpaceConfig, ImageAssetData};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::sync::Arc;
 use type_uuid::*;
 
@@ -216,45 +215,21 @@ fn hydrate_import_image(
     };
 
     //
+    // Create import data
+    //
+    let import_data = GpuImageImportedDataOwned::new_builder(schema_set);
+    import_data
+        .image_bytes()
+        .set(Arc::new(converted_image.to_vec()))
+        .unwrap();
+    import_data.width().set(converted_image.width()).unwrap();
+    import_data.height().set(converted_image.height()).unwrap();
+
+    //
     // Create the default asset
     //
-    let default_asset = {
-        let mut default_asset_object =
-            GpuImageAssetAccessor::new_single_object(schema_set).unwrap();
-        let mut default_asset_data_container =
-            DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
-        let x = GpuImageAssetAccessor::default();
-
-        GpuImageImporterSimple::set_default_asset_properties(
-            &default_settings,
-            &mut default_asset_data_container,
-            &x,
-        );
-
-        default_asset_object
-    };
-
-    let import_data = {
-        let mut import_data = GpuImageImportedDataAccessor::new_single_object(schema_set).unwrap();
-        let mut import_data_container =
-            DataContainerRefMut::from_single_object(&mut import_data, schema_set);
-        let x = GpuImageImportedDataAccessor::default();
-
-        x.image_bytes()
-            .set(
-                &mut import_data_container,
-                Arc::new(converted_image.to_vec()),
-            )
-            .unwrap();
-        x.width()
-            .set(&mut import_data_container, converted_image.width())
-            .unwrap();
-        x.height()
-            .set(&mut import_data_container, converted_image.height())
-            .unwrap();
-
-        import_data
-    };
+    let mut default_asset = RecordBuilder::<GpuImageAssetOwned>::new(schema_set);
+    GpuImageImporterSimple::set_default_asset_properties(&default_settings, &mut default_asset);
 
     //
     // Return the created objects
@@ -263,8 +238,8 @@ fn hydrate_import_image(
         Some(asset_name.to_string()),
         ImportedImportable {
             file_references: Default::default(),
-            import_data: Some(import_data),
-            default_asset: Some(default_asset),
+            import_data: Some(import_data.into_inner().unwrap()),
+            default_asset: Some(default_asset.into_inner().unwrap()),
         },
     );
 }
@@ -573,7 +548,7 @@ fn name_or_index(
 #[uuid = "01d71c49-867c-4d96-ad16-7c08b6cbfaf9"]
 pub struct GltfImporter;
 
-impl hydrate_pipeline::Importer for GltfImporter {
+impl Importer for GltfImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["gltf", "glb"]
     }
@@ -581,7 +556,7 @@ impl hydrate_pipeline::Importer for GltfImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         let mesh_asset_type = context
             .schema_set
             .find_named_type(MeshAdvMeshAssetAccessor::schema_name())
@@ -659,14 +634,14 @@ impl hydrate_pipeline::Importer for GltfImporter {
             });
         }
 
-        importables
+        Ok(importables)
     }
 
     fn import_file(
         &self,
         context: ImportContext,
         //import_info: &ImportInfo,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -730,7 +705,7 @@ impl hydrate_pipeline::Importer for GltfImporter {
             }
         }
 
-        imported_objects
+        Ok(imported_objects)
     }
 }
 

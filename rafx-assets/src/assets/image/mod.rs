@@ -3,7 +3,7 @@ pub mod assets;
 pub use assets::*;
 use hydrate_data::SchemaLinker;
 use hydrate_pipeline::{
-    BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
+    AssetPlugin, BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
 };
 use std::sync::Arc;
 
@@ -32,7 +32,7 @@ mod builder_compressed_image;
 
 pub struct GpuImageAssetPlugin;
 
-impl hydrate_pipeline::AssetPlugin for GpuImageAssetPlugin {
+impl AssetPlugin for GpuImageAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

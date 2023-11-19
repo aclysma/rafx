@@ -5,16 +5,14 @@ use crate::{GpuImageImporterSimple, MaterialInstanceSlotAssignment};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, DataSet, ImporterId, NullOverride, RecordAccessor,
-    SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, ImporterId, NullOverride, RecordAccessor,
 };
 use hydrate_pipeline::{
-    job_system, BuilderContext, EnumerateDependenciesContext, ImportContext, ImportableAsset,
-    ImportedImportable, ImporterRegistry, JobEnumeratedDependencies, JobInput, JobOutput,
-    JobProcessor, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
+    Builder, BuilderContext, EnumerateDependenciesContext, ImportContext, ImportedImportable,
+    Importer, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult,
+    ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
 };
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::sync::Arc;
 use type_uuid::*;
 use uuid::Uuid;
@@ -31,7 +29,7 @@ pub struct HydrateMaterialInstanceImporter;
 //     }
 // }
 
-impl hydrate_pipeline::Importer for HydrateMaterialInstanceImporter {
+impl Importer for HydrateMaterialInstanceImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["materialinstance"]
     }
@@ -39,7 +37,7 @@ impl hydrate_pipeline::Importer for HydrateMaterialInstanceImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         //
         // Read the file
         //
@@ -70,17 +68,17 @@ impl hydrate_pipeline::Importer for HydrateMaterialInstanceImporter {
                 });
             }
         }
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references,
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -188,7 +186,7 @@ impl hydrate_pipeline::Importer for HydrateMaterialInstanceImporter {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
@@ -216,16 +214,16 @@ impl JobProcessor for MaterialInstanceJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> JobEnumeratedDependencies {
+        _context: EnumerateDependenciesContext<Self::InputT>,
+    ) -> PipelineResult<JobEnumeratedDependencies> {
         // No dependencies
-        JobEnumeratedDependencies::default()
+        Ok(JobEnumeratedDependencies::default())
     }
 
     fn run(
         &self,
         context: RunContext<Self::InputT>,
-    ) -> MaterialInstanceJobOutput {
+    ) -> PipelineResult<MaterialInstanceJobOutput> {
         //
         // Read asset data
         //
@@ -236,66 +234,70 @@ impl JobProcessor for MaterialInstanceJobProcessor {
         );
         let x = MaterialInstanceAssetAccessor::default();
 
-        context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
-            let material = handle_factory
-                .make_handle_to_default_artifact(x.material().get(data_container).unwrap());
+        context.produce_default_artifact_with_handles(
+            context.input.asset_id,
+            |handle_factory| {
+                let material = handle_factory
+                    .make_handle_to_default_artifact(x.material().get(data_container).unwrap());
 
-            let mut slot_assignments = Vec::default();
-            for slot_assignent_entry in x
-                .slot_assignments()
-                .resolve_entries(data_container)
-                .unwrap()
-                .into_iter()
-            {
-                let slot_assignment = x.slot_assignments().entry(*slot_assignent_entry);
-
-                let slot_name = slot_assignment.slot_name().get(data_container).unwrap();
-                let array_index =
-                    slot_assignment.array_index().get(data_container).unwrap() as usize;
-
-                let image_object_id = slot_assignment.image().get(data_container).unwrap();
-                let image = if image_object_id.is_null() {
-                    None
-                } else {
-                    Some(handle_factory.make_handle_to_default_artifact(image_object_id))
-                };
-
-                let sampler_ron = slot_assignment.sampler().get(data_container).unwrap();
-                let sampler = if sampler_ron.is_empty() {
-                    None
-                } else {
-                    let sampler =
-                        ron::de::from_str(&slot_assignment.sampler().get(data_container).unwrap())
-                            .unwrap();
-                    Some(sampler)
-                };
-
-                let buffer_data = if let Some(buffer_data) = slot_assignment
-                    .buffer_data()
-                    .resolve_null(data_container)
+                let mut slot_assignments = Vec::default();
+                for slot_assignent_entry in x
+                    .slot_assignments()
+                    .resolve_entries(data_container)
                     .unwrap()
+                    .into_iter()
                 {
-                    Some(buffer_data.get(&data_container).unwrap().clone())
-                } else {
-                    None
-                };
+                    let slot_assignment = x.slot_assignments().entry(*slot_assignent_entry);
 
-                slot_assignments.push(MaterialInstanceSlotAssignment {
-                    slot_name: (*slot_name).clone(),
-                    array_index,
-                    image,
-                    sampler,
-                    buffer_data,
-                });
-            }
+                    let slot_name = slot_assignment.slot_name().get(data_container).unwrap();
+                    let array_index =
+                        slot_assignment.array_index().get(data_container).unwrap() as usize;
 
-            MaterialInstanceAssetData {
-                slot_assignments,
-                material,
-            }
-        });
+                    let image_object_id = slot_assignment.image().get(data_container).unwrap();
+                    let image = if image_object_id.is_null() {
+                        None
+                    } else {
+                        Some(handle_factory.make_handle_to_default_artifact(image_object_id))
+                    };
 
-        MaterialInstanceJobOutput {}
+                    let sampler_ron = slot_assignment.sampler().get(data_container).unwrap();
+                    let sampler = if sampler_ron.is_empty() {
+                        None
+                    } else {
+                        let sampler = ron::de::from_str(
+                            &slot_assignment.sampler().get(data_container).unwrap(),
+                        )
+                        .unwrap();
+                        Some(sampler)
+                    };
+
+                    let buffer_data = if let Some(buffer_data) = slot_assignment
+                        .buffer_data()
+                        .resolve_null(data_container)
+                        .unwrap()
+                    {
+                        Some(buffer_data.get(&data_container).unwrap().clone())
+                    } else {
+                        None
+                    };
+
+                    slot_assignments.push(MaterialInstanceSlotAssignment {
+                        slot_name: (*slot_name).clone(),
+                        array_index,
+                        image,
+                        sampler,
+                        buffer_data: buffer_data.map(|x| (*x).clone()),
+                    });
+                }
+
+                Ok(MaterialInstanceAssetData {
+                    slot_assignments,
+                    material,
+                })
+            },
+        )?;
+
+        Ok(MaterialInstanceJobOutput {})
     }
 }
 
@@ -303,7 +305,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
 #[uuid = "0cfe8812-b0cd-4b72-bfa2-8ac3d30af7dd"]
 pub struct MaterialInstanceBuilder {}
 
-impl hydrate_pipeline::Builder for MaterialInstanceBuilder {
+impl Builder for MaterialInstanceBuilder {
     fn asset_type(&self) -> &'static str {
         MaterialInstanceAssetAccessor::schema_name()
     }
@@ -311,7 +313,7 @@ impl hydrate_pipeline::Builder for MaterialInstanceBuilder {
     fn start_jobs(
         &self,
         context: BuilderContext,
-    ) {
+    ) -> PipelineResult<()> {
         //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
         //let x = MaterialInstanceAssetAccessor::default();
 
@@ -323,6 +325,7 @@ impl hydrate_pipeline::Builder for MaterialInstanceBuilder {
             MaterialInstanceJobInput {
                 asset_id: context.asset_id,
             },
-        );
+        )?;
+        Ok(())
     }
 }

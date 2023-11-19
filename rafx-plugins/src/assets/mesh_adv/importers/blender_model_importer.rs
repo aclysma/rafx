@@ -2,14 +2,14 @@ use crate::assets::mesh_adv::{BlenderMeshImporter, MeshAdvAsset};
 use crate::schema::MeshAdvModelAssetAccessor;
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor, SchemaSet};
+use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor};
 use hydrate_pipeline::{
-    BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
-    ScannedImportable, SchemaLinker,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ReferencedSourceFile,
+    ScanContext, ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use type_uuid::*;
 use uuid::Uuid;
 
@@ -37,7 +37,7 @@ struct HydrateModelJsonFormat {
 #[uuid = "a97c46e9-1deb-4ca2-9f70-b4ce97a74cf2"]
 pub struct BlenderModelImporter;
 
-impl hydrate_pipeline::Importer for BlenderModelImporter {
+impl Importer for BlenderModelImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_model"]
     }
@@ -45,7 +45,7 @@ impl hydrate_pipeline::Importer for BlenderModelImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         //
         // Read the file
         //
@@ -69,17 +69,17 @@ impl hydrate_pipeline::Importer for BlenderModelImporter {
                 path: lod.mesh.clone(),
             });
         }
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references,
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -137,13 +137,13 @@ impl hydrate_pipeline::Importer for BlenderModelImporter {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
 pub struct BlenderModelAssetPlugin;
 
-impl hydrate_pipeline::AssetPlugin for BlenderModelAssetPlugin {
+impl AssetPlugin for BlenderModelAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

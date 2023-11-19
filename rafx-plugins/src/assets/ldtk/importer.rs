@@ -7,15 +7,12 @@ use crate::schema::{LdtkAssetAccessor, LdtkImportDataAccessor};
 use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::{AssetId, Handle};
-use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, DataSet, ImporterId, RecordAccessor, SchemaSet,
-    SingleObject,
-};
+use hydrate_data::{DataContainerRef, DataContainerRefMut, ImporterId, RecordAccessor};
 use hydrate_pipeline::{
-    job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
+    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    ReferencedSourceFile, RunContext, ScanContext, ScannedImportable, SchemaLinker,
+    PipelineResult, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable, SchemaLinker,
 };
 use ldtk_rust::{LayerInstance, Level, TileInstance};
 use rafx::api::RafxResourceType;
@@ -24,7 +21,7 @@ use rafx::assets::{
     MaterialInstanceSlotAssignment,
 };
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use type_uuid::*;
 use uuid::Uuid;
@@ -132,7 +129,7 @@ fn generate_draw_data(
 #[uuid = "7d507fac-ccb8-47fb-a4af-15da5e751601"]
 pub struct HydrateLdtkImporter;
 
-impl hydrate_pipeline::Importer for HydrateLdtkImporter {
+impl Importer for HydrateLdtkImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["ldtk"]
     }
@@ -140,7 +137,7 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         //
         // Read the file
         //
@@ -171,17 +168,17 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
             })
         }
 
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references,
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -237,7 +234,7 @@ impl hydrate_pipeline::Importer for HydrateLdtkImporter {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
@@ -266,18 +263,18 @@ impl JobProcessor for LdtkJobProcessor {
     fn enumerate_dependencies(
         &self,
         context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> JobEnumeratedDependencies {
+    ) -> PipelineResult<JobEnumeratedDependencies> {
         // No dependencies
-        JobEnumeratedDependencies {
+        Ok(JobEnumeratedDependencies {
             import_data: vec![context.input.asset_id],
             upstream_jobs: Default::default(),
-        }
+        })
     }
 
     fn run(
         &self,
         context: RunContext<Self::InputT>,
-    ) -> LdtkJobOutput {
+    ) -> PipelineResult<LdtkJobOutput> {
         //
         // Read import data
         //
@@ -345,12 +342,12 @@ impl JobProcessor for LdtkJobProcessor {
                         buffer_data: None,
                     });
 
-                    MaterialInstanceAssetData {
+                    Ok(MaterialInstanceAssetData {
                         material: material_handle.clone(),
                         slot_assignments,
-                    }
+                    })
                 },
-            );
+            )?;
 
             let image_width = tileset.px_wid as _;
             let image_height = tileset.px_hei as _;
@@ -440,7 +437,7 @@ impl JobProcessor for LdtkJobProcessor {
                     context.input.asset_id,
                     Some(format!("vertex_buffer,{:?}", level.uid)),
                     vertex_buffer_asset_data,
-                );
+                )?;
 
                 //
                 // Create an index buffer for the level
@@ -451,7 +448,7 @@ impl JobProcessor for LdtkJobProcessor {
                     context.input.asset_id,
                     Some(format!("index_buffer,{:?}", level.uid)),
                     index_buffer_asset_data,
-                );
+                )?;
 
                 vertex_buffer_artifact = Some(vb_artifact);
                 index_buffer_artifact = Some(ib_artifact);
@@ -468,61 +465,64 @@ impl JobProcessor for LdtkJobProcessor {
             assert!(old.is_none());
         }
 
-        context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
-            let mut tilesets = FnvHashMap::default();
-            for (uid, tileset) in tilesets_temp {
-                tilesets.insert(
-                    uid,
-                    LdtkTileSet {
-                        material_instance: handle_factory.make_handle_to_artifact_raw(
-                            context.input.asset_id,
-                            tileset.material_instance,
-                        ),
-                        image: handle_factory.make_handle_to_default_artifact(tileset.image),
-                        image_width: tileset.image_width,
-                        image_height: tileset.image_height,
-                    },
-                );
-            }
+        context.produce_default_artifact_with_handles(
+            context.input.asset_id,
+            |handle_factory| {
+                let mut tilesets = FnvHashMap::default();
+                for (uid, tileset) in tilesets_temp {
+                    tilesets.insert(
+                        uid,
+                        LdtkTileSet {
+                            material_instance: handle_factory.make_handle_to_artifact_raw(
+                                context.input.asset_id,
+                                tileset.material_instance,
+                            ),
+                            image: handle_factory.make_handle_to_default_artifact(tileset.image),
+                            image_width: tileset.image_width,
+                            image_height: tileset.image_height,
+                        },
+                    );
+                }
 
-            let mut levels = FnvHashMap::default();
-            for (uid, level) in levels_temp {
-                let layers = level
-                    .layer_data
-                    .into_iter()
-                    .map(|layer| LdtkLayerData {
-                        material_instance: handle_factory.make_handle_to_artifact_raw(
-                            context.input.asset_id,
-                            layer.material_instance,
-                        ),
-                        draw_call_data: layer.draw_call_data,
-                        z_pos: layer.z_pos,
-                        world_x_pos: layer.world_x_pos,
-                        world_y_pos: layer.world_y_pos,
-                        grid_width: layer.grid_width,
-                        grid_height: layer.grid_height,
-                        grid_size: layer.grid_size,
-                    })
-                    .collect();
+                let mut levels = FnvHashMap::default();
+                for (uid, level) in levels_temp {
+                    let layers = level
+                        .layer_data
+                        .into_iter()
+                        .map(|layer| LdtkLayerData {
+                            material_instance: handle_factory.make_handle_to_artifact_raw(
+                                context.input.asset_id,
+                                layer.material_instance,
+                            ),
+                            draw_call_data: layer.draw_call_data,
+                            z_pos: layer.z_pos,
+                            world_x_pos: layer.world_x_pos,
+                            world_y_pos: layer.world_y_pos,
+                            grid_width: layer.grid_width,
+                            grid_height: layer.grid_height,
+                            grid_size: layer.grid_size,
+                        })
+                        .collect();
 
-                levels.insert(
-                    uid,
-                    LdtkLevelData {
-                        layer_data: layers,
-                        vertex_data: level
-                            .vertex_data
-                            .map(|x| handle_factory.make_handle_to_artifact(x)),
-                        index_data: level
-                            .index_data
-                            .map(|x| handle_factory.make_handle_to_artifact(x)),
-                    },
-                );
-            }
+                    levels.insert(
+                        uid,
+                        LdtkLevelData {
+                            layer_data: layers,
+                            vertex_data: level
+                                .vertex_data
+                                .map(|x| handle_factory.make_handle_to_artifact(x)),
+                            index_data: level
+                                .index_data
+                                .map(|x| handle_factory.make_handle_to_artifact(x)),
+                        },
+                    );
+                }
 
-            LdtkAssetData { tilesets, levels }
-        });
+                Ok(LdtkAssetData { tilesets, levels })
+            },
+        )?;
 
-        LdtkJobOutput {}
+        Ok(LdtkJobOutput {})
     }
 }
 
@@ -530,7 +530,7 @@ impl JobProcessor for LdtkJobProcessor {
 #[uuid = "a0cc5ab1-430c-4052-b082-074f63539fbe"]
 pub struct LdtkBuilder {}
 
-impl hydrate_pipeline::Builder for LdtkBuilder {
+impl Builder for LdtkBuilder {
     fn asset_type(&self) -> &'static str {
         LdtkAssetAccessor::schema_name()
     }
@@ -538,7 +538,7 @@ impl hydrate_pipeline::Builder for LdtkBuilder {
     fn start_jobs(
         &self,
         context: BuilderContext,
-    ) {
+    ) -> PipelineResult<()> {
         //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
         //let x = LdtkAssetAccessor::default();
 
@@ -550,13 +550,14 @@ impl hydrate_pipeline::Builder for LdtkBuilder {
             LdtkJobInput {
                 asset_id: context.asset_id,
             },
-        );
+        )?;
+        Ok(())
     }
 }
 
 pub struct LdtkAssetPlugin;
 
-impl hydrate_pipeline::AssetPlugin for LdtkAssetPlugin {
+impl AssetPlugin for LdtkAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

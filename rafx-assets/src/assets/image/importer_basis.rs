@@ -1,16 +1,14 @@
 use crate::schema::{
-    GpuCompressedImageAssetAccessor, GpuCompressedImageImportedDataAccessor,
-    GpuImageAssetDataFormatEnum,
+    GpuCompressedImageAssetAccessor, GpuCompressedImageAssetOwned,
+    GpuCompressedImageImportedDataOwned, GpuImageAssetDataFormatEnum,
 };
 #[cfg(feature = "basis-universal")]
 use basis_universal::BasisTextureType;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerRefMut, RecordAccessor, SchemaSet};
+use hydrate_data::{RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
-    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ScanContext,
-    ScannedImportable,
+    ImportContext, ImportedImportable, Importer, PipelineResult, ScanContext, ScannedImportable,
 };
-use std::path::Path;
 use std::sync::Arc;
 use type_uuid::*;
 
@@ -18,7 +16,7 @@ use type_uuid::*;
 #[uuid = "b40fd7a0-adae-48c1-972d-650ae3c08f5f"]
 pub struct GpuCompressedImageImporterBasis;
 
-impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
+impl Importer for GpuCompressedImageImporterBasis {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["basis"]
     }
@@ -26,7 +24,7 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
             .find_named_type(GpuCompressedImageAssetAccessor::schema_name())
@@ -34,17 +32,17 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
             .as_record()
             .unwrap()
             .clone();
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references: Default::default(),
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         let bytes = std::fs::read(context.path).unwrap();
 
         let transcoder = basis_universal::Transcoder::new();
@@ -93,47 +91,26 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
         //
         // Create import data
         //
-        let import_data = {
-            let mut import_object =
-                GpuCompressedImageImportedDataAccessor::new_single_object(context.schema_set)
-                    .unwrap();
-            let mut import_data_container =
-                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
-            let x = GpuCompressedImageImportedDataAccessor::default();
-
-            x.height()
-                .set(&mut import_data_container, level_info.original_height)
-                .unwrap();
-            x.width()
-                .set(&mut import_data_container, level_info.original_width)
-                .unwrap();
-            x.format()
-                .set(
-                    &mut import_data_container,
-                    GpuImageAssetDataFormatEnum::Basis_Srgb,
-                )
-                .unwrap();
-            x.is_cube_texture()
-                .set(&mut import_data_container, is_cube_texture)
-                .unwrap();
-            x.data_single_buffer()
-                .set(&mut import_data_container, Arc::new(bytes))
-                .unwrap();
-
-            import_object
-        };
+        let import_data = GpuCompressedImageImportedDataOwned::new_builder(context.schema_set);
+        import_data
+            .height()
+            .set(level_info.original_height)
+            .unwrap();
+        import_data.width().set(level_info.original_width).unwrap();
+        import_data
+            .format()
+            .set(GpuImageAssetDataFormatEnum::Basis_Srgb)
+            .unwrap();
+        import_data.is_cube_texture().set(is_cube_texture).unwrap();
+        import_data
+            .data_single_buffer()
+            .set(Arc::new(bytes))
+            .unwrap();
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let default_asset_object =
-                GpuCompressedImageAssetAccessor::new_single_object(context.schema_set).unwrap();
-
-            // no fields to set
-
-            default_asset_object
-        };
+        let default_asset = GpuCompressedImageAssetOwned::new_builder(context.schema_set);
 
         //
         // Return the created objects
@@ -143,10 +120,10 @@ impl hydrate_pipeline::Importer for GpuCompressedImageImporterBasis {
             None,
             ImportedImportable {
                 file_references: Default::default(),
-                import_data: Some(import_data),
-                default_asset: Some(default_asset),
+                import_data: Some(import_data.into_inner().unwrap()),
+                default_asset: Some(default_asset.into_inner().unwrap()),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }

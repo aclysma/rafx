@@ -4,18 +4,16 @@ use fnv::FnvHasher;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, DataSet, FieldAccessor, PropertyPath, RecordAccessor,
-    SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, FieldAccessor, PropertyPath, RecordAccessor,
 };
 use hydrate_pipeline::{
-    job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
+    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    RunContext, ScanContext, ScannedImportable, SchemaLinker,
+    PipelineResult, RunContext, ScanContext, ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
-use std::path::Path;
 use std::sync::Arc;
 use type_uuid::*;
 
@@ -23,7 +21,7 @@ use type_uuid::*;
 #[uuid = "b99453db-4d59-4801-8b89-c86ba6fb4620"]
 pub struct HydrateFontImporter;
 
-impl hydrate_pipeline::Importer for HydrateFontImporter {
+impl Importer for HydrateFontImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["ttf"]
     }
@@ -31,7 +29,7 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
             .find_named_type(FontAssetAccessor::schema_name())
@@ -39,17 +37,17 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
             .as_record()
             .unwrap()
             .clone();
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references: Default::default(),
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -96,7 +94,7 @@ impl hydrate_pipeline::Importer for HydrateFontImporter {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
@@ -125,18 +123,18 @@ impl JobProcessor for FontJobProcessor {
     fn enumerate_dependencies(
         &self,
         context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> JobEnumeratedDependencies {
+    ) -> PipelineResult<JobEnumeratedDependencies> {
         // No dependencies
-        JobEnumeratedDependencies {
+        Ok(JobEnumeratedDependencies {
             import_data: vec![context.input.asset_id],
             upstream_jobs: Default::default(),
-        }
+        })
     }
 
     fn run(
         &self,
         context: RunContext<Self::InputT>,
-    ) -> FontJobOutput {
+    ) -> PipelineResult<FontJobOutput> {
         //
         // Read asset properties
         //
@@ -165,16 +163,16 @@ impl JobProcessor for FontJobProcessor {
         //
         let processed_data = FontAssetData {
             data_hash,
-            data: font_bytes,
+            data: (*font_bytes).clone(),
             scale: scale as f32,
         };
 
         //
         // Serialize and return
         //
-        context.produce_default_artifact(context.input.asset_id, processed_data);
+        context.produce_default_artifact(context.input.asset_id, processed_data)?;
 
-        FontJobOutput {}
+        Ok(FontJobOutput {})
     }
 }
 
@@ -182,7 +180,7 @@ impl JobProcessor for FontJobProcessor {
 #[uuid = "834e2100-00b6-4d7b-8fbd-196ee8b998f1"]
 pub struct FontBuilder {}
 
-impl hydrate_pipeline::Builder for FontBuilder {
+impl Builder for FontBuilder {
     fn asset_type(&self) -> &'static str {
         FontAssetAccessor::schema_name()
     }
@@ -190,7 +188,7 @@ impl hydrate_pipeline::Builder for FontBuilder {
     fn start_jobs(
         &self,
         context: BuilderContext,
-    ) {
+    ) -> PipelineResult<()> {
         //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
         //let x = FontAssetAccessor::default();
 
@@ -202,13 +200,14 @@ impl hydrate_pipeline::Builder for FontBuilder {
             FontJobInput {
                 asset_id: context.asset_id,
             },
-        );
+        )?;
+        Ok(())
     }
 }
 
 pub struct FontAssetPlugin;
 
-impl hydrate_pipeline::AssetPlugin for FontAssetPlugin {
+impl AssetPlugin for FontAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

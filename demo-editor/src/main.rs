@@ -119,7 +119,7 @@ fn main() {
     }
 
     //Headless
-    asset_engine.update(&mut db_state.editor_model);
+    asset_engine.update(&mut db_state.editor_model).unwrap();
 
     hydrate::editor::run(db_state, asset_engine);
 }

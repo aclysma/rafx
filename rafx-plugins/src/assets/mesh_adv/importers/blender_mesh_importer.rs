@@ -2,16 +2,16 @@ use crate::assets::mesh_adv::{BlenderMaterialImporter, MeshMaterialAdvAsset};
 use crate::schema::{MeshAdvMeshAssetAccessor, MeshAdvMeshImportedDataAccessor};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor, SchemaSet};
+use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ReferencedSourceFile,
     ScanContext, ScannedImportable, SchemaLinker,
 };
 use rafx::assets::PushBuffer;
 use rafx::base::b3f::B3FReader;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use type_uuid::*;
 use uuid::Uuid;
@@ -82,7 +82,7 @@ fn try_cast_u8_slice<T: Copy + 'static>(data: &[u8]) -> Option<&[T]> {
 #[uuid = "bdd126da-2f3d-4cbb-b2f2-80088c715753"]
 pub struct BlenderMeshImporter;
 
-impl hydrate_pipeline::Importer for BlenderMeshImporter {
+impl Importer for BlenderMeshImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_mesh"]
     }
@@ -90,7 +90,7 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         let mesh_adv_asset_type = context
             .schema_set
             .find_named_type(MeshAdvMeshAssetAccessor::schema_name())
@@ -134,13 +134,13 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
             file_references: mesh_file_references,
         });
 
-        scanned_importables
+        Ok(scanned_importables)
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -301,7 +301,7 @@ impl hydrate_pipeline::Importer for BlenderMeshImporter {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 

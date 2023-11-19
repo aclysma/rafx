@@ -6,18 +6,14 @@ use crate::schema::{GraphicsPipelineShaderStageAccessor, MaterialAssetAccessor};
 use crate::MaterialPassData;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, DataSet, ImporterId, RecordAccessor, SchemaSet,
-    SingleObject,
-};
+use hydrate_data::{DataContainerRef, DataContainerRefMut, ImporterId, RecordAccessor};
 use hydrate_pipeline::{
-    job_system, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext,
-    ImportableAsset, ImportedImportable, ImporterRegistry, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
+    Builder, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext,
+    ImportedImportable, Importer, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    PipelineResult, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
 };
 use rafx_framework::MaterialShaderStage;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use type_uuid::*;
 use uuid::Uuid;
 
@@ -25,7 +21,7 @@ use uuid::Uuid;
 #[uuid = "64d8deb9-5aa5-48e6-9110-9b356e2bce3b"]
 pub struct HydrateMaterialImporter;
 
-impl hydrate_pipeline::Importer for HydrateMaterialImporter {
+impl Importer for HydrateMaterialImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["material"]
     }
@@ -33,7 +29,7 @@ impl hydrate_pipeline::Importer for HydrateMaterialImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         //
         // Read the file
         //
@@ -58,17 +54,17 @@ impl hydrate_pipeline::Importer for HydrateMaterialImporter {
                 });
             }
         }
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references,
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -162,7 +158,7 @@ impl hydrate_pipeline::Importer for HydrateMaterialImporter {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
@@ -190,16 +186,16 @@ impl JobProcessor for MaterialJobProcessor {
 
     fn enumerate_dependencies(
         &self,
-        context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> JobEnumeratedDependencies {
+        _context: EnumerateDependenciesContext<Self::InputT>,
+    ) -> PipelineResult<JobEnumeratedDependencies> {
         // No dependencies
-        JobEnumeratedDependencies::default()
+        Ok(JobEnumeratedDependencies::default())
     }
 
     fn run(
         &self,
         context: RunContext<Self::InputT>,
-    ) -> MaterialJobOutput {
+    ) -> PipelineResult<MaterialJobOutput> {
         //
         // Read asset data
         //
@@ -210,78 +206,81 @@ impl JobProcessor for MaterialJobProcessor {
         );
         let x = MaterialAssetAccessor::default();
 
-        context.produce_default_artifact_with_handles(context.input.asset_id, |handle_factory| {
-            //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
-            let mut passes = Vec::default();
-            for pass_entry in x
-                .passes()
-                .resolve_entries(data_container)
-                .unwrap()
-                .into_iter()
-            {
-                let pass_entry = x.passes().entry(*pass_entry);
+        context.produce_default_artifact_with_handles(
+            context.input.asset_id,
+            |handle_factory| {
+                //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
+                let mut passes = Vec::default();
+                for pass_entry in x
+                    .passes()
+                    .resolve_entries(data_container)
+                    .unwrap()
+                    .into_iter()
+                {
+                    let pass_entry = x.passes().entry(*pass_entry);
 
-                let fixed_function_state = ron::de::from_str(
-                    &pass_entry
-                        .fixed_function_state()
-                        .get(data_container)
-                        .unwrap(),
-                )
-                .unwrap();
+                    let fixed_function_state = ron::de::from_str(
+                        &pass_entry
+                            .fixed_function_state()
+                            .get(data_container)
+                            .unwrap(),
+                    )
+                    .unwrap();
 
-                fn read_stage(
-                    stage: MaterialShaderStage,
-                    record: &GraphicsPipelineShaderStageAccessor,
-                    data_container: DataContainerRef,
-                    stages: &mut Vec<GraphicsPipelineShaderStage>,
-                    handle_factory: HandleFactory,
-                ) {
-                    let entry_name = record.entry_name().get(data_container).unwrap();
-                    let shader_module = record.shader_module().get(data_container).unwrap();
+                    fn read_stage(
+                        stage: MaterialShaderStage,
+                        record: &GraphicsPipelineShaderStageAccessor,
+                        data_container: DataContainerRef,
+                        stages: &mut Vec<GraphicsPipelineShaderStage>,
+                        handle_factory: HandleFactory,
+                    ) {
+                        let entry_name = record.entry_name().get(data_container).unwrap();
+                        let shader_module = record.shader_module().get(data_container).unwrap();
 
-                    if entry_name.is_empty() && shader_module.is_null() {
-                        return;
+                        if entry_name.is_empty() && shader_module.is_null() {
+                            return;
+                        }
+
+                        stages.push(GraphicsPipelineShaderStage {
+                            stage,
+                            shader_module: handle_factory
+                                .make_handle_to_default_artifact(shader_module),
+                            entry_name: (*entry_name).clone(),
+                        });
                     }
 
-                    stages.push(GraphicsPipelineShaderStage {
-                        stage,
-                        shader_module: handle_factory
-                            .make_handle_to_default_artifact(shader_module),
-                        entry_name: (*entry_name).clone(),
+                    let mut shaders = Vec::default();
+                    read_stage(
+                        MaterialShaderStage::Vertex,
+                        &pass_entry.vertex_stage(),
+                        data_container,
+                        &mut shaders,
+                        handle_factory,
+                    );
+                    read_stage(
+                        MaterialShaderStage::Fragment,
+                        &pass_entry.fragment_stage(),
+                        data_container,
+                        &mut shaders,
+                        handle_factory,
+                    );
+
+                    let name = pass_entry.name().get(data_container).unwrap();
+                    let phase = pass_entry.phase().get(data_container).unwrap();
+
+                    passes.push(MaterialPassData {
+                        name: (!name.is_empty()).then(|| (*name).clone()),
+                        phase: (!phase.is_empty()).then(|| (*phase).clone()),
+                        fixed_function_state,
+                        shaders,
                     });
                 }
 
-                let mut shaders = Vec::default();
-                read_stage(
-                    MaterialShaderStage::Vertex,
-                    &pass_entry.vertex_stage(),
-                    data_container,
-                    &mut shaders,
-                    handle_factory,
-                );
-                read_stage(
-                    MaterialShaderStage::Fragment,
-                    &pass_entry.fragment_stage(),
-                    data_container,
-                    &mut shaders,
-                    handle_factory,
-                );
+                Ok(MaterialAssetData { passes })
+            },
+        )?;
 
-                let name = pass_entry.name().get(data_container).unwrap();
-                let phase = pass_entry.phase().get(data_container).unwrap();
-
-                passes.push(MaterialPassData {
-                    name: (!name.is_empty()).then(|| (*name).clone()),
-                    phase: (!phase.is_empty()).then(|| (*phase).clone()),
-                    fixed_function_state,
-                    shaders,
-                });
-            }
-
-            MaterialAssetData { passes }
-        });
-
-        MaterialJobOutput {}
+        Ok(MaterialJobOutput {})
     }
 }
 
@@ -289,7 +288,7 @@ impl JobProcessor for MaterialJobProcessor {
 #[uuid = "8fe3e85c-2adf-4424-9197-9391c2c8f3ce"]
 pub struct MaterialBuilder {}
 
-impl hydrate_pipeline::Builder for MaterialBuilder {
+impl Builder for MaterialBuilder {
     fn asset_type(&self) -> &'static str {
         MaterialAssetAccessor::schema_name()
     }
@@ -297,7 +296,7 @@ impl hydrate_pipeline::Builder for MaterialBuilder {
     fn start_jobs(
         &self,
         context: BuilderContext,
-    ) {
+    ) -> PipelineResult<()> {
         //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
         //let x = MaterialAssetAccessor::default();
 
@@ -309,6 +308,7 @@ impl hydrate_pipeline::Builder for MaterialBuilder {
             MaterialJobInput {
                 asset_id: context.asset_id,
             },
-        );
+        )?;
+        Ok(())
     }
 }

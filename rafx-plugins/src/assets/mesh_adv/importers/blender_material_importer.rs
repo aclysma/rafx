@@ -3,15 +3,15 @@ use crate::schema::{
 };
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{AssetRefFieldAccessor, DataContainerRefMut, Enum, RecordAccessor, SchemaSet};
+use hydrate_data::{AssetRefFieldAccessor, DataContainerRefMut, Enum, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
-    ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile,
-    ScanContext, ScannedImportable, SchemaLinker,
+    Importer, ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
+    PipelineResult, ReferencedSourceFile, ScanContext, ScannedImportable, SchemaLinker,
 };
 use rafx::assets::ImageAsset;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use type_uuid::*;
 
 #[derive(Serialize, Deserialize)]
@@ -76,7 +76,7 @@ struct MaterialJsonFileFormat {
 #[uuid = "e76bab79-654a-476f-93b1-88cd5fee7d1f"]
 pub struct BlenderMaterialImporter;
 
-impl hydrate_pipeline::Importer for BlenderMaterialImporter {
+impl Importer for BlenderMaterialImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_material"]
     }
@@ -84,7 +84,7 @@ impl hydrate_pipeline::Importer for BlenderMaterialImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
             .find_named_type(MeshAdvMaterialAssetAccessor::schema_name())
@@ -143,17 +143,17 @@ impl hydrate_pipeline::Importer for BlenderMaterialImporter {
             context.importer_registry,
         );
 
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references,
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -300,7 +300,7 @@ impl hydrate_pipeline::Importer for BlenderMaterialImporter {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 

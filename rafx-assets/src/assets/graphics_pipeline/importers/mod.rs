@@ -1,5 +1,6 @@
 use hydrate_pipeline::{
-    BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder, SchemaLinker,
+    AssetPlugin, BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
+    SchemaLinker,
 };
 
 pub mod material_importer;
@@ -12,7 +13,7 @@ pub mod material_instance_importer;
 
 pub struct MaterialAssetPlugin;
 
-impl hydrate_pipeline::AssetPlugin for MaterialAssetPlugin {
+impl AssetPlugin for MaterialAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

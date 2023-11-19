@@ -4,14 +4,14 @@ use crate::assets::mesh_adv::{
 use crate::schema::{MeshAdvPrefabAssetAccessor, MeshAdvPrefabImportDataAccessor};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor, SchemaSet};
+use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor};
 use hydrate_pipeline::{
-    BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, ReferencedSourceFile, ScanContext,
-    ScannedImportable, SchemaLinker,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ReferencedSourceFile,
+    ScanContext, ScannedImportable, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use type_uuid::*;
 use uuid::Uuid;
 
@@ -96,7 +96,7 @@ pub struct HydrateMeshAdvPrefabJsonFormat {
 #[uuid = "a40a442f-285e-4bb8-81f4-43d761b9f140"]
 pub struct BlenderPrefabImporter;
 
-impl hydrate_pipeline::Importer for BlenderPrefabImporter {
+impl Importer for BlenderPrefabImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_prefab"]
     }
@@ -104,7 +104,7 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         //
         // Read the file
         //
@@ -133,17 +133,17 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
             }
         }
 
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references,
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -196,13 +196,13 @@ impl hydrate_pipeline::Importer for BlenderPrefabImporter {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
 pub struct BlenderPrefabAssetPlugin;
 
-impl hydrate_pipeline::AssetPlugin for BlenderPrefabAssetPlugin {
+impl AssetPlugin for BlenderPrefabAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,

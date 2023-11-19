@@ -7,19 +7,17 @@ use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, DataSet, FieldAccessor, PropertyPath, RecordAccessor,
-    SchemaSet, SingleObject,
+    DataContainerRef, DataContainerRefMut, FieldAccessor, PropertyPath, RecordAccessor,
 };
 use hydrate_pipeline::{
-    job_system, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, ImportableAsset, ImportedImportable, ImporterRegistry, ImporterRegistryBuilder,
+    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    ReferencedSourceFile, RunContext, ScanContext, ScannedImportable, SchemaLinker,
+    PipelineResult, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable, SchemaLinker,
 };
 use rafx::api::{RafxError, RafxResult};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use std::path::Path;
 use type_uuid::*;
 
 #[allow(dead_code)]
@@ -249,7 +247,7 @@ fn parse_action(
 #[uuid = "238792bf-7078-4675-9f4d-cf53305806c6"]
 pub struct HydrateBlenderAnimImporter;
 
-impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
+impl Importer for HydrateBlenderAnimImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_anim"]
     }
@@ -257,7 +255,7 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> Vec<ScannedImportable> {
+    ) -> PipelineResult<Vec<ScannedImportable>> {
         //
         // Read the file
         //
@@ -276,17 +274,17 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
             .unwrap()
             .clone();
         let file_references: Vec<ReferencedSourceFile> = Default::default();
-        vec![ScannedImportable {
+        Ok(vec![ScannedImportable {
             name: None,
             asset_type,
             file_references,
-        }]
+        }])
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> HashMap<Option<String>, ImportedImportable> {
+    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
         //
         // Read the file
         //
@@ -340,7 +338,7 @@ impl hydrate_pipeline::Importer for HydrateBlenderAnimImporter {
                 default_asset: Some(default_asset),
             },
         );
-        imported_objects
+        Ok(imported_objects)
     }
 }
 
@@ -369,18 +367,18 @@ impl JobProcessor for BlenderAnimJobProcessor {
     fn enumerate_dependencies(
         &self,
         context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> JobEnumeratedDependencies {
+    ) -> PipelineResult<JobEnumeratedDependencies> {
         // No dependencies
-        JobEnumeratedDependencies {
+        Ok(JobEnumeratedDependencies {
             import_data: vec![context.input.asset_id],
             upstream_jobs: Default::default(),
-        }
+        })
     }
 
     fn run(
         &self,
         context: RunContext<Self::InputT>,
-    ) -> BlenderAnimJobOutput {
+    ) -> PipelineResult<BlenderAnimJobOutput> {
         //
         // Read imported data
         //
@@ -412,9 +410,10 @@ impl JobProcessor for BlenderAnimJobProcessor {
             );
         }
 
-        context.produce_default_artifact(context.input.asset_id, AnimAssetData { skeleton, clips });
+        context
+            .produce_default_artifact(context.input.asset_id, AnimAssetData { skeleton, clips })?;
 
-        BlenderAnimJobOutput {}
+        Ok(BlenderAnimJobOutput {})
     }
 }
 
@@ -422,7 +421,7 @@ impl JobProcessor for BlenderAnimJobProcessor {
 #[uuid = "77a09407-3ec8-440d-bd01-408b84b4516c"]
 pub struct BlenderAnimBuilder {}
 
-impl hydrate_pipeline::Builder for BlenderAnimBuilder {
+impl Builder for BlenderAnimBuilder {
     fn asset_type(&self) -> &'static str {
         BlenderAnimAssetAccessor::schema_name()
     }
@@ -430,7 +429,7 @@ impl hydrate_pipeline::Builder for BlenderAnimBuilder {
     fn start_jobs(
         &self,
         context: BuilderContext,
-    ) {
+    ) -> PipelineResult<()> {
         //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
         //let x = BlenderAnimAssetAccessor::default();
 
@@ -442,13 +441,14 @@ impl hydrate_pipeline::Builder for BlenderAnimBuilder {
             BlenderAnimJobInput {
                 asset_id: context.asset_id,
             },
-        );
+        )?;
+        Ok(())
     }
 }
 
 pub struct BlenderAnimAssetPlugin;
 
-impl hydrate_pipeline::AssetPlugin for BlenderAnimAssetPlugin {
+impl AssetPlugin for BlenderAnimAssetPlugin {
     fn setup(
         _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
