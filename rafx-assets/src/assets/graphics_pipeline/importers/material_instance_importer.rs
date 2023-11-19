@@ -1,12 +1,12 @@
 use crate::assets::graphics_pipeline::material_importer::HydrateMaterialImporter;
 use crate::assets::graphics_pipeline::{MaterialInstanceAssetData, MaterialInstanceRon};
-use crate::schema::MaterialInstanceAssetAccessor;
+use crate::schema::{
+    MaterialInstanceAssetAccessor, MaterialInstanceAssetOwned, MaterialInstanceAssetReader,
+};
 use crate::{GpuImageImporterSimple, MaterialInstanceSlotAssignment};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, ImporterId, NullOverride, RecordAccessor,
-};
+use hydrate_data::{ImporterId, NullOverride, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     Builder, BuilderContext, EnumerateDependenciesContext, ImportContext, ImportedImportable,
     Importer, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult,
@@ -41,15 +41,14 @@ impl Importer for HydrateMaterialInstanceImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
-        let material_instance_ron = ron::de::from_str::<MaterialInstanceRon>(&source).unwrap();
+        let source = std::fs::read_to_string(context.path)?;
+        let material_instance_ron = ron::de::from_str::<MaterialInstanceRon>(&source)
+            .map_err(|e| format!("RON error {:?}", e))?;
 
         let asset_type = context
             .schema_set
-            .find_named_type(MaterialInstanceAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(MaterialInstanceAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
         let mut file_references: Vec<ReferencedSourceFile> = Default::default();
         let image_importer_id = ImporterId(Uuid::from_bytes(GpuImageImporterSimple::UUID));
@@ -82,97 +81,57 @@ impl Importer for HydrateMaterialInstanceImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
-        let material_ron = ron::de::from_str::<MaterialInstanceRon>(&source).unwrap();
-
-        // let shader_object_id = *importable_assets
-        //     .get(&None)
-        //     .unwrap()
-        //     .referenced_paths
-        //     .get(&compute_pipeline_asset_data.shader_module)
-        //     .unwrap();
+        let source = std::fs::read_to_string(context.path)?;
+        let material_ron = ron::de::from_str::<MaterialInstanceRon>(&source)
+            .map_err(|e| format!("RON error {:?}", e))?;
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let mut default_asset_object =
-                MaterialInstanceAssetAccessor::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
-                &mut default_asset_object,
-                context.schema_set,
-            );
-            let x = MaterialInstanceAssetAccessor::default();
+        let default_asset = MaterialInstanceAssetOwned::new_builder(context.schema_set);
+        for slot_assignment in material_ron.slot_assignments {
+            let entry_uuid = default_asset.slot_assignments().add_entry()?;
+            let entry = default_asset.slot_assignments().entry(entry_uuid);
 
-            for slot_assignment in material_ron.slot_assignments {
-                let entry_uuid = x
-                    .slot_assignments()
-                    .add_entry(&mut default_asset_data_container)
-                    .unwrap();
-                let entry = x.slot_assignments().entry(entry_uuid);
+            entry.slot_name().set(slot_assignment.slot_name)?;
+            entry
+                .array_index()
+                .set(slot_assignment.array_index as u32)?;
 
-                entry
-                    .slot_name()
-                    .set(&mut default_asset_data_container, slot_assignment.slot_name)
-                    .unwrap();
-                entry
-                    .array_index()
-                    .set(
-                        &mut default_asset_data_container,
-                        slot_assignment.array_index as u32,
-                    )
-                    .unwrap();
-
-                if let Some(image) = &slot_assignment.image {
-                    let image = *context
-                        .importable_assets
-                        .get(&None)
-                        .unwrap()
-                        .referenced_paths
-                        .get(image)
-                        .unwrap();
-                    entry
-                        .image()
-                        .set(&mut default_asset_data_container, image)
-                        .unwrap();
-                }
-
-                if let Some(sampler) = &slot_assignment.sampler {
-                    let sampler_ron = ron::ser::to_string(sampler).unwrap();
-                    entry
-                        .sampler()
-                        .set(&mut default_asset_data_container, sampler_ron)
-                        .unwrap();
-                }
-
-                if let Some(buffer_data) = slot_assignment.buffer_data {
-                    entry
-                        .buffer_data()
-                        .set_null_override(
-                            &mut default_asset_data_container,
-                            NullOverride::SetNonNull,
-                        )
-                        .unwrap()
-                        .unwrap()
-                        .set(&mut default_asset_data_container, Arc::new(buffer_data))
-                        .unwrap();
-                }
+            if let Some(image) = &slot_assignment.image {
+                let image = *context
+                    .importable_assets
+                    .get(&None)
+                    .ok_or("Could not find default importable in importable_assets")?
+                    .referenced_paths
+                    .get(image)
+                    .ok_or("Could not find asset ID associated with path")?;
+                entry.image().set(image)?;
             }
 
-            let material = *context
-                .importable_assets
-                .get(&None)
-                .unwrap()
-                .referenced_paths
-                .get(&material_ron.material)
-                .unwrap();
-            x.material()
-                .set(&mut default_asset_data_container, material)
-                .unwrap();
+            if let Some(sampler) = &slot_assignment.sampler {
+                let sampler_ron =
+                    ron::ser::to_string(sampler).map_err(|e| format!("RON error {:?}", e))?;
+                entry.sampler().set(sampler_ron)?;
+            }
 
-            // No fields to write
-            default_asset_object
-        };
+            if let Some(buffer_data) = slot_assignment.buffer_data {
+                entry
+                    .buffer_data()
+                    .set_null_override(NullOverride::SetNonNull)?
+                    .expect("We set a field to be non-null but couldn't unwrap it")
+                    .set(Arc::new(buffer_data))?;
+            }
+        }
+
+        let material = *context
+            .importable_assets
+            .get(&None)
+            .ok_or("Could not find default importable in importable_assets")?
+            .referenced_paths
+            .get(&material_ron.material)
+            .ok_or("Could not find asset ID associated with path")?;
+        default_asset.material().set(material)?;
 
         //
         // Return the created objects
@@ -183,7 +142,7 @@ impl Importer for HydrateMaterialInstanceImporter {
             ImportedImportable {
                 file_references: Default::default(),
                 import_data: None,
-                default_asset: Some(default_asset),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)
@@ -227,59 +186,46 @@ impl JobProcessor for MaterialInstanceJobProcessor {
         //
         // Read asset data
         //
-        let data_container = DataContainerRef::from_dataset(
-            context.data_set,
-            context.schema_set,
-            context.input.asset_id,
-        );
-        let x = MaterialInstanceAssetAccessor::default();
+        let asset_data = context.asset::<MaterialInstanceAssetReader>(context.input.asset_id)?;
 
         context.produce_default_artifact_with_handles(
             context.input.asset_id,
             |handle_factory| {
-                let material = handle_factory
-                    .make_handle_to_default_artifact(x.material().get(data_container).unwrap());
+                let material =
+                    handle_factory.make_handle_to_default_artifact(asset_data.material().get()?);
 
                 let mut slot_assignments = Vec::default();
-                for slot_assignent_entry in x
-                    .slot_assignments()
-                    .resolve_entries(data_container)
-                    .unwrap()
-                    .into_iter()
+                for slot_assignent_entry in
+                    asset_data.slot_assignments().resolve_entries()?.into_iter()
                 {
-                    let slot_assignment = x.slot_assignments().entry(*slot_assignent_entry);
+                    let slot_assignment =
+                        asset_data.slot_assignments().entry(*slot_assignent_entry);
 
-                    let slot_name = slot_assignment.slot_name().get(data_container).unwrap();
-                    let array_index =
-                        slot_assignment.array_index().get(data_container).unwrap() as usize;
+                    let slot_name = slot_assignment.slot_name().get()?;
+                    let array_index = slot_assignment.array_index().get()? as usize;
 
-                    let image_object_id = slot_assignment.image().get(data_container).unwrap();
+                    let image_object_id = slot_assignment.image().get()?;
                     let image = if image_object_id.is_null() {
                         None
                     } else {
                         Some(handle_factory.make_handle_to_default_artifact(image_object_id))
                     };
 
-                    let sampler_ron = slot_assignment.sampler().get(data_container).unwrap();
+                    let sampler_ron = slot_assignment.sampler().get()?;
                     let sampler = if sampler_ron.is_empty() {
                         None
                     } else {
-                        let sampler = ron::de::from_str(
-                            &slot_assignment.sampler().get(data_container).unwrap(),
-                        )
-                        .unwrap();
+                        let sampler = ron::de::from_str(&slot_assignment.sampler().get()?)
+                            .map_err(|e| format!("RON error {:?}", e))?;
                         Some(sampler)
                     };
 
-                    let buffer_data = if let Some(buffer_data) = slot_assignment
-                        .buffer_data()
-                        .resolve_null(data_container)
-                        .unwrap()
-                    {
-                        Some(buffer_data.get(&data_container).unwrap().clone())
-                    } else {
-                        None
-                    };
+                    let buffer_data =
+                        if let Some(buffer_data) = slot_assignment.buffer_data().resolve_null()? {
+                            Some(buffer_data.get()?.clone())
+                        } else {
+                            None
+                        };
 
                     slot_assignments.push(MaterialInstanceSlotAssignment {
                         slot_name: (*slot_name).clone(),

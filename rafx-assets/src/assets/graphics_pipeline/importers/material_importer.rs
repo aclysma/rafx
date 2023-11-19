@@ -2,11 +2,14 @@ use crate::assets::graphics_pipeline::{
     GraphicsPipelineShaderStage, MaterialAssetData, MaterialRon,
 };
 use crate::assets::shader::ShaderPackageImporterCooked;
-use crate::schema::{GraphicsPipelineShaderStageAccessor, MaterialAssetAccessor};
+use crate::schema::{
+    GraphicsPipelineShaderStageReader, MaterialAssetAccessor, MaterialAssetOwned,
+    MaterialAssetReader,
+};
 use crate::MaterialPassData;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{DataContainerRef, DataContainerRefMut, ImporterId, RecordAccessor};
+use hydrate_data::{DataSetResult, ImporterId, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     Builder, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext,
     ImportedImportable, Importer, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
@@ -33,15 +36,14 @@ impl Importer for HydrateMaterialImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
-        let material_ron = ron::de::from_str::<MaterialRon>(&source).unwrap();
+        let source = std::fs::read_to_string(context.path)?;
+        let material_ron =
+            ron::de::from_str::<MaterialRon>(&source).map_err(|e| format!("RON error {:?}", e))?;
 
         let asset_type = context
             .schema_set
-            .find_named_type(MaterialAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(MaterialAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
         let mut file_references: Vec<ReferencedSourceFile> = Default::default();
         let shader_package_importer_id =
@@ -68,83 +70,46 @@ impl Importer for HydrateMaterialImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
-        let material_ron = ron::de::from_str::<MaterialRon>(&source).unwrap();
-
-        // let shader_object_id = *importable_assets
-        //     .get(&None)
-        //     .unwrap()
-        //     .referenced_paths
-        //     .get(&compute_pipeline_asset_data.shader_module)
-        //     .unwrap();
+        let source = std::fs::read_to_string(context.path)?;
+        let material_ron =
+            ron::de::from_str::<MaterialRon>(&source).map_err(|e| format!("RON error {:?}", e))?;
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let mut default_asset_object =
-                MaterialAssetAccessor::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
-                &mut default_asset_object,
-                context.schema_set,
-            );
-            let x = MaterialAssetAccessor::default();
+        let default_asset = MaterialAssetOwned::new_builder(context.schema_set);
+        for pass_ron in material_ron.passes {
+            let entry = default_asset.passes().add_entry()?;
+            let pass = default_asset.passes().entry(entry);
+            pass.name().set(pass_ron.name.unwrap_or_default())?;
+            pass.phase().set(pass_ron.phase.unwrap_or_default())?;
 
-            for pass in material_ron.passes {
-                let entry = x
-                    .passes()
-                    .add_entry(&mut default_asset_data_container)
-                    .unwrap();
-                let x = x.passes().entry(entry);
-                x.name()
-                    .set(
-                        &mut default_asset_data_container,
-                        pass.name.unwrap_or_default(),
-                    )
-                    .unwrap();
-                x.phase()
-                    .set(
-                        &mut default_asset_data_container,
-                        pass.phase.unwrap_or_default(),
-                    )
-                    .unwrap();
+            let fixed_function_state = ron::ser::to_string(&pass_ron.fixed_function_state)
+                .map_err(|e| format!("RON error {:?}", e))?;
 
-                let fixed_function_state = ron::ser::to_string(&pass.fixed_function_state).unwrap();
+            pass.fixed_function_state().set(fixed_function_state)?;
+            for stage_ron in pass_ron.shaders {
+                let stage = match stage_ron.stage {
+                    MaterialShaderStage::Vertex => pass.vertex_stage(),
+                    MaterialShaderStage::TessellationControl => unimplemented!(),
+                    MaterialShaderStage::TessellationEvaluation => unimplemented!(),
+                    MaterialShaderStage::Geometry => unimplemented!(),
+                    MaterialShaderStage::Fragment => pass.fragment_stage(),
+                    MaterialShaderStage::Compute => unimplemented!(),
+                };
 
-                x.fixed_function_state()
-                    .set(&mut default_asset_data_container, fixed_function_state)
-                    .unwrap();
-                for stage in pass.shaders {
-                    let x = match stage.stage {
-                        MaterialShaderStage::Vertex => x.vertex_stage(),
-                        MaterialShaderStage::TessellationControl => unimplemented!(),
-                        MaterialShaderStage::TessellationEvaluation => unimplemented!(),
-                        MaterialShaderStage::Geometry => unimplemented!(),
-                        MaterialShaderStage::Fragment => x.fragment_stage(),
-                        MaterialShaderStage::Compute => unimplemented!(),
-                    };
-
-                    x.entry_name()
-                        .set(&mut default_asset_data_container, stage.entry_name)
-                        .unwrap();
-                    x.shader_module()
-                        .set(
-                            &mut default_asset_data_container,
-                            *context
-                                .importable_assets
-                                .get(&None)
-                                .unwrap()
-                                .referenced_paths
-                                .get(&stage.shader_module)
-                                .unwrap(),
-                        )
-                        .unwrap();
-                }
+                stage.entry_name().set(stage_ron.entry_name)?;
+                stage.shader_module().set(
+                    *context
+                        .importable_assets
+                        .get(&None)
+                        .ok_or("Could not find default importable in importable_assets")?
+                        .referenced_paths
+                        .get(&stage_ron.shader_module)
+                        .ok_or("Could not find asset ID associated with path")?,
+                )?;
             }
-
-            // No fields to write
-            default_asset_object
-        };
+        }
 
         //
         // Return the created objects
@@ -155,7 +120,7 @@ impl Importer for HydrateMaterialImporter {
             ImportedImportable {
                 file_references: Default::default(),
                 import_data: None,
-                default_asset: Some(default_asset),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)
@@ -199,46 +164,30 @@ impl JobProcessor for MaterialJobProcessor {
         //
         // Read asset data
         //
-        let data_container = DataContainerRef::from_dataset(
-            context.data_set,
-            context.schema_set,
-            context.input.asset_id,
-        );
-        let x = MaterialAssetAccessor::default();
-
+        let asset_data = context.asset::<MaterialAssetReader>(context.input.asset_id)?;
         context.produce_default_artifact_with_handles(
             context.input.asset_id,
             |handle_factory| {
                 //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
                 let mut passes = Vec::default();
-                for pass_entry in x
-                    .passes()
-                    .resolve_entries(data_container)
-                    .unwrap()
-                    .into_iter()
-                {
-                    let pass_entry = x.passes().entry(*pass_entry);
+                for pass_entry in asset_data.passes().resolve_entries()?.into_iter() {
+                    let pass_entry = asset_data.passes().entry(*pass_entry);
 
-                    let fixed_function_state = ron::de::from_str(
-                        &pass_entry
-                            .fixed_function_state()
-                            .get(data_container)
-                            .unwrap(),
-                    )
-                    .unwrap();
+                    let fixed_function_state =
+                        ron::de::from_str(&pass_entry.fixed_function_state().get()?)
+                            .map_err(|e| format!("RON error {:?}", e))?;
 
                     fn read_stage(
                         stage: MaterialShaderStage,
-                        record: &GraphicsPipelineShaderStageAccessor,
-                        data_container: DataContainerRef,
+                        record: GraphicsPipelineShaderStageReader,
                         stages: &mut Vec<GraphicsPipelineShaderStage>,
                         handle_factory: HandleFactory,
-                    ) {
-                        let entry_name = record.entry_name().get(data_container).unwrap();
-                        let shader_module = record.shader_module().get(data_container).unwrap();
+                    ) -> DataSetResult<()> {
+                        let entry_name = record.entry_name().get()?;
+                        let shader_module = record.shader_module().get()?;
 
                         if entry_name.is_empty() && shader_module.is_null() {
-                            return;
+                            return Ok(());
                         }
 
                         stages.push(GraphicsPipelineShaderStage {
@@ -247,26 +196,25 @@ impl JobProcessor for MaterialJobProcessor {
                                 .make_handle_to_default_artifact(shader_module),
                             entry_name: (*entry_name).clone(),
                         });
+                        Ok(())
                     }
 
                     let mut shaders = Vec::default();
                     read_stage(
                         MaterialShaderStage::Vertex,
-                        &pass_entry.vertex_stage(),
-                        data_container,
+                        pass_entry.vertex_stage(),
                         &mut shaders,
                         handle_factory,
-                    );
+                    )?;
                     read_stage(
                         MaterialShaderStage::Fragment,
-                        &pass_entry.fragment_stage(),
-                        data_container,
+                        pass_entry.fragment_stage(),
                         &mut shaders,
                         handle_factory,
-                    );
+                    )?;
 
-                    let name = pass_entry.name().get(data_container).unwrap();
-                    let phase = pass_entry.phase().get(data_container).unwrap();
+                    let name = pass_entry.name().get()?;
+                    let phase = pass_entry.phase().get()?;
 
                     passes.push(MaterialPassData {
                         name: (!name.is_empty()).then(|| (*name).clone()),

@@ -2,13 +2,14 @@ use crate::assets::anim::{
     AnimAssetData, AnimClip, AnimInterpolationMode, Bone, BoneChannelGroup, BoneChannelQuat,
     BoneChannelVec3, Skeleton,
 };
-use crate::schema::{BlenderAnimAssetAccessor, BlenderAnimImportedDataAccessor};
+use crate::schema::{
+    BlenderAnimAssetAccessor, BlenderAnimAssetOwned, BlenderAnimImportedDataOwned,
+    BlenderAnimImportedDataReader,
+};
 use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, FieldAccessor, PropertyPath, RecordAccessor,
-};
+use hydrate_data::{RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
@@ -259,7 +260,7 @@ impl Importer for HydrateBlenderAnimImporter {
         //
         // Read the file
         //
-        let json_str = std::fs::read_to_string(context.path).unwrap();
+        let json_str = std::fs::read_to_string(context.path)?;
         let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_str(&json_str);
         if let Err(err) = anim_data {
             panic!("anim Import error: {:?}", err);
@@ -268,10 +269,8 @@ impl Importer for HydrateBlenderAnimImporter {
 
         let asset_type = context
             .schema_set
-            .find_named_type(BlenderAnimAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(BlenderAnimAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
         let file_references: Vec<ReferencedSourceFile> = Default::default();
         Ok(vec![ScannedImportable {
@@ -288,43 +287,19 @@ impl Importer for HydrateBlenderAnimImporter {
         //
         // Read the file
         //
-        let json_str = std::fs::read_to_string(context.path).unwrap();
-        let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_str(&json_str);
-        if let Err(err) = anim_data {
-            panic!("anim Import error: {:?}", err);
-            //return Err(Error::Boxed(Box::new(err)));
-        }
+        let json_str = std::fs::read_to_string(context.path)?;
+        let anim_data: AnimJsonData = serde_json::from_str(&json_str)?;
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let default_asset_object =
-                BlenderAnimAssetAccessor::new_single_object(context.schema_set).unwrap();
-            // let mut default_asset_data_container =
-            //     DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
-            // let x = BlenderAnimAssetAccessor::default();
-
-            // No fields to write
-            default_asset_object
-        };
+        let default_asset = BlenderAnimAssetOwned::new_builder(context.schema_set);
 
         //
         // Create import data
         //
-        let import_data = {
-            let mut import_object =
-                BlenderAnimImportedDataAccessor::new_single_object(context.schema_set).unwrap();
-            let mut import_data_container =
-                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
-            let x = BlenderAnimImportedDataAccessor::default();
-
-            x.json_string()
-                .set(&mut import_data_container, json_str)
-                .unwrap();
-
-            import_object
-        };
+        let import_data = BlenderAnimImportedDataOwned::new_builder(context.schema_set);
+        import_data.json_string().set(json_str)?;
 
         //
         // Return the created objects
@@ -334,8 +309,8 @@ impl Importer for HydrateBlenderAnimImporter {
             None,
             ImportedImportable {
                 file_references: Default::default(),
-                import_data: Some(import_data),
-                default_asset: Some(default_asset),
+                import_data: Some(import_data.into_inner()?),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)
@@ -382,32 +357,18 @@ impl JobProcessor for BlenderAnimJobProcessor {
         //
         // Read imported data
         //
-        let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container =
-            DataContainerRef::from_single_object(&imported_data, context.schema_set);
-        let x = BlenderAnimImportedDataAccessor::new(PropertyPath::default());
+        let imported_data =
+            context.imported_data::<BlenderAnimImportedDataReader>(context.input.asset_id)?;
 
-        let json_str = x.json_string().get(data_container).unwrap();
+        let json_str = imported_data.json_string().get()?;
 
-        let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_str(&json_str);
-        if let Err(err) = anim_data {
-            panic!("anim Import error: {:?}", err);
-            //return Err(Error::Boxed(Box::new(err)));
-        }
+        let anim_data: AnimJsonData = serde_json::from_str(&json_str)?;
 
-        let anim_data = anim_data.unwrap();
-
-        let skeleton = parse_skeleton(&anim_data.skeleton)
-            .map_err(|e| e.to_string())
-            .unwrap();
+        let skeleton = parse_skeleton(&anim_data.skeleton).map_err(|e| e.to_string())?;
 
         let mut clips = Vec::with_capacity(anim_data.actions.len());
         for action in &anim_data.actions {
-            clips.push(
-                parse_action(&skeleton, action)
-                    .map_err(|e| e.to_string())
-                    .unwrap(),
-            );
+            clips.push(parse_action(&skeleton, action).map_err(|e| e.to_string())?);
         }
 
         context
@@ -430,9 +391,6 @@ impl Builder for BlenderAnimBuilder {
         &self,
         context: BuilderContext,
     ) -> PipelineResult<()> {
-        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
-        //let x = BlenderAnimAssetAccessor::default();
-
         //Future: Might produce jobs per-platform
         context.enqueue_job::<BlenderAnimJobProcessor>(
             context.data_set,

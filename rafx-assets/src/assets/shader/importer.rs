@@ -1,10 +1,11 @@
 use crate::assets::shader::ShaderAssetData;
-use crate::schema::{ShaderPackageAssetAccessor, ShaderPackageImportedDataAccessor};
+use crate::schema::{
+    ShaderPackageAssetAccessor, ShaderPackageAssetOwned, ShaderPackageImportedDataOwned,
+    ShaderPackageImportedDataReader,
+};
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{
-    DataContainerRef, DataContainerRefMut, FieldAccessor, PropertyPath, RecordAccessor,
-};
+use hydrate_data::{RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
@@ -31,10 +32,8 @@ impl Importer for ShaderPackageImporterSpv {
     ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
-            .find_named_type(ShaderPackageAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(ShaderPackageAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
         Ok(vec![ScannedImportable {
             name: None,
@@ -50,7 +49,7 @@ impl Importer for ShaderPackageImporterSpv {
         //
         // Read the file
         //
-        let spv_bytes = std::fs::read(context.path).unwrap();
+        let spv_bytes = std::fs::read(context.path)?;
 
         // The hash is used in some places identify the shader
         let shader_package = RafxShaderPackage {
@@ -69,32 +68,18 @@ impl Importer for ShaderPackageImporterSpv {
 
         let hashed_shader_package = RafxHashedShaderPackage::new(shader_package);
 
-        let package_bytes = Arc::new(bincode::serialize(&hashed_shader_package).unwrap());
+        let package_bytes = Arc::new(bincode::serialize(&hashed_shader_package)?);
 
         //
         // Create import data
         //
-        let import_data = {
-            let mut import_object =
-                ShaderPackageImportedDataAccessor::new_single_object(context.schema_set).unwrap();
-            let mut import_data_container =
-                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
-            let x = ShaderPackageImportedDataAccessor::default();
-            x.bytes()
-                .set(&mut import_data_container, package_bytes)
-                .unwrap();
-            import_object
-        };
+        let import_data = ShaderPackageImportedDataOwned::new_builder(context.schema_set);
+        import_data.bytes().set(package_bytes)?;
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let default_asset_object =
-                ShaderPackageAssetAccessor::new_single_object(context.schema_set).unwrap();
-            // No fields to write
-            default_asset_object
-        };
+        let default_asset = ShaderPackageAssetOwned::new_builder(context.schema_set);
 
         //
         // Return the created objects
@@ -104,8 +89,8 @@ impl Importer for ShaderPackageImporterSpv {
             None,
             ImportedImportable {
                 file_references: Default::default(),
-                import_data: Some(import_data),
-                default_asset: Some(default_asset),
+                import_data: Some(import_data.into_inner()?),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)
@@ -127,10 +112,8 @@ impl Importer for ShaderPackageImporterCooked {
     ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
-            .find_named_type(ShaderPackageAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(ShaderPackageAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
         Ok(vec![ScannedImportable {
             name: None,
@@ -146,12 +129,11 @@ impl Importer for ShaderPackageImporterCooked {
         //
         // Read the file
         //
-        let cooked_shader_bytes = std::fs::read(context.path).unwrap();
+        let cooked_shader_bytes = std::fs::read(context.path)?;
 
         let hashed_shader_package: RafxHashedShaderPackage =
             bincode::deserialize::<RafxHashedShaderPackage>(&cooked_shader_bytes)
-                .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))
-                .unwrap();
+                .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
 
         log::trace!(
             "Import shader asset {:?} with hash {:?}",
@@ -159,32 +141,18 @@ impl Importer for ShaderPackageImporterCooked {
             hashed_shader_package.shader_package_hash(),
         );
 
-        let package_bytes = Arc::new(bincode::serialize(&hashed_shader_package).unwrap());
+        let package_bytes = Arc::new(bincode::serialize(&hashed_shader_package)?);
 
         //
         // Create import data
         //
-        let import_data = {
-            let mut import_object =
-                ShaderPackageImportedDataAccessor::new_single_object(context.schema_set).unwrap();
-            let mut import_data_container =
-                DataContainerRefMut::from_single_object(&mut import_object, context.schema_set);
-            let x = ShaderPackageImportedDataAccessor::default();
-            x.bytes()
-                .set(&mut import_data_container, package_bytes)
-                .unwrap();
-            import_object
-        };
+        let import_data = ShaderPackageImportedDataOwned::new_builder(context.schema_set);
+        import_data.bytes().set(package_bytes)?;
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let default_asset_object =
-                ShaderPackageAssetAccessor::new_single_object(context.schema_set).unwrap();
-            // No fields to write
-            default_asset_object
-        };
+        let default_asset = ShaderPackageAssetOwned::new_builder(context.schema_set);
 
         //
         // Return the created objects
@@ -194,8 +162,8 @@ impl Importer for ShaderPackageImporterCooked {
             None,
             ImportedImportable {
                 file_references: Default::default(),
-                import_data: Some(import_data),
-                default_asset: Some(default_asset),
+                import_data: Some(import_data.into_inner()?),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)
@@ -242,13 +210,9 @@ impl JobProcessor for ShaderPackageJobProcessor {
         //
         // Read imported data
         //
-        let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container =
-            DataContainerRef::from_single_object(&imported_data, context.schema_set);
-        let x = ShaderPackageImportedDataAccessor::new(PropertyPath::default());
-
-        let shader_package =
-            bincode::deserialize(&x.bytes().get(&data_container).unwrap()).unwrap();
+        let imported_data =
+            context.imported_data::<ShaderPackageImportedDataReader>(context.input.asset_id)?;
+        let shader_package = bincode::deserialize(&imported_data.bytes().get()?)?;
 
         //TODO: We can generate assets for different platforms
 

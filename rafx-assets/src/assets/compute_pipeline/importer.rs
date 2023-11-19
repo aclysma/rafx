@@ -1,8 +1,8 @@
 use crate::assets::compute_pipeline::{ComputePipelineAssetData, ComputePipelineRon};
 use crate::assets::shader::ShaderPackageImporterCooked;
-use crate::schema::ComputePipelineAssetAccessor;
+use crate::schema::{ComputePipelineAssetAccessor, ComputePipelineAssetOwned};
 use hydrate_base::AssetId;
-use hydrate_data::{DataContainerRef, DataContainerRefMut, HashMap, ImporterId, RecordAccessor};
+use hydrate_data::{DataContainerRef, HashMap, ImporterId, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
@@ -29,15 +29,14 @@ impl Importer for HydrateComputePipelineImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
-        let parsed_source = ron::de::from_str::<ComputePipelineRon>(&source).unwrap();
+        let source = std::fs::read_to_string(context.path)?;
+        let parsed_source = ron::de::from_str::<ComputePipelineRon>(&source)
+            .map_err(|e| format!("RON error {:?}", e))?;
 
         let asset_type = context
             .schema_set
-            .find_named_type(ComputePipelineAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(ComputePipelineAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
         let mut file_references: Vec<ReferencedSourceFile> = Default::default();
         let shader_package_importer_id =
@@ -60,42 +59,26 @@ impl Importer for HydrateComputePipelineImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
-        let compute_pipeline_asset_data = ron::de::from_str::<ComputePipelineRon>(&source).unwrap();
+        let source = std::fs::read_to_string(context.path)?;
+        let compute_pipeline_asset_data = ron::de::from_str::<ComputePipelineRon>(&source)
+            .map_err(|e| format!("RON error {:?}", e))?;
 
         let shader_object_id = *context
             .importable_assets
             .get(&None)
-            .unwrap()
+            .ok_or("Could not find default importable in importable_assets")?
             .referenced_paths
             .get(&compute_pipeline_asset_data.shader_module)
-            .unwrap();
+            .ok_or("Could not find asset ID associated with path")?;
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let mut default_asset_object =
-                ComputePipelineAssetAccessor::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
-                &mut default_asset_object,
-                context.schema_set,
-            );
-            let x = ComputePipelineAssetAccessor::default();
-
-            x.entry_name()
-                .set(
-                    &mut default_asset_data_container,
-                    compute_pipeline_asset_data.entry_name,
-                )
-                .unwrap();
-            x.shader_module()
-                .set(&mut default_asset_data_container, shader_object_id)
-                .unwrap();
-
-            // No fields to write
-            default_asset_object
-        };
+        let default_asset = ComputePipelineAssetOwned::new_builder(context.schema_set);
+        default_asset
+            .entry_name()
+            .set(compute_pipeline_asset_data.entry_name)?;
+        default_asset.shader_module().set(shader_object_id)?;
 
         //
         // Return the created objects
@@ -106,7 +89,7 @@ impl Importer for HydrateComputePipelineImporter {
             ImportedImportable {
                 file_references: Default::default(),
                 import_data: None,
-                default_asset: Some(default_asset),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)
@@ -157,8 +140,8 @@ impl JobProcessor for ComputePipelineJobProcessor {
         );
         let x = ComputePipelineAssetAccessor::default();
 
-        let shader_module = x.shader_module().get(data_container).unwrap();
-        let entry_name = x.entry_name().get(data_container).unwrap();
+        let shader_module = x.shader_module().get(data_container)?;
+        let entry_name = x.entry_name().get(data_container)?;
 
         context.produce_default_artifact_with_handles(
             context.input.asset_id,

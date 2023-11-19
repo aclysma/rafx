@@ -1,10 +1,12 @@
 use crate::assets::mesh_adv::{
     BlenderModelImporter, ModelAdvAsset, PrefabAdvAssetDataObjectLightKind,
 };
-use crate::schema::{MeshAdvPrefabAssetAccessor, MeshAdvPrefabImportDataAccessor};
+use crate::schema::{
+    MeshAdvPrefabAssetAccessor, MeshAdvPrefabAssetOwned, MeshAdvPrefabImportDataOwned,
+};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor};
+use hydrate_data::{ImporterId, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ReferencedSourceFile,
@@ -108,17 +110,14 @@ impl Importer for BlenderPrefabImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
+        let source = std::fs::read_to_string(context.path)?;
         let json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&source)
-            .map_err(|x| format!("Blender Prefab Import error: {:?}", x))
-            .unwrap();
+            .map_err(|x| format!("Blender Prefab Import error: {:?}", x))?;
 
         let asset_type = context
             .schema_set
-            .find_named_type(MeshAdvPrefabAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(MeshAdvPrefabAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
 
         let mut file_references: Vec<ReferencedSourceFile> = Default::default();
@@ -147,42 +146,18 @@ impl Importer for BlenderPrefabImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
+        let source = std::fs::read_to_string(context.path)?;
         // We don't actually need to parse this now but worth doing to make sure it's well-formed at import time
         let _json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&source)
-            .map_err(|x| format!("Blender Prefab Import error: {:?}", x))
-            .unwrap();
+            .map_err(|x| format!("Blender Prefab Import error: {:?}", x))?;
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let default_asset_object =
-                MeshAdvPrefabAssetAccessor::new_single_object(context.schema_set).unwrap();
-            // let mut default_asset_data_container =
-            //     DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
-            // let x = MeshAdvPrefabAssetAccessor::default();
+        let default_asset = MeshAdvPrefabAssetOwned::new_builder(context.schema_set);
 
-            // No fields to write
-            default_asset_object
-        };
-
-        let import_data = {
-            let mut import_data_object =
-                MeshAdvPrefabImportDataAccessor::new_single_object(context.schema_set).unwrap();
-            let mut import_data_data_container = DataContainerRefMut::from_single_object(
-                &mut import_data_object,
-                context.schema_set,
-            );
-            let x = MeshAdvPrefabImportDataAccessor::default();
-
-            x.json_data()
-                .set(&mut import_data_data_container, source)
-                .unwrap();
-
-            // No fields to write
-            import_data_object
-        };
+        let import_data = MeshAdvPrefabImportDataOwned::new_builder(context.schema_set);
+        import_data.json_data().set(source)?;
 
         //
         // Return the created objects
@@ -192,8 +167,8 @@ impl Importer for BlenderPrefabImporter {
             None,
             ImportedImportable {
                 file_references: Default::default(),
-                import_data: Some(import_data),
-                default_asset: Some(default_asset),
+                import_data: Some(import_data.into_inner()?),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)

@@ -1,8 +1,8 @@
 use crate::assets::mesh_adv::{BlenderMeshImporter, MeshAdvAsset};
-use crate::schema::MeshAdvModelAssetAccessor;
+use crate::schema::{MeshAdvModelAssetAccessor, MeshAdvModelAssetOwned};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor};
+use hydrate_data::{ImporterId, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ReferencedSourceFile,
@@ -49,17 +49,14 @@ impl Importer for BlenderModelImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
+        let source = std::fs::read_to_string(context.path)?;
         let json_format: HydrateModelJsonFormat = serde_json::from_str(&source)
-            .map_err(|x| format!("Blender Model Import error: {:?}", x))
-            .unwrap();
+            .map_err(|x| format!("Blender Model Import error: {:?}", x))?;
 
         let asset_type = context
             .schema_set
-            .find_named_type(MeshAdvModelAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(MeshAdvModelAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
         let mut file_references: Vec<ReferencedSourceFile> = Default::default();
         let shader_package_importer_id = ImporterId(Uuid::from_bytes(BlenderMeshImporter::UUID));
@@ -83,47 +80,29 @@ impl Importer for BlenderModelImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
+        let source = std::fs::read_to_string(context.path)?;
         let json_format: HydrateModelJsonFormat = serde_json::from_str(&source)
-            .map_err(|x| format!("Blender Model Import error: {:?}", x))
-            .unwrap();
+            .map_err(|x| format!("Blender Model Import error: {:?}", x))?;
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let mut default_asset_object =
-                MeshAdvModelAssetAccessor::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
-                &mut default_asset_object,
-                context.schema_set,
-            );
-            let x = MeshAdvModelAssetAccessor::default();
+        let default_asset = MeshAdvModelAssetOwned::new_builder(context.schema_set);
 
-            let entry = x
-                .lods()
-                .add_entry(&mut default_asset_data_container)
-                .unwrap();
-            let lod_entry = x.lods().entry(entry);
+        let entry = default_asset.lods().add_entry()?;
+        let lod_entry = default_asset.lods().entry(entry);
 
-            for lod in &json_format.lods {
-                let mesh_object_id = *context
-                    .importable_assets
-                    .get(&None)
-                    .unwrap()
-                    .referenced_paths
-                    .get(&lod.mesh)
-                    .unwrap();
+        for lod in &json_format.lods {
+            let mesh_object_id = *context
+                .importable_assets
+                .get(&None)
+                .ok_or("Could not find default importable in importable_assets")?
+                .referenced_paths
+                .get(&lod.mesh)
+                .ok_or("Could not find asset ID associated with path")?;
 
-                lod_entry
-                    .mesh()
-                    .set(&mut default_asset_data_container, mesh_object_id)
-                    .unwrap();
-            }
-
-            // No fields to write
-            default_asset_object
-        };
+            lod_entry.mesh().set(mesh_object_id)?;
+        }
 
         //
         // Return the created objects
@@ -134,7 +113,7 @@ impl Importer for BlenderModelImporter {
             ImportedImportable {
                 file_references: Default::default(),
                 import_data: None,
-                default_asset: Some(default_asset),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)

@@ -3,11 +3,11 @@ use crate::assets::ldtk::{
     LdtkLayerData, LdtkLayerDrawCallData, LdtkLevelData, LdtkTileSet, LevelUid,
 };
 use crate::features::tile_layer::TileLayerVertex;
-use crate::schema::{LdtkAssetAccessor, LdtkImportDataAccessor};
+use crate::schema::{LdtkAssetAccessor, LdtkAssetOwned, LdtkImportDataOwned, LdtkImportDataReader};
 use fnv::FnvHashMap;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::{AssetId, Handle};
-use hydrate_data::{DataContainerRef, DataContainerRefMut, ImporterId, RecordAccessor};
+use hydrate_data::{ImporterId, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
@@ -141,21 +141,13 @@ impl Importer for HydrateLdtkImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
-        let project: serde_json::Result<ldtk_rust::Project> = serde_json::from_str(&source);
-        if let Err(err) = project {
-            panic!("LDTK Import error: {:?}", err);
-            //Err(Error::Boxed(Box::new(err))).unwrap();
-        }
-
-        let project = project.unwrap();
+        let source = std::fs::read_to_string(context.path)?;
+        let project: ldtk_rust::Project = serde_json::from_str(&source)?;
 
         let asset_type = context
             .schema_set
-            .find_named_type(LdtkAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(LdtkAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
 
         let mut file_references: Vec<ReferencedSourceFile> = Default::default();
@@ -182,45 +174,16 @@ impl Importer for HydrateLdtkImporter {
         //
         // Read the file
         //
-        let source = std::fs::read_to_string(context.path).unwrap();
-        let project: serde_json::Result<ldtk_rust::Project> = serde_json::from_str(&source);
-        if let Err(err) = project {
-            panic!("LDTK Import error: {:?}", err);
-            //Err(Error::Boxed(Box::new(err))).unwrap();
-        }
-
-        project.unwrap();
+        let source = std::fs::read_to_string(context.path)?;
+        let project: ldtk_rust::Project = serde_json::from_str(&source)?;
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let default_asset_object =
-                LdtkAssetAccessor::new_single_object(context.schema_set).unwrap();
-            // let mut default_asset_data_container =
-            //     DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
-            // let x = LdtkAssetAccessor::default();
+        let default_asset = LdtkAssetOwned::new_builder(context.schema_set);
 
-            // No fields to write
-            default_asset_object
-        };
-
-        let import_data = {
-            let mut import_data_object =
-                LdtkImportDataAccessor::new_single_object(context.schema_set).unwrap();
-            let mut import_data_data_container = DataContainerRefMut::from_single_object(
-                &mut import_data_object,
-                context.schema_set,
-            );
-            let x = LdtkImportDataAccessor::default();
-
-            x.json_data()
-                .set(&mut import_data_data_container, source)
-                .unwrap();
-
-            // No fields to write
-            import_data_object
-        };
+        let import_data = LdtkImportDataOwned::new_builder(context.schema_set);
+        import_data.json_data().set(source)?;
 
         //
         // Return the created objects
@@ -230,8 +193,8 @@ impl Importer for HydrateLdtkImporter {
             None,
             ImportedImportable {
                 file_references: Default::default(),
-                import_data: Some(import_data),
-                default_asset: Some(default_asset),
+                import_data: Some(import_data.into_inner()?),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)
@@ -278,24 +241,15 @@ impl JobProcessor for LdtkJobProcessor {
         //
         // Read import data
         //
-        let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container =
-            DataContainerRef::from_single_object(imported_data, context.schema_set);
-        let x = LdtkImportDataAccessor::default();
+        let imported_data =
+            context.imported_data::<LdtkImportDataReader>(context.input.asset_id)?;
 
-        let json_str = x.json_data().get(data_container).unwrap();
-        let project: serde_json::Result<ldtk_rust::Project> = serde_json::from_str(&json_str);
-        if let Err(err) = project {
-            panic!("LDTK Import error: {:?}", err);
-            //Err(Error::Boxed(Box::new(err))).unwrap();
-        }
-
-        let project = project.unwrap();
+        let json_str = imported_data.json_data().get()?;
+        let project: ldtk_rust::Project = serde_json::from_str(&json_str)?;
 
         let file_references = context
             .data_set
-            .resolve_all_file_references(context.input.asset_id)
-            .unwrap();
+            .resolve_all_file_references(context.input.asset_id)?;
 
         // CPU-form of tileset data
         let mut tilesets_temp = FnvHashMap::default();
@@ -305,20 +259,11 @@ impl JobProcessor for LdtkJobProcessor {
 
         for tileset in &project.defs.tilesets {
             //
-            // Get the image asset
-            //
-            // let asset_path = AssetRef::Path(tileset.rel_path.clone().into());
-            // let image_handle = SerdeContext::with_active(|loader_info_provider, ref_op_sender| {
-            //     let load_handle = loader_info_provider.get_load_handle(&asset_path).unwrap();
-            //     Handle::<ImageAsset>::new(ref_op_sender.clone(), load_handle)
-            // });
-
-            //
             // Create a material instance
             //
             let image_object_id = file_references
                 .get(&PathBuf::from_str(&tileset.rel_path).unwrap())
-                .unwrap();
+                .ok_or("Could not find asset ID assocaited with path")?;
 
             let material_instance_artifact_name = format!("mi_{}", tileset.uid);
             let material_instance_artifact_id = context.produce_artifact_with_handles(
@@ -326,9 +271,9 @@ impl JobProcessor for LdtkJobProcessor {
                 Some(material_instance_artifact_name),
                 |handle_factory| {
                     let material_handle: Handle<MaterialAsset> = handle_factory
-                        .make_handle_to_default_artifact(AssetId::from_uuid(
-                            Uuid::parse_str("843a3b00-00d2-424f-94d8-629ca6060471").unwrap(),
-                        ));
+                        .make_handle_to_default_artifact(AssetId::from_uuid(Uuid::parse_str(
+                            "843a3b00-00d2-424f-94d8-629ca6060471",
+                        )?));
 
                     let image_handle =
                         handle_factory.make_handle_to_default_artifact(*image_object_id);

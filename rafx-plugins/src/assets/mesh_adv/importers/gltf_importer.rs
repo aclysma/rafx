@@ -1,13 +1,14 @@
 use crate::assets::mesh_adv::MeshAdvMaterialData;
 use crate::schema::{
-    MeshAdvMaterialAssetAccessor, MeshAdvMeshAssetAccessor, MeshAdvMeshImportedDataAccessor,
+    MeshAdvMaterialAssetAccessor, MeshAdvMaterialAssetOwned, MeshAdvMeshAssetAccessor,
+    MeshAdvMeshAssetOwned, MeshAdvMeshImportedDataOwned,
 };
 use fnv::FnvHashMap;
 use gltf::buffer::Data as GltfBufferData;
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{DataContainerRefMut, RecordAccessor, RecordBuilder, RecordOwned, SchemaSet};
+use hydrate_data::{RecordAccessor, RecordBuilder, RecordOwned, SchemaSet};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
@@ -135,7 +136,7 @@ fn hydrate_import_image(
     images: &Vec<gltf::image::Data>,
     imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
     image_color_space_assignments: &FnvHashMap<usize, ImageAssetColorSpaceConfig>,
-) {
+) -> PipelineResult<()> {
     let image_data = &images[image.index()];
 
     // Convert it to standard RGBA format
@@ -147,42 +148,42 @@ fn hydrate_import_image(
             image_data.height,
             image_data.pixels.clone(),
         )
-        .unwrap()
+        .ok_or("Could not convert image format")?
         .convert(),
         Format::R8G8 => image::ImageBuffer::<image::LumaA<u8>, Vec<u8>>::from_vec(
             image_data.width,
             image_data.height,
             image_data.pixels.clone(),
         )
-        .unwrap()
+        .ok_or("Could not convert image format")?
         .convert(),
         Format::R8G8B8 => image::ImageBuffer::<image::Rgb<u8>, Vec<u8>>::from_vec(
             image_data.width,
             image_data.height,
             image_data.pixels.clone(),
         )
-        .unwrap()
+        .ok_or("Could not convert image format")?
         .convert(),
         Format::R8G8B8A8 => image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_vec(
             image_data.width,
             image_data.height,
             image_data.pixels.clone(),
         )
-        .unwrap()
+        .ok_or("Could not convert image format")?
         .convert(),
         Format::B8G8R8 => image::ImageBuffer::<image::Bgr<u8>, Vec<u8>>::from_vec(
             image_data.width,
             image_data.height,
             image_data.pixels.clone(),
         )
-        .unwrap()
+        .ok_or("Could not convert image format")?
         .convert(),
         Format::B8G8R8A8 => image::ImageBuffer::<image::Bgra<u8>, Vec<u8>>::from_vec(
             image_data.width,
             image_data.height,
             image_data.pixels.clone(),
         )
-        .unwrap()
+        .ok_or("Could not convert image format")?
         .convert(),
         Format::R16 => {
             unimplemented!();
@@ -220,10 +221,9 @@ fn hydrate_import_image(
     let import_data = GpuImageImportedDataOwned::new_builder(schema_set);
     import_data
         .image_bytes()
-        .set(Arc::new(converted_image.to_vec()))
-        .unwrap();
-    import_data.width().set(converted_image.width()).unwrap();
-    import_data.height().set(converted_image.height()).unwrap();
+        .set(Arc::new(converted_image.to_vec()))?;
+    import_data.width().set(converted_image.width())?;
+    import_data.height().set(converted_image.height())?;
 
     //
     // Create the default asset
@@ -238,10 +238,12 @@ fn hydrate_import_image(
         Some(asset_name.to_string()),
         ImportedImportable {
             file_references: Default::default(),
-            import_data: Some(import_data.into_inner().unwrap()),
-            default_asset: Some(default_asset.into_inner().unwrap()),
+            import_data: Some(import_data.into_inner()?),
+            default_asset: Some(default_asset.into_inner()?),
         },
     );
+
+    Ok(())
 }
 
 fn hydrate_import_material(
@@ -250,109 +252,73 @@ fn hydrate_import_material(
     material: &gltf::Material,
     imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
     image_object_ids: &HashMap<usize, AssetId>,
-) {
+) -> PipelineResult<()> {
     //
     // Create the default asset
     //
-    let default_asset = {
-        let mut default_asset_object =
-            MeshAdvMaterialAssetAccessor::new_single_object(schema_set).unwrap();
-        let mut default_asset_data_container =
-            DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
-        let x = MeshAdvMaterialAssetAccessor::default();
-        x.base_color_factor()
-            .set_vec4(
-                &mut default_asset_data_container,
-                material.pbr_metallic_roughness().base_color_factor(),
-            )
-            .unwrap();
-        x.emissive_factor()
-            .set_vec3(
-                &mut default_asset_data_container,
-                material.emissive_factor(),
-            )
-            .unwrap();
-        x.metallic_factor()
-            .set(
-                &mut default_asset_data_container,
-                material.pbr_metallic_roughness().metallic_factor(),
-            )
-            .unwrap();
-        x.roughness_factor()
-            .set(
-                &mut default_asset_data_container,
-                material.pbr_metallic_roughness().roughness_factor(),
-            )
-            .unwrap();
-        x.normal_texture_scale()
-            .set(
-                &mut default_asset_data_container,
-                material.normal_texture().map_or(1.0, |x| x.scale()),
-            )
-            .unwrap();
+    let default_asset = MeshAdvMaterialAssetOwned::new_builder(schema_set);
 
-        if let Some(texture) = material.pbr_metallic_roughness().base_color_texture() {
-            let texture_index = texture.texture().index();
-            let texture_object_id = image_object_ids[&texture_index];
-            x.color_texture()
-                .set(&mut default_asset_data_container, texture_object_id)
-                .unwrap();
-        }
+    default_asset
+        .base_color_factor()
+        .set_vec4(material.pbr_metallic_roughness().base_color_factor())?;
+    default_asset
+        .emissive_factor()
+        .set_vec3(material.emissive_factor())?;
+    default_asset
+        .metallic_factor()
+        .set(material.pbr_metallic_roughness().metallic_factor())?;
+    default_asset
+        .roughness_factor()
+        .set(material.pbr_metallic_roughness().roughness_factor())?;
+    default_asset
+        .normal_texture_scale()
+        .set(material.normal_texture().map_or(1.0, |x| x.scale()))?;
 
-        if let Some(texture) = material
-            .pbr_metallic_roughness()
+    if let Some(texture) = material.pbr_metallic_roughness().base_color_texture() {
+        let texture_index = texture.texture().index();
+        let texture_object_id = image_object_ids[&texture_index];
+        default_asset.color_texture().set(texture_object_id)?;
+    }
+
+    if let Some(texture) = material
+        .pbr_metallic_roughness()
+        .metallic_roughness_texture()
+    {
+        let texture_index = texture.texture().index();
+        let texture_object_id = image_object_ids[&texture_index];
+        default_asset
             .metallic_roughness_texture()
-        {
-            let texture_index = texture.texture().index();
-            let texture_object_id = image_object_ids[&texture_index];
-            x.metallic_roughness_texture()
-                .set(&mut default_asset_data_container, texture_object_id)
-                .unwrap();
-        }
+            .set(texture_object_id)?;
+    }
 
-        if let Some(texture) = material.normal_texture() {
-            let texture_index = texture.texture().index();
-            let texture_object_id = image_object_ids[&texture_index];
-            x.normal_texture()
-                .set(&mut default_asset_data_container, texture_object_id)
-                .unwrap();
-        }
+    if let Some(texture) = material.normal_texture() {
+        let texture_index = texture.texture().index();
+        let texture_object_id = image_object_ids[&texture_index];
+        default_asset.normal_texture().set(texture_object_id)?;
+    }
 
-        if let Some(texture) = material.emissive_texture() {
-            let texture_index = texture.texture().index();
-            let texture_object_id = image_object_ids[&texture_index];
-            x.emissive_texture()
-                .set(&mut default_asset_data_container, texture_object_id)
-                .unwrap();
-        }
+    if let Some(texture) = material.emissive_texture() {
+        let texture_index = texture.texture().index();
+        let texture_object_id = image_object_ids[&texture_index];
+        default_asset.emissive_texture().set(texture_object_id)?;
+    }
 
-        if let Some(texture) = material.occlusion_texture() {
-            let texture_index = texture.texture().index();
-            let texture_object_id = image_object_ids[&texture_index];
-            x.occlusion_texture()
-                .set(&mut default_asset_data_container, texture_object_id)
-                .unwrap();
-        }
+    if let Some(texture) = material.occlusion_texture() {
+        let texture_index = texture.texture().index();
+        let texture_object_id = image_object_ids[&texture_index];
+        default_asset.occlusion_texture().set(texture_object_id)?;
+    }
 
-        //x.shadow_method()
+    //x.shadow_method()
 
-        //x.shadow_method().set(&mut default_asset_data_container, shadow_method).unwrap();
-        //x.blend_method().set(&mut default_asset_data_container, blend_method).unwrap();
-        x.alpha_threshold()
-            .set(
-                &mut default_asset_data_container,
-                material.alpha_cutoff().unwrap_or(0.5),
-            )
-            .unwrap();
-        x.backface_culling()
-            .set(&mut default_asset_data_container, false)
-            .unwrap();
-        //TODO: Does this incorrectly write older enum string names when code is older than schema file?
-        x.color_texture_has_alpha_channel()
-            .set(&mut default_asset_data_container, false)
-            .unwrap();
-        default_asset_object
-    };
+    //x.shadow_method().set(&mut default_asset_data_container, shadow_method)?;
+    //x.blend_method().set(&mut default_asset_data_container, blend_method)?;
+    default_asset
+        .alpha_threshold()
+        .set(material.alpha_cutoff().unwrap_or(0.5))?;
+    default_asset.backface_culling().set(false)?;
+    //TODO: Does this incorrectly write older enum string names when code is older than schema file?
+    default_asset.color_texture_has_alpha_channel().set(false)?;
 
     //
     // Return the created objects
@@ -362,9 +328,10 @@ fn hydrate_import_material(
         ImportedImportable {
             file_references: Default::default(),
             import_data: None,
-            default_asset: Some(default_asset),
+            default_asset: Some(default_asset.into_inner()?),
         },
     );
+    Ok(())
 }
 
 fn hydrate_import_mesh(
@@ -374,7 +341,7 @@ fn hydrate_import_mesh(
     mesh: &gltf::Mesh,
     imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
     material_index_to_asset_id: &HashMap<Option<usize>, AssetId>,
-) {
+) -> PipelineResult<()> {
     //
     // Set up material slots (we find unique materials in this mesh and assign them a slot
     //
@@ -396,34 +363,19 @@ fn hydrate_import_mesh(
     //
     // Create the asset (mainly we create a list of material slots referencing the appropriate material asset)
     //
-    let default_asset = {
-        let mut default_asset_object =
-            MeshAdvMeshAssetAccessor::new_single_object(schema_set).unwrap();
-        let mut default_asset_data_container =
-            DataContainerRefMut::from_single_object(&mut default_asset_object, schema_set);
-        let x = MeshAdvMeshAssetAccessor::default();
-
-        for material_slot in material_slots {
-            let entry = x
-                .material_slots()
-                .add_entry(&mut default_asset_data_container)
-                .unwrap();
-            x.material_slots()
-                .entry(entry)
-                .set(&mut default_asset_data_container, material_slot)
-                .unwrap();
-        }
-
-        default_asset_object
-    };
+    let default_asset = MeshAdvMeshAssetOwned::new_builder(schema_set);
+    for material_slot in material_slots {
+        let entry = default_asset.material_slots().add_entry()?;
+        default_asset
+            .material_slots()
+            .entry(entry)
+            .set(material_slot)?;
+    }
 
     //
     // Create import data
     //
-    let mut import_data = MeshAdvMeshImportedDataAccessor::new_single_object(schema_set).unwrap();
-    let mut import_data_container =
-        DataContainerRefMut::from_single_object(&mut import_data, schema_set);
-    let x = MeshAdvMeshImportedDataAccessor::default();
+    let import_data = MeshAdvMeshImportedDataOwned::new_builder(schema_set);
 
     //
     // Iterate all mesh parts, building a single vertex and index buffer. Each MeshPart will
@@ -464,37 +416,15 @@ fn hydrate_import_mesh(
             //     )));
             // };
 
-            let entry_uuid = x
-                .mesh_parts()
-                .add_entry(&mut import_data_container)
-                .unwrap();
-            let entry = x.mesh_parts().entry(entry_uuid);
-            entry
-                .positions()
-                .set(
-                    &mut import_data_container,
-                    Arc::new(positions_bytes.to_vec()),
-                )
-                .unwrap();
-            entry
-                .normals()
-                .set(&mut import_data_container, Arc::new(normals_bytes.to_vec()))
-                .unwrap();
+            let entry_uuid = import_data.mesh_parts().add_entry()?;
+            let entry = import_data.mesh_parts().entry(entry_uuid);
+            entry.positions().set(Arc::new(positions_bytes.to_vec()))?;
+            entry.normals().set(Arc::new(normals_bytes.to_vec()))?;
             entry
                 .texture_coordinates()
-                .set(
-                    &mut import_data_container,
-                    Arc::new(tex_coords_bytes.to_vec()),
-                )
-                .unwrap();
-            entry
-                .indices()
-                .set(&mut import_data_container, Arc::new(part_indices_bytes))
-                .unwrap();
-            entry
-                .material_index()
-                .set(&mut import_data_container, material_index)
-                .unwrap();
+                .set(Arc::new(tex_coords_bytes.to_vec()))?;
+            entry.indices().set(Arc::new(part_indices_bytes))?;
+            entry.material_index().set(material_index)?;
         } else {
             log::error!(
                 "Mesh primitives must specify indices, positions, normals, tangents, and tex_coords"
@@ -504,32 +434,22 @@ fn hydrate_import_mesh(
         }
     }
 
-    // let mesh_id = mesh
-    //     .name()
-    //     .map(|s| GltfObjectId::Name(s.to_string()))
-    //     .unwrap_or_else(|| GltfObjectId::Index(mesh.index()));
-    //
-    // let mesh_to_import = MeshToImport { id: mesh_id, asset };
-    //
-    // // Verify that we iterate meshes in order so that our resulting assets are in order
-    // assert!(mesh.index() == meshes_to_import.len());
-
     log::trace!(
         "Importing Mesh name: {:?} index: {}",
         mesh.name(),
         mesh.index(),
     );
 
-    //meshes_to_import.push(mesh_to_import);
-
     imported_objects.insert(
         Some(asset_name.to_string()),
         ImportedImportable {
             file_references: Default::default(),
-            import_data: Some(import_data),
-            default_asset: Some(default_asset),
+            import_data: Some(import_data.into_inner()?),
+            default_asset: Some(default_asset.into_inner()?),
         },
     );
+
+    Ok(())
 }
 
 fn name_or_index(
@@ -559,29 +479,24 @@ impl Importer for GltfImporter {
     ) -> PipelineResult<Vec<ScannedImportable>> {
         let mesh_asset_type = context
             .schema_set
-            .find_named_type(MeshAdvMeshAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(MeshAdvMeshAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
 
         let material_asset_type = context
             .schema_set
-            .find_named_type(MeshAdvMaterialAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(MeshAdvMaterialAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
 
         let image_asset_type = context
             .schema_set
-            .find_named_type(GpuImageAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(GpuImageAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
 
-        let (doc, _buffers, _images) = ::gltf::import(context.path).unwrap();
+        let (doc, _buffers, _images) =
+            ::gltf::import(context.path).map_err(|e| format!("gltf::import error {:?}", e))?;
 
         let mut importables = Vec::default();
 
@@ -645,7 +560,8 @@ impl Importer for GltfImporter {
         //
         // Read the file
         //
-        let (doc, buffers, images) = ::gltf::import(context.path).unwrap();
+        let (doc, buffers, images) =
+            ::gltf::import(context.path).map_err(|e| format!("gltf::import error {:?}", e))?;
 
         let mut imported_objects = HashMap::default();
 
@@ -668,7 +584,7 @@ impl Importer for GltfImporter {
                     &images,
                     &mut imported_objects,
                     &image_color_space_assignments,
-                );
+                )?;
             }
         }
 
@@ -684,7 +600,7 @@ impl Importer for GltfImporter {
                     &material,
                     &mut imported_objects,
                     &image_index_to_object_id,
-                );
+                )?;
             }
         }
 
@@ -701,7 +617,7 @@ impl Importer for GltfImporter {
                     &mesh,
                     &mut imported_objects,
                     &material_index_to_object_id,
-                );
+                )?;
             }
         }
 

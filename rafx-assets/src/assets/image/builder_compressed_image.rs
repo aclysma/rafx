@@ -2,14 +2,14 @@ use crate::assets::image::{
     ImageAssetData, ImageAssetDataLayer, ImageAssetDataMipLevel, ImageAssetDataPayload,
 };
 use crate::schema::{
-    GpuCompressedImageAssetAccessor, GpuCompressedImageImportedDataAccessor,
+    GpuCompressedImageAssetAccessor, GpuCompressedImageImportedDataReader,
     GpuImageAssetDataFormatEnum,
 };
 use crate::{
     ImageAssetDataFormat, ImageAssetDataPayloadSingleBuffer, ImageAssetDataPayloadSubresources,
 };
 use hydrate_base::AssetId;
-use hydrate_data::{DataContainerRef, FieldAccessor, PropertyPath, RecordAccessor};
+use hydrate_data::RecordAccessor;
 use hydrate_pipeline::{
     Builder, BuilderContext, EnumerateDependenciesContext, JobEnumeratedDependencies, JobInput,
     JobOutput, JobProcessor, PipelineResult, RunContext,
@@ -62,14 +62,12 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         //
         // Read imported data
         //
-        let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container =
-            DataContainerRef::from_single_object(&imported_data, context.schema_set);
-        let x = GpuCompressedImageImportedDataAccessor::new(PropertyPath::default());
+        let imported_data = context
+            .imported_data::<GpuCompressedImageImportedDataReader>(context.input.asset_id)?;
 
-        let width = x.width().get(data_container).unwrap();
-        let height = x.height().get(data_container).unwrap();
-        let format = match x.format().get(data_container).unwrap() {
+        let width = imported_data.width().get()?;
+        let height = imported_data.height().get()?;
+        let format = match imported_data.format().get()? {
             GpuImageAssetDataFormatEnum::RGBA32_Linear => ImageAssetDataFormat::RGBA32_Linear,
             GpuImageAssetDataFormatEnum::RGBA32_Srgb => ImageAssetDataFormat::RGBA32_Srgb,
             GpuImageAssetDataFormatEnum::Basis_Linear => ImageAssetDataFormat::Basis_Linear,
@@ -89,29 +87,29 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
             GpuImageAssetDataFormatEnum::BC7_Unorm_Linear => ImageAssetDataFormat::BC7_Unorm_Linear,
             GpuImageAssetDataFormatEnum::BC7_Unorm_Srgb => ImageAssetDataFormat::BC7_Unorm_Srgb,
         };
-        let resource_type = if x.is_cube_texture().get(data_container).unwrap() {
+        let resource_type = if imported_data.is_cube_texture().get()? {
             RafxResourceType::TEXTURE_CUBE
         } else {
             RafxResourceType::TEXTURE
         };
 
-        let layer_entries = x.data_layers().resolve_entries(data_container).unwrap();
+        let layer_entries = imported_data.data_layers().resolve_entries()?;
         let payload = if layer_entries.is_empty() {
             ImageAssetDataPayload::SingleBuffer(ImageAssetDataPayloadSingleBuffer {
-                buffer: (**x.data_single_buffer().get(&data_container).unwrap()).clone(),
+                buffer: (**imported_data.data_single_buffer().get()?).clone(),
             })
         } else {
             let mut layers = Vec::default();
             for &layer_entry in layer_entries.into_iter() {
-                let layer = x.data_layers().entry(layer_entry);
-                let mip_level_entries = layer.mip_levels().resolve_entries(data_container).unwrap();
+                let layer = imported_data.data_layers().entry(layer_entry);
+                let mip_level_entries = layer.mip_levels().resolve_entries()?;
                 let mut mip_levels = Vec::default();
                 for &mip_level_entry in mip_level_entries.into_iter() {
                     let mip_level = layer.mip_levels().entry(mip_level_entry);
                     mip_levels.push(ImageAssetDataMipLevel {
-                        width: mip_level.width().get(data_container).unwrap(),
-                        height: mip_level.height().get(data_container).unwrap(),
-                        bytes: (**mip_level.bytes().get(&data_container).unwrap()).clone(),
+                        width: mip_level.width().get()?,
+                        height: mip_level.height().get()?,
+                        bytes: (**mip_level.bytes().get()?).clone(),
                     });
                 }
 

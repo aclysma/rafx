@@ -61,27 +61,24 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
         );
         let x = MeshAdvMaterialAssetAccessor::default();
 
-        let base_color_factor = x.base_color_factor().get_vec4(data_container).unwrap();
-        let emissive_factor = x.emissive_factor().get_vec3(data_container).unwrap();
+        let base_color_factor = x.base_color_factor().get_vec4(data_container)?;
+        let emissive_factor = x.emissive_factor().get_vec3(data_container)?;
 
-        let metallic_factor = x.metallic_factor().get(data_container).unwrap();
-        let roughness_factor = x.roughness_factor().get(data_container).unwrap();
-        let normal_texture_scale = x.normal_texture_scale().get(data_container).unwrap();
+        let metallic_factor = x.metallic_factor().get(data_container)?;
+        let roughness_factor = x.roughness_factor().get(data_container)?;
+        let normal_texture_scale = x.normal_texture_scale().get(data_container)?;
 
-        let color_texture = x.color_texture().get(data_container).unwrap();
-        let metallic_roughness_texture =
-            x.metallic_roughness_texture().get(data_container).unwrap();
-        let normal_texture = x.normal_texture().get(data_container).unwrap();
-        let emissive_texture = x.emissive_texture().get(data_container).unwrap();
-        let shadow_method = x.shadow_method().get(data_container).unwrap();
-        let blend_method = x.blend_method().get(data_container).unwrap();
+        let color_texture = x.color_texture().get(data_container)?;
+        let metallic_roughness_texture = x.metallic_roughness_texture().get(data_container)?;
+        let normal_texture = x.normal_texture().get(data_container)?;
+        let emissive_texture = x.emissive_texture().get(data_container)?;
+        let shadow_method = x.shadow_method().get(data_container)?;
+        let blend_method = x.blend_method().get(data_container)?;
 
-        let alpha_threshold = x.alpha_threshold().get(data_container).unwrap();
-        let backface_culling = x.backface_culling().get(data_container).unwrap();
-        let color_texture_has_alpha_channel = x
-            .color_texture_has_alpha_channel()
-            .get(data_container)
-            .unwrap();
+        let alpha_threshold = x.alpha_threshold().get(data_container)?;
+        let backface_culling = x.backface_culling().get(data_container)?;
+        let color_texture_has_alpha_channel =
+            x.color_texture_has_alpha_channel().get(data_container)?;
 
         //
         // Create the processed data
@@ -106,10 +103,9 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
         context.produce_default_artifact_with_handles(
             context.input.asset_id,
             |handle_factory| {
-                let material_asset =
-                    handle_factory.make_handle_to_default_artifact(AssetId::from_uuid(
-                        Uuid::parse_str("07ab9227-432d-49c8-8899-146acd803235").unwrap(),
-                    ));
+                let material_asset = handle_factory.make_handle_to_default_artifact(
+                    AssetId::from_uuid(Uuid::parse_str("07ab9227-432d-49c8-8899-146acd803235")?),
+                );
 
                 let color_texture_handle = if !color_texture.is_null() {
                     Some(handle_factory.make_handle_to_default_artifact(color_texture))
@@ -239,34 +235,18 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         // Read asset data
         //
-        let data_container = DataContainerRef::from_dataset(
-            context.data_set,
-            context.schema_set,
-            context.input.asset_id,
-        );
-        let x = MeshAdvMeshAssetAccessor::default();
+        let asset_data = context.asset::<MeshAdvMeshAssetReader>(context.input.asset_id)?;
         let mut materials = Vec::default();
-        for entry in x
-            .material_slots()
-            .resolve_entries(data_container)
-            .unwrap()
-            .into_iter()
-        {
-            let entry = x
-                .material_slots()
-                .entry(*entry)
-                .get(data_container)
-                .unwrap();
+        for entry in asset_data.material_slots().resolve_entries()?.into_iter() {
+            let entry = asset_data.material_slots().entry(*entry).get()?;
             materials.push(entry);
         }
 
         //
         // Read import data
         //
-        let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container =
-            DataContainerRef::from_single_object(imported_data, context.schema_set);
-        let x = MeshAdvMeshImportedDataAccessor::default();
+        let imported_data =
+            context.imported_data::<MeshAdvMeshImportedDataReader>(context.input.asset_id)?;
 
         let mut all_positions = Vec::<glam::Vec3>::with_capacity(1024);
         let mut all_position_indices = Vec::<u32>::with_capacity(8192);
@@ -276,49 +256,36 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         let mut all_indices = PushBuffer::new(16384);
 
         let mut mesh_part_data = Vec::default();
-        for entry in x
-            .mesh_parts()
-            .resolve_entries(data_container)
-            .unwrap()
-            .into_iter()
-        {
-            let entry = x.mesh_parts().entry(*entry);
-
-            //
-            // Get byte slices of all input data for this mesh part
-            //
-            let positions_bytes = entry.positions().get(&data_container).unwrap();
-            let normals_bytes = entry.normals().get(&data_container).unwrap();
-            let tex_coords_bytes = entry.texture_coordinates().get(&data_container).unwrap();
-            let indices_bytes = entry.indices().get(&data_container).unwrap();
-
-            // let mut tex_coords_pb = PushBuffer::new(tex_coords_bytes.len());
-            // let tex_coords_pb_result = tex_coords_pb.push_bytes(&tex_coords_bytes, std::mem::align_of::<[f32; 2]>());
-            // let tex_coords_data = tex_coords_pb.into_data();
-            // let tex_coords_slice = unsafe {
-            //     std::slice::from_raw_parts(tex_coords_data.as_ptr().add(tex_coords_pb_result.offset()), tex_coords_pb_result.size())
-            // };
+        for entry in imported_data.mesh_parts().resolve_entries()?.into_iter() {
+            let entry = imported_data.mesh_parts().entry(*entry);
 
             //
             // Get strongly typed slices of all input data for this mesh part
             //
+            let positions_field_reader = entry.positions();
+            let positions_bytes = positions_field_reader.get()?;
             let positions = try_cast_u8_slice::<[f32; 3]>(positions_bytes)
-                .ok_or("Could not cast due to alignment")
-                .unwrap();
+                .ok_or("Could not cast due to alignment")?;
+
+            let normal_field_reader = entry.normals();
+            let normals_bytes = normal_field_reader.get()?;
             let normals = try_cast_u8_slice::<[f32; 3]>(normals_bytes)
-                .ok_or("Could not cast due to alignment")
-                .unwrap();
+                .ok_or("Could not cast due to alignment")?;
+
+            let tex_coords_field_reader = entry.texture_coordinates();
+            let tex_coords_bytes = tex_coords_field_reader.get()?;
             let tex_coords = try_cast_u8_slice::<[f32; 2]>(tex_coords_bytes)
-                .ok_or("Could not cast due to alignment")
-                .unwrap();
-            let part_indices = try_cast_u8_slice::<u32>(indices_bytes)
-                .ok_or("Could not cast due to alignment")
-                .unwrap();
+                .ok_or("Could not cast due to alignment")?;
+
+            let indices_field_reader = entry.indices();
+            let indices_bytes = indices_field_reader.get()?;
+            let part_indices =
+                try_cast_u8_slice::<u32>(indices_bytes).ok_or("Could not cast due to alignment")?;
 
             //
             // Part data which mostly contains offsets in the buffers for this part
             //
-            let part_data = super::importers::mesh_util::process_mesh_part(
+            let part_data = mesh_util::process_mesh_part(
                 part_indices,
                 positions,
                 normals,
@@ -403,16 +370,15 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
             context.input.asset_id,
             |handle_factory| {
                 let mut mesh_parts = Vec::default();
-                for (entry, part_data) in x
+                for (entry, part_data) in imported_data
                     .mesh_parts()
-                    .resolve_entries(data_container)
-                    .unwrap()
+                    .resolve_entries()?
                     .into_iter()
                     .zip(mesh_part_data)
                 {
-                    let entry = x.mesh_parts().entry(*entry);
+                    let entry = imported_data.mesh_parts().entry(*entry);
 
-                    let material_slot_index = entry.material_index().get(data_container).unwrap();
+                    let material_slot_index = entry.material_index().get()?;
                     let material_object_id = materials[material_slot_index as usize];
 
                     let material_handle =
@@ -533,15 +499,10 @@ impl JobProcessor for MeshAdvModelJobProcessor {
                 let x = MeshAdvModelAssetAccessor::default();
 
                 let mut lods = Vec::default();
-                for entry in x
-                    .lods()
-                    .resolve_entries(data_container)
-                    .unwrap()
-                    .into_iter()
-                {
+                for entry in x.lods().resolve_entries(data_container)?.into_iter() {
                     let lod = x.lods().entry(*entry);
                     let mesh_handle = handle_factory
-                        .make_handle_to_default_artifact(lod.mesh().get(data_container).unwrap());
+                        .make_handle_to_default_artifact(lod.mesh().get(data_container)?);
 
                     lods.push(ModelAdvAssetDataLod { mesh: mesh_handle });
                 }
@@ -623,20 +584,16 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
         //
         // Read import data
         //
-        let imported_data = &context.dependency_data[&context.input.asset_id];
-        let data_container =
-            DataContainerRef::from_single_object(imported_data, context.schema_set);
-        let x = MeshAdvPrefabImportDataAccessor::default();
+        let imported_data =
+            context.imported_data::<MeshAdvPrefabImportDataReader>(context.input.asset_id)?;
 
-        let json_str = x.json_data().get(data_container).unwrap();
+        let json_str = imported_data.json_data().get()?;
         let json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&json_str)
-            .map_err(|x| format!("Blender Material Import error: {:?}", x))
-            .unwrap();
+            .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
 
         let file_references = context
             .data_set
-            .resolve_all_file_references(context.input.asset_id)
-            .unwrap();
+            .resolve_all_file_references(context.input.asset_id)?;
 
         context.produce_default_artifact_with_handles(
             context.input.asset_id,
@@ -644,7 +601,9 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
                 let mut objects = Vec::with_capacity(json_format.objects.len());
                 for json_object in json_format.objects {
                     let model = if let Some(json_model) = &json_object.model {
-                        let model_object_id = file_references.get(&json_model.model).unwrap();
+                        let model_object_id = file_references
+                            .get(&json_model.model)
+                            .ok_or("Could not find asset ID associated with path")?;
                         let model_handle =
                             handle_factory.make_handle_to_default_artifact(*model_object_id);
 

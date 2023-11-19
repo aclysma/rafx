@@ -1,9 +1,10 @@
 use crate::schema::{
-    MeshAdvBlendMethodEnum, MeshAdvMaterialAssetAccessor, MeshAdvShadowMethodEnum,
+    MeshAdvBlendMethodEnum, MeshAdvMaterialAssetAccessor, MeshAdvMaterialAssetOwned,
+    MeshAdvShadowMethodEnum,
 };
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{AssetRefFieldAccessor, DataContainerRefMut, Enum, RecordAccessor};
+use hydrate_data::{AssetRefFieldOwned, DataSetError, Enum, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
     Importer, ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
@@ -87,14 +88,12 @@ impl Importer for BlenderMaterialImporter {
     ) -> PipelineResult<Vec<ScannedImportable>> {
         let asset_type = context
             .schema_set
-            .find_named_type(MeshAdvMaterialAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(MeshAdvMaterialAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
 
-        let json_str = std::fs::read_to_string(context.path).unwrap();
-        let json_data: HydrateMaterialJsonFileFormat = serde_json::from_str(&json_str).unwrap();
+        let json_str = std::fs::read_to_string(context.path)?;
+        let json_data: HydrateMaterialJsonFileFormat = serde_json::from_str(&json_str)?;
 
         let mut file_references: Vec<ReferencedSourceFile> = Default::default();
 
@@ -157,8 +156,8 @@ impl Importer for BlenderMaterialImporter {
         //
         // Read the file
         //
-        let json_str = std::fs::read_to_string(context.path).unwrap();
-        let json_data: HydrateMaterialJsonFileFormat = serde_json::from_str(&json_str).unwrap();
+        let json_str = std::fs::read_to_string(context.path)?;
+        let json_data: HydrateMaterialJsonFileFormat = serde_json::from_str(&json_str)?;
 
         //
         // Parse strings to enums or provide default value if they weren't specified
@@ -166,7 +165,8 @@ impl Importer for BlenderMaterialImporter {
         let shadow_method = if let Some(shadow_method_string) = &json_data.shadow_method {
             //TODO: This relies on input json and code matching perfectly, ideally we would search schema type for aliases
             //println!("find MeshAdvShadowMethodEnum {:?}", shadow_method_string);
-            MeshAdvShadowMethodEnum::from_symbol_name(shadow_method_string.as_str()).unwrap()
+            MeshAdvShadowMethodEnum::from_symbol_name(shadow_method_string.as_str())
+                .ok_or(DataSetError::UnexpectedEnumSymbol)?
         } else {
             MeshAdvShadowMethodEnum::None
         };
@@ -174,7 +174,8 @@ impl Importer for BlenderMaterialImporter {
         let blend_method = if let Some(blend_method_string) = &json_data.blend_method {
             //TODO: This relies on input json and code matching perfectly, ideally we would search schema type for alias
             //println!("find MeshAdvBlendMethodEnum {:?}", blend_method_string);
-            MeshAdvBlendMethodEnum::from_symbol_name(blend_method_string.as_str()).unwrap()
+            MeshAdvBlendMethodEnum::from_symbol_name(blend_method_string.as_str())
+                .ok_or(DataSetError::UnexpectedEnumSymbol)?
         } else {
             MeshAdvBlendMethodEnum::Opaque
         };
@@ -182,111 +183,74 @@ impl Importer for BlenderMaterialImporter {
         //
         // Create the default asset
         //
-        let default_asset = {
-            let mut default_asset_object =
-                MeshAdvMaterialAssetAccessor::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
-                &mut default_asset_object,
-                context.schema_set,
-            );
-            let x = MeshAdvMaterialAssetAccessor::default();
-            x.base_color_factor()
-                .set_vec4(
-                    &mut default_asset_data_container,
-                    json_data.base_color_factor,
-                )
-                .unwrap();
-            x.emissive_factor()
-                .set_vec3(&mut default_asset_data_container, json_data.emissive_factor)
-                .unwrap();
-            x.metallic_factor()
-                .set(&mut default_asset_data_container, json_data.metallic_factor)
-                .unwrap();
-            x.roughness_factor()
-                .set(
-                    &mut default_asset_data_container,
-                    json_data.roughness_factor,
-                )
-                .unwrap();
-            x.normal_texture_scale()
-                .set(
-                    &mut default_asset_data_container,
-                    json_data.normal_texture_scale,
-                )
-                .unwrap();
+        let default_asset = MeshAdvMaterialAssetOwned::new_builder(context.schema_set);
 
-            fn try_find_file_reference(
-                importable_assets: &HashMap<Option<String>, ImportableAsset>,
-                data_container: &mut DataContainerRefMut,
-                ref_field: AssetRefFieldAccessor,
-                path_as_string: &Option<PathBuf>,
-            ) {
-                if let Some(path_as_string) = path_as_string {
-                    if let Some(referenced_object_id) = importable_assets
-                        .get(&None)
-                        .unwrap()
-                        .referenced_paths
-                        .get(path_as_string)
-                    {
-                        ref_field
-                            .set(data_container, *referenced_object_id)
-                            .unwrap();
-                    }
-                }
+        default_asset
+            .base_color_factor()
+            .set_vec4(json_data.base_color_factor)?;
+        default_asset
+            .emissive_factor()
+            .set_vec3(json_data.emissive_factor)?;
+        default_asset
+            .metallic_factor()
+            .set(json_data.metallic_factor)?;
+        default_asset
+            .roughness_factor()
+            .set(json_data.roughness_factor)?;
+        default_asset
+            .normal_texture_scale()
+            .set(json_data.normal_texture_scale)?;
+
+        fn try_find_file_reference(
+            importable_assets: &HashMap<Option<String>, ImportableAsset>,
+            ref_field: AssetRefFieldOwned,
+            path_as_string: &Option<PathBuf>,
+        ) -> PipelineResult<()> {
+            if let Some(path_as_string) = path_as_string {
+                let referenced_asset_id = importable_assets
+                    .get(&None)
+                    .ok_or("Could not find default importable in importable_assets")?
+                    .referenced_paths
+                    .get(path_as_string)
+                    .ok_or("Could not find asset ID associated with path")?;
+                ref_field.set(*referenced_asset_id)?;
             }
+            Ok(())
+        }
 
-            try_find_file_reference(
-                &context.importable_assets,
-                &mut default_asset_data_container,
-                x.color_texture(),
-                &json_data.color_texture,
-            );
-            try_find_file_reference(
-                &context.importable_assets,
-                &mut default_asset_data_container,
-                x.metallic_roughness_texture(),
-                &json_data.metallic_roughness_texture,
-            );
-            try_find_file_reference(
-                &context.importable_assets,
-                &mut default_asset_data_container,
-                x.normal_texture(),
-                &json_data.normal_texture,
-            );
-            try_find_file_reference(
-                &context.importable_assets,
-                &mut default_asset_data_container,
-                x.emissive_texture(),
-                &json_data.emissive_texture,
-            );
+        try_find_file_reference(
+            &context.importable_assets,
+            default_asset.color_texture(),
+            &json_data.color_texture,
+        )?;
+        try_find_file_reference(
+            &context.importable_assets,
+            default_asset.metallic_roughness_texture(),
+            &json_data.metallic_roughness_texture,
+        )?;
+        try_find_file_reference(
+            &context.importable_assets,
+            default_asset.normal_texture(),
+            &json_data.normal_texture,
+        )?;
+        try_find_file_reference(
+            &context.importable_assets,
+            default_asset.emissive_texture(),
+            &json_data.emissive_texture,
+        )?;
 
-            x.shadow_method()
-                .set(&mut default_asset_data_container, shadow_method)
-                .unwrap();
-            x.blend_method()
-                .set(&mut default_asset_data_container, blend_method)
-                .unwrap();
-            x.alpha_threshold()
-                .set(
-                    &mut default_asset_data_container,
-                    json_data.alpha_threshold.unwrap_or(0.5),
-                )
-                .unwrap();
-            x.backface_culling()
-                .set(
-                    &mut default_asset_data_container,
-                    json_data.backface_culling.unwrap_or(true),
-                )
-                .unwrap();
-            //TODO: Does this incorrectly write older enum string names when code is older than schema file?
-            x.color_texture_has_alpha_channel()
-                .set(
-                    &mut default_asset_data_container,
-                    json_data.color_texture_has_alpha_channel,
-                )
-                .unwrap();
-            default_asset_object
-        };
+        default_asset.shadow_method().set(shadow_method)?;
+        default_asset.blend_method().set(blend_method)?;
+        default_asset
+            .alpha_threshold()
+            .set(json_data.alpha_threshold.unwrap_or(0.5))?;
+        default_asset
+            .backface_culling()
+            .set(json_data.backface_culling.unwrap_or(true))?;
+        //TODO: Does this incorrectly write older enum string names when code is older than schema file?
+        default_asset
+            .color_texture_has_alpha_channel()
+            .set(json_data.color_texture_has_alpha_channel)?;
 
         //
         // Return the created objects
@@ -297,7 +261,7 @@ impl Importer for BlenderMaterialImporter {
             ImportedImportable {
                 file_references: Default::default(),
                 import_data: None,
-                default_asset: Some(default_asset),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)

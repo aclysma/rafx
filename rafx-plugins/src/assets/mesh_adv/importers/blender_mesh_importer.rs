@@ -1,8 +1,10 @@
 use crate::assets::mesh_adv::{BlenderMaterialImporter, MeshMaterialAdvAsset};
-use crate::schema::{MeshAdvMeshAssetAccessor, MeshAdvMeshImportedDataAccessor};
+use crate::schema::{
+    MeshAdvMeshAssetAccessor, MeshAdvMeshAssetOwned, MeshAdvMeshImportedDataOwned,
+};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{DataContainerRefMut, ImporterId, RecordAccessor};
+use hydrate_data::{ImporterId, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
     ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ReferencedSourceFile,
@@ -93,20 +95,15 @@ impl Importer for BlenderMeshImporter {
     ) -> PipelineResult<Vec<ScannedImportable>> {
         let mesh_adv_asset_type = context
             .schema_set
-            .find_named_type(MeshAdvMeshAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
+            .find_named_type(MeshAdvMeshAssetAccessor::schema_name())?
+            .as_record()?
             .clone();
 
-        let bytes = std::fs::read(context.path).unwrap();
+        let bytes = std::fs::read(context.path)?;
 
         let b3f_reader = B3FReader::new(&bytes)
-            .ok_or("Blender Mesh Import error, mesh file format not recognized")
-            .unwrap();
-        let mesh_as_json: HydrateMeshJson = serde_json::from_slice(b3f_reader.get_block(0))
-            .map_err(|e| e.to_string())
-            .unwrap();
+            .ok_or("Blender Mesh Import error, mesh file format not recognized")?;
+        let mesh_as_json: HydrateMeshJson = serde_json::from_slice(b3f_reader.get_block(0))?;
 
         fn try_add_file_reference<T: TypeUuid>(
             file_references: &mut Vec<ReferencedSourceFile>,
@@ -144,20 +141,14 @@ impl Importer for BlenderMeshImporter {
         //
         // Read the file
         //
-        let bytes = std::fs::read(context.path).unwrap();
+        let bytes = std::fs::read(context.path)?;
 
         let b3f_reader = B3FReader::new(&bytes)
-            .ok_or("Blender Mesh Import error, mesh file format not recognized")
-            .unwrap();
-        let mesh_as_json: HydrateMeshJson = serde_json::from_slice(b3f_reader.get_block(0))
-            .map_err(|e| e.to_string())
-            .unwrap();
+            .ok_or("Blender Mesh Import error, mesh file format not recognized")?;
+        let mesh_as_json: HydrateMeshJson =
+            serde_json::from_slice(b3f_reader.get_block(0)).map_err(|e| e.to_string())?;
 
-        let mut import_data =
-            MeshAdvMeshImportedDataAccessor::new_single_object(context.schema_set).unwrap();
-        let mut import_data_container =
-            DataContainerRefMut::from_single_object(&mut import_data, context.schema_set);
-        let x = MeshAdvMeshImportedDataAccessor::default();
+        let import_data = MeshAdvMeshImportedDataOwned::new_builder(context.schema_set);
 
         //
         // Find the materials and assign them unique slot indexes
@@ -176,17 +167,12 @@ impl Importer for BlenderMeshImporter {
             //
             // Get byte slices of all input data for this mesh part
             //
-            let positions_bytes = b3f_reader
-                .get_block(mesh_part.position.ok_or("No position data").unwrap() as usize);
+            let positions_bytes =
+                b3f_reader.get_block(mesh_part.position.ok_or("No position data")? as usize);
             let normals_bytes =
-                b3f_reader.get_block(mesh_part.normal.ok_or("No normal data").unwrap() as usize);
-            let tex_coords_bytes = b3f_reader.get_block(
-                *mesh_part
-                    .uv
-                    .get(0)
-                    .ok_or("No texture coordinate data")
-                    .unwrap() as usize,
-            );
+                b3f_reader.get_block(mesh_part.normal.ok_or("No normal data")? as usize);
+            let tex_coords_bytes = b3f_reader
+                .get_block(*mesh_part.uv.get(0).ok_or("No texture coordinate data")? as usize);
             let part_indices_bytes = b3f_reader.get_block(mesh_part.indices as usize);
 
             //
@@ -198,8 +184,7 @@ impl Importer for BlenderMeshImporter {
             match mesh_part.index_type {
                 MeshPartJsonIndexType::U16 => {
                     let part_indices_u16_ref = try_cast_u8_slice::<u16>(part_indices_bytes)
-                        .ok_or("Could not cast due to alignment")
-                        .unwrap();
+                        .ok_or("Could not cast due to alignment")?;
                     part_indices_u32.reserve(part_indices_u16_ref.len());
                     for &part_index in part_indices_u16_ref {
                         part_indices_u32.push(part_index as u32);
@@ -207,8 +192,7 @@ impl Importer for BlenderMeshImporter {
                 }
                 MeshPartJsonIndexType::U32 => {
                     let part_indices_u32_ref = try_cast_u8_slice::<u32>(part_indices_bytes)
-                        .ok_or("Could not cast due to alignment")
-                        .unwrap();
+                        .ok_or("Could not cast due to alignment")?;
                     part_indices_u32.reserve(part_indices_u32_ref.len());
                     for &part_index in part_indices_u32_ref {
                         part_indices_u32.push(part_index);
@@ -218,76 +202,43 @@ impl Importer for BlenderMeshImporter {
 
             let part_indices = PushBuffer::from_vec(&part_indices_u32).into_data();
 
-            let material_index = *material_slots_lookup.get(&mesh_part.material).unwrap();
+            let material_index = *material_slots_lookup
+                .get(&mesh_part.material)
+                .expect("Could not find material index for path");
 
-            let entry_uuid = x
-                .mesh_parts()
-                .add_entry(&mut import_data_container)
-                .unwrap();
-            let entry = x.mesh_parts().entry(entry_uuid);
-            entry
-                .positions()
-                .set(
-                    &mut import_data_container,
-                    Arc::new(positions_bytes.to_vec()),
-                )
-                .unwrap();
-            entry
-                .normals()
-                .set(&mut import_data_container, Arc::new(normals_bytes.to_vec()))
-                .unwrap();
+            let entry_uuid = import_data.mesh_parts().add_entry()?;
+            let entry = import_data.mesh_parts().entry(entry_uuid);
+            entry.positions().set(Arc::new(positions_bytes.to_vec()))?;
+            entry.normals().set(Arc::new(normals_bytes.to_vec()))?;
             entry
                 .texture_coordinates()
-                .set(
-                    &mut import_data_container,
-                    Arc::new(tex_coords_bytes.to_vec()),
-                )
-                .unwrap();
-            entry
-                .indices()
-                .set(&mut import_data_container, Arc::new(part_indices))
-                .unwrap();
-            entry
-                .material_index()
-                .set(&mut import_data_container, material_index)
-                .unwrap();
+                .set(Arc::new(tex_coords_bytes.to_vec()))?;
+            entry.indices().set(Arc::new(part_indices))?;
+            entry.material_index().set(material_index)?;
         }
 
         //
         // Create the default asset
         //
-        let default_asset = {
-            let mut default_asset_object =
-                MeshAdvMeshAssetAccessor::new_single_object(context.schema_set).unwrap();
-            let mut default_asset_data_container = DataContainerRefMut::from_single_object(
-                &mut default_asset_object,
-                context.schema_set,
-            );
-            let x = MeshAdvMeshAssetAccessor::default();
+        let default_asset = MeshAdvMeshAssetOwned::new_builder(context.schema_set);
 
-            //
-            // Set up the material slots
-            //
-            for material_slot in material_slots {
-                let object_id = context
-                    .importable_assets
-                    .get(&None)
-                    .unwrap()
-                    .referenced_paths
-                    .get(&material_slot)
-                    .unwrap();
-                let entry = x
-                    .material_slots()
-                    .add_entry(&mut default_asset_data_container)
-                    .unwrap();
-                x.material_slots()
-                    .entry(entry)
-                    .set(&mut default_asset_data_container, *object_id)
-                    .unwrap();
-            }
-
-            default_asset_object
-        };
+        //
+        // Set up the material slots
+        //
+        for material_slot in material_slots {
+            let object_id = context
+                .importable_assets
+                .get(&None)
+                .ok_or("Could not find default importable in importable_assets")?
+                .referenced_paths
+                .get(&material_slot)
+                .ok_or("Could not find asset ID associated with path")?;
+            let entry = default_asset.material_slots().add_entry()?;
+            default_asset
+                .material_slots()
+                .entry(entry)
+                .set(*object_id)?;
+        }
 
         //
         // Return the created objects
@@ -297,8 +248,8 @@ impl Importer for BlenderMeshImporter {
             None,
             ImportedImportable {
                 file_references: Default::default(),
-                import_data: Some(import_data),
-                default_asset: Some(default_asset),
+                import_data: Some(import_data.into_inner()?),
+                default_asset: Some(default_asset.into_inner()?),
             },
         );
         Ok(imported_objects)
