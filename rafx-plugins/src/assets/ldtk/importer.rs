@@ -142,7 +142,7 @@ impl Importer for HydrateLdtkImporter {
         let source = std::fs::read_to_string(context.path)?;
         let project: ldtk_rust::Project = serde_json::from_str(&source)?;
 
-        let importable = context.add_importable::<LdtkAssetOwned>(None)?;
+        let importable = context.add_default_importable::<LdtkAssetOwned>()?;
 
         for tileset in &project.defs.tilesets {
             importable.add_file_reference(&tileset.rel_path)?;
@@ -172,11 +172,8 @@ impl Importer for HydrateLdtkImporter {
         //
         // Return the created objects
         //
-        context.add_importable(
-            None,
-            default_asset.into_inner()?,
-            Some(import_data.into_inner()?),
-        );
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
         Ok(())
     }
 }

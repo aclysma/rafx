@@ -4,7 +4,7 @@ use crate::schema::{
 };
 use crate::MaterialInstanceSlotAssignment;
 use hydrate_base::AssetId;
-use hydrate_data::{NullOverride, RecordAccessor, RecordOwned};
+use hydrate_data::{ImportableName, NullOverride, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     Builder, BuilderContext, EnumerateDependenciesContext, ImportContext, Importer,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult, RunContext,
@@ -42,7 +42,7 @@ impl Importer for HydrateMaterialInstanceImporter {
         let material_instance_ron = ron::de::from_str::<MaterialInstanceRon>(&source)
             .map_err(|e| format!("RON error {:?}", e))?;
 
-        let importable = context.add_importable::<MaterialInstanceAssetOwned>(None)?;
+        let importable = context.add_default_importable::<MaterialInstanceAssetOwned>()?;
 
         importable.add_file_reference(&material_instance_ron.material)?;
 
@@ -80,7 +80,8 @@ impl Importer for HydrateMaterialInstanceImporter {
                 .set(slot_assignment.array_index as u32)?;
 
             if let Some(image) = &slot_assignment.image {
-                let image_asset_id = context.asset_id_for_referenced_file_path(None, image)?;
+                let image_asset_id =
+                    context.asset_id_for_referenced_file_path(ImportableName::default(), image)?;
                 entry.image().set(image_asset_id)?;
             }
 
@@ -99,14 +100,14 @@ impl Importer for HydrateMaterialInstanceImporter {
             }
         }
 
-        let material_asset_id =
-            context.asset_id_for_referenced_file_path(None, &material_ron.material)?;
+        let material_asset_id = context
+            .asset_id_for_referenced_file_path(ImportableName::default(), &material_ron.material)?;
         default_asset.material().set(material_asset_id)?;
 
         //
         // Return the created objects
         //
-        context.add_importable(None, default_asset.into_inner()?, None);
+        context.add_default_importable(default_asset.into_inner()?, None);
         Ok(())
     }
 }

@@ -5,7 +5,7 @@ use fnv::FnvHashMap;
 use gltf::buffer::Data as GltfBufferData;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{RecordBuilder, RecordOwned};
+use hydrate_data::{ImportableName, RecordBuilder, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
     JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
@@ -79,7 +79,7 @@ fn build_image_color_space_assignments_from_materials(
 
 fn hydrate_import_image(
     context: &ImportContext,
-    asset_name: &str,
+    asset_name: &ImportableName,
     image: &gltf::Image,
     images: &Vec<gltf::image::Data>,
     image_color_space_assignments: &FnvHashMap<usize, ImageAssetColorSpaceConfig>,
@@ -182,7 +182,7 @@ fn hydrate_import_image(
     // Return the created objects
     //
     context.add_importable(
-        Some(asset_name.to_string()),
+        asset_name.clone(),
         default_asset.into_inner()?,
         Some(import_data.into_inner()?),
     );
@@ -191,7 +191,7 @@ fn hydrate_import_image(
 
 fn hydrate_import_material(
     context: &ImportContext,
-    asset_name: &str,
+    asset_name: &ImportableName,
     material: &gltf::Material,
     image_object_ids: &HashMap<usize, AssetId>,
 ) -> PipelineResult<()> {
@@ -265,17 +265,13 @@ fn hydrate_import_material(
     //
     // Return the created objects
     //
-    context.add_importable(
-        Some(asset_name.to_string()),
-        default_asset.into_inner()?,
-        None,
-    );
+    context.add_importable(asset_name.clone(), default_asset.into_inner()?, None);
     Ok(())
 }
 
 fn hydrate_import_mesh(
     context: &ImportContext,
-    asset_name: &str,
+    asset_name: &ImportableName,
     buffers: &[GltfBufferData],
     mesh: &gltf::Mesh,
     material_index_to_asset_id: &HashMap<Option<usize>, AssetId>,
@@ -379,7 +375,7 @@ fn hydrate_import_mesh(
     );
 
     context.add_importable(
-        Some(asset_name.to_string()),
+        asset_name.clone(),
         default_asset.into_inner()?,
         Some(import_data.into_inner()?),
     );
@@ -390,11 +386,11 @@ fn name_or_index(
     prefix: &str,
     name: Option<&str>,
     index: usize,
-) -> String {
+) -> ImportableName {
     if let Some(name) = name {
-        format!("{}_{}", prefix, name)
+        ImportableName::new(format!("{}_{}", prefix, name))
     } else {
-        format!("{}_{}", prefix, index)
+        ImportableName::new(format!("{}_{}", prefix, index))
     }
 }
 
@@ -425,23 +421,23 @@ impl Importer for GltfImporter {
                 }
             }
 
-            context.add_importable::<MeshAdvMeshAssetOwned>(Some(name))?;
+            context.add_importable::<MeshAdvMeshAssetOwned>(name)?;
         }
 
         for (i, material) in doc.materials().enumerate() {
             let name = name_or_index("material", material.name(), i);
-            context.add_importable::<MeshAdvMaterialAssetOwned>(Some(name))?;
+            context.add_importable::<MeshAdvMaterialAssetOwned>(name)?;
         }
 
         for (i, image) in doc.images().enumerate() {
             let name = name_or_index("image", image.name(), i);
-            context.add_importable::<GpuImageAssetOwned>(Some(name))?;
+            context.add_importable::<GpuImageAssetOwned>(name)?;
         }
 
         if uses_default_material {
             //TODO: Warn?
-            let name = "material__default_material".to_string();
-            context.add_importable::<MeshAdvMaterialAssetOwned>(Some(name))?;
+            let name = ImportableName::new("material__default_material".to_string());
+            context.add_importable::<MeshAdvMaterialAssetOwned>(name)?;
         }
 
         Ok(())
@@ -466,9 +462,7 @@ impl Importer for GltfImporter {
 
         for (i, image) in doc.images().enumerate() {
             let asset_name = name_or_index("image", image.name(), i);
-            if let Some(importable_asset_id) =
-                context.asset_id_for_importable(&Some(asset_name.clone()))
-            {
+            if let Some(importable_asset_id) = context.asset_id_for_importable(&asset_name) {
                 image_index_to_object_id.insert(image.index(), importable_asset_id);
                 hydrate_import_image(
                     &context,
@@ -482,9 +476,7 @@ impl Importer for GltfImporter {
 
         for (i, material) in doc.materials().enumerate() {
             let asset_name = name_or_index("material", material.name(), i);
-            if let Some(importable_asset_id) =
-                context.asset_id_for_importable(&Some(asset_name.clone()))
-            {
+            if let Some(importable_asset_id) = context.asset_id_for_importable(&asset_name) {
                 material_index_to_object_id.insert(material.index(), importable_asset_id);
                 hydrate_import_material(
                     &context,
@@ -497,7 +489,7 @@ impl Importer for GltfImporter {
 
         for (i, mesh) in doc.meshes().enumerate() {
             let asset_name = name_or_index("mesh", mesh.name(), i);
-            if context.should_import(&Some(asset_name.clone())) {
+            if context.should_import(&asset_name) {
                 hydrate_import_mesh(
                     &context,
                     &asset_name,

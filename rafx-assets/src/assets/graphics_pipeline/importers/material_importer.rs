@@ -7,7 +7,7 @@ use crate::schema::{
 };
 use crate::MaterialPassData;
 use hydrate_base::AssetId;
-use hydrate_data::{DataSetResult, RecordAccessor, RecordOwned};
+use hydrate_data::{DataSetResult, ImportableName, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     Builder, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext, Importer,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult, RunContext,
@@ -37,7 +37,7 @@ impl Importer for HydrateMaterialImporter {
         let material_ron =
             ron::de::from_str::<MaterialRon>(&source).map_err(|e| format!("RON error {:?}", e))?;
 
-        let importable = context.add_importable::<MaterialAssetOwned>(None)?;
+        let importable = context.add_default_importable::<MaterialAssetOwned>()?;
         for pass in material_ron.passes {
             for stage in pass.shaders {
                 importable.add_file_reference(&stage.shader_module)?;
@@ -83,13 +83,16 @@ impl Importer for HydrateMaterialImporter {
                 };
 
                 stage.entry_name().set(stage_ron.entry_name)?;
-                stage.shader_module().set(
-                    context.asset_id_for_referenced_file_path(None, &stage_ron.shader_module)?,
-                )?;
+                stage
+                    .shader_module()
+                    .set(context.asset_id_for_referenced_file_path(
+                        ImportableName::default(),
+                        &stage_ron.shader_module,
+                    )?)?;
             }
         }
 
-        context.add_importable(None, default_asset.into_inner()?, None);
+        context.add_default_importable(default_asset.into_inner()?, None);
         Ok(())
     }
 }

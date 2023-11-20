@@ -107,7 +107,7 @@ impl Importer for BlenderPrefabImporter {
         let json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Prefab Import error: {:?}", x))?;
 
-        let importable = context.add_importable::<MeshAdvPrefabAssetOwned>(None)?;
+        let importable = context.add_default_importable::<MeshAdvPrefabAssetOwned>()?;
 
         for object in &json_format.objects {
             if let Some(model) = &object.model {
@@ -141,11 +141,8 @@ impl Importer for BlenderPrefabImporter {
         //
         // Return the created objects
         //
-        context.add_importable(
-            None,
-            default_asset.into_inner()?,
-            Some(import_data.into_inner()?),
-        );
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
         Ok(())
     }
 }

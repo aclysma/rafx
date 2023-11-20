@@ -22,7 +22,7 @@ impl Importer for GpuCompressedImageImporterDds {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_importable::<GpuCompressedImageAssetOwned>(None)?;
+        context.add_default_importable::<GpuCompressedImageAssetOwned>()?;
         Ok(())
     }
 
@@ -190,11 +190,8 @@ impl Importer for GpuCompressedImageImporterDds {
         //
         // Return the created objects
         //
-        context.add_importable(
-            None,
-            default_asset.into_inner()?,
-            Some(import_data.into_inner()?),
-        );
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
         Ok(())
     }
 }

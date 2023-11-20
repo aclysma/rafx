@@ -255,7 +255,7 @@ impl Importer for GpuImageImporterSimple {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_importable::<GpuImageAssetOwned>(None)?;
+        context.add_default_importable::<GpuImageAssetOwned>()?;
         Ok(())
     }
 
@@ -293,11 +293,8 @@ impl Importer for GpuImageImporterSimple {
         //
         // Return the created objects
         //
-        context.add_importable(
-            None,
-            default_asset.into_inner()?,
-            Some(import_data.into_inner()?),
-        );
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
         Ok(())
     }
 }

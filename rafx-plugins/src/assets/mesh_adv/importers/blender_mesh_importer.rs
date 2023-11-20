@@ -2,7 +2,7 @@ use crate::assets::mesh_adv::MeshMaterialAdvAsset;
 use crate::schema::{MeshAdvMeshAssetOwned, MeshAdvMeshImportedDataOwned};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::RecordOwned;
+use hydrate_data::{ImportableName, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
     JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
@@ -95,7 +95,7 @@ impl Importer for BlenderMeshImporter {
             .ok_or("Blender Mesh Import error, mesh file format not recognized")?;
         let mesh_as_json: HydrateMeshJson = serde_json::from_slice(b3f_reader.get_block(0))?;
 
-        let importable = context.add_importable::<MeshAdvMeshAssetOwned>(None)?;
+        let importable = context.add_default_importable::<MeshAdvMeshAssetOwned>()?;
         for mesh_part in &mesh_as_json.mesh_parts {
             importable.add_file_reference(&mesh_part.material)?;
         }
@@ -195,8 +195,8 @@ impl Importer for BlenderMeshImporter {
         // Set up the material slots
         //
         for material_slot in &material_slots {
-            let material_asset_id =
-                context.asset_id_for_referenced_file_path(None, material_slot)?;
+            let material_asset_id = context
+                .asset_id_for_referenced_file_path(ImportableName::default(), material_slot)?;
             let entry = default_asset.material_slots().add_entry()?;
             default_asset
                 .material_slots()
@@ -207,11 +207,8 @@ impl Importer for BlenderMeshImporter {
         //
         // Return the created objects
         //
-        context.add_importable(
-            None,
-            default_asset.into_inner()?,
-            Some(import_data.into_inner()?),
-        );
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
         Ok(())
     }
 }

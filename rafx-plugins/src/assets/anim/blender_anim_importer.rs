@@ -256,7 +256,7 @@ impl Importer for HydrateBlenderAnimImporter {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_importable::<BlenderAnimAssetOwned>(None)?;
+        context.add_default_importable::<BlenderAnimAssetOwned>()?;
         Ok(())
     }
 
@@ -284,11 +284,8 @@ impl Importer for HydrateBlenderAnimImporter {
         //
         // Return the created objects
         //
-        context.add_importable(
-            None,
-            default_asset.into_inner()?,
-            Some(import_data.into_inner()?),
-        );
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
         Ok(())
     }
 }

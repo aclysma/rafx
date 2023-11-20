@@ -29,7 +29,7 @@ impl Importer for ShaderPackageImporterSpv {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_importable::<ShaderPackageAssetOwned>(None)?;
+        context.add_default_importable::<ShaderPackageAssetOwned>()?;
         Ok(())
     }
 
@@ -75,11 +75,8 @@ impl Importer for ShaderPackageImporterSpv {
         //
         // Return the created objects
         //
-        context.add_importable(
-            None,
-            default_asset.into_inner()?,
-            Some(import_data.into_inner()?),
-        );
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
         Ok(())
     }
 }
@@ -97,7 +94,7 @@ impl Importer for ShaderPackageImporterCooked {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_importable::<ShaderPackageAssetOwned>(None)?;
+        context.add_default_importable::<ShaderPackageAssetOwned>()?;
         Ok(())
     }
 
@@ -136,11 +133,8 @@ impl Importer for ShaderPackageImporterCooked {
         //
         // Return the created objects
         //
-        context.add_importable(
-            None,
-            default_asset.into_inner()?,
-            Some(import_data.into_inner()?),
-        );
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
         Ok(())
     }
 }
