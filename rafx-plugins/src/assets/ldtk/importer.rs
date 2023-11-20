@@ -239,7 +239,7 @@ impl JobProcessor for LdtkJobProcessor {
             // Create a material instance
             //
             let image_object_id = file_references
-                .get(&PathBuf::from_str(&tileset.rel_path).unwrap())
+                .get(&tileset.rel_path.as_str().into())
                 .ok_or("Could not find asset ID assocaited with path")?;
 
             let material_instance_artifact_name = format!("mi_{}", tileset.uid);

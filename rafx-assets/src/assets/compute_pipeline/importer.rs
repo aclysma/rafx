@@ -51,7 +51,7 @@ impl Importer for HydrateComputePipelineImporter {
 
         let shader_object_id = context.asset_id_for_referenced_file_path(
             ImportableName::default(),
-            &compute_pipeline_asset_data.shader_module,
+            &compute_pipeline_asset_data.shader_module.into(),
         )?;
 
         //

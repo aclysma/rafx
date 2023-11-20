@@ -588,7 +588,7 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
                 for json_object in json_format.objects {
                     let model = if let Some(json_model) = &json_object.model {
                         let model_object_id = file_references
-                            .get(&json_model.model)
+                            .get(&json_model.model.as_path().into())
                             .ok_or("Could not find asset ID associated with path")?;
                         let model_handle =
                             handle_factory.make_handle_to_default_artifact(*model_object_id);

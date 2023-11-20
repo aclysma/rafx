@@ -78,8 +78,10 @@ impl Importer for BlenderModelImporter {
         let lod_entry = default_asset.lods().entry(entry);
 
         for lod in &json_format.lods {
-            let mesh_object_id =
-                context.asset_id_for_referenced_file_path(ImportableName::default(), &lod.mesh)?;
+            let mesh_object_id = context.asset_id_for_referenced_file_path(
+                ImportableName::default(),
+                &lod.mesh.as_path().into(),
+            )?;
             lod_entry.mesh().set(mesh_object_id)?;
         }
 

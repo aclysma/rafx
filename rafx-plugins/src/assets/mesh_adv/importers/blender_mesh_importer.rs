@@ -195,8 +195,10 @@ impl Importer for BlenderMeshImporter {
         // Set up the material slots
         //
         for material_slot in &material_slots {
-            let material_asset_id = context
-                .asset_id_for_referenced_file_path(ImportableName::default(), material_slot)?;
+            let material_asset_id = context.asset_id_for_referenced_file_path(
+                ImportableName::default(),
+                &material_slot.into(),
+            )?;
             let entry = default_asset.material_slots().add_entry()?;
             default_asset
                 .material_slots()

@@ -87,7 +87,7 @@ impl Importer for HydrateMaterialImporter {
                     .shader_module()
                     .set(context.asset_id_for_referenced_file_path(
                         ImportableName::default(),
-                        &stage_ron.shader_module,
+                        &stage_ron.shader_module.into(),
                     )?)?;
             }
         }

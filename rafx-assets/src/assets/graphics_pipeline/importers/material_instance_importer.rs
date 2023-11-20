@@ -80,8 +80,8 @@ impl Importer for HydrateMaterialInstanceImporter {
                 .set(slot_assignment.array_index as u32)?;
 
             if let Some(image) = &slot_assignment.image {
-                let image_asset_id =
-                    context.asset_id_for_referenced_file_path(ImportableName::default(), image)?;
+                let image_asset_id = context
+                    .asset_id_for_referenced_file_path(ImportableName::default(), &image.into())?;
                 entry.image().set(image_asset_id)?;
             }
 
@@ -100,8 +100,10 @@ impl Importer for HydrateMaterialInstanceImporter {
             }
         }
 
-        let material_asset_id = context
-            .asset_id_for_referenced_file_path(ImportableName::default(), &material_ron.material)?;
+        let material_asset_id = context.asset_id_for_referenced_file_path(
+            ImportableName::default(),
+            &material_ron.material.into(),
+        )?;
         default_asset.material().set(material_asset_id)?;
 
         //
