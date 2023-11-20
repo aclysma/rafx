@@ -1,21 +1,18 @@
-use crate::assets::graphics_pipeline::material_importer::HydrateMaterialImporter;
 use crate::assets::graphics_pipeline::{MaterialInstanceAssetData, MaterialInstanceRon};
 use crate::schema::{
     MaterialInstanceAssetAccessor, MaterialInstanceAssetOwned, MaterialInstanceAssetReader,
 };
-use crate::{GpuImageImporterSimple, MaterialInstanceSlotAssignment};
-use hydrate_base::hashing::HashMap;
+use crate::MaterialInstanceSlotAssignment;
 use hydrate_base::AssetId;
-use hydrate_data::{ImporterId, NullOverride, RecordAccessor, RecordOwned};
+use hydrate_data::{NullOverride, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
-    Builder, BuilderContext, EnumerateDependenciesContext, ImportContext, ImportedImportable,
-    Importer, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult,
-    ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
+    Builder, BuilderContext, EnumerateDependenciesContext, ImportContext, Importer,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult, RunContext,
+    ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
-use uuid::Uuid;
 
 #[derive(TypeUuid, Default)]
 #[uuid = "c5936989-35dc-432c-80ee-30842c172774"]
@@ -37,7 +34,7 @@ impl Importer for HydrateMaterialInstanceImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -45,39 +42,23 @@ impl Importer for HydrateMaterialInstanceImporter {
         let material_instance_ron = ron::de::from_str::<MaterialInstanceRon>(&source)
             .map_err(|e| format!("RON error {:?}", e))?;
 
-        let asset_type = context
-            .schema_set
-            .find_named_type(MaterialInstanceAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-        let mut file_references: Vec<ReferencedSourceFile> = Default::default();
-        let image_importer_id = ImporterId(Uuid::from_bytes(GpuImageImporterSimple::UUID));
-        let material_importer_id = ImporterId(Uuid::from_bytes(HydrateMaterialImporter::UUID));
+        let importable = context.add_importable::<MaterialInstanceAssetOwned>(None)?;
 
-        file_references.push(ReferencedSourceFile {
-            importer_id: material_importer_id,
-            path: material_instance_ron.material.clone(),
-        });
+        importable.add_file_reference(&material_instance_ron.material)?;
 
         for pass in material_instance_ron.slot_assignments {
             if let Some(image) = &pass.image {
-                file_references.push(ReferencedSourceFile {
-                    importer_id: image_importer_id,
-                    path: image.clone(),
-                });
+                importable.add_file_reference(image)?;
             }
         }
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references,
-        }])
+
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -99,14 +80,8 @@ impl Importer for HydrateMaterialInstanceImporter {
                 .set(slot_assignment.array_index as u32)?;
 
             if let Some(image) = &slot_assignment.image {
-                let image = *context
-                    .importable_assets
-                    .get(&None)
-                    .ok_or("Could not find default importable in importable_assets")?
-                    .referenced_paths
-                    .get(image)
-                    .ok_or("Could not find asset ID associated with path")?;
-                entry.image().set(image)?;
+                let image_asset_id = context.asset_id_for_referenced_file_path(None, image)?;
+                entry.image().set(image_asset_id)?;
             }
 
             if let Some(sampler) = &slot_assignment.sampler {
@@ -124,28 +99,15 @@ impl Importer for HydrateMaterialInstanceImporter {
             }
         }
 
-        let material = *context
-            .importable_assets
-            .get(&None)
-            .ok_or("Could not find default importable in importable_assets")?
-            .referenced_paths
-            .get(&material_ron.material)
-            .ok_or("Could not find asset ID associated with path")?;
-        default_asset.material().set(material)?;
+        let material_asset_id =
+            context.asset_id_for_referenced_file_path(None, &material_ron.material)?;
+        default_asset.material().set(material_asset_id)?;
 
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
-            None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: None,
-                default_asset: Some(default_asset.into_inner()?),
-            },
-        );
-        Ok(imported_objects)
+        context.add_importable(None, default_asset.into_inner()?, None);
+        Ok(())
     }
 }
 
@@ -260,9 +222,6 @@ impl Builder for MaterialInstanceBuilder {
         &self,
         context: BuilderContext,
     ) -> PipelineResult<()> {
-        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
-        //let x = MaterialInstanceAssetAccessor::default();
-
         //Future: Might produce jobs per-platform
         context.enqueue_job::<MaterialInstanceJobProcessor>(
             context.data_set,

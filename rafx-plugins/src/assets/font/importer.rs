@@ -3,14 +3,13 @@ use crate::schema::{
     FontAssetAccessor, FontAssetOwned, FontImportedDataOwned, FontImportedDataReader,
 };
 use fnv::FnvHasher;
-use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext, ScannedImportable, SchemaLinker,
+    ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
+    SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -29,23 +28,15 @@ impl Importer for HydrateFontImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
-        let asset_type = context
-            .schema_set
-            .find_named_type(FontAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references: Default::default(),
-        }])
+    ) -> PipelineResult<()> {
+        context.add_importable::<FontAssetOwned>(None)?;
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -65,16 +56,12 @@ impl Importer for HydrateFontImporter {
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
+        context.add_importable(
             None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: Some(import_data.into_inner()?),
-                default_asset: Some(default_asset.into_inner()?),
-            },
+            default_asset.into_inner()?,
+            Some(import_data.into_inner()?),
         );
-        Ok(imported_objects)
+        Ok(())
     }
 }
 

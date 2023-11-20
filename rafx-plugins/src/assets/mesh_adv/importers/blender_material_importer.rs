@@ -1,14 +1,9 @@
-use crate::schema::{
-    MeshAdvBlendMethodEnum, MeshAdvMaterialAssetAccessor, MeshAdvMaterialAssetOwned,
-    MeshAdvShadowMethodEnum,
-};
+use crate::schema::{MeshAdvBlendMethodEnum, MeshAdvMaterialAssetOwned, MeshAdvShadowMethodEnum};
 use hydrate_base::handle::Handle;
-use hydrate_base::hashing::HashMap;
-use hydrate_data::{AssetRefFieldOwned, DataSetError, Enum, RecordAccessor, RecordOwned};
+use hydrate_data::{DataSetError, Enum, RecordOwned};
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportableAsset, ImportedImportable,
-    Importer, ImporterRegistry, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
-    PipelineResult, ReferencedSourceFile, ScanContext, ScannedImportable, SchemaLinker,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
+    JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
 };
 use rafx::assets::ImageAsset;
 use serde::{Deserialize, Serialize};
@@ -85,74 +80,35 @@ impl Importer for BlenderMaterialImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
-        let asset_type = context
-            .schema_set
-            .find_named_type(MeshAdvMaterialAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-
+    ) -> PipelineResult<()> {
         let json_str = std::fs::read_to_string(context.path)?;
         let json_data: HydrateMaterialJsonFileFormat = serde_json::from_str(&json_str)?;
 
-        let mut file_references: Vec<ReferencedSourceFile> = Default::default();
+        let importable = context.add_importable::<MeshAdvMaterialAssetOwned>(None)?;
 
-        fn try_add_image_file_reference(
-            file_references: &mut Vec<ReferencedSourceFile>,
-            path_as_string: &Option<PathBuf>,
-            importer_registry: &ImporterRegistry,
-        ) {
-            if let Some(path_as_string) = path_as_string {
-                let extension = path_as_string
-                    .extension()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
-                // We could be using different image importers scanning for different formats, so search for the best importer
-                let importers = importer_registry.importers_for_file_extension(&extension);
-                let importer_id = importers[0];
-
-                file_references.push(ReferencedSourceFile {
-                    importer_id,
-                    path: path_as_string.clone(),
-                })
-            }
+        if let Some(path) = &json_data.color_texture {
+            importable.add_file_reference(path)?;
         }
 
-        //TODO: We assume a particular importer but we should probably just say what kind of imported
-        // data or asset we would use?
-        try_add_image_file_reference(
-            &mut file_references,
-            &json_data.color_texture,
-            context.importer_registry,
-        );
-        try_add_image_file_reference(
-            &mut file_references,
-            &json_data.metallic_roughness_texture,
-            context.importer_registry,
-        );
-        try_add_image_file_reference(
-            &mut file_references,
-            &json_data.normal_texture,
-            context.importer_registry,
-        );
-        try_add_image_file_reference(
-            &mut file_references,
-            &json_data.emissive_texture,
-            context.importer_registry,
-        );
+        if let Some(path) = &json_data.metallic_roughness_texture {
+            importable.add_file_reference(path)?;
+        }
 
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references,
-        }])
+        if let Some(path) = &json_data.normal_texture {
+            importable.add_file_reference(path)?;
+        }
+
+        if let Some(path) = &json_data.emissive_texture {
+            importable.add_file_reference(path)?;
+        }
+
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -201,43 +157,29 @@ impl Importer for BlenderMaterialImporter {
             .normal_texture_scale()
             .set(json_data.normal_texture_scale)?;
 
-        fn try_find_file_reference(
-            importable_assets: &HashMap<Option<String>, ImportableAsset>,
-            ref_field: AssetRefFieldOwned,
-            path_as_string: &Option<PathBuf>,
-        ) -> PipelineResult<()> {
-            if let Some(path_as_string) = path_as_string {
-                let referenced_asset_id = importable_assets
-                    .get(&None)
-                    .ok_or("Could not find default importable in importable_assets")?
-                    .referenced_paths
-                    .get(path_as_string)
-                    .ok_or("Could not find asset ID associated with path")?;
-                ref_field.set(*referenced_asset_id)?;
-            }
-            Ok(())
+        if let Some(path) = &json_data.color_texture {
+            default_asset
+                .color_texture()
+                .set(context.asset_id_for_referenced_file_path(None, path)?)?;
         }
 
-        try_find_file_reference(
-            &context.importable_assets,
-            default_asset.color_texture(),
-            &json_data.color_texture,
-        )?;
-        try_find_file_reference(
-            &context.importable_assets,
-            default_asset.metallic_roughness_texture(),
-            &json_data.metallic_roughness_texture,
-        )?;
-        try_find_file_reference(
-            &context.importable_assets,
-            default_asset.normal_texture(),
-            &json_data.normal_texture,
-        )?;
-        try_find_file_reference(
-            &context.importable_assets,
-            default_asset.emissive_texture(),
-            &json_data.emissive_texture,
-        )?;
+        if let Some(path) = &json_data.metallic_roughness_texture {
+            default_asset
+                .metallic_roughness_texture()
+                .set(context.asset_id_for_referenced_file_path(None, path)?)?;
+        }
+
+        if let Some(path) = &json_data.normal_texture {
+            default_asset
+                .normal_texture()
+                .set(context.asset_id_for_referenced_file_path(None, path)?)?;
+        }
+
+        if let Some(path) = &json_data.emissive_texture {
+            default_asset
+                .emissive_texture()
+                .set(context.asset_id_for_referenced_file_path(None, path)?)?;
+        }
 
         default_asset.shadow_method().set(shadow_method)?;
         default_asset.blend_method().set(blend_method)?;
@@ -255,16 +197,8 @@ impl Importer for BlenderMaterialImporter {
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
-            None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: None,
-                default_asset: Some(default_asset.into_inner()?),
-            },
-        );
-        Ok(imported_objects)
+        context.add_importable(None, default_asset.into_inner()?, None);
+        Ok(())
     }
 }
 

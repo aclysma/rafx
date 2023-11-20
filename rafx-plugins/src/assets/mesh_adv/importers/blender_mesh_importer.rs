@@ -1,14 +1,11 @@
-use crate::assets::mesh_adv::{BlenderMaterialImporter, MeshMaterialAdvAsset};
-use crate::schema::{
-    MeshAdvMeshAssetAccessor, MeshAdvMeshAssetOwned, MeshAdvMeshImportedDataOwned,
-};
+use crate::assets::mesh_adv::MeshMaterialAdvAsset;
+use crate::schema::{MeshAdvMeshAssetOwned, MeshAdvMeshImportedDataOwned};
 use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
-use hydrate_data::{ImporterId, RecordAccessor, RecordOwned};
+use hydrate_data::RecordOwned;
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ReferencedSourceFile,
-    ScanContext, ScannedImportable, SchemaLinker,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
+    JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
 };
 use rafx::assets::PushBuffer;
 use rafx::base::b3f::B3FReader;
@@ -16,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 use type_uuid::*;
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 enum MeshPartJsonIndexType {
@@ -92,52 +88,25 @@ impl Importer for BlenderMeshImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
-        let mesh_adv_asset_type = context
-            .schema_set
-            .find_named_type(MeshAdvMeshAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-
+    ) -> PipelineResult<()> {
         let bytes = std::fs::read(context.path)?;
 
         let b3f_reader = B3FReader::new(&bytes)
             .ok_or("Blender Mesh Import error, mesh file format not recognized")?;
         let mesh_as_json: HydrateMeshJson = serde_json::from_slice(b3f_reader.get_block(0))?;
 
-        fn try_add_file_reference<T: TypeUuid>(
-            file_references: &mut Vec<ReferencedSourceFile>,
-            path: PathBuf,
-        ) {
-            let importer_image_id = ImporterId(Uuid::from_bytes(T::UUID));
-            file_references.push(ReferencedSourceFile {
-                importer_id: importer_image_id,
-                path,
-            })
-        }
-
-        let mut mesh_file_references = Vec::default();
+        let importable = context.add_importable::<MeshAdvMeshAssetOwned>(None)?;
         for mesh_part in &mesh_as_json.mesh_parts {
-            try_add_file_reference::<BlenderMaterialImporter>(
-                &mut mesh_file_references,
-                mesh_part.material.clone(),
-            );
+            importable.add_file_reference(&mesh_part.material)?;
         }
 
-        let mut scanned_importables = Vec::default();
-        scanned_importables.push(ScannedImportable {
-            name: None,
-            asset_type: mesh_adv_asset_type,
-            file_references: mesh_file_references,
-        });
-
-        Ok(scanned_importables)
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -225,34 +194,25 @@ impl Importer for BlenderMeshImporter {
         //
         // Set up the material slots
         //
-        for material_slot in material_slots {
-            let object_id = context
-                .importable_assets
-                .get(&None)
-                .ok_or("Could not find default importable in importable_assets")?
-                .referenced_paths
-                .get(&material_slot)
-                .ok_or("Could not find asset ID associated with path")?;
+        for material_slot in &material_slots {
+            let material_asset_id =
+                context.asset_id_for_referenced_file_path(None, material_slot)?;
             let entry = default_asset.material_slots().add_entry()?;
             default_asset
                 .material_slots()
                 .entry(entry)
-                .set(*object_id)?;
+                .set(material_asset_id)?;
         }
 
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
+        context.add_importable(
             None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: Some(import_data.into_inner()?),
-                default_asset: Some(default_asset.into_inner()?),
-            },
+            default_asset.into_inner()?,
+            Some(import_data.into_inner()?),
         );
-        Ok(imported_objects)
+        Ok(())
     }
 }
 

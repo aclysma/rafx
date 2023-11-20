@@ -3,14 +3,13 @@ use crate::schema::{
     ShaderPackageAssetAccessor, ShaderPackageAssetOwned, ShaderPackageImportedDataOwned,
     ShaderPackageImportedDataReader,
 };
-use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext, ScannedImportable, SchemaLinker,
+    ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
+    SchemaLinker,
 };
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
@@ -29,23 +28,15 @@ impl Importer for ShaderPackageImporterSpv {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
-        let asset_type = context
-            .schema_set
-            .find_named_type(ShaderPackageAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references: Default::default(),
-        }])
+    ) -> PipelineResult<()> {
+        context.add_importable::<ShaderPackageAssetOwned>(None)?;
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -84,16 +75,12 @@ impl Importer for ShaderPackageImporterSpv {
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
+        context.add_importable(
             None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: Some(import_data.into_inner()?),
-                default_asset: Some(default_asset.into_inner()?),
-            },
+            default_asset.into_inner()?,
+            Some(import_data.into_inner()?),
         );
-        Ok(imported_objects)
+        Ok(())
     }
 }
 
@@ -109,23 +96,15 @@ impl Importer for ShaderPackageImporterCooked {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
-        let asset_type = context
-            .schema_set
-            .find_named_type(ShaderPackageAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references: Default::default(),
-        }])
+    ) -> PipelineResult<()> {
+        context.add_importable::<ShaderPackageAssetOwned>(None)?;
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -157,16 +136,12 @@ impl Importer for ShaderPackageImporterCooked {
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
+        context.add_importable(
             None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: Some(import_data.into_inner()?),
-                default_asset: Some(default_asset.into_inner()?),
-            },
+            default_asset.into_inner()?,
+            Some(import_data.into_inner()?),
         );
-        Ok(imported_objects)
+        Ok(())
     }
 }
 
@@ -243,9 +218,6 @@ impl Builder for ShaderPackageBuilder {
         &self,
         context: BuilderContext,
     ) -> PipelineResult<()> {
-        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
-        //let x = ShaderPackageAssetAccessor::default();
-
         //Future: Might produce jobs per-platform
         context.enqueue_job::<ShaderPackageJobProcessor>(
             context.data_set,

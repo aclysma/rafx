@@ -1,24 +1,21 @@
 use crate::assets::graphics_pipeline::{
     GraphicsPipelineShaderStage, MaterialAssetData, MaterialRon,
 };
-use crate::assets::shader::ShaderPackageImporterCooked;
 use crate::schema::{
     GraphicsPipelineShaderStageReader, MaterialAssetAccessor, MaterialAssetOwned,
     MaterialAssetReader,
 };
 use crate::MaterialPassData;
-use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{DataSetResult, ImporterId, RecordAccessor, RecordOwned};
+use hydrate_data::{DataSetResult, RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
-    Builder, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext,
-    ImportedImportable, Importer, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    PipelineResult, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable,
+    Builder, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext, Importer,
+    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult, RunContext,
+    ScanContext,
 };
 use rafx_framework::MaterialShaderStage;
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
-use uuid::Uuid;
 
 #[derive(TypeUuid, Default)]
 #[uuid = "64d8deb9-5aa5-48e6-9110-9b356e2bce3b"]
@@ -32,7 +29,7 @@ impl Importer for HydrateMaterialImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -40,33 +37,20 @@ impl Importer for HydrateMaterialImporter {
         let material_ron =
             ron::de::from_str::<MaterialRon>(&source).map_err(|e| format!("RON error {:?}", e))?;
 
-        let asset_type = context
-            .schema_set
-            .find_named_type(MaterialAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-        let mut file_references: Vec<ReferencedSourceFile> = Default::default();
-        let shader_package_importer_id =
-            ImporterId(Uuid::from_bytes(ShaderPackageImporterCooked::UUID));
+        let importable = context.add_importable::<MaterialAssetOwned>(None)?;
         for pass in material_ron.passes {
             for stage in pass.shaders {
-                file_references.push(ReferencedSourceFile {
-                    importer_id: shader_package_importer_id,
-                    path: stage.shader_module,
-                });
+                importable.add_file_reference(&stage.shader_module)?;
             }
         }
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references,
-        }])
+
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -100,30 +84,13 @@ impl Importer for HydrateMaterialImporter {
 
                 stage.entry_name().set(stage_ron.entry_name)?;
                 stage.shader_module().set(
-                    *context
-                        .importable_assets
-                        .get(&None)
-                        .ok_or("Could not find default importable in importable_assets")?
-                        .referenced_paths
-                        .get(&stage_ron.shader_module)
-                        .ok_or("Could not find asset ID associated with path")?,
+                    context.asset_id_for_referenced_file_path(None, &stage_ron.shader_module)?,
                 )?;
             }
         }
 
-        //
-        // Return the created objects
-        //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
-            None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: None,
-                default_asset: Some(default_asset.into_inner()?),
-            },
-        );
-        Ok(imported_objects)
+        context.add_importable(None, default_asset.into_inner()?, None);
+        Ok(())
     }
 }
 
@@ -245,9 +212,6 @@ impl Builder for MaterialBuilder {
         &self,
         context: BuilderContext,
     ) -> PipelineResult<()> {
-        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
-        //let x = MaterialAssetAccessor::default();
-
         //Future: Might produce jobs per-platform
         context.enqueue_job::<MaterialJobProcessor>(
             context.data_set,

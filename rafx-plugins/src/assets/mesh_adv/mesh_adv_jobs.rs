@@ -5,10 +5,9 @@ use rafx::api::RafxResourceType;
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::*;
 use hydrate_pipeline::{
-    AssetId, BuilderContext, BuilderRegistryBuilder, DataContainerRef,
-    EnumerateDependenciesContext, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RecordAccessor,
-    RunContext, SchemaLinker,
+    AssetId, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
+    ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, PipelineResult, RecordAccessor, RunContext, SchemaLinker,
 };
 use hydrate_pipeline::{AssetPlugin, Builder};
 use rafx::assets::PushBuffer;
@@ -54,31 +53,25 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
         //
         // Read asset data
         //
-        let data_container = DataContainerRef::from_dataset(
-            context.data_set,
-            context.schema_set,
-            context.input.asset_id,
-        );
-        let x = MeshAdvMaterialAssetAccessor::default();
+        let asset_data = context.asset::<MeshAdvMaterialAssetReader>(context.input.asset_id)?;
 
-        let base_color_factor = x.base_color_factor().get_vec4(data_container)?;
-        let emissive_factor = x.emissive_factor().get_vec3(data_container)?;
+        let base_color_factor = asset_data.base_color_factor().get_vec4()?;
+        let emissive_factor = asset_data.emissive_factor().get_vec3()?;
 
-        let metallic_factor = x.metallic_factor().get(data_container)?;
-        let roughness_factor = x.roughness_factor().get(data_container)?;
-        let normal_texture_scale = x.normal_texture_scale().get(data_container)?;
+        let metallic_factor = asset_data.metallic_factor().get()?;
+        let roughness_factor = asset_data.roughness_factor().get()?;
+        let normal_texture_scale = asset_data.normal_texture_scale().get()?;
 
-        let color_texture = x.color_texture().get(data_container)?;
-        let metallic_roughness_texture = x.metallic_roughness_texture().get(data_container)?;
-        let normal_texture = x.normal_texture().get(data_container)?;
-        let emissive_texture = x.emissive_texture().get(data_container)?;
-        let shadow_method = x.shadow_method().get(data_container)?;
-        let blend_method = x.blend_method().get(data_container)?;
+        let color_texture = asset_data.color_texture().get()?;
+        let metallic_roughness_texture = asset_data.metallic_roughness_texture().get()?;
+        let normal_texture = asset_data.normal_texture().get()?;
+        let emissive_texture = asset_data.emissive_texture().get()?;
+        let shadow_method = asset_data.shadow_method().get()?;
+        let blend_method = asset_data.blend_method().get()?;
 
-        let alpha_threshold = x.alpha_threshold().get(data_container)?;
-        let backface_culling = x.backface_culling().get(data_container)?;
-        let color_texture_has_alpha_channel =
-            x.color_texture_has_alpha_channel().get(data_container)?;
+        let alpha_threshold = asset_data.alpha_threshold().get()?;
+        let backface_culling = asset_data.backface_culling().get()?;
+        let color_texture_has_alpha_channel = asset_data.color_texture_has_alpha_channel().get()?;
 
         //
         // Create the processed data
@@ -491,18 +484,14 @@ impl JobProcessor for MeshAdvModelJobProcessor {
         context.produce_default_artifact_with_handles(
             context.input.asset_id,
             |handle_factory| {
-                let data_container = DataContainerRef::from_dataset(
-                    context.data_set,
-                    context.schema_set,
-                    context.input.asset_id,
-                );
-                let x = MeshAdvModelAssetAccessor::default();
+                let asset_data =
+                    context.asset::<MeshAdvModelAssetReader>(context.input.asset_id)?;
 
                 let mut lods = Vec::default();
-                for entry in x.lods().resolve_entries(data_container)?.into_iter() {
-                    let lod = x.lods().entry(*entry);
-                    let mesh_handle = handle_factory
-                        .make_handle_to_default_artifact(lod.mesh().get(data_container)?);
+                for entry in asset_data.lods().resolve_entries()?.into_iter() {
+                    let lod = asset_data.lods().entry(*entry);
+                    let mesh_handle =
+                        handle_factory.make_handle_to_default_artifact(lod.mesh().get()?);
 
                     lods.push(ModelAdvAssetDataLod { mesh: mesh_handle });
                 }
@@ -528,9 +517,6 @@ impl Builder for MeshAdvModelBuilder {
         &self,
         context: BuilderContext,
     ) -> PipelineResult<()> {
-        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
-        //let x = MeshAdvModelAssetAccessor::default();
-
         //Future: Might produce jobs per-platform
         context.enqueue_job::<MeshAdvModelJobProcessor>(
             context.data_set,
@@ -673,9 +659,6 @@ impl Builder for MeshAdvPrefabBuilder {
         &self,
         context: BuilderContext,
     ) -> PipelineResult<()> {
-        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
-        //let x = MeshAdvPrefabAssetAccessor::default();
-
         //Future: Might produce jobs per-platform
         context.enqueue_job::<MeshAdvPrefabJobProcessor>(
             context.data_set,

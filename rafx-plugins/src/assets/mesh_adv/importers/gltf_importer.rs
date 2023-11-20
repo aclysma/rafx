@@ -1,24 +1,19 @@
-use crate::assets::mesh_adv::MeshAdvMaterialData;
 use crate::schema::{
-    MeshAdvMaterialAssetAccessor, MeshAdvMaterialAssetOwned, MeshAdvMeshAssetAccessor,
-    MeshAdvMeshAssetOwned, MeshAdvMeshImportedDataOwned,
+    MeshAdvMaterialAssetOwned, MeshAdvMeshAssetOwned, MeshAdvMeshImportedDataOwned,
 };
 use fnv::FnvHashMap;
 use gltf::buffer::Data as GltfBufferData;
-use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{RecordAccessor, RecordBuilder, RecordOwned, SchemaSet};
+use hydrate_data::{RecordBuilder, RecordOwned};
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
-    ScannedImportable, SchemaLinker,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
+    JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
 };
-use rafx::assets::schema::{GpuImageAssetAccessor, GpuImageAssetOwned, GpuImageImportedDataOwned};
+use rafx::assets::schema::{GpuImageAssetOwned, GpuImageImportedDataOwned};
 use rafx::assets::PushBuffer;
-use rafx::assets::{GpuImageImporterSimple, ImageAsset, ImageImporterOptions};
+use rafx::assets::{GpuImageImporterSimple, ImageImporterOptions};
 use rafx::assets::{ImageAssetColorSpaceConfig, ImageAssetData};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_uuid::*;
 
@@ -34,53 +29,6 @@ use type_uuid::*;
 //MSFT_packing_normalRoughnessMetallic: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_packing_normalRoughnessMetallic/README.md
 // Normal: NG, Roughness: B, Metallic: A
 //MSFT_packing_occlusionRoughnessMetallic: https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Vendor/MSFT_packing_occlusionRoughnessMetallic/README.md
-
-// #[derive(Debug)]
-// struct GltfImportError {
-//     error_message: String,
-// }
-//
-// impl GltfImportError {
-//     pub fn new(error_message: &str) -> Self {
-//         GltfImportError {
-//             error_message: error_message.to_string(),
-//         }
-//     }
-// }
-
-// impl std::error::Error for GltfImportError {}
-//
-// impl std::fmt::Display for GltfImportError {
-//     fn fmt(
-//         &self,
-//         f: &mut std::fmt::Formatter<'_>,
-//     ) -> std::fmt::Result {
-//         write!(f, "{}", self.error_message)
-//     }
-// }
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-enum GltfObjectId {
-    Name(String),
-    Index(usize),
-}
-
-#[derive(Default, Clone)]
-pub struct MeshAdvGltfMaterialImportData {
-    //pub name: Option<String>,
-    pub material_data: MeshAdvMaterialData,
-
-    pub base_color_texture: Option<Handle<ImageAsset>>,
-    // metalness in B, roughness in G
-    pub metallic_roughness_texture: Option<Handle<ImageAsset>>,
-    pub normal_texture: Option<Handle<ImageAsset>>,
-    pub occlusion_texture: Option<Handle<ImageAsset>>,
-    pub emissive_texture: Option<Handle<ImageAsset>>,
-    // We would need to change the pipeline for these
-    // double_sided: bool, // defult false
-    // alpha_mode: String, // OPAQUE, MASK, BLEND
-    // support for points/lines?
-}
 
 fn build_image_color_space_assignments_from_materials(
     doc: &gltf::Document
@@ -130,11 +78,10 @@ fn build_image_color_space_assignments_from_materials(
 }
 
 fn hydrate_import_image(
+    context: &ImportContext,
     asset_name: &str,
-    schema_set: &SchemaSet,
     image: &gltf::Image,
     images: &Vec<gltf::image::Data>,
-    imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
     image_color_space_assignments: &FnvHashMap<usize, ImageAssetColorSpaceConfig>,
 ) -> PipelineResult<()> {
     let image_data = &images[image.index()];
@@ -218,7 +165,7 @@ fn hydrate_import_image(
     //
     // Create import data
     //
-    let import_data = GpuImageImportedDataOwned::new_builder(schema_set);
+    let import_data = GpuImageImportedDataOwned::new_builder(context.schema_set);
     import_data
         .image_bytes()
         .set(Arc::new(converted_image.to_vec()))?;
@@ -228,35 +175,30 @@ fn hydrate_import_image(
     //
     // Create the default asset
     //
-    let mut default_asset = RecordBuilder::<GpuImageAssetOwned>::new(schema_set);
+    let mut default_asset = RecordBuilder::<GpuImageAssetOwned>::new(context.schema_set);
     GpuImageImporterSimple::set_default_asset_properties(&default_settings, &mut default_asset);
 
     //
     // Return the created objects
     //
-    imported_objects.insert(
+    context.add_importable(
         Some(asset_name.to_string()),
-        ImportedImportable {
-            file_references: Default::default(),
-            import_data: Some(import_data.into_inner()?),
-            default_asset: Some(default_asset.into_inner()?),
-        },
+        default_asset.into_inner()?,
+        Some(import_data.into_inner()?),
     );
-
     Ok(())
 }
 
 fn hydrate_import_material(
+    context: &ImportContext,
     asset_name: &str,
-    schema_set: &SchemaSet,
     material: &gltf::Material,
-    imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
     image_object_ids: &HashMap<usize, AssetId>,
 ) -> PipelineResult<()> {
     //
     // Create the default asset
     //
-    let default_asset = MeshAdvMaterialAssetOwned::new_builder(schema_set);
+    let default_asset = MeshAdvMaterialAssetOwned::new_builder(context.schema_set);
 
     default_asset
         .base_color_factor()
@@ -323,23 +265,19 @@ fn hydrate_import_material(
     //
     // Return the created objects
     //
-    imported_objects.insert(
+    context.add_importable(
         Some(asset_name.to_string()),
-        ImportedImportable {
-            file_references: Default::default(),
-            import_data: None,
-            default_asset: Some(default_asset.into_inner()?),
-        },
+        default_asset.into_inner()?,
+        None,
     );
     Ok(())
 }
 
 fn hydrate_import_mesh(
+    context: &ImportContext,
     asset_name: &str,
     buffers: &[GltfBufferData],
-    schema_set: &SchemaSet,
     mesh: &gltf::Mesh,
-    imported_objects: &mut HashMap<Option<String>, ImportedImportable>,
     material_index_to_asset_id: &HashMap<Option<usize>, AssetId>,
 ) -> PipelineResult<()> {
     //
@@ -363,7 +301,7 @@ fn hydrate_import_mesh(
     //
     // Create the asset (mainly we create a list of material slots referencing the appropriate material asset)
     //
-    let default_asset = MeshAdvMeshAssetOwned::new_builder(schema_set);
+    let default_asset = MeshAdvMeshAssetOwned::new_builder(context.schema_set);
     for material_slot in material_slots {
         let entry = default_asset.material_slots().add_entry()?;
         default_asset
@@ -375,7 +313,7 @@ fn hydrate_import_mesh(
     //
     // Create import data
     //
-    let import_data = MeshAdvMeshImportedDataOwned::new_builder(schema_set);
+    let import_data = MeshAdvMeshImportedDataOwned::new_builder(context.schema_set);
 
     //
     // Iterate all mesh parts, building a single vertex and index buffer. Each MeshPart will
@@ -440,15 +378,11 @@ fn hydrate_import_mesh(
         mesh.index(),
     );
 
-    imported_objects.insert(
+    context.add_importable(
         Some(asset_name.to_string()),
-        ImportedImportable {
-            file_references: Default::default(),
-            import_data: Some(import_data.into_inner()?),
-            default_asset: Some(default_asset.into_inner()?),
-        },
+        default_asset.into_inner()?,
+        Some(import_data.into_inner()?),
     );
-
     Ok(())
 }
 
@@ -476,29 +410,9 @@ impl Importer for GltfImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
-        let mesh_asset_type = context
-            .schema_set
-            .find_named_type(MeshAdvMeshAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-
-        let material_asset_type = context
-            .schema_set
-            .find_named_type(MeshAdvMaterialAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-
-        let image_asset_type = context
-            .schema_set
-            .find_named_type(GpuImageAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-
+    ) -> PipelineResult<()> {
         let (doc, _buffers, _images) =
             ::gltf::import(context.path).map_err(|e| format!("gltf::import error {:?}", e))?;
-
-        let mut importables = Vec::default();
 
         let mut uses_default_material = false;
         for (i, mesh) in doc.meshes().enumerate() {
@@ -511,59 +425,38 @@ impl Importer for GltfImporter {
                 }
             }
 
-            importables.push(ScannedImportable {
-                name: Some(name),
-                asset_type: mesh_asset_type.clone(),
-                file_references: Default::default(),
-            });
+            context.add_importable::<MeshAdvMeshAssetOwned>(Some(name))?;
         }
 
         for (i, material) in doc.materials().enumerate() {
             let name = name_or_index("material", material.name(), i);
-
-            importables.push(ScannedImportable {
-                name: Some(name),
-                asset_type: material_asset_type.clone(),
-                file_references: Default::default(),
-            });
+            context.add_importable::<MeshAdvMaterialAssetOwned>(Some(name))?;
         }
 
         for (i, image) in doc.images().enumerate() {
             let name = name_or_index("image", image.name(), i);
-
-            importables.push(ScannedImportable {
-                name: Some(name),
-                asset_type: image_asset_type.clone(),
-                file_references: Default::default(),
-            });
+            context.add_importable::<GpuImageAssetOwned>(Some(name))?;
         }
 
         if uses_default_material {
             //TODO: Warn?
             let name = "material__default_material".to_string();
-
-            importables.push(ScannedImportable {
-                name: Some(name),
-                asset_type: material_asset_type.clone(),
-                file_references: Default::default(),
-            });
+            context.add_importable::<MeshAdvMaterialAssetOwned>(Some(name))?;
         }
 
-        Ok(importables)
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
         //import_info: &ImportInfo,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
         let (doc, buffers, images) =
             ::gltf::import(context.path).map_err(|e| format!("gltf::import error {:?}", e))?;
-
-        let mut imported_objects = HashMap::default();
 
         let mut image_index_to_object_id = HashMap::default();
         let mut material_index_to_object_id = HashMap::default();
@@ -573,16 +466,15 @@ impl Importer for GltfImporter {
 
         for (i, image) in doc.images().enumerate() {
             let asset_name = name_or_index("image", image.name(), i);
-            if let Some(importable_object) =
-                context.importable_assets.get(&Some(asset_name.clone()))
+            if let Some(importable_asset_id) =
+                context.asset_id_for_importable(&Some(asset_name.clone()))
             {
-                image_index_to_object_id.insert(image.index(), importable_object.id);
+                image_index_to_object_id.insert(image.index(), importable_asset_id);
                 hydrate_import_image(
+                    &context,
                     &asset_name,
-                    context.schema_set,
                     &image,
                     &images,
-                    &mut imported_objects,
                     &image_color_space_assignments,
                 )?;
             }
@@ -590,15 +482,14 @@ impl Importer for GltfImporter {
 
         for (i, material) in doc.materials().enumerate() {
             let asset_name = name_or_index("material", material.name(), i);
-            if let Some(importable_object) =
-                context.importable_assets.get(&Some(asset_name.clone()))
+            if let Some(importable_asset_id) =
+                context.asset_id_for_importable(&Some(asset_name.clone()))
             {
-                material_index_to_object_id.insert(material.index(), importable_object.id);
+                material_index_to_object_id.insert(material.index(), importable_asset_id);
                 hydrate_import_material(
+                    &context,
                     &asset_name,
-                    context.schema_set,
                     &material,
-                    &mut imported_objects,
                     &image_index_to_object_id,
                 )?;
             }
@@ -606,22 +497,18 @@ impl Importer for GltfImporter {
 
         for (i, mesh) in doc.meshes().enumerate() {
             let asset_name = name_or_index("mesh", mesh.name(), i);
-            if context
-                .importable_assets
-                .contains_key(&Some(asset_name.clone()))
-            {
+            if context.should_import(&Some(asset_name.clone())) {
                 hydrate_import_mesh(
+                    &context,
                     &asset_name,
                     &buffers,
-                    context.schema_set,
                     &mesh,
-                    &mut imported_objects,
                     &material_index_to_object_id,
                 )?;
             }
         }
 
-        Ok(imported_objects)
+        Ok(())
     }
 }
 

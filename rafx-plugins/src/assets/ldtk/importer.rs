@@ -5,20 +5,18 @@ use crate::assets::ldtk::{
 use crate::features::tile_layer::TileLayerVertex;
 use crate::schema::{LdtkAssetAccessor, LdtkAssetOwned, LdtkImportDataOwned, LdtkImportDataReader};
 use fnv::FnvHashMap;
-use hydrate_base::hashing::HashMap;
 use hydrate_base::{AssetId, Handle};
-use hydrate_data::{ImporterId, RecordAccessor, RecordOwned};
+use hydrate_data::{RecordAccessor, RecordOwned};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, ReferencedSourceFile, RunContext, ScanContext, ScannedImportable, SchemaLinker,
+    ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
+    SchemaLinker,
 };
 use ldtk_rust::{LayerInstance, Level, TileInstance};
 use rafx::api::RafxResourceType;
 use rafx::assets::{
-    BufferAssetData, GpuImageImporterSimple, MaterialAsset, MaterialInstanceAssetData,
-    MaterialInstanceSlotAssignment,
+    BufferAssetData, MaterialAsset, MaterialInstanceAssetData, MaterialInstanceSlotAssignment,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -137,40 +135,26 @@ impl Importer for HydrateLdtkImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
         let source = std::fs::read_to_string(context.path)?;
         let project: ldtk_rust::Project = serde_json::from_str(&source)?;
 
-        let asset_type = context
-            .schema_set
-            .find_named_type(LdtkAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-
-        let mut file_references: Vec<ReferencedSourceFile> = Default::default();
-        let image_importer_id = ImporterId(Uuid::from_bytes(GpuImageImporterSimple::UUID));
+        let importable = context.add_importable::<LdtkAssetOwned>(None)?;
 
         for tileset in &project.defs.tilesets {
-            file_references.push(ReferencedSourceFile {
-                importer_id: image_importer_id,
-                path: PathBuf::from_str(&tileset.rel_path).unwrap(),
-            })
+            importable.add_file_reference(&tileset.rel_path)?;
         }
 
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references,
-        }])
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -188,16 +172,12 @@ impl Importer for HydrateLdtkImporter {
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
+        context.add_importable(
             None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: Some(import_data.into_inner()?),
-                default_asset: Some(default_asset.into_inner()?),
-            },
+            default_asset.into_inner()?,
+            Some(import_data.into_inner()?),
         );
-        Ok(imported_objects)
+        Ok(())
     }
 }
 
@@ -484,9 +464,6 @@ impl Builder for LdtkBuilder {
         &self,
         context: BuilderContext,
     ) -> PipelineResult<()> {
-        //let data_container = DataContainerRef::from_dataset(data_set, schema_set, asset_id);
-        //let x = LdtkAssetAccessor::default();
-
         //Future: Might produce jobs per-platform
         context.enqueue_job::<LdtkJobProcessor>(
             context.data_set,

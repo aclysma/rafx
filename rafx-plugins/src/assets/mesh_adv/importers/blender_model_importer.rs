@@ -1,17 +1,14 @@
-use crate::assets::mesh_adv::{BlenderMeshImporter, MeshAdvAsset};
-use crate::schema::{MeshAdvModelAssetAccessor, MeshAdvModelAssetOwned};
+use crate::assets::mesh_adv::MeshAdvAsset;
+use crate::schema::MeshAdvModelAssetOwned;
 use hydrate_base::handle::Handle;
-use hydrate_base::hashing::HashMap;
-use hydrate_data::{ImporterId, RecordAccessor, RecordOwned};
+use hydrate_data::RecordOwned;
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportContext, ImportedImportable, Importer,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ReferencedSourceFile,
-    ScanContext, ScannedImportable, SchemaLinker,
+    AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
+    JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use type_uuid::*;
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ModelLodJsonFormat {
@@ -45,7 +42,7 @@ impl Importer for BlenderModelImporter {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -53,30 +50,18 @@ impl Importer for BlenderModelImporter {
         let json_format: HydrateModelJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Model Import error: {:?}", x))?;
 
-        let asset_type = context
-            .schema_set
-            .find_named_type(MeshAdvModelAssetAccessor::schema_name())?
-            .as_record()?
-            .clone();
-        let mut file_references: Vec<ReferencedSourceFile> = Default::default();
-        let shader_package_importer_id = ImporterId(Uuid::from_bytes(BlenderMeshImporter::UUID));
+        let importable = context.add_importable::<MeshAdvModelAssetOwned>(None)?;
         for lod in &json_format.lods {
-            file_references.push(ReferencedSourceFile {
-                importer_id: shader_package_importer_id,
-                path: lod.mesh.clone(),
-            });
+            importable.add_file_reference(&lod.mesh)?;
         }
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references,
-        }])
+
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         //
         // Read the file
         //
@@ -93,30 +78,15 @@ impl Importer for BlenderModelImporter {
         let lod_entry = default_asset.lods().entry(entry);
 
         for lod in &json_format.lods {
-            let mesh_object_id = *context
-                .importable_assets
-                .get(&None)
-                .ok_or("Could not find default importable in importable_assets")?
-                .referenced_paths
-                .get(&lod.mesh)
-                .ok_or("Could not find asset ID associated with path")?;
-
+            let mesh_object_id = context.asset_id_for_referenced_file_path(None, &lod.mesh)?;
             lod_entry.mesh().set(mesh_object_id)?;
         }
 
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
-            None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: None,
-                default_asset: Some(default_asset.into_inner()?),
-            },
-        );
-        Ok(imported_objects)
+        context.add_importable(None, default_asset.into_inner()?, None);
+        Ok(())
     }
 }
 

@@ -1,14 +1,11 @@
 use crate::schema::{
-    GpuCompressedImageAssetAccessor, GpuCompressedImageAssetOwned,
-    GpuCompressedImageImportedDataOwned, GpuImageAssetDataFormatEnum,
+    GpuCompressedImageAssetOwned, GpuCompressedImageImportedDataOwned, GpuImageAssetDataFormatEnum,
 };
 #[cfg(feature = "basis-universal")]
 use basis_universal::BasisTextureType;
-use hydrate_base::hashing::HashMap;
-use hydrate_data::{RecordAccessor, RecordOwned};
-use hydrate_pipeline::{
-    ImportContext, ImportedImportable, Importer, PipelineResult, ScanContext, ScannedImportable,
-};
+
+use hydrate_data::RecordOwned;
+use hydrate_pipeline::{ImportContext, Importer, PipelineResult, ScanContext};
 use std::sync::Arc;
 use type_uuid::*;
 
@@ -24,25 +21,15 @@ impl Importer for GpuCompressedImageImporterBasis {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
-        let asset_type = context
-            .schema_set
-            .find_named_type(GpuCompressedImageAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
-            .clone();
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references: Default::default(),
-        }])
+    ) -> PipelineResult<()> {
+        context.add_importable::<GpuCompressedImageAssetOwned>(None)?;
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         let bytes = std::fs::read(context.path).unwrap();
 
         let transcoder = basis_universal::Transcoder::new();
@@ -115,15 +102,11 @@ impl Importer for GpuCompressedImageImporterBasis {
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
+        context.add_importable(
             None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: Some(import_data.into_inner().unwrap()),
-                default_asset: Some(default_asset.into_inner().unwrap()),
-            },
+            default_asset.into_inner()?,
+            Some(import_data.into_inner()?),
         );
-        Ok(imported_objects)
+        Ok(())
     }
 }

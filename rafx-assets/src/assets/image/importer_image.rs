@@ -9,14 +9,12 @@ use crate::schema::{
 use crate::{
     ImageAssetBasisCompressionSettings, ImageAssetBasisCompressionType, ImageAssetMipGeneration,
 };
-use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{RecordAccessor, RecordBuilder, RecordOwned, SchemaLinker};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, ImportedImportable, Importer, ImporterRegistryBuilder,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext, ScannedImportable,
+    ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
+    JobOutput, JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
 };
 use image::GenericImageView;
 use rafx_api::RafxResourceType;
@@ -256,25 +254,15 @@ impl Importer for GpuImageImporterSimple {
     fn scan_file(
         &self,
         context: ScanContext,
-    ) -> PipelineResult<Vec<ScannedImportable>> {
-        let asset_type = context
-            .schema_set
-            .find_named_type(GpuImageAssetAccessor::schema_name())
-            .unwrap()
-            .as_record()
-            .unwrap()
-            .clone();
-        Ok(vec![ScannedImportable {
-            name: None,
-            asset_type,
-            file_references: Default::default(),
-        }])
+    ) -> PipelineResult<()> {
+        context.add_importable::<GpuImageAssetOwned>(None)?;
+        Ok(())
     }
 
     fn import_file(
         &self,
         context: ImportContext,
-    ) -> PipelineResult<HashMap<Option<String>, ImportedImportable>> {
+    ) -> PipelineResult<()> {
         let (image_bytes, width, height) = {
             profiling::scope!("Load Image from Disk");
             let decoded_image = ::image::open(context.path).unwrap();
@@ -305,16 +293,12 @@ impl Importer for GpuImageImporterSimple {
         //
         // Return the created objects
         //
-        let mut imported_objects = HashMap::default();
-        imported_objects.insert(
+        context.add_importable(
             None,
-            ImportedImportable {
-                file_references: Default::default(),
-                import_data: Some(import_data.into_inner().unwrap()),
-                default_asset: Some(default_asset.into_inner().unwrap()),
-            },
+            default_asset.into_inner()?,
+            Some(import_data.into_inner()?),
         );
-        Ok(imported_objects)
+        Ok(())
     }
 }
 
