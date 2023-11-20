@@ -3,7 +3,6 @@ use fnv::FnvHashMap;
 use glam::Vec3;
 use hydrate_base::handle::Handle;
 use hydrate_base::LoadHandle;
-use hydrate_base::{ArtifactId, AssetId};
 use rafx::api::RafxResult;
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset,
@@ -48,33 +47,6 @@ pub struct LdtkLevelData {
 pub struct LdtkTileSet {
     pub image: Handle<ImageAsset>,
     pub material_instance: Handle<MaterialInstanceAsset>,
-    pub image_width: u32,
-    pub image_height: u32,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct HydrateLdtkLayerDataTemp {
-    pub material_instance: ArtifactId,
-    pub draw_call_data: Vec<LdtkLayerDrawCallData>,
-    pub z_pos: f32,
-    pub world_x_pos: i64,
-    pub world_y_pos: i64,
-    pub grid_width: i64,
-    pub grid_height: i64,
-    pub grid_size: i64,
-}
-
-#[derive(Clone, Debug)]
-pub struct HydrateLdtkLevelDataTemp {
-    pub layer_data: Vec<HydrateLdtkLayerDataTemp>,
-    pub vertex_data: Option<hydrate_pipeline::AssetArtifactIdPair>,
-    pub index_data: Option<hydrate_pipeline::AssetArtifactIdPair>,
-}
-
-#[derive(Clone, Debug)]
-pub struct HydrateLdtkTileSetTemp {
-    pub image: AssetId,
-    pub material_instance: ArtifactId,
     pub image_width: u32,
     pub image_height: u32,
 }

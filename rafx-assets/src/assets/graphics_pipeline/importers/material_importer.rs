@@ -1,10 +1,7 @@
 use crate::assets::graphics_pipeline::{
     GraphicsPipelineShaderStage, MaterialAssetData, MaterialRon,
 };
-use crate::schema::{
-    GraphicsPipelineShaderStageRecord, GraphicsPipelineShaderStageRef, MaterialAssetAccessor,
-    MaterialAssetRecord,
-};
+use crate::schema::{GraphicsPipelineShaderStageRef, MaterialAssetAccessor, MaterialAssetRecord};
 use crate::MaterialPassData;
 use hydrate_base::AssetId;
 use hydrate_data::{DataSetResult, ImportableName, Record, RecordAccessor};
@@ -19,9 +16,9 @@ use type_uuid::*;
 
 #[derive(TypeUuid, Default)]
 #[uuid = "64d8deb9-5aa5-48e6-9110-9b356e2bce3b"]
-pub struct HydrateMaterialImporter;
+pub struct MaterialImporter;
 
-impl Importer for HydrateMaterialImporter {
+impl Importer for MaterialImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["material"]
     }

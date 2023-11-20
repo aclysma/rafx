@@ -1,17 +1,15 @@
 use crate::schema::{MeshAdvBlendMethodEnum, MeshAdvMaterialAssetRecord, MeshAdvShadowMethodEnum};
-use hydrate_base::handle::Handle;
 use hydrate_data::{DataSetError, Enum, ImportableName, Record};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
     JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
 };
-use rafx::assets::ImageAsset;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use type_uuid::*;
 
 #[derive(Serialize, Deserialize)]
-struct HydrateMaterialJsonFileFormat {
+struct MaterialJsonFileFormat {
     pub base_color_factor: [f32; 4], // default: 1,1,1,1
     pub emissive_factor: [f32; 3],   // default: 0,0,0
     pub metallic_factor: f32,        // default: 1,
@@ -39,35 +37,6 @@ struct HydrateMaterialJsonFileFormat {
     pub color_texture_has_alpha_channel: bool,
 }
 
-#[derive(Serialize, Deserialize)]
-struct MaterialJsonFileFormat {
-    pub base_color_factor: [f32; 4], // default: 1,1,1,1
-    pub emissive_factor: [f32; 3],   // default: 0,0,0
-    pub metallic_factor: f32,        // default: 1,
-    pub roughness_factor: f32,       // default: 1,
-    pub normal_texture_scale: f32,   // default: 1
-
-    #[serde(default)]
-    pub color_texture: Option<Handle<ImageAsset>>,
-    #[serde(default)]
-    pub metallic_roughness_texture: Option<Handle<ImageAsset>>,
-    #[serde(default)]
-    pub normal_texture: Option<Handle<ImageAsset>>,
-    #[serde(default)]
-    pub emissive_texture: Option<Handle<ImageAsset>>,
-
-    #[serde(default)]
-    pub shadow_method: Option<String>,
-    #[serde(default)]
-    pub blend_method: Option<String>,
-    #[serde(default)]
-    pub alpha_threshold: Option<f32>,
-    #[serde(default)]
-    pub backface_culling: Option<bool>,
-    #[serde(default)]
-    pub color_texture_has_alpha_channel: bool,
-}
-
 #[derive(TypeUuid, Default)]
 #[uuid = "e76bab79-654a-476f-93b1-88cd5fee7d1f"]
 pub struct BlenderMaterialImporter;
@@ -82,7 +51,7 @@ impl Importer for BlenderMaterialImporter {
         context: ScanContext,
     ) -> PipelineResult<()> {
         let json_str = std::fs::read_to_string(context.path)?;
-        let json_data: HydrateMaterialJsonFileFormat = serde_json::from_str(&json_str)?;
+        let json_data: MaterialJsonFileFormat = serde_json::from_str(&json_str)?;
 
         let importable = context.add_default_importable::<MeshAdvMaterialAssetRecord>()?;
 
@@ -113,7 +82,7 @@ impl Importer for BlenderMaterialImporter {
         // Read the file
         //
         let json_str = std::fs::read_to_string(context.path)?;
-        let json_data: HydrateMaterialJsonFileFormat = serde_json::from_str(&json_str)?;
+        let json_data: MaterialJsonFileFormat = serde_json::from_str(&json_str)?;
 
         //
         // Parse strings to enums or provide default value if they weren't specified

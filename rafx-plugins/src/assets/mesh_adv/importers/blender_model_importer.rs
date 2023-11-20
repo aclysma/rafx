@@ -1,6 +1,4 @@
-use crate::assets::mesh_adv::MeshAdvAsset;
 use crate::schema::MeshAdvModelAssetRecord;
-use hydrate_base::handle::Handle;
 use hydrate_data::{ImportableName, Record};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
@@ -12,22 +10,12 @@ use type_uuid::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ModelLodJsonFormat {
-    pub mesh: Handle<MeshAdvAsset>,
+    pub mesh: PathBuf,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ModelJsonFormat {
     pub lods: Vec<ModelLodJsonFormat>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct HydrateModelLodJsonFormat {
-    pub mesh: PathBuf,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct HydrateModelJsonFormat {
-    pub lods: Vec<HydrateModelLodJsonFormat>,
 }
 
 #[derive(TypeUuid, Default)]
@@ -47,7 +35,7 @@ impl Importer for BlenderModelImporter {
         // Read the file
         //
         let source = std::fs::read_to_string(context.path)?;
-        let json_format: HydrateModelJsonFormat = serde_json::from_str(&source)
+        let json_format: ModelJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Model Import error: {:?}", x))?;
 
         let importable = context.add_default_importable::<MeshAdvModelAssetRecord>()?;
@@ -66,7 +54,7 @@ impl Importer for BlenderModelImporter {
         // Read the file
         //
         let source = std::fs::read_to_string(context.path)?;
-        let json_format: HydrateModelJsonFormat = serde_json::from_str(&source)
+        let json_format: ModelJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Model Import error: {:?}", x))?;
 
         //

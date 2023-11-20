@@ -13,9 +13,9 @@ use type_uuid::*;
 
 #[derive(TypeUuid, Default)]
 #[uuid = "a78c8ec9-11bf-45aa-886b-0080f3a52b40"]
-pub struct HydrateComputePipelineImporter;
+pub struct ComputePipelineImporter;
 
-impl Importer for HydrateComputePipelineImporter {
+impl Importer for ComputePipelineImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["compute"]
     }
@@ -161,7 +161,7 @@ impl AssetPlugin for ComputePipelineAssetPlugin {
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<HydrateComputePipelineImporter>();
+        importer_registry.register_handler::<ComputePipelineImporter>();
         builder_registry.register_handler::<ComputePipelineBuilder>();
         job_processor_registry.register_job_processor::<ComputePipelineJobProcessor>();
     }

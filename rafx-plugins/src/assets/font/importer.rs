@@ -16,9 +16,9 @@ use type_uuid::*;
 
 #[derive(TypeUuid, Default)]
 #[uuid = "b99453db-4d59-4801-8b89-c86ba6fb4620"]
-pub struct HydrateFontImporter;
+pub struct FontImporter;
 
-impl Importer for HydrateFontImporter {
+impl Importer for FontImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["ttf"]
     }
@@ -169,7 +169,7 @@ impl AssetPlugin for FontAssetPlugin {
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<HydrateFontImporter>();
+        importer_registry.register_handler::<FontImporter>();
         builder_registry.register_handler::<FontBuilder>();
         job_processor_registry.register_job_processor::<FontJobProcessor>();
     }

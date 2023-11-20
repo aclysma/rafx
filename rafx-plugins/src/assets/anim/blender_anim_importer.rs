@@ -244,9 +244,9 @@ fn parse_action(
 
 #[derive(TypeUuid, Default)]
 #[uuid = "238792bf-7078-4675-9f4d-cf53305806c6"]
-pub struct HydrateBlenderAnimImporter;
+pub struct BlenderAnimImporter;
 
-impl Importer for HydrateBlenderAnimImporter {
+impl Importer for BlenderAnimImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["blender_anim"]
     }
@@ -385,7 +385,7 @@ impl AssetPlugin for BlenderAnimAssetPlugin {
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<HydrateBlenderAnimImporter>();
+        importer_registry.register_handler::<BlenderAnimImporter>();
         builder_registry.register_handler::<BlenderAnimBuilder>();
         job_processor_registry.register_job_processor::<BlenderAnimJobProcessor>();
     }

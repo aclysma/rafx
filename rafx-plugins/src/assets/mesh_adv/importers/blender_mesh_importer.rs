@@ -1,6 +1,4 @@
-use crate::assets::mesh_adv::MeshMaterialAdvAsset;
 use crate::schema::{MeshAdvMeshAssetRecord, MeshAdvMeshImportedDataRecord};
-use hydrate_base::handle::Handle;
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{ImportableName, Record};
 use hydrate_pipeline::{
@@ -32,27 +30,7 @@ struct MeshPartJson {
     pub uv: Vec<u32>,
     pub indices: u32,
     pub index_type: MeshPartJsonIndexType,
-    pub material: Handle<MeshMaterialAdvAsset>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct HydrateMeshPartJson {
-    #[serde(default)]
-    pub position: Option<u32>,
-    #[serde(default)]
-    pub normal: Option<u32>,
-    #[serde(default)]
-    pub tangent: Option<u32>,
-    #[serde(default)]
-    pub uv: Vec<u32>,
-    pub indices: u32,
-    pub index_type: MeshPartJsonIndexType,
     pub material: PathBuf,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct HydrateMeshJson {
-    pub mesh_parts: Vec<HydrateMeshPartJson>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -93,7 +71,7 @@ impl Importer for BlenderMeshImporter {
 
         let b3f_reader = B3FReader::new(&bytes)
             .ok_or("Blender Mesh Import error, mesh file format not recognized")?;
-        let mesh_as_json: HydrateMeshJson = serde_json::from_slice(b3f_reader.get_block(0))?;
+        let mesh_as_json: MeshJson = serde_json::from_slice(b3f_reader.get_block(0))?;
 
         let importable = context.add_default_importable::<MeshAdvMeshAssetRecord>()?;
         for mesh_part in &mesh_as_json.mesh_parts {
@@ -114,7 +92,7 @@ impl Importer for BlenderMeshImporter {
 
         let b3f_reader = B3FReader::new(&bytes)
             .ok_or("Blender Mesh Import error, mesh file format not recognized")?;
-        let mesh_as_json: HydrateMeshJson =
+        let mesh_as_json: MeshJson =
             serde_json::from_slice(b3f_reader.get_block(0)).map_err(|e| e.to_string())?;
 
         let import_data = MeshAdvMeshImportedDataRecord::new_builder(context.schema_set);

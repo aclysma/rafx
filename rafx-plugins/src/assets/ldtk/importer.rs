@@ -1,11 +1,10 @@
 use crate::assets::ldtk::{
-    HydrateLdtkLayerDataTemp, HydrateLdtkLevelDataTemp, HydrateLdtkTileSetTemp, LdtkAssetData,
-    LdtkLayerData, LdtkLayerDrawCallData, LdtkLevelData, LdtkTileSet, LevelUid,
+    LdtkAssetData, LdtkLayerData, LdtkLayerDrawCallData, LdtkLevelData, LdtkTileSet, LevelUid,
 };
 use crate::features::tile_layer::TileLayerVertex;
 use crate::schema::{LdtkAssetAccessor, LdtkAssetRecord, LdtkImportDataRecord};
 use fnv::FnvHashMap;
-use hydrate_base::{AssetId, Handle};
+use hydrate_base::{ArtifactId, AssetId, Handle};
 use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
@@ -19,10 +18,16 @@ use rafx::assets::{
     BufferAssetData, MaterialAsset, MaterialInstanceAssetData, MaterialInstanceSlotAssignment,
 };
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::str::FromStr;
 use type_uuid::*;
 use uuid::Uuid;
+
+#[derive(Clone, Debug)]
+pub struct HydrateLdtkTileSetTemp {
+    pub image: AssetId,
+    pub material_instance: ArtifactId,
+    pub image_width: u32,
+    pub image_height: u32,
+}
 
 fn generate_draw_data(
     level: &Level,
@@ -125,9 +130,9 @@ fn generate_draw_data(
 
 #[derive(TypeUuid, Default)]
 #[uuid = "7d507fac-ccb8-47fb-a4af-15da5e751601"]
-pub struct HydrateLdtkImporter;
+pub struct LdtkImporter;
 
-impl Importer for HydrateLdtkImporter {
+impl Importer for LdtkImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["ldtk"]
     }
@@ -283,6 +288,25 @@ impl JobProcessor for LdtkJobProcessor {
                     image_height,
                 },
             );
+        }
+
+        #[derive(Serialize, Deserialize, Clone, Debug)]
+        pub struct HydrateLdtkLayerDataTemp {
+            pub material_instance: ArtifactId,
+            pub draw_call_data: Vec<LdtkLayerDrawCallData>,
+            pub z_pos: f32,
+            pub world_x_pos: i64,
+            pub world_y_pos: i64,
+            pub grid_width: i64,
+            pub grid_height: i64,
+            pub grid_size: i64,
+        }
+
+        #[derive(Clone, Debug)]
+        pub struct HydrateLdtkLevelDataTemp {
+            pub layer_data: Vec<HydrateLdtkLayerDataTemp>,
+            pub vertex_data: Option<hydrate_pipeline::AssetArtifactIdPair>,
+            pub index_data: Option<hydrate_pipeline::AssetArtifactIdPair>,
         }
 
         let mut levels_temp = FnvHashMap::<LevelUid, HydrateLdtkLevelDataTemp>::default();
@@ -483,7 +507,7 @@ impl AssetPlugin for LdtkAssetPlugin {
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,
     ) {
-        importer_registry.register_handler::<HydrateLdtkImporter>();
+        importer_registry.register_handler::<LdtkImporter>();
         builder_registry.register_handler::<LdtkBuilder>();
         job_processor_registry.register_job_processor::<LdtkJobProcessor>();
     }

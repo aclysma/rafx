@@ -14,7 +14,7 @@ use type_uuid::*;
 
 #[derive(TypeUuid, Default)]
 #[uuid = "c5936989-35dc-432c-80ee-30842c172774"]
-pub struct HydrateMaterialInstanceImporter;
+pub struct MaterialInstanceImporter;
 //
 // impl HydrateMaterialInstanceImporter {
 //     pub fn set_material_instance_properties(
@@ -24,7 +24,7 @@ pub struct HydrateMaterialInstanceImporter;
 //     }
 // }
 
-impl Importer for HydrateMaterialInstanceImporter {
+impl Importer for MaterialInstanceImporter {
     fn supported_file_extensions(&self) -> &[&'static str] {
         &["materialinstance"]
     }

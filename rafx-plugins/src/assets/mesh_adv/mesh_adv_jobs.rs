@@ -574,7 +574,7 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
             context.imported_data::<MeshAdvPrefabImportDataRecord>(context.input.asset_id)?;
 
         let json_str = imported_data.json_data().get()?;
-        let json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&json_str)
+        let json_format: MeshAdvPrefabJsonFormat = serde_json::from_str(&json_str)
             .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
 
         let file_references = context

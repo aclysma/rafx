@@ -1,6 +1,5 @@
-use crate::assets::mesh_adv::{ModelAdvAsset, PrefabAdvAssetDataObjectLightKind};
+use crate::assets::mesh_adv::PrefabAdvAssetDataObjectLightKind;
 use crate::schema::{MeshAdvPrefabAssetRecord, MeshAdvPrefabImportDataRecord};
-use hydrate_base::handle::Handle;
 use hydrate_data::Record;
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
@@ -15,11 +14,6 @@ pub struct MeshAdvPrefabJsonFormatObjectTransform {
     pub position: glam::Vec3,
     pub rotation: glam::Quat,
     pub scale: glam::Vec3,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct MeshAdvPrefabJsonFormatObjectModel {
-    pub model: Handle<ModelAdvAsset>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
@@ -59,6 +53,11 @@ pub struct MeshAdvPrefabJsonFormatObjectLight {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct MeshAdvPrefabJsonFormatObjectModel {
+    pub model: PathBuf, //Handle<ModelAdvAsset>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct MeshAdvPrefabJsonFormatObject {
     pub transform: MeshAdvPrefabJsonFormatObjectTransform,
     pub model: Option<MeshAdvPrefabJsonFormatObjectModel>,
@@ -68,23 +67,6 @@ pub struct MeshAdvPrefabJsonFormatObject {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MeshAdvPrefabJsonFormat {
     pub objects: Vec<MeshAdvPrefabJsonFormatObject>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct HydrateMeshAdvPrefabJsonFormatObjectModel {
-    pub model: PathBuf, //Handle<ModelAdvAsset>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct HydrateMeshAdvPrefabJsonFormatObject {
-    pub transform: MeshAdvPrefabJsonFormatObjectTransform,
-    pub model: Option<HydrateMeshAdvPrefabJsonFormatObjectModel>,
-    pub light: Option<MeshAdvPrefabJsonFormatObjectLight>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct HydrateMeshAdvPrefabJsonFormat {
-    pub objects: Vec<HydrateMeshAdvPrefabJsonFormatObject>,
 }
 
 #[derive(TypeUuid, Default)]
@@ -104,7 +86,7 @@ impl Importer for BlenderPrefabImporter {
         // Read the file
         //
         let source = std::fs::read_to_string(context.path)?;
-        let json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&source)
+        let json_format: MeshAdvPrefabJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Prefab Import error: {:?}", x))?;
 
         let importable = context.add_default_importable::<MeshAdvPrefabAssetRecord>()?;
@@ -127,7 +109,7 @@ impl Importer for BlenderPrefabImporter {
         //
         let source = std::fs::read_to_string(context.path)?;
         // We don't actually need to parse this now but worth doing to make sure it's well-formed at import time
-        let _json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&source)
+        let _json_format: MeshAdvPrefabJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Prefab Import error: {:?}", x))?;
 
         //
