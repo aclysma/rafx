@@ -23,73 +23,77 @@ impl ComputePipelineAssetAccessor {
         AssetRefFieldAccessor::new(self.0.push("shader_module"))
     }
 }
-pub struct ComputePipelineAssetReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct ComputePipelineAssetRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for ComputePipelineAssetReader<'a> {
+impl<'a> FieldRef<'a> for ComputePipelineAssetRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        ComputePipelineAssetReader(property_path, data_container)
+        ComputePipelineAssetRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for ComputePipelineAssetReader<'a> {
+impl<'a> RecordRef for ComputePipelineAssetRef<'a> {
     fn schema_name() -> &'static str {
         "ComputePipelineAsset"
     }
 }
 
-impl<'a> ComputePipelineAssetReader<'a> {
-    pub fn entry_name(&self) -> StringFieldReader {
-        StringFieldReader::new(self.0.push("entry_name"), self.1)
+impl<'a> ComputePipelineAssetRef<'a> {
+    pub fn entry_name(&self) -> StringFieldRef {
+        StringFieldRef::new(self.0.push("entry_name"), self.1)
     }
 
-    pub fn shader_module(&self) -> AssetRefFieldReader {
-        AssetRefFieldReader::new(self.0.push("shader_module"), self.1)
+    pub fn shader_module(&self) -> AssetRefFieldRef {
+        AssetRefFieldRef::new(self.0.push("shader_module"), self.1)
     }
 }
-pub struct ComputePipelineAssetWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct ComputePipelineAssetRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for ComputePipelineAssetWriter<'a> {
+impl<'a> FieldRefMut<'a> for ComputePipelineAssetRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        ComputePipelineAssetWriter(property_path, data_container.clone())
+        ComputePipelineAssetRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for ComputePipelineAssetWriter<'a> {
+impl<'a> RecordRefMut for ComputePipelineAssetRefMut<'a> {
     fn schema_name() -> &'static str {
         "ComputePipelineAsset"
     }
 }
 
-impl<'a> ComputePipelineAssetWriter<'a> {
-    pub fn entry_name(self: &'a Self) -> StringFieldWriter {
-        StringFieldWriter::new(self.0.push("entry_name"), &self.1)
+impl<'a> ComputePipelineAssetRefMut<'a> {
+    pub fn entry_name(self: &'a Self) -> StringFieldRefMut {
+        StringFieldRefMut::new(self.0.push("entry_name"), &self.1)
     }
 
-    pub fn shader_module(self: &'a Self) -> AssetRefFieldWriter {
-        AssetRefFieldWriter::new(self.0.push("shader_module"), &self.1)
-    }
-}
-pub struct ComputePipelineAssetOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for ComputePipelineAssetOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        ComputePipelineAssetOwned(property_path, data_container.clone())
+    pub fn shader_module(self: &'a Self) -> AssetRefFieldRefMut {
+        AssetRefFieldRefMut::new(self.0.push("shader_module"), &self.1)
     }
 }
+pub struct ComputePipelineAssetRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for ComputePipelineAssetOwned {
+impl Field for ComputePipelineAssetRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        ComputePipelineAssetRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for ComputePipelineAssetRecord {
+    type Reader<'a> = ComputePipelineAssetRef<'a>;
+    type Writer<'a> = ComputePipelineAssetRefMut<'a>;
+    type Accessor = ComputePipelineAssetAccessor;
+
     fn schema_name() -> &'static str {
         "ComputePipelineAsset"
     }
 }
 
-impl ComputePipelineAssetOwned {
-    pub fn entry_name(self: &Self) -> StringFieldOwned {
-        StringFieldOwned::new(self.0.push("entry_name"), &self.1)
+impl ComputePipelineAssetRecord {
+    pub fn entry_name(self: &Self) -> StringField {
+        StringField::new(self.0.push("entry_name"), &self.1)
     }
 
-    pub fn shader_module(self: &Self) -> AssetRefFieldOwned {
-        AssetRefFieldOwned::new(self.0.push("shader_module"), &self.1)
+    pub fn shader_module(self: &Self) -> AssetRefField {
+        AssetRefField::new(self.0.push("shader_module"), &self.1)
     }
 }
 #[derive(Default)]
@@ -109,53 +113,57 @@ impl RecordAccessor for GpuCompressedImageAssetAccessor {
 
 impl GpuCompressedImageAssetAccessor {
 }
-pub struct GpuCompressedImageAssetReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct GpuCompressedImageAssetRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for GpuCompressedImageAssetReader<'a> {
+impl<'a> FieldRef<'a> for GpuCompressedImageAssetRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        GpuCompressedImageAssetReader(property_path, data_container)
+        GpuCompressedImageAssetRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for GpuCompressedImageAssetReader<'a> {
+impl<'a> RecordRef for GpuCompressedImageAssetRef<'a> {
     fn schema_name() -> &'static str {
         "GpuCompressedImageAsset"
     }
 }
 
-impl<'a> GpuCompressedImageAssetReader<'a> {
+impl<'a> GpuCompressedImageAssetRef<'a> {
 }
-pub struct GpuCompressedImageAssetWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct GpuCompressedImageAssetRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for GpuCompressedImageAssetWriter<'a> {
+impl<'a> FieldRefMut<'a> for GpuCompressedImageAssetRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        GpuCompressedImageAssetWriter(property_path, data_container.clone())
+        GpuCompressedImageAssetRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for GpuCompressedImageAssetWriter<'a> {
+impl<'a> RecordRefMut for GpuCompressedImageAssetRefMut<'a> {
     fn schema_name() -> &'static str {
         "GpuCompressedImageAsset"
     }
 }
 
-impl<'a> GpuCompressedImageAssetWriter<'a> {
+impl<'a> GpuCompressedImageAssetRefMut<'a> {
 }
-pub struct GpuCompressedImageAssetOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
+pub struct GpuCompressedImageAssetRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl FieldOwned for GpuCompressedImageAssetOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        GpuCompressedImageAssetOwned(property_path, data_container.clone())
+impl Field for GpuCompressedImageAssetRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        GpuCompressedImageAssetRecord(property_path, data_container.clone())
     }
 }
 
-impl RecordOwned for GpuCompressedImageAssetOwned {
+impl Record for GpuCompressedImageAssetRecord {
+    type Reader<'a> = GpuCompressedImageAssetRef<'a>;
+    type Writer<'a> = GpuCompressedImageAssetRefMut<'a>;
+    type Accessor = GpuCompressedImageAssetAccessor;
+
     fn schema_name() -> &'static str {
         "GpuCompressedImageAsset"
     }
 }
 
-impl GpuCompressedImageAssetOwned {
+impl GpuCompressedImageAssetRecord {
 }
 #[derive(Default)]
 pub struct GpuCompressedImageImportedDataAccessor(PropertyPath);
@@ -197,121 +205,125 @@ impl GpuCompressedImageImportedDataAccessor {
         U32FieldAccessor::new(self.0.push("width"))
     }
 }
-pub struct GpuCompressedImageImportedDataReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct GpuCompressedImageImportedDataRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for GpuCompressedImageImportedDataReader<'a> {
+impl<'a> FieldRef<'a> for GpuCompressedImageImportedDataRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        GpuCompressedImageImportedDataReader(property_path, data_container)
+        GpuCompressedImageImportedDataRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for GpuCompressedImageImportedDataReader<'a> {
+impl<'a> RecordRef for GpuCompressedImageImportedDataRef<'a> {
     fn schema_name() -> &'static str {
         "GpuCompressedImageImportedData"
     }
 }
 
-impl<'a> GpuCompressedImageImportedDataReader<'a> {
-    pub fn data_layers(&self) -> DynamicArrayFieldReader::<GpuImageSubresourceLayerReader> {
-        DynamicArrayFieldReader::<GpuImageSubresourceLayerReader>::new(self.0.push("data_layers"), self.1)
+impl<'a> GpuCompressedImageImportedDataRef<'a> {
+    pub fn data_layers(&self) -> DynamicArrayFieldRef::<GpuImageSubresourceLayerRef> {
+        DynamicArrayFieldRef::<GpuImageSubresourceLayerRef>::new(self.0.push("data_layers"), self.1)
     }
 
-    pub fn data_single_buffer(&self) -> BytesFieldReader {
-        BytesFieldReader::new(self.0.push("data_single_buffer"), self.1)
+    pub fn data_single_buffer(&self) -> BytesFieldRef {
+        BytesFieldRef::new(self.0.push("data_single_buffer"), self.1)
     }
 
-    pub fn format(&self) -> EnumFieldReader::<GpuImageAssetDataFormatEnum> {
-        EnumFieldReader::<GpuImageAssetDataFormatEnum>::new(self.0.push("format"), self.1)
+    pub fn format(&self) -> EnumFieldRef::<GpuImageAssetDataFormatEnum> {
+        EnumFieldRef::<GpuImageAssetDataFormatEnum>::new(self.0.push("format"), self.1)
     }
 
-    pub fn height(&self) -> U32FieldReader {
-        U32FieldReader::new(self.0.push("height"), self.1)
+    pub fn height(&self) -> U32FieldRef {
+        U32FieldRef::new(self.0.push("height"), self.1)
     }
 
-    pub fn is_cube_texture(&self) -> BooleanFieldReader {
-        BooleanFieldReader::new(self.0.push("is_cube_texture"), self.1)
+    pub fn is_cube_texture(&self) -> BooleanFieldRef {
+        BooleanFieldRef::new(self.0.push("is_cube_texture"), self.1)
     }
 
-    pub fn width(&self) -> U32FieldReader {
-        U32FieldReader::new(self.0.push("width"), self.1)
+    pub fn width(&self) -> U32FieldRef {
+        U32FieldRef::new(self.0.push("width"), self.1)
     }
 }
-pub struct GpuCompressedImageImportedDataWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct GpuCompressedImageImportedDataRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for GpuCompressedImageImportedDataWriter<'a> {
+impl<'a> FieldRefMut<'a> for GpuCompressedImageImportedDataRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        GpuCompressedImageImportedDataWriter(property_path, data_container.clone())
+        GpuCompressedImageImportedDataRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for GpuCompressedImageImportedDataWriter<'a> {
+impl<'a> RecordRefMut for GpuCompressedImageImportedDataRefMut<'a> {
     fn schema_name() -> &'static str {
         "GpuCompressedImageImportedData"
     }
 }
 
-impl<'a> GpuCompressedImageImportedDataWriter<'a> {
-    pub fn data_layers(self: &'a Self) -> DynamicArrayFieldWriter::<GpuImageSubresourceLayerWriter> {
-        DynamicArrayFieldWriter::<GpuImageSubresourceLayerWriter>::new(self.0.push("data_layers"), &self.1)
+impl<'a> GpuCompressedImageImportedDataRefMut<'a> {
+    pub fn data_layers(self: &'a Self) -> DynamicArrayFieldRefMut::<GpuImageSubresourceLayerRefMut> {
+        DynamicArrayFieldRefMut::<GpuImageSubresourceLayerRefMut>::new(self.0.push("data_layers"), &self.1)
     }
 
-    pub fn data_single_buffer(self: &'a Self) -> BytesFieldWriter {
-        BytesFieldWriter::new(self.0.push("data_single_buffer"), &self.1)
+    pub fn data_single_buffer(self: &'a Self) -> BytesFieldRefMut {
+        BytesFieldRefMut::new(self.0.push("data_single_buffer"), &self.1)
     }
 
-    pub fn format(self: &'a Self) -> EnumFieldWriter::<GpuImageAssetDataFormatEnum> {
-        EnumFieldWriter::<GpuImageAssetDataFormatEnum>::new(self.0.push("format"), &self.1)
+    pub fn format(self: &'a Self) -> EnumFieldRefMut::<GpuImageAssetDataFormatEnum> {
+        EnumFieldRefMut::<GpuImageAssetDataFormatEnum>::new(self.0.push("format"), &self.1)
     }
 
-    pub fn height(self: &'a Self) -> U32FieldWriter {
-        U32FieldWriter::new(self.0.push("height"), &self.1)
+    pub fn height(self: &'a Self) -> U32FieldRefMut {
+        U32FieldRefMut::new(self.0.push("height"), &self.1)
     }
 
-    pub fn is_cube_texture(self: &'a Self) -> BooleanFieldWriter {
-        BooleanFieldWriter::new(self.0.push("is_cube_texture"), &self.1)
+    pub fn is_cube_texture(self: &'a Self) -> BooleanFieldRefMut {
+        BooleanFieldRefMut::new(self.0.push("is_cube_texture"), &self.1)
     }
 
-    pub fn width(self: &'a Self) -> U32FieldWriter {
-        U32FieldWriter::new(self.0.push("width"), &self.1)
-    }
-}
-pub struct GpuCompressedImageImportedDataOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for GpuCompressedImageImportedDataOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        GpuCompressedImageImportedDataOwned(property_path, data_container.clone())
+    pub fn width(self: &'a Self) -> U32FieldRefMut {
+        U32FieldRefMut::new(self.0.push("width"), &self.1)
     }
 }
+pub struct GpuCompressedImageImportedDataRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for GpuCompressedImageImportedDataOwned {
+impl Field for GpuCompressedImageImportedDataRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        GpuCompressedImageImportedDataRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for GpuCompressedImageImportedDataRecord {
+    type Reader<'a> = GpuCompressedImageImportedDataRef<'a>;
+    type Writer<'a> = GpuCompressedImageImportedDataRefMut<'a>;
+    type Accessor = GpuCompressedImageImportedDataAccessor;
+
     fn schema_name() -> &'static str {
         "GpuCompressedImageImportedData"
     }
 }
 
-impl GpuCompressedImageImportedDataOwned {
-    pub fn data_layers(self: &Self) -> DynamicArrayFieldOwned::<GpuImageSubresourceLayerOwned> {
-        DynamicArrayFieldOwned::<GpuImageSubresourceLayerOwned>::new(self.0.push("data_layers"), &self.1)
+impl GpuCompressedImageImportedDataRecord {
+    pub fn data_layers(self: &Self) -> DynamicArrayField::<GpuImageSubresourceLayerRecord> {
+        DynamicArrayField::<GpuImageSubresourceLayerRecord>::new(self.0.push("data_layers"), &self.1)
     }
 
-    pub fn data_single_buffer(self: &Self) -> BytesFieldOwned {
-        BytesFieldOwned::new(self.0.push("data_single_buffer"), &self.1)
+    pub fn data_single_buffer(self: &Self) -> BytesField {
+        BytesField::new(self.0.push("data_single_buffer"), &self.1)
     }
 
-    pub fn format(self: &Self) -> EnumFieldOwned::<GpuImageAssetDataFormatEnum> {
-        EnumFieldOwned::<GpuImageAssetDataFormatEnum>::new(self.0.push("format"), &self.1)
+    pub fn format(self: &Self) -> EnumField::<GpuImageAssetDataFormatEnum> {
+        EnumField::<GpuImageAssetDataFormatEnum>::new(self.0.push("format"), &self.1)
     }
 
-    pub fn height(self: &Self) -> U32FieldOwned {
-        U32FieldOwned::new(self.0.push("height"), &self.1)
+    pub fn height(self: &Self) -> U32Field {
+        U32Field::new(self.0.push("height"), &self.1)
     }
 
-    pub fn is_cube_texture(self: &Self) -> BooleanFieldOwned {
-        BooleanFieldOwned::new(self.0.push("is_cube_texture"), &self.1)
+    pub fn is_cube_texture(self: &Self) -> BooleanField {
+        BooleanField::new(self.0.push("is_cube_texture"), &self.1)
     }
 
-    pub fn width(self: &Self) -> U32FieldOwned {
-        U32FieldOwned::new(self.0.push("width"), &self.1)
+    pub fn width(self: &Self) -> U32Field {
+        U32Field::new(self.0.push("width"), &self.1)
     }
 }
 #[derive(Default)]
@@ -346,97 +358,101 @@ impl GpuImageAssetAccessor {
         EnumFieldAccessor::<GpuImageMipGenerationEnum>::new(self.0.push("mip_generation"))
     }
 }
-pub struct GpuImageAssetReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct GpuImageAssetRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for GpuImageAssetReader<'a> {
+impl<'a> FieldRef<'a> for GpuImageAssetRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        GpuImageAssetReader(property_path, data_container)
+        GpuImageAssetRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for GpuImageAssetReader<'a> {
+impl<'a> RecordRef for GpuImageAssetRef<'a> {
     fn schema_name() -> &'static str {
         "GpuImageAsset"
     }
 }
 
-impl<'a> GpuImageAssetReader<'a> {
-    pub fn basis_compression(&self) -> BooleanFieldReader {
-        BooleanFieldReader::new(self.0.push("basis_compression"), self.1)
+impl<'a> GpuImageAssetRef<'a> {
+    pub fn basis_compression(&self) -> BooleanFieldRef {
+        BooleanFieldRef::new(self.0.push("basis_compression"), self.1)
     }
 
-    pub fn basis_compression_settings(&self) -> GpuImageBasisCompressionSettingsReader {
-        GpuImageBasisCompressionSettingsReader::new(self.0.push("basis_compression_settings"), self.1)
+    pub fn basis_compression_settings(&self) -> GpuImageBasisCompressionSettingsRef {
+        GpuImageBasisCompressionSettingsRef::new(self.0.push("basis_compression_settings"), self.1)
     }
 
-    pub fn color_space(&self) -> EnumFieldReader::<GpuImageColorSpaceEnum> {
-        EnumFieldReader::<GpuImageColorSpaceEnum>::new(self.0.push("color_space"), self.1)
+    pub fn color_space(&self) -> EnumFieldRef::<GpuImageColorSpaceEnum> {
+        EnumFieldRef::<GpuImageColorSpaceEnum>::new(self.0.push("color_space"), self.1)
     }
 
-    pub fn mip_generation(&self) -> EnumFieldReader::<GpuImageMipGenerationEnum> {
-        EnumFieldReader::<GpuImageMipGenerationEnum>::new(self.0.push("mip_generation"), self.1)
+    pub fn mip_generation(&self) -> EnumFieldRef::<GpuImageMipGenerationEnum> {
+        EnumFieldRef::<GpuImageMipGenerationEnum>::new(self.0.push("mip_generation"), self.1)
     }
 }
-pub struct GpuImageAssetWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct GpuImageAssetRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for GpuImageAssetWriter<'a> {
+impl<'a> FieldRefMut<'a> for GpuImageAssetRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        GpuImageAssetWriter(property_path, data_container.clone())
+        GpuImageAssetRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for GpuImageAssetWriter<'a> {
+impl<'a> RecordRefMut for GpuImageAssetRefMut<'a> {
     fn schema_name() -> &'static str {
         "GpuImageAsset"
     }
 }
 
-impl<'a> GpuImageAssetWriter<'a> {
-    pub fn basis_compression(self: &'a Self) -> BooleanFieldWriter {
-        BooleanFieldWriter::new(self.0.push("basis_compression"), &self.1)
+impl<'a> GpuImageAssetRefMut<'a> {
+    pub fn basis_compression(self: &'a Self) -> BooleanFieldRefMut {
+        BooleanFieldRefMut::new(self.0.push("basis_compression"), &self.1)
     }
 
-    pub fn basis_compression_settings(self: &'a Self) -> GpuImageBasisCompressionSettingsWriter {
-        GpuImageBasisCompressionSettingsWriter::new(self.0.push("basis_compression_settings"), &self.1)
+    pub fn basis_compression_settings(self: &'a Self) -> GpuImageBasisCompressionSettingsRefMut {
+        GpuImageBasisCompressionSettingsRefMut::new(self.0.push("basis_compression_settings"), &self.1)
     }
 
-    pub fn color_space(self: &'a Self) -> EnumFieldWriter::<GpuImageColorSpaceEnum> {
-        EnumFieldWriter::<GpuImageColorSpaceEnum>::new(self.0.push("color_space"), &self.1)
+    pub fn color_space(self: &'a Self) -> EnumFieldRefMut::<GpuImageColorSpaceEnum> {
+        EnumFieldRefMut::<GpuImageColorSpaceEnum>::new(self.0.push("color_space"), &self.1)
     }
 
-    pub fn mip_generation(self: &'a Self) -> EnumFieldWriter::<GpuImageMipGenerationEnum> {
-        EnumFieldWriter::<GpuImageMipGenerationEnum>::new(self.0.push("mip_generation"), &self.1)
-    }
-}
-pub struct GpuImageAssetOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for GpuImageAssetOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        GpuImageAssetOwned(property_path, data_container.clone())
+    pub fn mip_generation(self: &'a Self) -> EnumFieldRefMut::<GpuImageMipGenerationEnum> {
+        EnumFieldRefMut::<GpuImageMipGenerationEnum>::new(self.0.push("mip_generation"), &self.1)
     }
 }
+pub struct GpuImageAssetRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for GpuImageAssetOwned {
+impl Field for GpuImageAssetRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        GpuImageAssetRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for GpuImageAssetRecord {
+    type Reader<'a> = GpuImageAssetRef<'a>;
+    type Writer<'a> = GpuImageAssetRefMut<'a>;
+    type Accessor = GpuImageAssetAccessor;
+
     fn schema_name() -> &'static str {
         "GpuImageAsset"
     }
 }
 
-impl GpuImageAssetOwned {
-    pub fn basis_compression(self: &Self) -> BooleanFieldOwned {
-        BooleanFieldOwned::new(self.0.push("basis_compression"), &self.1)
+impl GpuImageAssetRecord {
+    pub fn basis_compression(self: &Self) -> BooleanField {
+        BooleanField::new(self.0.push("basis_compression"), &self.1)
     }
 
-    pub fn basis_compression_settings(self: &Self) -> GpuImageBasisCompressionSettingsOwned {
-        GpuImageBasisCompressionSettingsOwned::new(self.0.push("basis_compression_settings"), &self.1)
+    pub fn basis_compression_settings(self: &Self) -> GpuImageBasisCompressionSettingsRecord {
+        GpuImageBasisCompressionSettingsRecord::new(self.0.push("basis_compression_settings"), &self.1)
     }
 
-    pub fn color_space(self: &Self) -> EnumFieldOwned::<GpuImageColorSpaceEnum> {
-        EnumFieldOwned::<GpuImageColorSpaceEnum>::new(self.0.push("color_space"), &self.1)
+    pub fn color_space(self: &Self) -> EnumField::<GpuImageColorSpaceEnum> {
+        EnumField::<GpuImageColorSpaceEnum>::new(self.0.push("color_space"), &self.1)
     }
 
-    pub fn mip_generation(self: &Self) -> EnumFieldOwned::<GpuImageMipGenerationEnum> {
-        EnumFieldOwned::<GpuImageMipGenerationEnum>::new(self.0.push("mip_generation"), &self.1)
+    pub fn mip_generation(self: &Self) -> EnumField::<GpuImageMipGenerationEnum> {
+        EnumField::<GpuImageMipGenerationEnum>::new(self.0.push("mip_generation"), &self.1)
     }
 }
 #[derive(Copy, Clone)]
@@ -539,73 +555,77 @@ impl GpuImageBasisCompressionSettingsAccessor {
         U32FieldAccessor::new(self.0.push("quality"))
     }
 }
-pub struct GpuImageBasisCompressionSettingsReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct GpuImageBasisCompressionSettingsRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for GpuImageBasisCompressionSettingsReader<'a> {
+impl<'a> FieldRef<'a> for GpuImageBasisCompressionSettingsRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        GpuImageBasisCompressionSettingsReader(property_path, data_container)
+        GpuImageBasisCompressionSettingsRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for GpuImageBasisCompressionSettingsReader<'a> {
+impl<'a> RecordRef for GpuImageBasisCompressionSettingsRef<'a> {
     fn schema_name() -> &'static str {
         "GpuImageBasisCompressionSettings"
     }
 }
 
-impl<'a> GpuImageBasisCompressionSettingsReader<'a> {
-    pub fn compression_type(&self) -> EnumFieldReader::<GpuImageBasisCompressionTypeEnum> {
-        EnumFieldReader::<GpuImageBasisCompressionTypeEnum>::new(self.0.push("compression_type"), self.1)
+impl<'a> GpuImageBasisCompressionSettingsRef<'a> {
+    pub fn compression_type(&self) -> EnumFieldRef::<GpuImageBasisCompressionTypeEnum> {
+        EnumFieldRef::<GpuImageBasisCompressionTypeEnum>::new(self.0.push("compression_type"), self.1)
     }
 
-    pub fn quality(&self) -> U32FieldReader {
-        U32FieldReader::new(self.0.push("quality"), self.1)
+    pub fn quality(&self) -> U32FieldRef {
+        U32FieldRef::new(self.0.push("quality"), self.1)
     }
 }
-pub struct GpuImageBasisCompressionSettingsWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct GpuImageBasisCompressionSettingsRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for GpuImageBasisCompressionSettingsWriter<'a> {
+impl<'a> FieldRefMut<'a> for GpuImageBasisCompressionSettingsRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        GpuImageBasisCompressionSettingsWriter(property_path, data_container.clone())
+        GpuImageBasisCompressionSettingsRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for GpuImageBasisCompressionSettingsWriter<'a> {
+impl<'a> RecordRefMut for GpuImageBasisCompressionSettingsRefMut<'a> {
     fn schema_name() -> &'static str {
         "GpuImageBasisCompressionSettings"
     }
 }
 
-impl<'a> GpuImageBasisCompressionSettingsWriter<'a> {
-    pub fn compression_type(self: &'a Self) -> EnumFieldWriter::<GpuImageBasisCompressionTypeEnum> {
-        EnumFieldWriter::<GpuImageBasisCompressionTypeEnum>::new(self.0.push("compression_type"), &self.1)
+impl<'a> GpuImageBasisCompressionSettingsRefMut<'a> {
+    pub fn compression_type(self: &'a Self) -> EnumFieldRefMut::<GpuImageBasisCompressionTypeEnum> {
+        EnumFieldRefMut::<GpuImageBasisCompressionTypeEnum>::new(self.0.push("compression_type"), &self.1)
     }
 
-    pub fn quality(self: &'a Self) -> U32FieldWriter {
-        U32FieldWriter::new(self.0.push("quality"), &self.1)
-    }
-}
-pub struct GpuImageBasisCompressionSettingsOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for GpuImageBasisCompressionSettingsOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        GpuImageBasisCompressionSettingsOwned(property_path, data_container.clone())
+    pub fn quality(self: &'a Self) -> U32FieldRefMut {
+        U32FieldRefMut::new(self.0.push("quality"), &self.1)
     }
 }
+pub struct GpuImageBasisCompressionSettingsRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for GpuImageBasisCompressionSettingsOwned {
+impl Field for GpuImageBasisCompressionSettingsRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        GpuImageBasisCompressionSettingsRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for GpuImageBasisCompressionSettingsRecord {
+    type Reader<'a> = GpuImageBasisCompressionSettingsRef<'a>;
+    type Writer<'a> = GpuImageBasisCompressionSettingsRefMut<'a>;
+    type Accessor = GpuImageBasisCompressionSettingsAccessor;
+
     fn schema_name() -> &'static str {
         "GpuImageBasisCompressionSettings"
     }
 }
 
-impl GpuImageBasisCompressionSettingsOwned {
-    pub fn compression_type(self: &Self) -> EnumFieldOwned::<GpuImageBasisCompressionTypeEnum> {
-        EnumFieldOwned::<GpuImageBasisCompressionTypeEnum>::new(self.0.push("compression_type"), &self.1)
+impl GpuImageBasisCompressionSettingsRecord {
+    pub fn compression_type(self: &Self) -> EnumField::<GpuImageBasisCompressionTypeEnum> {
+        EnumField::<GpuImageBasisCompressionTypeEnum>::new(self.0.push("compression_type"), &self.1)
     }
 
-    pub fn quality(self: &Self) -> U32FieldOwned {
-        U32FieldOwned::new(self.0.push("quality"), &self.1)
+    pub fn quality(self: &Self) -> U32Field {
+        U32Field::new(self.0.push("quality"), &self.1)
     }
 }
 #[derive(Copy, Clone)]
@@ -692,85 +712,89 @@ impl GpuImageImportedDataAccessor {
         U32FieldAccessor::new(self.0.push("width"))
     }
 }
-pub struct GpuImageImportedDataReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct GpuImageImportedDataRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for GpuImageImportedDataReader<'a> {
+impl<'a> FieldRef<'a> for GpuImageImportedDataRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        GpuImageImportedDataReader(property_path, data_container)
+        GpuImageImportedDataRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for GpuImageImportedDataReader<'a> {
+impl<'a> RecordRef for GpuImageImportedDataRef<'a> {
     fn schema_name() -> &'static str {
         "GpuImageImportedData"
     }
 }
 
-impl<'a> GpuImageImportedDataReader<'a> {
-    pub fn height(&self) -> U32FieldReader {
-        U32FieldReader::new(self.0.push("height"), self.1)
+impl<'a> GpuImageImportedDataRef<'a> {
+    pub fn height(&self) -> U32FieldRef {
+        U32FieldRef::new(self.0.push("height"), self.1)
     }
 
-    pub fn image_bytes(&self) -> BytesFieldReader {
-        BytesFieldReader::new(self.0.push("image_bytes"), self.1)
+    pub fn image_bytes(&self) -> BytesFieldRef {
+        BytesFieldRef::new(self.0.push("image_bytes"), self.1)
     }
 
-    pub fn width(&self) -> U32FieldReader {
-        U32FieldReader::new(self.0.push("width"), self.1)
+    pub fn width(&self) -> U32FieldRef {
+        U32FieldRef::new(self.0.push("width"), self.1)
     }
 }
-pub struct GpuImageImportedDataWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct GpuImageImportedDataRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for GpuImageImportedDataWriter<'a> {
+impl<'a> FieldRefMut<'a> for GpuImageImportedDataRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        GpuImageImportedDataWriter(property_path, data_container.clone())
+        GpuImageImportedDataRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for GpuImageImportedDataWriter<'a> {
+impl<'a> RecordRefMut for GpuImageImportedDataRefMut<'a> {
     fn schema_name() -> &'static str {
         "GpuImageImportedData"
     }
 }
 
-impl<'a> GpuImageImportedDataWriter<'a> {
-    pub fn height(self: &'a Self) -> U32FieldWriter {
-        U32FieldWriter::new(self.0.push("height"), &self.1)
+impl<'a> GpuImageImportedDataRefMut<'a> {
+    pub fn height(self: &'a Self) -> U32FieldRefMut {
+        U32FieldRefMut::new(self.0.push("height"), &self.1)
     }
 
-    pub fn image_bytes(self: &'a Self) -> BytesFieldWriter {
-        BytesFieldWriter::new(self.0.push("image_bytes"), &self.1)
+    pub fn image_bytes(self: &'a Self) -> BytesFieldRefMut {
+        BytesFieldRefMut::new(self.0.push("image_bytes"), &self.1)
     }
 
-    pub fn width(self: &'a Self) -> U32FieldWriter {
-        U32FieldWriter::new(self.0.push("width"), &self.1)
-    }
-}
-pub struct GpuImageImportedDataOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for GpuImageImportedDataOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        GpuImageImportedDataOwned(property_path, data_container.clone())
+    pub fn width(self: &'a Self) -> U32FieldRefMut {
+        U32FieldRefMut::new(self.0.push("width"), &self.1)
     }
 }
+pub struct GpuImageImportedDataRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for GpuImageImportedDataOwned {
+impl Field for GpuImageImportedDataRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        GpuImageImportedDataRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for GpuImageImportedDataRecord {
+    type Reader<'a> = GpuImageImportedDataRef<'a>;
+    type Writer<'a> = GpuImageImportedDataRefMut<'a>;
+    type Accessor = GpuImageImportedDataAccessor;
+
     fn schema_name() -> &'static str {
         "GpuImageImportedData"
     }
 }
 
-impl GpuImageImportedDataOwned {
-    pub fn height(self: &Self) -> U32FieldOwned {
-        U32FieldOwned::new(self.0.push("height"), &self.1)
+impl GpuImageImportedDataRecord {
+    pub fn height(self: &Self) -> U32Field {
+        U32Field::new(self.0.push("height"), &self.1)
     }
 
-    pub fn image_bytes(self: &Self) -> BytesFieldOwned {
-        BytesFieldOwned::new(self.0.push("image_bytes"), &self.1)
+    pub fn image_bytes(self: &Self) -> BytesField {
+        BytesField::new(self.0.push("image_bytes"), &self.1)
     }
 
-    pub fn width(self: &Self) -> U32FieldOwned {
-        U32FieldOwned::new(self.0.push("width"), &self.1)
+    pub fn width(self: &Self) -> U32Field {
+        U32Field::new(self.0.push("width"), &self.1)
     }
 }
 #[derive(Copy, Clone)]
@@ -824,61 +848,65 @@ impl GpuImageSubresourceLayerAccessor {
         DynamicArrayFieldAccessor::<GpuImageSubresourceMipLevelAccessor>::new(self.0.push("mip_levels"))
     }
 }
-pub struct GpuImageSubresourceLayerReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct GpuImageSubresourceLayerRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for GpuImageSubresourceLayerReader<'a> {
+impl<'a> FieldRef<'a> for GpuImageSubresourceLayerRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        GpuImageSubresourceLayerReader(property_path, data_container)
+        GpuImageSubresourceLayerRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for GpuImageSubresourceLayerReader<'a> {
+impl<'a> RecordRef for GpuImageSubresourceLayerRef<'a> {
     fn schema_name() -> &'static str {
         "GpuImageSubresourceLayer"
     }
 }
 
-impl<'a> GpuImageSubresourceLayerReader<'a> {
-    pub fn mip_levels(&self) -> DynamicArrayFieldReader::<GpuImageSubresourceMipLevelReader> {
-        DynamicArrayFieldReader::<GpuImageSubresourceMipLevelReader>::new(self.0.push("mip_levels"), self.1)
+impl<'a> GpuImageSubresourceLayerRef<'a> {
+    pub fn mip_levels(&self) -> DynamicArrayFieldRef::<GpuImageSubresourceMipLevelRef> {
+        DynamicArrayFieldRef::<GpuImageSubresourceMipLevelRef>::new(self.0.push("mip_levels"), self.1)
     }
 }
-pub struct GpuImageSubresourceLayerWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct GpuImageSubresourceLayerRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for GpuImageSubresourceLayerWriter<'a> {
+impl<'a> FieldRefMut<'a> for GpuImageSubresourceLayerRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        GpuImageSubresourceLayerWriter(property_path, data_container.clone())
+        GpuImageSubresourceLayerRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for GpuImageSubresourceLayerWriter<'a> {
+impl<'a> RecordRefMut for GpuImageSubresourceLayerRefMut<'a> {
     fn schema_name() -> &'static str {
         "GpuImageSubresourceLayer"
     }
 }
 
-impl<'a> GpuImageSubresourceLayerWriter<'a> {
-    pub fn mip_levels(self: &'a Self) -> DynamicArrayFieldWriter::<GpuImageSubresourceMipLevelWriter> {
-        DynamicArrayFieldWriter::<GpuImageSubresourceMipLevelWriter>::new(self.0.push("mip_levels"), &self.1)
+impl<'a> GpuImageSubresourceLayerRefMut<'a> {
+    pub fn mip_levels(self: &'a Self) -> DynamicArrayFieldRefMut::<GpuImageSubresourceMipLevelRefMut> {
+        DynamicArrayFieldRefMut::<GpuImageSubresourceMipLevelRefMut>::new(self.0.push("mip_levels"), &self.1)
     }
 }
-pub struct GpuImageSubresourceLayerOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
+pub struct GpuImageSubresourceLayerRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl FieldOwned for GpuImageSubresourceLayerOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        GpuImageSubresourceLayerOwned(property_path, data_container.clone())
+impl Field for GpuImageSubresourceLayerRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        GpuImageSubresourceLayerRecord(property_path, data_container.clone())
     }
 }
 
-impl RecordOwned for GpuImageSubresourceLayerOwned {
+impl Record for GpuImageSubresourceLayerRecord {
+    type Reader<'a> = GpuImageSubresourceLayerRef<'a>;
+    type Writer<'a> = GpuImageSubresourceLayerRefMut<'a>;
+    type Accessor = GpuImageSubresourceLayerAccessor;
+
     fn schema_name() -> &'static str {
         "GpuImageSubresourceLayer"
     }
 }
 
-impl GpuImageSubresourceLayerOwned {
-    pub fn mip_levels(self: &Self) -> DynamicArrayFieldOwned::<GpuImageSubresourceMipLevelOwned> {
-        DynamicArrayFieldOwned::<GpuImageSubresourceMipLevelOwned>::new(self.0.push("mip_levels"), &self.1)
+impl GpuImageSubresourceLayerRecord {
+    pub fn mip_levels(self: &Self) -> DynamicArrayField::<GpuImageSubresourceMipLevelRecord> {
+        DynamicArrayField::<GpuImageSubresourceMipLevelRecord>::new(self.0.push("mip_levels"), &self.1)
     }
 }
 #[derive(Default)]
@@ -909,85 +937,89 @@ impl GpuImageSubresourceMipLevelAccessor {
         U32FieldAccessor::new(self.0.push("width"))
     }
 }
-pub struct GpuImageSubresourceMipLevelReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct GpuImageSubresourceMipLevelRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for GpuImageSubresourceMipLevelReader<'a> {
+impl<'a> FieldRef<'a> for GpuImageSubresourceMipLevelRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        GpuImageSubresourceMipLevelReader(property_path, data_container)
+        GpuImageSubresourceMipLevelRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for GpuImageSubresourceMipLevelReader<'a> {
+impl<'a> RecordRef for GpuImageSubresourceMipLevelRef<'a> {
     fn schema_name() -> &'static str {
         "GpuImageSubresourceMipLevel"
     }
 }
 
-impl<'a> GpuImageSubresourceMipLevelReader<'a> {
-    pub fn bytes(&self) -> BytesFieldReader {
-        BytesFieldReader::new(self.0.push("bytes"), self.1)
+impl<'a> GpuImageSubresourceMipLevelRef<'a> {
+    pub fn bytes(&self) -> BytesFieldRef {
+        BytesFieldRef::new(self.0.push("bytes"), self.1)
     }
 
-    pub fn height(&self) -> U32FieldReader {
-        U32FieldReader::new(self.0.push("height"), self.1)
+    pub fn height(&self) -> U32FieldRef {
+        U32FieldRef::new(self.0.push("height"), self.1)
     }
 
-    pub fn width(&self) -> U32FieldReader {
-        U32FieldReader::new(self.0.push("width"), self.1)
+    pub fn width(&self) -> U32FieldRef {
+        U32FieldRef::new(self.0.push("width"), self.1)
     }
 }
-pub struct GpuImageSubresourceMipLevelWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct GpuImageSubresourceMipLevelRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for GpuImageSubresourceMipLevelWriter<'a> {
+impl<'a> FieldRefMut<'a> for GpuImageSubresourceMipLevelRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        GpuImageSubresourceMipLevelWriter(property_path, data_container.clone())
+        GpuImageSubresourceMipLevelRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for GpuImageSubresourceMipLevelWriter<'a> {
+impl<'a> RecordRefMut for GpuImageSubresourceMipLevelRefMut<'a> {
     fn schema_name() -> &'static str {
         "GpuImageSubresourceMipLevel"
     }
 }
 
-impl<'a> GpuImageSubresourceMipLevelWriter<'a> {
-    pub fn bytes(self: &'a Self) -> BytesFieldWriter {
-        BytesFieldWriter::new(self.0.push("bytes"), &self.1)
+impl<'a> GpuImageSubresourceMipLevelRefMut<'a> {
+    pub fn bytes(self: &'a Self) -> BytesFieldRefMut {
+        BytesFieldRefMut::new(self.0.push("bytes"), &self.1)
     }
 
-    pub fn height(self: &'a Self) -> U32FieldWriter {
-        U32FieldWriter::new(self.0.push("height"), &self.1)
+    pub fn height(self: &'a Self) -> U32FieldRefMut {
+        U32FieldRefMut::new(self.0.push("height"), &self.1)
     }
 
-    pub fn width(self: &'a Self) -> U32FieldWriter {
-        U32FieldWriter::new(self.0.push("width"), &self.1)
-    }
-}
-pub struct GpuImageSubresourceMipLevelOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for GpuImageSubresourceMipLevelOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        GpuImageSubresourceMipLevelOwned(property_path, data_container.clone())
+    pub fn width(self: &'a Self) -> U32FieldRefMut {
+        U32FieldRefMut::new(self.0.push("width"), &self.1)
     }
 }
+pub struct GpuImageSubresourceMipLevelRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for GpuImageSubresourceMipLevelOwned {
+impl Field for GpuImageSubresourceMipLevelRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        GpuImageSubresourceMipLevelRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for GpuImageSubresourceMipLevelRecord {
+    type Reader<'a> = GpuImageSubresourceMipLevelRef<'a>;
+    type Writer<'a> = GpuImageSubresourceMipLevelRefMut<'a>;
+    type Accessor = GpuImageSubresourceMipLevelAccessor;
+
     fn schema_name() -> &'static str {
         "GpuImageSubresourceMipLevel"
     }
 }
 
-impl GpuImageSubresourceMipLevelOwned {
-    pub fn bytes(self: &Self) -> BytesFieldOwned {
-        BytesFieldOwned::new(self.0.push("bytes"), &self.1)
+impl GpuImageSubresourceMipLevelRecord {
+    pub fn bytes(self: &Self) -> BytesField {
+        BytesField::new(self.0.push("bytes"), &self.1)
     }
 
-    pub fn height(self: &Self) -> U32FieldOwned {
-        U32FieldOwned::new(self.0.push("height"), &self.1)
+    pub fn height(self: &Self) -> U32Field {
+        U32Field::new(self.0.push("height"), &self.1)
     }
 
-    pub fn width(self: &Self) -> U32FieldOwned {
-        U32FieldOwned::new(self.0.push("width"), &self.1)
+    pub fn width(self: &Self) -> U32Field {
+        U32Field::new(self.0.push("width"), &self.1)
     }
 }
 #[derive(Default)]
@@ -1014,73 +1046,77 @@ impl GraphicsPipelineShaderStageAccessor {
         AssetRefFieldAccessor::new(self.0.push("shader_module"))
     }
 }
-pub struct GraphicsPipelineShaderStageReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct GraphicsPipelineShaderStageRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for GraphicsPipelineShaderStageReader<'a> {
+impl<'a> FieldRef<'a> for GraphicsPipelineShaderStageRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        GraphicsPipelineShaderStageReader(property_path, data_container)
+        GraphicsPipelineShaderStageRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for GraphicsPipelineShaderStageReader<'a> {
+impl<'a> RecordRef for GraphicsPipelineShaderStageRef<'a> {
     fn schema_name() -> &'static str {
         "GraphicsPipelineShaderStage"
     }
 }
 
-impl<'a> GraphicsPipelineShaderStageReader<'a> {
-    pub fn entry_name(&self) -> StringFieldReader {
-        StringFieldReader::new(self.0.push("entry_name"), self.1)
+impl<'a> GraphicsPipelineShaderStageRef<'a> {
+    pub fn entry_name(&self) -> StringFieldRef {
+        StringFieldRef::new(self.0.push("entry_name"), self.1)
     }
 
-    pub fn shader_module(&self) -> AssetRefFieldReader {
-        AssetRefFieldReader::new(self.0.push("shader_module"), self.1)
+    pub fn shader_module(&self) -> AssetRefFieldRef {
+        AssetRefFieldRef::new(self.0.push("shader_module"), self.1)
     }
 }
-pub struct GraphicsPipelineShaderStageWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct GraphicsPipelineShaderStageRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for GraphicsPipelineShaderStageWriter<'a> {
+impl<'a> FieldRefMut<'a> for GraphicsPipelineShaderStageRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        GraphicsPipelineShaderStageWriter(property_path, data_container.clone())
+        GraphicsPipelineShaderStageRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for GraphicsPipelineShaderStageWriter<'a> {
+impl<'a> RecordRefMut for GraphicsPipelineShaderStageRefMut<'a> {
     fn schema_name() -> &'static str {
         "GraphicsPipelineShaderStage"
     }
 }
 
-impl<'a> GraphicsPipelineShaderStageWriter<'a> {
-    pub fn entry_name(self: &'a Self) -> StringFieldWriter {
-        StringFieldWriter::new(self.0.push("entry_name"), &self.1)
+impl<'a> GraphicsPipelineShaderStageRefMut<'a> {
+    pub fn entry_name(self: &'a Self) -> StringFieldRefMut {
+        StringFieldRefMut::new(self.0.push("entry_name"), &self.1)
     }
 
-    pub fn shader_module(self: &'a Self) -> AssetRefFieldWriter {
-        AssetRefFieldWriter::new(self.0.push("shader_module"), &self.1)
-    }
-}
-pub struct GraphicsPipelineShaderStageOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for GraphicsPipelineShaderStageOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        GraphicsPipelineShaderStageOwned(property_path, data_container.clone())
+    pub fn shader_module(self: &'a Self) -> AssetRefFieldRefMut {
+        AssetRefFieldRefMut::new(self.0.push("shader_module"), &self.1)
     }
 }
+pub struct GraphicsPipelineShaderStageRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for GraphicsPipelineShaderStageOwned {
+impl Field for GraphicsPipelineShaderStageRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        GraphicsPipelineShaderStageRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for GraphicsPipelineShaderStageRecord {
+    type Reader<'a> = GraphicsPipelineShaderStageRef<'a>;
+    type Writer<'a> = GraphicsPipelineShaderStageRefMut<'a>;
+    type Accessor = GraphicsPipelineShaderStageAccessor;
+
     fn schema_name() -> &'static str {
         "GraphicsPipelineShaderStage"
     }
 }
 
-impl GraphicsPipelineShaderStageOwned {
-    pub fn entry_name(self: &Self) -> StringFieldOwned {
-        StringFieldOwned::new(self.0.push("entry_name"), &self.1)
+impl GraphicsPipelineShaderStageRecord {
+    pub fn entry_name(self: &Self) -> StringField {
+        StringField::new(self.0.push("entry_name"), &self.1)
     }
 
-    pub fn shader_module(self: &Self) -> AssetRefFieldOwned {
-        AssetRefFieldOwned::new(self.0.push("shader_module"), &self.1)
+    pub fn shader_module(self: &Self) -> AssetRefField {
+        AssetRefField::new(self.0.push("shader_module"), &self.1)
     }
 }
 #[derive(Default)]
@@ -1103,61 +1139,65 @@ impl MaterialAssetAccessor {
         DynamicArrayFieldAccessor::<MaterialPassAccessor>::new(self.0.push("passes"))
     }
 }
-pub struct MaterialAssetReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct MaterialAssetRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for MaterialAssetReader<'a> {
+impl<'a> FieldRef<'a> for MaterialAssetRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        MaterialAssetReader(property_path, data_container)
+        MaterialAssetRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for MaterialAssetReader<'a> {
+impl<'a> RecordRef for MaterialAssetRef<'a> {
     fn schema_name() -> &'static str {
         "MaterialAsset"
     }
 }
 
-impl<'a> MaterialAssetReader<'a> {
-    pub fn passes(&self) -> DynamicArrayFieldReader::<MaterialPassReader> {
-        DynamicArrayFieldReader::<MaterialPassReader>::new(self.0.push("passes"), self.1)
+impl<'a> MaterialAssetRef<'a> {
+    pub fn passes(&self) -> DynamicArrayFieldRef::<MaterialPassRef> {
+        DynamicArrayFieldRef::<MaterialPassRef>::new(self.0.push("passes"), self.1)
     }
 }
-pub struct MaterialAssetWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct MaterialAssetRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for MaterialAssetWriter<'a> {
+impl<'a> FieldRefMut<'a> for MaterialAssetRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        MaterialAssetWriter(property_path, data_container.clone())
+        MaterialAssetRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for MaterialAssetWriter<'a> {
+impl<'a> RecordRefMut for MaterialAssetRefMut<'a> {
     fn schema_name() -> &'static str {
         "MaterialAsset"
     }
 }
 
-impl<'a> MaterialAssetWriter<'a> {
-    pub fn passes(self: &'a Self) -> DynamicArrayFieldWriter::<MaterialPassWriter> {
-        DynamicArrayFieldWriter::<MaterialPassWriter>::new(self.0.push("passes"), &self.1)
+impl<'a> MaterialAssetRefMut<'a> {
+    pub fn passes(self: &'a Self) -> DynamicArrayFieldRefMut::<MaterialPassRefMut> {
+        DynamicArrayFieldRefMut::<MaterialPassRefMut>::new(self.0.push("passes"), &self.1)
     }
 }
-pub struct MaterialAssetOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
+pub struct MaterialAssetRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl FieldOwned for MaterialAssetOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        MaterialAssetOwned(property_path, data_container.clone())
+impl Field for MaterialAssetRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        MaterialAssetRecord(property_path, data_container.clone())
     }
 }
 
-impl RecordOwned for MaterialAssetOwned {
+impl Record for MaterialAssetRecord {
+    type Reader<'a> = MaterialAssetRef<'a>;
+    type Writer<'a> = MaterialAssetRefMut<'a>;
+    type Accessor = MaterialAssetAccessor;
+
     fn schema_name() -> &'static str {
         "MaterialAsset"
     }
 }
 
-impl MaterialAssetOwned {
-    pub fn passes(self: &Self) -> DynamicArrayFieldOwned::<MaterialPassOwned> {
-        DynamicArrayFieldOwned::<MaterialPassOwned>::new(self.0.push("passes"), &self.1)
+impl MaterialAssetRecord {
+    pub fn passes(self: &Self) -> DynamicArrayField::<MaterialPassRecord> {
+        DynamicArrayField::<MaterialPassRecord>::new(self.0.push("passes"), &self.1)
     }
 }
 #[derive(Default)]
@@ -1184,73 +1224,77 @@ impl MaterialInstanceAssetAccessor {
         DynamicArrayFieldAccessor::<MaterialInstanceSlotAssignmentAccessor>::new(self.0.push("slot_assignments"))
     }
 }
-pub struct MaterialInstanceAssetReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct MaterialInstanceAssetRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for MaterialInstanceAssetReader<'a> {
+impl<'a> FieldRef<'a> for MaterialInstanceAssetRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        MaterialInstanceAssetReader(property_path, data_container)
+        MaterialInstanceAssetRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for MaterialInstanceAssetReader<'a> {
+impl<'a> RecordRef for MaterialInstanceAssetRef<'a> {
     fn schema_name() -> &'static str {
         "MaterialInstanceAsset"
     }
 }
 
-impl<'a> MaterialInstanceAssetReader<'a> {
-    pub fn material(&self) -> AssetRefFieldReader {
-        AssetRefFieldReader::new(self.0.push("material"), self.1)
+impl<'a> MaterialInstanceAssetRef<'a> {
+    pub fn material(&self) -> AssetRefFieldRef {
+        AssetRefFieldRef::new(self.0.push("material"), self.1)
     }
 
-    pub fn slot_assignments(&self) -> DynamicArrayFieldReader::<MaterialInstanceSlotAssignmentReader> {
-        DynamicArrayFieldReader::<MaterialInstanceSlotAssignmentReader>::new(self.0.push("slot_assignments"), self.1)
+    pub fn slot_assignments(&self) -> DynamicArrayFieldRef::<MaterialInstanceSlotAssignmentRef> {
+        DynamicArrayFieldRef::<MaterialInstanceSlotAssignmentRef>::new(self.0.push("slot_assignments"), self.1)
     }
 }
-pub struct MaterialInstanceAssetWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct MaterialInstanceAssetRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for MaterialInstanceAssetWriter<'a> {
+impl<'a> FieldRefMut<'a> for MaterialInstanceAssetRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        MaterialInstanceAssetWriter(property_path, data_container.clone())
+        MaterialInstanceAssetRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for MaterialInstanceAssetWriter<'a> {
+impl<'a> RecordRefMut for MaterialInstanceAssetRefMut<'a> {
     fn schema_name() -> &'static str {
         "MaterialInstanceAsset"
     }
 }
 
-impl<'a> MaterialInstanceAssetWriter<'a> {
-    pub fn material(self: &'a Self) -> AssetRefFieldWriter {
-        AssetRefFieldWriter::new(self.0.push("material"), &self.1)
+impl<'a> MaterialInstanceAssetRefMut<'a> {
+    pub fn material(self: &'a Self) -> AssetRefFieldRefMut {
+        AssetRefFieldRefMut::new(self.0.push("material"), &self.1)
     }
 
-    pub fn slot_assignments(self: &'a Self) -> DynamicArrayFieldWriter::<MaterialInstanceSlotAssignmentWriter> {
-        DynamicArrayFieldWriter::<MaterialInstanceSlotAssignmentWriter>::new(self.0.push("slot_assignments"), &self.1)
-    }
-}
-pub struct MaterialInstanceAssetOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for MaterialInstanceAssetOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        MaterialInstanceAssetOwned(property_path, data_container.clone())
+    pub fn slot_assignments(self: &'a Self) -> DynamicArrayFieldRefMut::<MaterialInstanceSlotAssignmentRefMut> {
+        DynamicArrayFieldRefMut::<MaterialInstanceSlotAssignmentRefMut>::new(self.0.push("slot_assignments"), &self.1)
     }
 }
+pub struct MaterialInstanceAssetRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for MaterialInstanceAssetOwned {
+impl Field for MaterialInstanceAssetRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        MaterialInstanceAssetRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for MaterialInstanceAssetRecord {
+    type Reader<'a> = MaterialInstanceAssetRef<'a>;
+    type Writer<'a> = MaterialInstanceAssetRefMut<'a>;
+    type Accessor = MaterialInstanceAssetAccessor;
+
     fn schema_name() -> &'static str {
         "MaterialInstanceAsset"
     }
 }
 
-impl MaterialInstanceAssetOwned {
-    pub fn material(self: &Self) -> AssetRefFieldOwned {
-        AssetRefFieldOwned::new(self.0.push("material"), &self.1)
+impl MaterialInstanceAssetRecord {
+    pub fn material(self: &Self) -> AssetRefField {
+        AssetRefField::new(self.0.push("material"), &self.1)
     }
 
-    pub fn slot_assignments(self: &Self) -> DynamicArrayFieldOwned::<MaterialInstanceSlotAssignmentOwned> {
-        DynamicArrayFieldOwned::<MaterialInstanceSlotAssignmentOwned>::new(self.0.push("slot_assignments"), &self.1)
+    pub fn slot_assignments(self: &Self) -> DynamicArrayField::<MaterialInstanceSlotAssignmentRecord> {
+        DynamicArrayField::<MaterialInstanceSlotAssignmentRecord>::new(self.0.push("slot_assignments"), &self.1)
     }
 }
 #[derive(Default)]
@@ -1289,109 +1333,113 @@ impl MaterialInstanceSlotAssignmentAccessor {
         StringFieldAccessor::new(self.0.push("slot_name"))
     }
 }
-pub struct MaterialInstanceSlotAssignmentReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct MaterialInstanceSlotAssignmentRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for MaterialInstanceSlotAssignmentReader<'a> {
+impl<'a> FieldRef<'a> for MaterialInstanceSlotAssignmentRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        MaterialInstanceSlotAssignmentReader(property_path, data_container)
+        MaterialInstanceSlotAssignmentRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for MaterialInstanceSlotAssignmentReader<'a> {
+impl<'a> RecordRef for MaterialInstanceSlotAssignmentRef<'a> {
     fn schema_name() -> &'static str {
         "MaterialInstanceSlotAssignment"
     }
 }
 
-impl<'a> MaterialInstanceSlotAssignmentReader<'a> {
-    pub fn array_index(&self) -> U32FieldReader {
-        U32FieldReader::new(self.0.push("array_index"), self.1)
+impl<'a> MaterialInstanceSlotAssignmentRef<'a> {
+    pub fn array_index(&self) -> U32FieldRef {
+        U32FieldRef::new(self.0.push("array_index"), self.1)
     }
 
-    pub fn buffer_data(&self) -> NullableFieldReader::<BytesFieldReader> {
-        NullableFieldReader::<BytesFieldReader>::new(self.0.push("buffer_data"), self.1)
+    pub fn buffer_data(&self) -> NullableFieldRef::<BytesFieldRef> {
+        NullableFieldRef::<BytesFieldRef>::new(self.0.push("buffer_data"), self.1)
     }
 
-    pub fn image(&self) -> AssetRefFieldReader {
-        AssetRefFieldReader::new(self.0.push("image"), self.1)
+    pub fn image(&self) -> AssetRefFieldRef {
+        AssetRefFieldRef::new(self.0.push("image"), self.1)
     }
 
-    pub fn sampler(&self) -> StringFieldReader {
-        StringFieldReader::new(self.0.push("sampler"), self.1)
+    pub fn sampler(&self) -> StringFieldRef {
+        StringFieldRef::new(self.0.push("sampler"), self.1)
     }
 
-    pub fn slot_name(&self) -> StringFieldReader {
-        StringFieldReader::new(self.0.push("slot_name"), self.1)
+    pub fn slot_name(&self) -> StringFieldRef {
+        StringFieldRef::new(self.0.push("slot_name"), self.1)
     }
 }
-pub struct MaterialInstanceSlotAssignmentWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct MaterialInstanceSlotAssignmentRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for MaterialInstanceSlotAssignmentWriter<'a> {
+impl<'a> FieldRefMut<'a> for MaterialInstanceSlotAssignmentRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        MaterialInstanceSlotAssignmentWriter(property_path, data_container.clone())
+        MaterialInstanceSlotAssignmentRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for MaterialInstanceSlotAssignmentWriter<'a> {
+impl<'a> RecordRefMut for MaterialInstanceSlotAssignmentRefMut<'a> {
     fn schema_name() -> &'static str {
         "MaterialInstanceSlotAssignment"
     }
 }
 
-impl<'a> MaterialInstanceSlotAssignmentWriter<'a> {
-    pub fn array_index(self: &'a Self) -> U32FieldWriter {
-        U32FieldWriter::new(self.0.push("array_index"), &self.1)
+impl<'a> MaterialInstanceSlotAssignmentRefMut<'a> {
+    pub fn array_index(self: &'a Self) -> U32FieldRefMut {
+        U32FieldRefMut::new(self.0.push("array_index"), &self.1)
     }
 
-    pub fn buffer_data(self: &'a Self) -> NullableFieldWriter::<BytesFieldWriter> {
-        NullableFieldWriter::<BytesFieldWriter>::new(self.0.push("buffer_data"), &self.1)
+    pub fn buffer_data(self: &'a Self) -> NullableFieldRefMut::<BytesFieldRefMut> {
+        NullableFieldRefMut::<BytesFieldRefMut>::new(self.0.push("buffer_data"), &self.1)
     }
 
-    pub fn image(self: &'a Self) -> AssetRefFieldWriter {
-        AssetRefFieldWriter::new(self.0.push("image"), &self.1)
+    pub fn image(self: &'a Self) -> AssetRefFieldRefMut {
+        AssetRefFieldRefMut::new(self.0.push("image"), &self.1)
     }
 
-    pub fn sampler(self: &'a Self) -> StringFieldWriter {
-        StringFieldWriter::new(self.0.push("sampler"), &self.1)
+    pub fn sampler(self: &'a Self) -> StringFieldRefMut {
+        StringFieldRefMut::new(self.0.push("sampler"), &self.1)
     }
 
-    pub fn slot_name(self: &'a Self) -> StringFieldWriter {
-        StringFieldWriter::new(self.0.push("slot_name"), &self.1)
-    }
-}
-pub struct MaterialInstanceSlotAssignmentOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for MaterialInstanceSlotAssignmentOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        MaterialInstanceSlotAssignmentOwned(property_path, data_container.clone())
+    pub fn slot_name(self: &'a Self) -> StringFieldRefMut {
+        StringFieldRefMut::new(self.0.push("slot_name"), &self.1)
     }
 }
+pub struct MaterialInstanceSlotAssignmentRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for MaterialInstanceSlotAssignmentOwned {
+impl Field for MaterialInstanceSlotAssignmentRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        MaterialInstanceSlotAssignmentRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for MaterialInstanceSlotAssignmentRecord {
+    type Reader<'a> = MaterialInstanceSlotAssignmentRef<'a>;
+    type Writer<'a> = MaterialInstanceSlotAssignmentRefMut<'a>;
+    type Accessor = MaterialInstanceSlotAssignmentAccessor;
+
     fn schema_name() -> &'static str {
         "MaterialInstanceSlotAssignment"
     }
 }
 
-impl MaterialInstanceSlotAssignmentOwned {
-    pub fn array_index(self: &Self) -> U32FieldOwned {
-        U32FieldOwned::new(self.0.push("array_index"), &self.1)
+impl MaterialInstanceSlotAssignmentRecord {
+    pub fn array_index(self: &Self) -> U32Field {
+        U32Field::new(self.0.push("array_index"), &self.1)
     }
 
-    pub fn buffer_data(self: &Self) -> NullableFieldOwned::<BytesFieldOwned> {
-        NullableFieldOwned::<BytesFieldOwned>::new(self.0.push("buffer_data"), &self.1)
+    pub fn buffer_data(self: &Self) -> NullableField::<BytesField> {
+        NullableField::<BytesField>::new(self.0.push("buffer_data"), &self.1)
     }
 
-    pub fn image(self: &Self) -> AssetRefFieldOwned {
-        AssetRefFieldOwned::new(self.0.push("image"), &self.1)
+    pub fn image(self: &Self) -> AssetRefField {
+        AssetRefField::new(self.0.push("image"), &self.1)
     }
 
-    pub fn sampler(self: &Self) -> StringFieldOwned {
-        StringFieldOwned::new(self.0.push("sampler"), &self.1)
+    pub fn sampler(self: &Self) -> StringField {
+        StringField::new(self.0.push("sampler"), &self.1)
     }
 
-    pub fn slot_name(self: &Self) -> StringFieldOwned {
-        StringFieldOwned::new(self.0.push("slot_name"), &self.1)
+    pub fn slot_name(self: &Self) -> StringField {
+        StringField::new(self.0.push("slot_name"), &self.1)
     }
 }
 #[derive(Default)]
@@ -1430,109 +1478,113 @@ impl MaterialPassAccessor {
         GraphicsPipelineShaderStageAccessor::new(self.0.push("vertex_stage"))
     }
 }
-pub struct MaterialPassReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct MaterialPassRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for MaterialPassReader<'a> {
+impl<'a> FieldRef<'a> for MaterialPassRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        MaterialPassReader(property_path, data_container)
+        MaterialPassRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for MaterialPassReader<'a> {
+impl<'a> RecordRef for MaterialPassRef<'a> {
     fn schema_name() -> &'static str {
         "MaterialPass"
     }
 }
 
-impl<'a> MaterialPassReader<'a> {
-    pub fn fixed_function_state(&self) -> StringFieldReader {
-        StringFieldReader::new(self.0.push("fixed_function_state"), self.1)
+impl<'a> MaterialPassRef<'a> {
+    pub fn fixed_function_state(&self) -> StringFieldRef {
+        StringFieldRef::new(self.0.push("fixed_function_state"), self.1)
     }
 
-    pub fn fragment_stage(&self) -> GraphicsPipelineShaderStageReader {
-        GraphicsPipelineShaderStageReader::new(self.0.push("fragment_stage"), self.1)
+    pub fn fragment_stage(&self) -> GraphicsPipelineShaderStageRef {
+        GraphicsPipelineShaderStageRef::new(self.0.push("fragment_stage"), self.1)
     }
 
-    pub fn name(&self) -> StringFieldReader {
-        StringFieldReader::new(self.0.push("name"), self.1)
+    pub fn name(&self) -> StringFieldRef {
+        StringFieldRef::new(self.0.push("name"), self.1)
     }
 
-    pub fn phase(&self) -> StringFieldReader {
-        StringFieldReader::new(self.0.push("phase"), self.1)
+    pub fn phase(&self) -> StringFieldRef {
+        StringFieldRef::new(self.0.push("phase"), self.1)
     }
 
-    pub fn vertex_stage(&self) -> GraphicsPipelineShaderStageReader {
-        GraphicsPipelineShaderStageReader::new(self.0.push("vertex_stage"), self.1)
+    pub fn vertex_stage(&self) -> GraphicsPipelineShaderStageRef {
+        GraphicsPipelineShaderStageRef::new(self.0.push("vertex_stage"), self.1)
     }
 }
-pub struct MaterialPassWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct MaterialPassRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for MaterialPassWriter<'a> {
+impl<'a> FieldRefMut<'a> for MaterialPassRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        MaterialPassWriter(property_path, data_container.clone())
+        MaterialPassRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for MaterialPassWriter<'a> {
+impl<'a> RecordRefMut for MaterialPassRefMut<'a> {
     fn schema_name() -> &'static str {
         "MaterialPass"
     }
 }
 
-impl<'a> MaterialPassWriter<'a> {
-    pub fn fixed_function_state(self: &'a Self) -> StringFieldWriter {
-        StringFieldWriter::new(self.0.push("fixed_function_state"), &self.1)
+impl<'a> MaterialPassRefMut<'a> {
+    pub fn fixed_function_state(self: &'a Self) -> StringFieldRefMut {
+        StringFieldRefMut::new(self.0.push("fixed_function_state"), &self.1)
     }
 
-    pub fn fragment_stage(self: &'a Self) -> GraphicsPipelineShaderStageWriter {
-        GraphicsPipelineShaderStageWriter::new(self.0.push("fragment_stage"), &self.1)
+    pub fn fragment_stage(self: &'a Self) -> GraphicsPipelineShaderStageRefMut {
+        GraphicsPipelineShaderStageRefMut::new(self.0.push("fragment_stage"), &self.1)
     }
 
-    pub fn name(self: &'a Self) -> StringFieldWriter {
-        StringFieldWriter::new(self.0.push("name"), &self.1)
+    pub fn name(self: &'a Self) -> StringFieldRefMut {
+        StringFieldRefMut::new(self.0.push("name"), &self.1)
     }
 
-    pub fn phase(self: &'a Self) -> StringFieldWriter {
-        StringFieldWriter::new(self.0.push("phase"), &self.1)
+    pub fn phase(self: &'a Self) -> StringFieldRefMut {
+        StringFieldRefMut::new(self.0.push("phase"), &self.1)
     }
 
-    pub fn vertex_stage(self: &'a Self) -> GraphicsPipelineShaderStageWriter {
-        GraphicsPipelineShaderStageWriter::new(self.0.push("vertex_stage"), &self.1)
-    }
-}
-pub struct MaterialPassOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for MaterialPassOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        MaterialPassOwned(property_path, data_container.clone())
+    pub fn vertex_stage(self: &'a Self) -> GraphicsPipelineShaderStageRefMut {
+        GraphicsPipelineShaderStageRefMut::new(self.0.push("vertex_stage"), &self.1)
     }
 }
+pub struct MaterialPassRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for MaterialPassOwned {
+impl Field for MaterialPassRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        MaterialPassRecord(property_path, data_container.clone())
+    }
+}
+
+impl Record for MaterialPassRecord {
+    type Reader<'a> = MaterialPassRef<'a>;
+    type Writer<'a> = MaterialPassRefMut<'a>;
+    type Accessor = MaterialPassAccessor;
+
     fn schema_name() -> &'static str {
         "MaterialPass"
     }
 }
 
-impl MaterialPassOwned {
-    pub fn fixed_function_state(self: &Self) -> StringFieldOwned {
-        StringFieldOwned::new(self.0.push("fixed_function_state"), &self.1)
+impl MaterialPassRecord {
+    pub fn fixed_function_state(self: &Self) -> StringField {
+        StringField::new(self.0.push("fixed_function_state"), &self.1)
     }
 
-    pub fn fragment_stage(self: &Self) -> GraphicsPipelineShaderStageOwned {
-        GraphicsPipelineShaderStageOwned::new(self.0.push("fragment_stage"), &self.1)
+    pub fn fragment_stage(self: &Self) -> GraphicsPipelineShaderStageRecord {
+        GraphicsPipelineShaderStageRecord::new(self.0.push("fragment_stage"), &self.1)
     }
 
-    pub fn name(self: &Self) -> StringFieldOwned {
-        StringFieldOwned::new(self.0.push("name"), &self.1)
+    pub fn name(self: &Self) -> StringField {
+        StringField::new(self.0.push("name"), &self.1)
     }
 
-    pub fn phase(self: &Self) -> StringFieldOwned {
-        StringFieldOwned::new(self.0.push("phase"), &self.1)
+    pub fn phase(self: &Self) -> StringField {
+        StringField::new(self.0.push("phase"), &self.1)
     }
 
-    pub fn vertex_stage(self: &Self) -> GraphicsPipelineShaderStageOwned {
-        GraphicsPipelineShaderStageOwned::new(self.0.push("vertex_stage"), &self.1)
+    pub fn vertex_stage(self: &Self) -> GraphicsPipelineShaderStageRecord {
+        GraphicsPipelineShaderStageRecord::new(self.0.push("vertex_stage"), &self.1)
     }
 }
 #[derive(Default)]
@@ -1552,53 +1604,57 @@ impl RecordAccessor for ShaderPackageAssetAccessor {
 
 impl ShaderPackageAssetAccessor {
 }
-pub struct ShaderPackageAssetReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct ShaderPackageAssetRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for ShaderPackageAssetReader<'a> {
+impl<'a> FieldRef<'a> for ShaderPackageAssetRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        ShaderPackageAssetReader(property_path, data_container)
+        ShaderPackageAssetRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for ShaderPackageAssetReader<'a> {
+impl<'a> RecordRef for ShaderPackageAssetRef<'a> {
     fn schema_name() -> &'static str {
         "ShaderPackageAsset"
     }
 }
 
-impl<'a> ShaderPackageAssetReader<'a> {
+impl<'a> ShaderPackageAssetRef<'a> {
 }
-pub struct ShaderPackageAssetWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct ShaderPackageAssetRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for ShaderPackageAssetWriter<'a> {
+impl<'a> FieldRefMut<'a> for ShaderPackageAssetRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        ShaderPackageAssetWriter(property_path, data_container.clone())
+        ShaderPackageAssetRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for ShaderPackageAssetWriter<'a> {
+impl<'a> RecordRefMut for ShaderPackageAssetRefMut<'a> {
     fn schema_name() -> &'static str {
         "ShaderPackageAsset"
     }
 }
 
-impl<'a> ShaderPackageAssetWriter<'a> {
+impl<'a> ShaderPackageAssetRefMut<'a> {
 }
-pub struct ShaderPackageAssetOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
+pub struct ShaderPackageAssetRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl FieldOwned for ShaderPackageAssetOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        ShaderPackageAssetOwned(property_path, data_container.clone())
+impl Field for ShaderPackageAssetRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        ShaderPackageAssetRecord(property_path, data_container.clone())
     }
 }
 
-impl RecordOwned for ShaderPackageAssetOwned {
+impl Record for ShaderPackageAssetRecord {
+    type Reader<'a> = ShaderPackageAssetRef<'a>;
+    type Writer<'a> = ShaderPackageAssetRefMut<'a>;
+    type Accessor = ShaderPackageAssetAccessor;
+
     fn schema_name() -> &'static str {
         "ShaderPackageAsset"
     }
 }
 
-impl ShaderPackageAssetOwned {
+impl ShaderPackageAssetRecord {
 }
 #[derive(Default)]
 pub struct ShaderPackageImportedDataAccessor(PropertyPath);
@@ -1620,61 +1676,65 @@ impl ShaderPackageImportedDataAccessor {
         BytesFieldAccessor::new(self.0.push("bytes"))
     }
 }
-pub struct ShaderPackageImportedDataReader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct ShaderPackageImportedDataRef<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for ShaderPackageImportedDataReader<'a> {
+impl<'a> FieldRef<'a> for ShaderPackageImportedDataRef<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        ShaderPackageImportedDataReader(property_path, data_container)
+        ShaderPackageImportedDataRef(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for ShaderPackageImportedDataReader<'a> {
+impl<'a> RecordRef for ShaderPackageImportedDataRef<'a> {
     fn schema_name() -> &'static str {
         "ShaderPackageImportedData"
     }
 }
 
-impl<'a> ShaderPackageImportedDataReader<'a> {
-    pub fn bytes(&self) -> BytesFieldReader {
-        BytesFieldReader::new(self.0.push("bytes"), self.1)
+impl<'a> ShaderPackageImportedDataRef<'a> {
+    pub fn bytes(&self) -> BytesFieldRef {
+        BytesFieldRef::new(self.0.push("bytes"), self.1)
     }
 }
-pub struct ShaderPackageImportedDataWriter<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct ShaderPackageImportedDataRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for ShaderPackageImportedDataWriter<'a> {
+impl<'a> FieldRefMut<'a> for ShaderPackageImportedDataRefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        ShaderPackageImportedDataWriter(property_path, data_container.clone())
+        ShaderPackageImportedDataRefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for ShaderPackageImportedDataWriter<'a> {
+impl<'a> RecordRefMut for ShaderPackageImportedDataRefMut<'a> {
     fn schema_name() -> &'static str {
         "ShaderPackageImportedData"
     }
 }
 
-impl<'a> ShaderPackageImportedDataWriter<'a> {
-    pub fn bytes(self: &'a Self) -> BytesFieldWriter {
-        BytesFieldWriter::new(self.0.push("bytes"), &self.1)
+impl<'a> ShaderPackageImportedDataRefMut<'a> {
+    pub fn bytes(self: &'a Self) -> BytesFieldRefMut {
+        BytesFieldRefMut::new(self.0.push("bytes"), &self.1)
     }
 }
-pub struct ShaderPackageImportedDataOwned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
+pub struct ShaderPackageImportedDataRecord(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl FieldOwned for ShaderPackageImportedDataOwned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        ShaderPackageImportedDataOwned(property_path, data_container.clone())
+impl Field for ShaderPackageImportedDataRecord {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        ShaderPackageImportedDataRecord(property_path, data_container.clone())
     }
 }
 
-impl RecordOwned for ShaderPackageImportedDataOwned {
+impl Record for ShaderPackageImportedDataRecord {
+    type Reader<'a> = ShaderPackageImportedDataRef<'a>;
+    type Writer<'a> = ShaderPackageImportedDataRefMut<'a>;
+    type Accessor = ShaderPackageImportedDataAccessor;
+
     fn schema_name() -> &'static str {
         "ShaderPackageImportedData"
     }
 }
 
-impl ShaderPackageImportedDataOwned {
-    pub fn bytes(self: &Self) -> BytesFieldOwned {
-        BytesFieldOwned::new(self.0.push("bytes"), &self.1)
+impl ShaderPackageImportedDataRecord {
+    pub fn bytes(self: &Self) -> BytesField {
+        BytesField::new(self.0.push("bytes"), &self.1)
     }
 }
 #[derive(Default)]
@@ -1705,85 +1765,89 @@ impl Vec3Accessor {
         F32FieldAccessor::new(self.0.push("z"))
     }
 }
-pub struct Vec3Reader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct Vec3Ref<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for Vec3Reader<'a> {
+impl<'a> FieldRef<'a> for Vec3Ref<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        Vec3Reader(property_path, data_container)
+        Vec3Ref(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for Vec3Reader<'a> {
+impl<'a> RecordRef for Vec3Ref<'a> {
     fn schema_name() -> &'static str {
         "Vec3"
     }
 }
 
-impl<'a> Vec3Reader<'a> {
-    pub fn x(&self) -> F32FieldReader {
-        F32FieldReader::new(self.0.push("x"), self.1)
+impl<'a> Vec3Ref<'a> {
+    pub fn x(&self) -> F32FieldRef {
+        F32FieldRef::new(self.0.push("x"), self.1)
     }
 
-    pub fn y(&self) -> F32FieldReader {
-        F32FieldReader::new(self.0.push("y"), self.1)
+    pub fn y(&self) -> F32FieldRef {
+        F32FieldRef::new(self.0.push("y"), self.1)
     }
 
-    pub fn z(&self) -> F32FieldReader {
-        F32FieldReader::new(self.0.push("z"), self.1)
+    pub fn z(&self) -> F32FieldRef {
+        F32FieldRef::new(self.0.push("z"), self.1)
     }
 }
-pub struct Vec3Writer<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct Vec3RefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for Vec3Writer<'a> {
+impl<'a> FieldRefMut<'a> for Vec3RefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        Vec3Writer(property_path, data_container.clone())
+        Vec3RefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for Vec3Writer<'a> {
+impl<'a> RecordRefMut for Vec3RefMut<'a> {
     fn schema_name() -> &'static str {
         "Vec3"
     }
 }
 
-impl<'a> Vec3Writer<'a> {
-    pub fn x(self: &'a Self) -> F32FieldWriter {
-        F32FieldWriter::new(self.0.push("x"), &self.1)
+impl<'a> Vec3RefMut<'a> {
+    pub fn x(self: &'a Self) -> F32FieldRefMut {
+        F32FieldRefMut::new(self.0.push("x"), &self.1)
     }
 
-    pub fn y(self: &'a Self) -> F32FieldWriter {
-        F32FieldWriter::new(self.0.push("y"), &self.1)
+    pub fn y(self: &'a Self) -> F32FieldRefMut {
+        F32FieldRefMut::new(self.0.push("y"), &self.1)
     }
 
-    pub fn z(self: &'a Self) -> F32FieldWriter {
-        F32FieldWriter::new(self.0.push("z"), &self.1)
-    }
-}
-pub struct Vec3Owned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for Vec3Owned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        Vec3Owned(property_path, data_container.clone())
+    pub fn z(self: &'a Self) -> F32FieldRefMut {
+        F32FieldRefMut::new(self.0.push("z"), &self.1)
     }
 }
+pub struct Vec3Record(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for Vec3Owned {
+impl Field for Vec3Record {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        Vec3Record(property_path, data_container.clone())
+    }
+}
+
+impl Record for Vec3Record {
+    type Reader<'a> = Vec3Ref<'a>;
+    type Writer<'a> = Vec3RefMut<'a>;
+    type Accessor = Vec3Accessor;
+
     fn schema_name() -> &'static str {
         "Vec3"
     }
 }
 
-impl Vec3Owned {
-    pub fn x(self: &Self) -> F32FieldOwned {
-        F32FieldOwned::new(self.0.push("x"), &self.1)
+impl Vec3Record {
+    pub fn x(self: &Self) -> F32Field {
+        F32Field::new(self.0.push("x"), &self.1)
     }
 
-    pub fn y(self: &Self) -> F32FieldOwned {
-        F32FieldOwned::new(self.0.push("y"), &self.1)
+    pub fn y(self: &Self) -> F32Field {
+        F32Field::new(self.0.push("y"), &self.1)
     }
 
-    pub fn z(self: &Self) -> F32FieldOwned {
-        F32FieldOwned::new(self.0.push("z"), &self.1)
+    pub fn z(self: &Self) -> F32Field {
+        F32Field::new(self.0.push("z"), &self.1)
     }
 }
 #[derive(Default)]
@@ -1818,96 +1882,100 @@ impl Vec4Accessor {
         F32FieldAccessor::new(self.0.push("z"))
     }
 }
-pub struct Vec4Reader<'a>(PropertyPath, DataContainerRef<'a>);
+pub struct Vec4Ref<'a>(PropertyPath, DataContainerRef<'a>);
 
-impl<'a> FieldReader<'a> for Vec4Reader<'a> {
+impl<'a> FieldRef<'a> for Vec4Ref<'a> {
     fn new(property_path: PropertyPath, data_container: DataContainerRef<'a>) -> Self {
-        Vec4Reader(property_path, data_container)
+        Vec4Ref(property_path, data_container)
     }
 }
 
-impl<'a> RecordReader for Vec4Reader<'a> {
+impl<'a> RecordRef for Vec4Ref<'a> {
     fn schema_name() -> &'static str {
         "Vec4"
     }
 }
 
-impl<'a> Vec4Reader<'a> {
-    pub fn w(&self) -> F32FieldReader {
-        F32FieldReader::new(self.0.push("w"), self.1)
+impl<'a> Vec4Ref<'a> {
+    pub fn w(&self) -> F32FieldRef {
+        F32FieldRef::new(self.0.push("w"), self.1)
     }
 
-    pub fn x(&self) -> F32FieldReader {
-        F32FieldReader::new(self.0.push("x"), self.1)
+    pub fn x(&self) -> F32FieldRef {
+        F32FieldRef::new(self.0.push("x"), self.1)
     }
 
-    pub fn y(&self) -> F32FieldReader {
-        F32FieldReader::new(self.0.push("y"), self.1)
+    pub fn y(&self) -> F32FieldRef {
+        F32FieldRef::new(self.0.push("y"), self.1)
     }
 
-    pub fn z(&self) -> F32FieldReader {
-        F32FieldReader::new(self.0.push("z"), self.1)
+    pub fn z(&self) -> F32FieldRef {
+        F32FieldRef::new(self.0.push("z"), self.1)
     }
 }
-pub struct Vec4Writer<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
+pub struct Vec4RefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
 
-impl<'a> FieldWriter<'a> for Vec4Writer<'a> {
+impl<'a> FieldRefMut<'a> for Vec4RefMut<'a> {
     fn new(property_path: PropertyPath, data_container: &Rc<RefCell<DataContainerRefMut<'a>>>) -> Self {
-        Vec4Writer(property_path, data_container.clone())
+        Vec4RefMut(property_path, data_container.clone())
     }
 }
 
-impl<'a> RecordWriter for Vec4Writer<'a> {
+impl<'a> RecordRefMut for Vec4RefMut<'a> {
     fn schema_name() -> &'static str {
         "Vec4"
     }
 }
 
-impl<'a> Vec4Writer<'a> {
-    pub fn w(self: &'a Self) -> F32FieldWriter {
-        F32FieldWriter::new(self.0.push("w"), &self.1)
+impl<'a> Vec4RefMut<'a> {
+    pub fn w(self: &'a Self) -> F32FieldRefMut {
+        F32FieldRefMut::new(self.0.push("w"), &self.1)
     }
 
-    pub fn x(self: &'a Self) -> F32FieldWriter {
-        F32FieldWriter::new(self.0.push("x"), &self.1)
+    pub fn x(self: &'a Self) -> F32FieldRefMut {
+        F32FieldRefMut::new(self.0.push("x"), &self.1)
     }
 
-    pub fn y(self: &'a Self) -> F32FieldWriter {
-        F32FieldWriter::new(self.0.push("y"), &self.1)
+    pub fn y(self: &'a Self) -> F32FieldRefMut {
+        F32FieldRefMut::new(self.0.push("y"), &self.1)
     }
 
-    pub fn z(self: &'a Self) -> F32FieldWriter {
-        F32FieldWriter::new(self.0.push("z"), &self.1)
-    }
-}
-pub struct Vec4Owned(PropertyPath, Rc<RefCell<Option<DataContainerOwned>>>);
-
-impl FieldOwned for Vec4Owned {
-    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainerOwned>>>) -> Self {
-        Vec4Owned(property_path, data_container.clone())
+    pub fn z(self: &'a Self) -> F32FieldRefMut {
+        F32FieldRefMut::new(self.0.push("z"), &self.1)
     }
 }
+pub struct Vec4Record(PropertyPath, Rc<RefCell<Option<DataContainer>>>);
 
-impl RecordOwned for Vec4Owned {
+impl Field for Vec4Record {
+    fn new(property_path: PropertyPath, data_container: &Rc<RefCell<Option<DataContainer>>>) -> Self {
+        Vec4Record(property_path, data_container.clone())
+    }
+}
+
+impl Record for Vec4Record {
+    type Reader<'a> = Vec4Ref<'a>;
+    type Writer<'a> = Vec4RefMut<'a>;
+    type Accessor = Vec4Accessor;
+
     fn schema_name() -> &'static str {
         "Vec4"
     }
 }
 
-impl Vec4Owned {
-    pub fn w(self: &Self) -> F32FieldOwned {
-        F32FieldOwned::new(self.0.push("w"), &self.1)
+impl Vec4Record {
+    pub fn w(self: &Self) -> F32Field {
+        F32Field::new(self.0.push("w"), &self.1)
     }
 
-    pub fn x(self: &Self) -> F32FieldOwned {
-        F32FieldOwned::new(self.0.push("x"), &self.1)
+    pub fn x(self: &Self) -> F32Field {
+        F32Field::new(self.0.push("x"), &self.1)
     }
 
-    pub fn y(self: &Self) -> F32FieldOwned {
-        F32FieldOwned::new(self.0.push("y"), &self.1)
+    pub fn y(self: &Self) -> F32Field {
+        F32Field::new(self.0.push("y"), &self.1)
     }
 
-    pub fn z(self: &Self) -> F32FieldOwned {
-        F32FieldOwned::new(self.0.push("z"), &self.1)
+    pub fn z(self: &Self) -> F32Field {
+        F32Field::new(self.0.push("z"), &self.1)
     }
 }

@@ -1,10 +1,8 @@
 use crate::assets::font::FontAssetData;
-use crate::schema::{
-    FontAssetAccessor, FontAssetOwned, FontImportedDataOwned, FontImportedDataReader,
-};
+use crate::schema::{FontAssetAccessor, FontAssetRecord, FontImportedDataRecord};
 use fnv::FnvHasher;
 use hydrate_base::AssetId;
-use hydrate_data::{RecordAccessor, RecordOwned};
+use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
@@ -29,7 +27,7 @@ impl Importer for HydrateFontImporter {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_default_importable::<FontAssetOwned>()?;
+        context.add_default_importable::<FontAssetRecord>()?;
         Ok(())
     }
 
@@ -45,12 +43,12 @@ impl Importer for HydrateFontImporter {
         //
         // Create the default asset
         //
-        let default_asset = FontAssetOwned::new_builder(context.schema_set);
+        let default_asset = FontAssetRecord::new_builder(context.schema_set);
 
         //
         // Create import data
         //
-        let import_data = FontImportedDataOwned::new_builder(context.schema_set);
+        let import_data = FontImportedDataRecord::new_builder(context.schema_set);
         import_data.bytes().set(Arc::new(font_bytes))?;
 
         //
@@ -107,7 +105,7 @@ impl JobProcessor for FontJobProcessor {
         // Read imported data
         //
         let imported_data =
-            context.imported_data::<FontImportedDataReader>(context.input.asset_id)?;
+            context.imported_data::<FontImportedDataRecord>(context.input.asset_id)?;
 
         let font_bytes = imported_data.bytes().get()?.clone();
 

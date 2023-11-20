@@ -1,9 +1,7 @@
 use crate::assets::compute_pipeline::{ComputePipelineAssetData, ComputePipelineRon};
-use crate::schema::{
-    ComputePipelineAssetAccessor, ComputePipelineAssetOwned, ComputePipelineAssetReader,
-};
+use crate::schema::{ComputePipelineAssetAccessor, ComputePipelineAssetRecord};
 use hydrate_base::AssetId;
-use hydrate_data::{ImportableName, RecordAccessor, RecordOwned};
+use hydrate_data::{ImportableName, Record, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
@@ -33,7 +31,7 @@ impl Importer for HydrateComputePipelineImporter {
         let parsed_source = ron::de::from_str::<ComputePipelineRon>(&source)
             .map_err(|e| format!("RON error {:?}", e))?;
 
-        let importable = context.add_default_importable::<ComputePipelineAssetOwned>()?;
+        let importable = context.add_default_importable::<ComputePipelineAssetRecord>()?;
         importable.add_file_reference(parsed_source.shader_module)?;
         Ok(())
     }
@@ -57,7 +55,7 @@ impl Importer for HydrateComputePipelineImporter {
         //
         // Create the default asset
         //
-        let default_asset = ComputePipelineAssetOwned::new_builder(context.schema_set);
+        let default_asset = ComputePipelineAssetRecord::new_builder(context.schema_set);
         default_asset
             .entry_name()
             .set(compute_pipeline_asset_data.entry_name)?;
@@ -108,7 +106,7 @@ impl JobProcessor for ComputePipelineJobProcessor {
         //
         // Read asset data
         //
-        let asset_data = context.asset::<ComputePipelineAssetReader>(context.input.asset_id)?;
+        let asset_data = context.asset::<ComputePipelineAssetRecord>(context.input.asset_id)?;
 
         let shader_module = asset_data.shader_module().get()?;
         let entry_name = asset_data.entry_name().get()?;

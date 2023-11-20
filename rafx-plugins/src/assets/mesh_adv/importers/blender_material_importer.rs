@@ -1,6 +1,6 @@
-use crate::schema::{MeshAdvBlendMethodEnum, MeshAdvMaterialAssetOwned, MeshAdvShadowMethodEnum};
+use crate::schema::{MeshAdvBlendMethodEnum, MeshAdvMaterialAssetRecord, MeshAdvShadowMethodEnum};
 use hydrate_base::handle::Handle;
-use hydrate_data::{DataSetError, Enum, ImportableName, RecordOwned};
+use hydrate_data::{DataSetError, Enum, ImportableName, Record};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
     JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
@@ -84,7 +84,7 @@ impl Importer for BlenderMaterialImporter {
         let json_str = std::fs::read_to_string(context.path)?;
         let json_data: HydrateMaterialJsonFileFormat = serde_json::from_str(&json_str)?;
 
-        let importable = context.add_default_importable::<MeshAdvMaterialAssetOwned>()?;
+        let importable = context.add_default_importable::<MeshAdvMaterialAssetRecord>()?;
 
         if let Some(path) = &json_data.color_texture {
             importable.add_file_reference(path)?;
@@ -139,7 +139,7 @@ impl Importer for BlenderMaterialImporter {
         //
         // Create the default asset
         //
-        let default_asset = MeshAdvMaterialAssetOwned::new_builder(context.schema_set);
+        let default_asset = MeshAdvMaterialAssetRecord::new_builder(context.schema_set);
 
         default_asset
             .base_color_factor()

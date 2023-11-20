@@ -2,12 +2,12 @@ use crate::assets::graphics_pipeline::{
     GraphicsPipelineShaderStage, MaterialAssetData, MaterialRon,
 };
 use crate::schema::{
-    GraphicsPipelineShaderStageReader, MaterialAssetAccessor, MaterialAssetOwned,
-    MaterialAssetReader,
+    GraphicsPipelineShaderStageRecord, GraphicsPipelineShaderStageRef, MaterialAssetAccessor,
+    MaterialAssetRecord,
 };
 use crate::MaterialPassData;
 use hydrate_base::AssetId;
-use hydrate_data::{DataSetResult, ImportableName, RecordAccessor, RecordOwned};
+use hydrate_data::{DataSetResult, ImportableName, Record, RecordAccessor};
 use hydrate_pipeline::{
     Builder, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext, Importer,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult, RunContext,
@@ -37,7 +37,7 @@ impl Importer for HydrateMaterialImporter {
         let material_ron =
             ron::de::from_str::<MaterialRon>(&source).map_err(|e| format!("RON error {:?}", e))?;
 
-        let importable = context.add_default_importable::<MaterialAssetOwned>()?;
+        let importable = context.add_default_importable::<MaterialAssetRecord>()?;
         for pass in material_ron.passes {
             for stage in pass.shaders {
                 importable.add_file_reference(&stage.shader_module)?;
@@ -61,7 +61,7 @@ impl Importer for HydrateMaterialImporter {
         //
         // Create the default asset
         //
-        let default_asset = MaterialAssetOwned::new_builder(context.schema_set);
+        let default_asset = MaterialAssetRecord::new_builder(context.schema_set);
         for pass_ron in material_ron.passes {
             let entry = default_asset.passes().add_entry()?;
             let pass = default_asset.passes().entry(entry);
@@ -134,7 +134,7 @@ impl JobProcessor for MaterialJobProcessor {
         //
         // Read asset data
         //
-        let asset_data = context.asset::<MaterialAssetReader>(context.input.asset_id)?;
+        let asset_data = context.asset::<MaterialAssetRecord>(context.input.asset_id)?;
         context.produce_default_artifact_with_handles(
             context.input.asset_id,
             |handle_factory| {
@@ -149,7 +149,7 @@ impl JobProcessor for MaterialJobProcessor {
 
                     fn read_stage(
                         stage: MaterialShaderStage,
-                        record: GraphicsPipelineShaderStageReader,
+                        record: GraphicsPipelineShaderStageRef,
                         stages: &mut Vec<GraphicsPipelineShaderStage>,
                         handle_factory: HandleFactory,
                     ) -> DataSetResult<()> {

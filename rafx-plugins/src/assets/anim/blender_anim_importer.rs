@@ -3,12 +3,11 @@ use crate::assets::anim::{
     BoneChannelVec3, Skeleton,
 };
 use crate::schema::{
-    BlenderAnimAssetAccessor, BlenderAnimAssetOwned, BlenderAnimImportedDataOwned,
-    BlenderAnimImportedDataReader,
+    BlenderAnimAssetAccessor, BlenderAnimAssetRecord, BlenderAnimImportedDataRecord,
 };
 use fnv::FnvHashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{RecordAccessor, RecordOwned};
+use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
@@ -256,7 +255,7 @@ impl Importer for HydrateBlenderAnimImporter {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_default_importable::<BlenderAnimAssetOwned>()?;
+        context.add_default_importable::<BlenderAnimAssetRecord>()?;
         Ok(())
     }
 
@@ -273,12 +272,12 @@ impl Importer for HydrateBlenderAnimImporter {
         //
         // Create the default asset
         //
-        let default_asset = BlenderAnimAssetOwned::new_builder(context.schema_set);
+        let default_asset = BlenderAnimAssetRecord::new_builder(context.schema_set);
 
         //
         // Create import data
         //
-        let import_data = BlenderAnimImportedDataOwned::new_builder(context.schema_set);
+        let import_data = BlenderAnimImportedDataRecord::new_builder(context.schema_set);
         import_data.json_string().set(json_str)?;
 
         //
@@ -331,7 +330,7 @@ impl JobProcessor for BlenderAnimJobProcessor {
         // Read imported data
         //
         let imported_data =
-            context.imported_data::<BlenderAnimImportedDataReader>(context.input.asset_id)?;
+            context.imported_data::<BlenderAnimImportedDataRecord>(context.input.asset_id)?;
 
         let json_str = imported_data.json_string().get()?;
 

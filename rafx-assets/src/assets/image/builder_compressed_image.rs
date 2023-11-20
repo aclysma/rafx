@@ -2,7 +2,7 @@ use crate::assets::image::{
     ImageAssetData, ImageAssetDataLayer, ImageAssetDataMipLevel, ImageAssetDataPayload,
 };
 use crate::schema::{
-    GpuCompressedImageAssetAccessor, GpuCompressedImageImportedDataReader,
+    GpuCompressedImageAssetAccessor, GpuCompressedImageImportedDataRecord,
     GpuImageAssetDataFormatEnum,
 };
 use crate::{
@@ -63,7 +63,7 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         // Read imported data
         //
         let imported_data = context
-            .imported_data::<GpuCompressedImageImportedDataReader>(context.input.asset_id)?;
+            .imported_data::<GpuCompressedImageImportedDataRecord>(context.input.asset_id)?;
 
         let width = imported_data.width().get()?;
         let height = imported_data.height().get()?;

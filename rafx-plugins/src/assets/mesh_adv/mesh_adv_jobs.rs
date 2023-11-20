@@ -53,7 +53,7 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
         //
         // Read asset data
         //
-        let asset_data = context.asset::<MeshAdvMaterialAssetReader>(context.input.asset_id)?;
+        let asset_data = context.asset::<MeshAdvMaterialAssetRecord>(context.input.asset_id)?;
 
         let base_color_factor = asset_data.base_color_factor().get_vec4()?;
         let emissive_factor = asset_data.emissive_factor().get_vec3()?;
@@ -228,7 +228,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         // Read asset data
         //
-        let asset_data = context.asset::<MeshAdvMeshAssetReader>(context.input.asset_id)?;
+        let asset_data = context.asset::<MeshAdvMeshAssetRecord>(context.input.asset_id)?;
         let mut materials = Vec::default();
         for entry in asset_data.material_slots().resolve_entries()?.into_iter() {
             let entry = asset_data.material_slots().entry(*entry).get()?;
@@ -239,7 +239,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         // Read import data
         //
         let imported_data =
-            context.imported_data::<MeshAdvMeshImportedDataReader>(context.input.asset_id)?;
+            context.imported_data::<MeshAdvMeshImportedDataRecord>(context.input.asset_id)?;
 
         let mut all_positions = Vec::<glam::Vec3>::with_capacity(1024);
         let mut all_position_indices = Vec::<u32>::with_capacity(8192);
@@ -485,7 +485,7 @@ impl JobProcessor for MeshAdvModelJobProcessor {
             context.input.asset_id,
             |handle_factory| {
                 let asset_data =
-                    context.asset::<MeshAdvModelAssetReader>(context.input.asset_id)?;
+                    context.asset::<MeshAdvModelAssetRecord>(context.input.asset_id)?;
 
                 let mut lods = Vec::default();
                 for entry in asset_data.lods().resolve_entries()?.into_iter() {
@@ -571,7 +571,7 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
         // Read import data
         //
         let imported_data =
-            context.imported_data::<MeshAdvPrefabImportDataReader>(context.input.asset_id)?;
+            context.imported_data::<MeshAdvPrefabImportDataRecord>(context.input.asset_id)?;
 
         let json_str = imported_data.json_data().get()?;
         let json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&json_str)

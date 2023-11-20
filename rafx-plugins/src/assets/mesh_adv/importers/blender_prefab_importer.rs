@@ -1,7 +1,7 @@
 use crate::assets::mesh_adv::{ModelAdvAsset, PrefabAdvAssetDataObjectLightKind};
-use crate::schema::{MeshAdvPrefabAssetOwned, MeshAdvPrefabImportDataOwned};
+use crate::schema::{MeshAdvPrefabAssetRecord, MeshAdvPrefabImportDataRecord};
 use hydrate_base::handle::Handle;
-use hydrate_data::RecordOwned;
+use hydrate_data::Record;
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
     JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
@@ -107,7 +107,7 @@ impl Importer for BlenderPrefabImporter {
         let json_format: HydrateMeshAdvPrefabJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Prefab Import error: {:?}", x))?;
 
-        let importable = context.add_default_importable::<MeshAdvPrefabAssetOwned>()?;
+        let importable = context.add_default_importable::<MeshAdvPrefabAssetRecord>()?;
 
         for object in &json_format.objects {
             if let Some(model) = &object.model {
@@ -133,9 +133,9 @@ impl Importer for BlenderPrefabImporter {
         //
         // Create the default asset
         //
-        let default_asset = MeshAdvPrefabAssetOwned::new_builder(context.schema_set);
+        let default_asset = MeshAdvPrefabAssetRecord::new_builder(context.schema_set);
 
-        let import_data = MeshAdvPrefabImportDataOwned::new_builder(context.schema_set);
+        let import_data = MeshAdvPrefabImportDataRecord::new_builder(context.schema_set);
         import_data.json_data().set(source)?;
 
         //

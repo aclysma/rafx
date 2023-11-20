@@ -1,16 +1,16 @@
 use crate::schema::{
-    MeshAdvMaterialAssetOwned, MeshAdvMeshAssetOwned, MeshAdvMeshImportedDataOwned,
+    MeshAdvMaterialAssetRecord, MeshAdvMeshAssetRecord, MeshAdvMeshImportedDataRecord,
 };
 use fnv::FnvHashMap;
 use gltf::buffer::Data as GltfBufferData;
 use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
-use hydrate_data::{ImportableName, RecordBuilder, RecordOwned};
+use hydrate_data::{ImportableName, Record, RecordBuilder};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
     JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
 };
-use rafx::assets::schema::{GpuImageAssetOwned, GpuImageImportedDataOwned};
+use rafx::assets::schema::{GpuImageAssetRecord, GpuImageImportedDataRecord};
 use rafx::assets::PushBuffer;
 use rafx::assets::{GpuImageImporterSimple, ImageImporterOptions};
 use rafx::assets::{ImageAssetColorSpaceConfig, ImageAssetData};
@@ -165,7 +165,7 @@ fn hydrate_import_image(
     //
     // Create import data
     //
-    let import_data = GpuImageImportedDataOwned::new_builder(context.schema_set);
+    let import_data = GpuImageImportedDataRecord::new_builder(context.schema_set);
     import_data
         .image_bytes()
         .set(Arc::new(converted_image.to_vec()))?;
@@ -175,7 +175,7 @@ fn hydrate_import_image(
     //
     // Create the default asset
     //
-    let mut default_asset = RecordBuilder::<GpuImageAssetOwned>::new(context.schema_set);
+    let mut default_asset = RecordBuilder::<GpuImageAssetRecord>::new(context.schema_set);
     GpuImageImporterSimple::set_default_asset_properties(&default_settings, &mut default_asset);
 
     //
@@ -198,7 +198,7 @@ fn hydrate_import_material(
     //
     // Create the default asset
     //
-    let default_asset = MeshAdvMaterialAssetOwned::new_builder(context.schema_set);
+    let default_asset = MeshAdvMaterialAssetRecord::new_builder(context.schema_set);
 
     default_asset
         .base_color_factor()
@@ -297,7 +297,7 @@ fn hydrate_import_mesh(
     //
     // Create the asset (mainly we create a list of material slots referencing the appropriate material asset)
     //
-    let default_asset = MeshAdvMeshAssetOwned::new_builder(context.schema_set);
+    let default_asset = MeshAdvMeshAssetRecord::new_builder(context.schema_set);
     for material_slot in material_slots {
         let entry = default_asset.material_slots().add_entry()?;
         default_asset
@@ -309,7 +309,7 @@ fn hydrate_import_mesh(
     //
     // Create import data
     //
-    let import_data = MeshAdvMeshImportedDataOwned::new_builder(context.schema_set);
+    let import_data = MeshAdvMeshImportedDataRecord::new_builder(context.schema_set);
 
     //
     // Iterate all mesh parts, building a single vertex and index buffer. Each MeshPart will
@@ -421,23 +421,23 @@ impl Importer for GltfImporter {
                 }
             }
 
-            context.add_importable::<MeshAdvMeshAssetOwned>(name)?;
+            context.add_importable::<MeshAdvMeshAssetRecord>(name)?;
         }
 
         for (i, material) in doc.materials().enumerate() {
             let name = name_or_index("material", material.name(), i);
-            context.add_importable::<MeshAdvMaterialAssetOwned>(name)?;
+            context.add_importable::<MeshAdvMaterialAssetRecord>(name)?;
         }
 
         for (i, image) in doc.images().enumerate() {
             let name = name_or_index("image", image.name(), i);
-            context.add_importable::<GpuImageAssetOwned>(name)?;
+            context.add_importable::<GpuImageAssetRecord>(name)?;
         }
 
         if uses_default_material {
             //TODO: Warn?
             let name = ImportableName::new("material__default_material".to_string());
-            context.add_importable::<MeshAdvMaterialAssetOwned>(name)?;
+            context.add_importable::<MeshAdvMaterialAssetRecord>(name)?;
         }
 
         Ok(())

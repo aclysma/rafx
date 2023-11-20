@@ -3,10 +3,10 @@ use crate::assets::ldtk::{
     LdtkLayerData, LdtkLayerDrawCallData, LdtkLevelData, LdtkTileSet, LevelUid,
 };
 use crate::features::tile_layer::TileLayerVertex;
-use crate::schema::{LdtkAssetAccessor, LdtkAssetOwned, LdtkImportDataOwned, LdtkImportDataReader};
+use crate::schema::{LdtkAssetAccessor, LdtkAssetRecord, LdtkImportDataRecord};
 use fnv::FnvHashMap;
 use hydrate_base::{AssetId, Handle};
-use hydrate_data::{RecordAccessor, RecordOwned};
+use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
@@ -142,7 +142,7 @@ impl Importer for HydrateLdtkImporter {
         let source = std::fs::read_to_string(context.path)?;
         let project: ldtk_rust::Project = serde_json::from_str(&source)?;
 
-        let importable = context.add_default_importable::<LdtkAssetOwned>()?;
+        let importable = context.add_default_importable::<LdtkAssetRecord>()?;
 
         for tileset in &project.defs.tilesets {
             importable.add_file_reference(&tileset.rel_path)?;
@@ -164,9 +164,9 @@ impl Importer for HydrateLdtkImporter {
         //
         // Create the default asset
         //
-        let default_asset = LdtkAssetOwned::new_builder(context.schema_set);
+        let default_asset = LdtkAssetRecord::new_builder(context.schema_set);
 
-        let import_data = LdtkImportDataOwned::new_builder(context.schema_set);
+        let import_data = LdtkImportDataRecord::new_builder(context.schema_set);
         import_data.json_data().set(source)?;
 
         //
@@ -219,7 +219,7 @@ impl JobProcessor for LdtkJobProcessor {
         // Read import data
         //
         let imported_data =
-            context.imported_data::<LdtkImportDataReader>(context.input.asset_id)?;
+            context.imported_data::<LdtkImportDataRecord>(context.input.asset_id)?;
 
         let json_str = imported_data.json_data().get()?;
         let project: ldtk_rust::Project = serde_json::from_str(&json_str)?;

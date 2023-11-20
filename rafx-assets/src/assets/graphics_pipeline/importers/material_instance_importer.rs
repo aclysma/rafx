@@ -1,10 +1,8 @@
 use crate::assets::graphics_pipeline::{MaterialInstanceAssetData, MaterialInstanceRon};
-use crate::schema::{
-    MaterialInstanceAssetAccessor, MaterialInstanceAssetOwned, MaterialInstanceAssetReader,
-};
+use crate::schema::{MaterialInstanceAssetAccessor, MaterialInstanceAssetRecord};
 use crate::MaterialInstanceSlotAssignment;
 use hydrate_base::AssetId;
-use hydrate_data::{ImportableName, NullOverride, RecordAccessor, RecordOwned};
+use hydrate_data::{ImportableName, NullOverride, Record, RecordAccessor};
 use hydrate_pipeline::{
     Builder, BuilderContext, EnumerateDependenciesContext, ImportContext, Importer,
     JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult, RunContext,
@@ -42,7 +40,7 @@ impl Importer for HydrateMaterialInstanceImporter {
         let material_instance_ron = ron::de::from_str::<MaterialInstanceRon>(&source)
             .map_err(|e| format!("RON error {:?}", e))?;
 
-        let importable = context.add_default_importable::<MaterialInstanceAssetOwned>()?;
+        let importable = context.add_default_importable::<MaterialInstanceAssetRecord>()?;
 
         importable.add_file_reference(&material_instance_ron.material)?;
 
@@ -69,7 +67,7 @@ impl Importer for HydrateMaterialInstanceImporter {
         //
         // Create the default asset
         //
-        let default_asset = MaterialInstanceAssetOwned::new_builder(context.schema_set);
+        let default_asset = MaterialInstanceAssetRecord::new_builder(context.schema_set);
         for slot_assignment in material_ron.slot_assignments {
             let entry_uuid = default_asset.slot_assignments().add_entry()?;
             let entry = default_asset.slot_assignments().entry(entry_uuid);
@@ -151,7 +149,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
         //
         // Read asset data
         //
-        let asset_data = context.asset::<MaterialInstanceAssetReader>(context.input.asset_id)?;
+        let asset_data = context.asset::<MaterialInstanceAssetRecord>(context.input.asset_id)?;
 
         context.produce_default_artifact_with_handles(
             context.input.asset_id,

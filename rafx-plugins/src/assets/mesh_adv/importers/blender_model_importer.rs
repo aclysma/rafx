@@ -1,7 +1,7 @@
 use crate::assets::mesh_adv::MeshAdvAsset;
-use crate::schema::MeshAdvModelAssetOwned;
+use crate::schema::MeshAdvModelAssetRecord;
 use hydrate_base::handle::Handle;
-use hydrate_data::{ImportableName, RecordOwned};
+use hydrate_data::{ImportableName, Record};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
     JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
@@ -50,7 +50,7 @@ impl Importer for BlenderModelImporter {
         let json_format: HydrateModelJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Model Import error: {:?}", x))?;
 
-        let importable = context.add_default_importable::<MeshAdvModelAssetOwned>()?;
+        let importable = context.add_default_importable::<MeshAdvModelAssetRecord>()?;
         for lod in &json_format.lods {
             importable.add_file_reference(&lod.mesh)?;
         }
@@ -72,7 +72,7 @@ impl Importer for BlenderModelImporter {
         //
         // Create the default asset
         //
-        let default_asset = MeshAdvModelAssetOwned::new_builder(context.schema_set);
+        let default_asset = MeshAdvModelAssetRecord::new_builder(context.schema_set);
 
         let entry = default_asset.lods().add_entry()?;
         let lod_entry = default_asset.lods().entry(entry);

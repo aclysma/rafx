@@ -2,15 +2,14 @@ use crate::assets::image::{
     ImageAssetColorSpaceConfig, ImageAssetData, ImageAssetDataFormatConfig,
 };
 use crate::schema::{
-    GpuImageAssetAccessor, GpuImageAssetOwned, GpuImageAssetReader,
-    GpuImageBasisCompressionTypeEnum, GpuImageColorSpaceEnum, GpuImageImportedDataOwned,
-    GpuImageImportedDataReader, GpuImageMipGenerationEnum,
+    GpuImageAssetAccessor, GpuImageAssetRecord, GpuImageBasisCompressionTypeEnum,
+    GpuImageColorSpaceEnum, GpuImageImportedDataRecord, GpuImageMipGenerationEnum,
 };
 use crate::{
     ImageAssetBasisCompressionSettings, ImageAssetBasisCompressionType, ImageAssetMipGeneration,
 };
 use hydrate_base::AssetId;
-use hydrate_data::{RecordAccessor, RecordBuilder, RecordOwned, SchemaLinker};
+use hydrate_data::{Record, RecordAccessor, RecordBuilder, SchemaLinker};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
@@ -200,7 +199,7 @@ impl GpuImageImporterSimple {
 
     pub fn set_default_asset_properties(
         default_settings: &ImageImporterOptions,
-        asset_record: &mut RecordBuilder<GpuImageAssetOwned>,
+        asset_record: &mut RecordBuilder<GpuImageAssetRecord>,
     ) {
         match default_settings.data_format {
             ImageAssetDataFormatConfig::Uncompressed => {
@@ -255,7 +254,7 @@ impl Importer for GpuImageImporterSimple {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_default_importable::<GpuImageAssetOwned>()?;
+        context.add_default_importable::<GpuImageAssetRecord>()?;
         Ok(())
     }
 
@@ -274,7 +273,7 @@ impl Importer for GpuImageImporterSimple {
         //
         // Create import data
         //
-        let import_data = GpuImageImportedDataOwned::new_builder(context.schema_set);
+        let import_data = GpuImageImportedDataRecord::new_builder(context.schema_set);
         import_data
             .image_bytes()
             .set(Arc::new(image_bytes))
@@ -285,7 +284,7 @@ impl Importer for GpuImageImporterSimple {
         //
         // Create the default asset
         //
-        let mut default_asset = GpuImageAssetOwned::new_builder(context.schema_set);
+        let mut default_asset = GpuImageAssetRecord::new_builder(context.schema_set);
         let default_settings = self.default_settings(context.path);
 
         GpuImageImporterSimple::set_default_asset_properties(&default_settings, &mut default_asset);
@@ -340,7 +339,7 @@ impl JobProcessor for GpuImageJobProcessor {
         // Read asset properties
         //
         let asset_data = context
-            .asset::<GpuImageAssetReader>(context.input.asset_id)
+            .asset::<GpuImageAssetRecord>(context.input.asset_id)
             .unwrap();
         let basis_compression = asset_data.basis_compression().get().unwrap();
         let color_space = match asset_data.color_space().get().unwrap() {
@@ -381,7 +380,7 @@ impl JobProcessor for GpuImageJobProcessor {
         // Read imported data
         //
         let import_data = context
-            .imported_data::<GpuImageImportedDataReader>(context.input.asset_id)
+            .imported_data::<GpuImageImportedDataRecord>(context.input.asset_id)
             .unwrap();
 
         let image_bytes = import_data.image_bytes().get().unwrap().clone();

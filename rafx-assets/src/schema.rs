@@ -1,5 +1,5 @@
 use hydrate_data::*;
-use hydrate_pipeline::{DataContainerOwned, DataContainerRef, DataContainerRefMut, DataSetResult};
+use hydrate_pipeline::{DataContainer, DataContainerRef, DataContainerRefMut, DataSetResult};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -53,7 +53,7 @@ impl Vec4Accessor {
     }
 }
 
-impl<'a> Vec3Reader<'a> {
+impl<'a> Vec3Ref<'a> {
     pub fn get_vec3(&self) -> DataSetResult<[f32; 3]> {
         let x = self.x().get()?;
         let y = self.y().get()?;
@@ -62,7 +62,7 @@ impl<'a> Vec3Reader<'a> {
     }
 }
 
-impl<'a> Vec4Reader<'a> {
+impl<'a> Vec4Ref<'a> {
     pub fn get_vec4(&self) -> DataSetResult<[f32; 4]> {
         let x = self.x().get()?;
         let y = self.y().get()?;
@@ -72,7 +72,7 @@ impl<'a> Vec4Reader<'a> {
     }
 }
 
-impl Vec3Owned {
+impl Vec3Record {
     pub fn set_vec3(
         &self,
         value: [f32; 3],
@@ -91,7 +91,7 @@ impl Vec3Owned {
     }
 }
 
-impl Vec4Owned {
+impl Vec4Record {
     pub fn set_vec4(
         &self,
         value: [f32; 4],

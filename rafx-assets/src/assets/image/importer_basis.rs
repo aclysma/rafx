@@ -1,10 +1,11 @@
 use crate::schema::{
-    GpuCompressedImageAssetOwned, GpuCompressedImageImportedDataOwned, GpuImageAssetDataFormatEnum,
+    GpuCompressedImageAssetRecord, GpuCompressedImageImportedDataRecord,
+    GpuImageAssetDataFormatEnum,
 };
 #[cfg(feature = "basis-universal")]
 use basis_universal::BasisTextureType;
 
-use hydrate_data::RecordOwned;
+use hydrate_data::Record;
 use hydrate_pipeline::{ImportContext, Importer, PipelineResult, ScanContext};
 use std::sync::Arc;
 use type_uuid::*;
@@ -22,7 +23,7 @@ impl Importer for GpuCompressedImageImporterBasis {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_default_importable::<GpuCompressedImageAssetOwned>()?;
+        context.add_default_importable::<GpuCompressedImageAssetRecord>()?;
         Ok(())
     }
 
@@ -78,7 +79,7 @@ impl Importer for GpuCompressedImageImporterBasis {
         //
         // Create import data
         //
-        let import_data = GpuCompressedImageImportedDataOwned::new_builder(context.schema_set);
+        let import_data = GpuCompressedImageImportedDataRecord::new_builder(context.schema_set);
         import_data
             .height()
             .set(level_info.original_height)
@@ -97,7 +98,7 @@ impl Importer for GpuCompressedImageImporterBasis {
         //
         // Create the default asset
         //
-        let default_asset = GpuCompressedImageAssetOwned::new_builder(context.schema_set);
+        let default_asset = GpuCompressedImageAssetRecord::new_builder(context.schema_set);
 
         //
         // Return the created objects

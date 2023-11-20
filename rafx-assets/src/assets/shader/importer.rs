@@ -1,10 +1,9 @@
 use crate::assets::shader::ShaderAssetData;
 use crate::schema::{
-    ShaderPackageAssetAccessor, ShaderPackageAssetOwned, ShaderPackageImportedDataOwned,
-    ShaderPackageImportedDataReader,
+    ShaderPackageAssetAccessor, ShaderPackageAssetRecord, ShaderPackageImportedDataRecord,
 };
 use hydrate_base::AssetId;
-use hydrate_data::{RecordAccessor, RecordOwned};
+use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
     ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
@@ -29,7 +28,7 @@ impl Importer for ShaderPackageImporterSpv {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_default_importable::<ShaderPackageAssetOwned>()?;
+        context.add_default_importable::<ShaderPackageAssetRecord>()?;
         Ok(())
     }
 
@@ -64,13 +63,13 @@ impl Importer for ShaderPackageImporterSpv {
         //
         // Create import data
         //
-        let import_data = ShaderPackageImportedDataOwned::new_builder(context.schema_set);
+        let import_data = ShaderPackageImportedDataRecord::new_builder(context.schema_set);
         import_data.bytes().set(package_bytes)?;
 
         //
         // Create the default asset
         //
-        let default_asset = ShaderPackageAssetOwned::new_builder(context.schema_set);
+        let default_asset = ShaderPackageAssetRecord::new_builder(context.schema_set);
 
         //
         // Return the created objects
@@ -94,7 +93,7 @@ impl Importer for ShaderPackageImporterCooked {
         &self,
         context: ScanContext,
     ) -> PipelineResult<()> {
-        context.add_default_importable::<ShaderPackageAssetOwned>()?;
+        context.add_default_importable::<ShaderPackageAssetRecord>()?;
         Ok(())
     }
 
@@ -122,13 +121,13 @@ impl Importer for ShaderPackageImporterCooked {
         //
         // Create import data
         //
-        let import_data = ShaderPackageImportedDataOwned::new_builder(context.schema_set);
+        let import_data = ShaderPackageImportedDataRecord::new_builder(context.schema_set);
         import_data.bytes().set(package_bytes)?;
 
         //
         // Create the default asset
         //
-        let default_asset = ShaderPackageAssetOwned::new_builder(context.schema_set);
+        let default_asset = ShaderPackageAssetRecord::new_builder(context.schema_set);
 
         //
         // Return the created objects
@@ -180,7 +179,7 @@ impl JobProcessor for ShaderPackageJobProcessor {
         // Read imported data
         //
         let imported_data =
-            context.imported_data::<ShaderPackageImportedDataReader>(context.input.asset_id)?;
+            context.imported_data::<ShaderPackageImportedDataRecord>(context.input.asset_id)?;
         let shader_package = bincode::deserialize(&imported_data.bytes().get()?)?;
 
         //TODO: We can generate assets for different platforms
