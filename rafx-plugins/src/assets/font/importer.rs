@@ -4,10 +4,9 @@ use fnv::FnvHasher;
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
-    SchemaLinker,
+    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
+    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    PipelineResult, RunContext, ScanContext, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -82,20 +81,9 @@ impl JobProcessor for FontJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies {
-            import_data: vec![context.input.asset_id],
-            upstream_jobs: Default::default(),
-        })
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<FontJobOutput> {
         //
         // Read asset properties

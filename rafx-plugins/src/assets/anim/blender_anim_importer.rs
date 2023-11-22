@@ -9,10 +9,9 @@ use fnv::FnvHashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
-    SchemaLinker,
+    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
+    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    PipelineResult, RunContext, ScanContext, SchemaLinker,
 };
 use rafx::api::{RafxError, RafxResult};
 use serde::{Deserialize, Serialize};
@@ -311,20 +310,9 @@ impl JobProcessor for BlenderAnimJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies {
-            import_data: vec![context.input.asset_id],
-            upstream_jobs: Default::default(),
-        })
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<BlenderAnimJobOutput> {
         //
         // Read imported data

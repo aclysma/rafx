@@ -5,9 +5,9 @@ use rafx::api::RafxResourceType;
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::*;
 use hydrate_pipeline::{
-    AssetId, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, PipelineResult, RecordAccessor, RunContext, SchemaLinker,
+    AssetId, BuilderContext, BuilderRegistryBuilder, ImporterRegistryBuilder, JobInput, JobOutput,
+    JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RecordAccessor, RunContext,
+    SchemaLinker,
 };
 use hydrate_pipeline::{AssetPlugin, Builder};
 use rafx::assets::PushBuffer;
@@ -38,17 +38,9 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        _context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies::default())
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<MeshAdvMaterialJobOutput> {
         //
         // Read asset data
@@ -210,20 +202,9 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies {
-            import_data: vec![context.input.asset_id],
-            upstream_jobs: Vec::default(),
-        })
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<MeshAdvMeshPreprocessJobOutput> {
         //
         // Read asset data
@@ -469,17 +450,9 @@ impl JobProcessor for MeshAdvModelJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        _context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies::default())
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<MeshAdvModelJobOutput> {
         context.produce_default_artifact_with_handles(
             context.input.asset_id,
@@ -552,20 +525,9 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies {
-            import_data: vec![context.input.asset_id],
-            upstream_jobs: Default::default(),
-        })
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<MeshAdvPrefabJobOutput> {
         //
         // Read import data

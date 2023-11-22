@@ -5,10 +5,9 @@ use crate::schema::{
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
-    SchemaLinker,
+    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
+    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    PipelineResult, RunContext, ScanContext, SchemaLinker,
 };
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
@@ -160,20 +159,9 @@ impl JobProcessor for ShaderPackageJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies {
-            import_data: vec![context.input.asset_id],
-            upstream_jobs: Vec::default(),
-        })
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<ShaderPackageJobOutput> {
         //
         // Read imported data

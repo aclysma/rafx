@@ -115,6 +115,7 @@ fn main() {
             import_to_queue.importer_id,
             import_to_queue.source_file_path,
             import_to_queue.assets_to_regenerate,
+            import_to_queue.import_type,
         );
     }
 

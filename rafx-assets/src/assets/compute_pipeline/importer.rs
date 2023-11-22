@@ -3,10 +3,9 @@ use crate::schema::{ComputePipelineAssetAccessor, ComputePipelineAssetRecord};
 use hydrate_base::AssetId;
 use hydrate_data::{ImportableName, Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, EnumerateDependenciesContext,
-    ImportContext, Importer, ImporterRegistryBuilder, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
-    SchemaLinker,
+    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
+    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    PipelineResult, RunContext, ScanContext, SchemaLinker,
 };
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
@@ -91,17 +90,9 @@ impl JobProcessor for ComputePipelineJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        _context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies::default())
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<ComputePipelineJobOutput> {
         //
         // Read asset data

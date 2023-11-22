@@ -6,9 +6,8 @@ use crate::MaterialPassData;
 use hydrate_base::AssetId;
 use hydrate_data::{DataSetResult, ImportableName, Record, RecordAccessor};
 use hydrate_pipeline::{
-    Builder, BuilderContext, EnumerateDependenciesContext, HandleFactory, ImportContext, Importer,
-    JobEnumeratedDependencies, JobInput, JobOutput, JobProcessor, PipelineResult, RunContext,
-    ScanContext,
+    Builder, BuilderContext, HandleFactory, ImportContext, Importer, JobInput, JobOutput,
+    JobProcessor, PipelineResult, RunContext, ScanContext,
 };
 use rafx_framework::MaterialShaderStage;
 use serde::{Deserialize, Serialize};
@@ -116,17 +115,9 @@ impl JobProcessor for MaterialJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        _context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies::default())
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<MaterialJobOutput> {
         //
         // Read asset data

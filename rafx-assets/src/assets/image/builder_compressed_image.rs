@@ -11,8 +11,7 @@ use crate::{
 use hydrate_base::AssetId;
 use hydrate_data::RecordAccessor;
 use hydrate_pipeline::{
-    Builder, BuilderContext, EnumerateDependenciesContext, JobEnumeratedDependencies, JobInput,
-    JobOutput, JobProcessor, PipelineResult, RunContext,
+    Builder, BuilderContext, JobInput, JobOutput, JobProcessor, PipelineResult, RunContext,
 };
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
@@ -40,20 +39,9 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
         1
     }
 
-    fn enumerate_dependencies(
+    fn run<'a>(
         &self,
-        context: EnumerateDependenciesContext<Self::InputT>,
-    ) -> PipelineResult<JobEnumeratedDependencies> {
-        // No dependencies
-        Ok(JobEnumeratedDependencies {
-            import_data: vec![context.input.asset_id],
-            upstream_jobs: Vec::default(),
-        })
-    }
-
-    fn run(
-        &self,
-        context: RunContext<Self::InputT>,
+        context: &'a RunContext<'a, Self::InputT>,
     ) -> PipelineResult<GpuCompressedImageJobOutput> {
         //
         // Read asset properties

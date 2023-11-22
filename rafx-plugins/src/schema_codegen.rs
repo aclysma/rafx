@@ -104,7 +104,7 @@ impl<'a> RecordRef for BlenderAnimImportedDataRef<'a> {
 
 impl<'a> BlenderAnimImportedDataRef<'a> {
     pub fn json_string(&self) -> StringFieldRef {
-        StringFieldRef::new(self.0.push("json_string"), self.1)
+        StringFieldRef::new(self.0.push("json_string"), self.1.clone())
     }
 }
 pub struct BlenderAnimImportedDataRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
@@ -254,7 +254,7 @@ impl<'a> RecordRef for FontImportedDataRef<'a> {
 
 impl<'a> FontImportedDataRef<'a> {
     pub fn bytes(&self) -> BytesFieldRef {
-        BytesFieldRef::new(self.0.push("bytes"), self.1)
+        BytesFieldRef::new(self.0.push("bytes"), self.1.clone())
     }
 }
 pub struct FontImportedDataRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
@@ -404,7 +404,7 @@ impl<'a> RecordRef for LdtkImportDataRef<'a> {
 
 impl<'a> LdtkImportDataRef<'a> {
     pub fn json_data(&self) -> StringFieldRef {
-        StringFieldRef::new(self.0.push("json_data"), self.1)
+        StringFieldRef::new(self.0.push("json_data"), self.1.clone())
     }
 }
 pub struct LdtkImportDataRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
@@ -604,63 +604,63 @@ impl<'a> RecordRef for MeshAdvMaterialAssetRef<'a> {
 
 impl<'a> MeshAdvMaterialAssetRef<'a> {
     pub fn alpha_threshold(&self) -> F32FieldRef {
-        F32FieldRef::new(self.0.push("alpha_threshold"), self.1)
+        F32FieldRef::new(self.0.push("alpha_threshold"), self.1.clone())
     }
 
     pub fn backface_culling(&self) -> BooleanFieldRef {
-        BooleanFieldRef::new(self.0.push("backface_culling"), self.1)
+        BooleanFieldRef::new(self.0.push("backface_culling"), self.1.clone())
     }
 
     pub fn base_color_factor(&self) -> Vec4Ref {
-        Vec4Ref::new(self.0.push("base_color_factor"), self.1)
+        Vec4Ref::new(self.0.push("base_color_factor"), self.1.clone())
     }
 
     pub fn blend_method(&self) -> EnumFieldRef::<MeshAdvBlendMethodEnum> {
-        EnumFieldRef::<MeshAdvBlendMethodEnum>::new(self.0.push("blend_method"), self.1)
+        EnumFieldRef::<MeshAdvBlendMethodEnum>::new(self.0.push("blend_method"), self.1.clone())
     }
 
     pub fn color_texture(&self) -> AssetRefFieldRef {
-        AssetRefFieldRef::new(self.0.push("color_texture"), self.1)
+        AssetRefFieldRef::new(self.0.push("color_texture"), self.1.clone())
     }
 
     pub fn color_texture_has_alpha_channel(&self) -> BooleanFieldRef {
-        BooleanFieldRef::new(self.0.push("color_texture_has_alpha_channel"), self.1)
+        BooleanFieldRef::new(self.0.push("color_texture_has_alpha_channel"), self.1.clone())
     }
 
     pub fn emissive_factor(&self) -> Vec3Ref {
-        Vec3Ref::new(self.0.push("emissive_factor"), self.1)
+        Vec3Ref::new(self.0.push("emissive_factor"), self.1.clone())
     }
 
     pub fn emissive_texture(&self) -> AssetRefFieldRef {
-        AssetRefFieldRef::new(self.0.push("emissive_texture"), self.1)
+        AssetRefFieldRef::new(self.0.push("emissive_texture"), self.1.clone())
     }
 
     pub fn metallic_factor(&self) -> F32FieldRef {
-        F32FieldRef::new(self.0.push("metallic_factor"), self.1)
+        F32FieldRef::new(self.0.push("metallic_factor"), self.1.clone())
     }
 
     pub fn metallic_roughness_texture(&self) -> AssetRefFieldRef {
-        AssetRefFieldRef::new(self.0.push("metallic_roughness_texture"), self.1)
+        AssetRefFieldRef::new(self.0.push("metallic_roughness_texture"), self.1.clone())
     }
 
     pub fn normal_texture(&self) -> AssetRefFieldRef {
-        AssetRefFieldRef::new(self.0.push("normal_texture"), self.1)
+        AssetRefFieldRef::new(self.0.push("normal_texture"), self.1.clone())
     }
 
     pub fn normal_texture_scale(&self) -> F32FieldRef {
-        F32FieldRef::new(self.0.push("normal_texture_scale"), self.1)
+        F32FieldRef::new(self.0.push("normal_texture_scale"), self.1.clone())
     }
 
     pub fn occlusion_texture(&self) -> AssetRefFieldRef {
-        AssetRefFieldRef::new(self.0.push("occlusion_texture"), self.1)
+        AssetRefFieldRef::new(self.0.push("occlusion_texture"), self.1.clone())
     }
 
     pub fn roughness_factor(&self) -> F32FieldRef {
-        F32FieldRef::new(self.0.push("roughness_factor"), self.1)
+        F32FieldRef::new(self.0.push("roughness_factor"), self.1.clone())
     }
 
     pub fn shadow_method(&self) -> EnumFieldRef::<MeshAdvShadowMethodEnum> {
-        EnumFieldRef::<MeshAdvShadowMethodEnum>::new(self.0.push("shadow_method"), self.1)
+        EnumFieldRef::<MeshAdvShadowMethodEnum>::new(self.0.push("shadow_method"), self.1.clone())
     }
 }
 pub struct MeshAdvMaterialAssetRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
@@ -922,7 +922,7 @@ impl<'a> RecordRef for MeshAdvMeshAssetRef<'a> {
 
 impl<'a> MeshAdvMeshAssetRef<'a> {
     pub fn material_slots(&self) -> DynamicArrayFieldRef::<AssetRefFieldRef> {
-        DynamicArrayFieldRef::<AssetRefFieldRef>::new(self.0.push("material_slots"), self.1)
+        DynamicArrayFieldRef::<AssetRefFieldRef>::new(self.0.push("material_slots"), self.1.clone())
     }
 }
 pub struct MeshAdvMeshAssetRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
@@ -1003,7 +1003,7 @@ impl<'a> RecordRef for MeshAdvMeshImportedDataRef<'a> {
 
 impl<'a> MeshAdvMeshImportedDataRef<'a> {
     pub fn mesh_parts(&self) -> DynamicArrayFieldRef::<MeshAdvMeshImportedDataMeshPartRef> {
-        DynamicArrayFieldRef::<MeshAdvMeshImportedDataMeshPartRef>::new(self.0.push("mesh_parts"), self.1)
+        DynamicArrayFieldRef::<MeshAdvMeshImportedDataMeshPartRef>::new(self.0.push("mesh_parts"), self.1.clone())
     }
 }
 pub struct MeshAdvMeshImportedDataRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
@@ -1100,23 +1100,23 @@ impl<'a> RecordRef for MeshAdvMeshImportedDataMeshPartRef<'a> {
 
 impl<'a> MeshAdvMeshImportedDataMeshPartRef<'a> {
     pub fn indices(&self) -> BytesFieldRef {
-        BytesFieldRef::new(self.0.push("indices"), self.1)
+        BytesFieldRef::new(self.0.push("indices"), self.1.clone())
     }
 
     pub fn material_index(&self) -> U32FieldRef {
-        U32FieldRef::new(self.0.push("material_index"), self.1)
+        U32FieldRef::new(self.0.push("material_index"), self.1.clone())
     }
 
     pub fn normals(&self) -> BytesFieldRef {
-        BytesFieldRef::new(self.0.push("normals"), self.1)
+        BytesFieldRef::new(self.0.push("normals"), self.1.clone())
     }
 
     pub fn positions(&self) -> BytesFieldRef {
-        BytesFieldRef::new(self.0.push("positions"), self.1)
+        BytesFieldRef::new(self.0.push("positions"), self.1.clone())
     }
 
     pub fn texture_coordinates(&self) -> BytesFieldRef {
-        BytesFieldRef::new(self.0.push("texture_coordinates"), self.1)
+        BytesFieldRef::new(self.0.push("texture_coordinates"), self.1.clone())
     }
 }
 pub struct MeshAdvMeshImportedDataMeshPartRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
@@ -1229,7 +1229,7 @@ impl<'a> RecordRef for MeshAdvModelAssetRef<'a> {
 
 impl<'a> MeshAdvModelAssetRef<'a> {
     pub fn lods(&self) -> DynamicArrayFieldRef::<MeshAdvModelLodRef> {
-        DynamicArrayFieldRef::<MeshAdvModelLodRef>::new(self.0.push("lods"), self.1)
+        DynamicArrayFieldRef::<MeshAdvModelLodRef>::new(self.0.push("lods"), self.1.clone())
     }
 }
 pub struct MeshAdvModelAssetRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
@@ -1310,7 +1310,7 @@ impl<'a> RecordRef for MeshAdvModelLodRef<'a> {
 
 impl<'a> MeshAdvModelLodRef<'a> {
     pub fn mesh(&self) -> AssetRefFieldRef {
-        AssetRefFieldRef::new(self.0.push("mesh"), self.1)
+        AssetRefFieldRef::new(self.0.push("mesh"), self.1.clone())
     }
 }
 pub struct MeshAdvModelLodRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
@@ -1460,7 +1460,7 @@ impl<'a> RecordRef for MeshAdvPrefabImportDataRef<'a> {
 
 impl<'a> MeshAdvPrefabImportDataRef<'a> {
     pub fn json_data(&self) -> StringFieldRef {
-        StringFieldRef::new(self.0.push("json_data"), self.1)
+        StringFieldRef::new(self.0.push("json_data"), self.1.clone())
     }
 }
 pub struct MeshAdvPrefabImportDataRefMut<'a>(PropertyPath, Rc<RefCell<DataContainerRefMut<'a>>>);
