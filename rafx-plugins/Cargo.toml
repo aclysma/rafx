@@ -60,7 +60,7 @@ rand = "0.8"
 [dev-dependencies]
 
 [features]
-# legion: if enabled, include some helper setup code
+
 
 # if enabled, use egui with winit
 egui-winit = ["egui", "winit"]

@@ -1,4 +1,8 @@
+use hydrate::model::{AssetPathCache, EditorModelWithCache};
 use std::path::PathBuf;
+
+mod inspectors;
+
 //
 // fn schema_def_path() -> PathBuf {
 //     PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/data/schema"))
@@ -88,7 +92,7 @@ fn main() {
         asset_plugin_registration_helper.finish(&schema_set);
 
     let mut imports_to_queue = Vec::default();
-    let mut db_state = hydrate::editor::DbState::load_or_init_empty(
+    let mut db_state = hydrate::editor::DbState::load(
         &schema_set,
         &importer_registry,
         &asset_id_based_data_source_path(),
@@ -97,12 +101,18 @@ fn main() {
         &mut imports_to_queue,
     );
 
+    let asset_path_cache = AssetPathCache::build(&db_state.editor_model);
+    let mut editor_model_with_cache = EditorModelWithCache {
+        editor_model: &mut db_state.editor_model,
+        asset_path_cache: &asset_path_cache,
+    };
+
     let mut asset_engine = hydrate::pipeline::AssetEngine::new(
         &schema_set,
         importer_registry,
         builder_registry,
         job_processor_registry,
-        &db_state.editor_model,
+        &editor_model_with_cache,
         import_data_path(),
         job_data_path(),
         build_data_path(),
@@ -114,13 +124,13 @@ fn main() {
             import_to_queue.requested_importables,
             import_to_queue.importer_id,
             import_to_queue.source_file_path,
-            import_to_queue.assets_to_regenerate,
             import_to_queue.import_type,
         );
     }
 
     //Headless
-    asset_engine.update(&mut db_state.editor_model).unwrap();
+    //asset_engine.update(&mut editor_model_with_cache).unwrap();
 
-    hydrate::editor::run(db_state, asset_engine);
+    let inspector_registry = crate::inspectors::create_registry(db_state.editor_model.schema_set());
+    hydrate::editor::run(db_state, asset_engine, inspector_registry);
 }

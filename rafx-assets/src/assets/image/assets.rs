@@ -249,10 +249,18 @@ impl ImageAssetData {
 
                 match settings.compression_type {
                     ImageAssetBasisCompressionType::Etc1S => {
-                        compressor_params.set_etc1s_quality_level(settings.quality)
+                        let quality_level = settings.quality.clamp(
+                            basis_universal::ETC1S_QUALITY_MIN,
+                            basis_universal::ETC1S_QUALITY_MAX,
+                        );
+                        compressor_params.set_etc1s_quality_level(quality_level)
                     }
                     ImageAssetBasisCompressionType::Uastc => {
-                        compressor_params.set_uastc_quality_level(settings.quality)
+                        let quality_level = settings.quality.clamp(
+                            basis_universal::ETC1S_QUALITY_MIN,
+                            basis_universal::ETC1S_QUALITY_MAX,
+                        );
+                        compressor_params.set_uastc_quality_level(quality_level)
                     }
                 }
 
