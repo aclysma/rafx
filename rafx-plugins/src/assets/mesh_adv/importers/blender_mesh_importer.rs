@@ -3,7 +3,7 @@ use hydrate_base::hashing::HashMap;
 use hydrate_data::{ImportableName, Record};
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
-    JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
+    JobProcessorRegistryBuilder, PipelineResult, ScanContext,
 };
 use rafx::assets::PushBuffer;
 use rafx::base::b3f::B3FReader;

@@ -9,7 +9,7 @@ use crate::{
     ImageAssetBasisCompressionSettings, ImageAssetBasisCompressionType, ImageAssetMipGeneration,
 };
 use hydrate_base::AssetId;
-use hydrate_data::{Record, RecordAccessor, RecordBuilder, SchemaLinker};
+use hydrate_data::{Record, RecordAccessor, RecordBuilder};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
     ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,

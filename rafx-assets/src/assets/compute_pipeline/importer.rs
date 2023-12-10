@@ -5,7 +5,7 @@ use hydrate_data::{ImportableName, Record, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
     ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext, SchemaLinker,
+    PipelineResult, RunContext, ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use type_uuid::*;

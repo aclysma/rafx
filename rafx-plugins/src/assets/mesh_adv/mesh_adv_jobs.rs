@@ -7,7 +7,6 @@ use crate::schema::*;
 use hydrate_pipeline::{
     AssetId, BuilderContext, BuilderRegistryBuilder, ImporterRegistryBuilder, JobInput, JobOutput,
     JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RecordAccessor, RunContext,
-    SchemaLinker,
 };
 use hydrate_pipeline::{AssetPlugin, Builder};
 use rafx::assets::PushBuffer;

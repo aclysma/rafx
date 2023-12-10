@@ -24,7 +24,7 @@ pub use hydrate_base::Handle;
 
 mod resource_loader;
 
-use hydrate_pipeline::{AssetPluginRegistry, SchemaLinker};
+use hydrate_pipeline::AssetPluginRegistry;
 use std::path::PathBuf;
 
 pub fn schema_def_path() -> PathBuf {

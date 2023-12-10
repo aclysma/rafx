@@ -1,7 +1,6 @@
 pub mod assets;
 
 pub use assets::*;
-use hydrate_data::SchemaLinker;
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
 };

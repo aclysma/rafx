@@ -6,7 +6,7 @@ use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
     ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext, SchemaLinker,
+    PipelineResult, RunContext, ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};

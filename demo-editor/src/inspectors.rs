@@ -1,6 +1,6 @@
 use hydrate::editor::egui::Ui;
 use hydrate::editor::inspector_system::*;
-use hydrate::model::{Record, Schema, SchemaRecord, SchemaSet};
+use hydrate::model::{Schema, SchemaSet};
 use rafx::assets::schema::*;
 
 struct Vec3RecordInspector;

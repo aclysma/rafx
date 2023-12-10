@@ -3,7 +3,7 @@ use crate::schema::{MeshAdvPrefabAssetRecord, MeshAdvPrefabImportDataRecord};
 use hydrate_data::Record;
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
-    JobProcessorRegistryBuilder, PipelineResult, ScanContext, SchemaLinker,
+    JobProcessorRegistryBuilder, PipelineResult, ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

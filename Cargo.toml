@@ -48,15 +48,3 @@ split-debuginfo = "unpacked"
 
 #spirv_cross = { path = "../spirv_cross/spirv_cross" }
 spirv_cross = { git = "https://github.com/aclysma/spirv_cross.git", branch = "rafx-support" }
-
-
-
-
-
-
-## For hydrate
-imgui = { path = "../imgui-rs/imgui" }
-imgui-sys = { path = "../imgui-rs/imgui-sys" }
-imgui-winit-support = { path = "../imgui-rs/imgui-winit-support" }
-imnodes = { path = "../imnodes-rs" }
-imnodes-sys = { path = "../imnodes-rs/imnodes-sys" }

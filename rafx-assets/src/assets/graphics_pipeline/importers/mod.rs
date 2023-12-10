@@ -1,6 +1,5 @@
 use hydrate_pipeline::{
     AssetPlugin, BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
-    SchemaLinker,
 };
 
 pub mod material_importer;
