@@ -152,7 +152,6 @@ pub struct FontAssetPlugin;
 
 impl AssetPlugin for FontAssetPlugin {
     fn setup(
-        _schema_linker: &mut SchemaLinker,
         importer_registry: &mut ImporterRegistryBuilder,
         builder_registry: &mut BuilderRegistryBuilder,
         job_processor_registry: &mut JobProcessorRegistryBuilder,

@@ -69,14 +69,14 @@ impl RafxmarkScene {
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             asset_resource.load_asset_symbol_name::<ImageAsset>(
-                "db:/path_file_system/demo/textures/texture-tiny-rust.jpeg",
+                "db:/assets/demo/textures/texture-tiny-rust.jpeg",
             )
         };
 
         let font = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             asset_resource.load_asset_symbol_name::<FontAsset>(
-                "db:/path_file_system/rafx-plugins/fonts/mplus-1p-regular.ttf",
+                "db:/assets/rafx-plugins/fonts/mplus-1p-regular.ttf",
             )
         };
 

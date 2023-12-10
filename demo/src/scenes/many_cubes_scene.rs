@@ -27,11 +27,11 @@ impl ManyCubesScene {
         render_options.enable_textures = false;
         render_options.show_shadows = false;
 
-        super::util::setup_skybox(resources, "db:/path_file_system/demo/textures/skybox.basis");
+        super::util::setup_skybox(resources, "db:/assets/demo/textures/skybox.basis");
 
         let spawnable_mesh = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "db:/path_file_system/demo/blender/storage_container1.glb.mesh_Cube",
+            "db:/assets/demo/blender/storage_container1.glb.mesh_Cube",
         );
 
         //

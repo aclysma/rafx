@@ -37,7 +37,7 @@ impl ScifiBaseScene {
 
         let prefab = SpawnablePrefab::blocking_load_from_symbol_name(
             resources,
-            "db:/path_file_system/demo/scifi_base/base_full/Scene.blender_prefab",
+            "db:/assets/demo/scifi_base/base_full/Scene.blender_prefab",
         );
         prefab.spawn_prefab(world, resources);
 

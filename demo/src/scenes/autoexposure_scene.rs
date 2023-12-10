@@ -22,24 +22,24 @@ impl AutoexposureScene {
     ) -> Self {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
-        super::util::setup_skybox(resources, "db:/path_file_system/demo/textures/skybox.basis");
+        super::util::setup_skybox(resources, "db:/assets/demo/textures/skybox.basis");
         super::util::set_ambient_light(resources, glam::Vec3::new(0.005, 0.005, 0.005));
 
         let floor_mesh = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "db:/path_file_system/demo/blender/cement_floor.glb.mesh_Cube",
+            "db:/assets/demo/blender/cement_floor.glb.mesh_Cube",
         );
         let container_1 = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "db:/path_file_system/demo/blender/storage_container1.glb.mesh_Cube",
+            "db:/assets/demo/blender/storage_container1.glb.mesh_Cube",
         );
         let container_2 = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "db:/path_file_system/demo/blender/storage_container2.glb.mesh_Cube",
+            "db:/assets/demo/blender/storage_container2.glb.mesh_Cube",
         );
         let blue_icosphere = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "db:/path_file_system/demo/blender/icosphere.glb.mesh_Icosphere_Blue",
+            "db:/assets/demo/blender/icosphere.glb.mesh_Icosphere_Blue",
         );
 
         //

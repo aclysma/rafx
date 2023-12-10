@@ -1,0 +1,41 @@
+{
+  "schema_def_paths": [
+    "rafx-assets/schema",
+    "rafx-plugins/schema"
+  ],
+  "schema_cache_file_path": "demo-editor/data/schema_cache.json",
+  "import_data_path": "demo-editor/data/import_data",
+  "build_data_path": "demo-editor/data/build_data",
+  "job_data_path": "demo-editor/data/job_data",
+  "id_based_asset_sources": [
+    {
+      "name": "vault",
+      "path": "demo-editor/data/assets_id_based"
+    }
+  ],
+  "path_based_asset_sources": [
+    {
+      "name": "assets",
+      "path": "demo-editor/data/assets_path_based"
+    }
+  ],
+  "source_file_locations": [
+
+  ],
+  "schema_codegen_jobs": [
+    {
+      "name": "rafx-assets",
+      "schema_path": "rafx-assets/schema",
+      "included_schema_paths": [],
+      "outfile": "rafx-assets/src/schema_codegen.rs"
+    },
+    {
+      "name": "rafx-plugins",
+      "schema_path": "rafx-plugins/schema",
+      "included_schema_paths": [
+        "rafx-assets/schema"
+      ],
+      "outfile": "rafx-plugins/src/schema_codegen.rs"
+    }
+  ]
+}

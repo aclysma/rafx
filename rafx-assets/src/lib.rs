@@ -24,7 +24,7 @@ pub use hydrate_base::Handle;
 
 mod resource_loader;
 
-use hydrate_pipeline::{AssetPluginRegistrationHelper, SchemaLinker};
+use hydrate_pipeline::{AssetPluginRegistry, SchemaLinker};
 use std::path::PathBuf;
 
 pub fn schema_def_path() -> PathBuf {
@@ -32,18 +32,17 @@ pub fn schema_def_path() -> PathBuf {
 }
 
 pub fn register_default_hydrate_plugins(
-    mut registration_helper: AssetPluginRegistrationHelper,
-    schema_linker: &mut SchemaLinker,
-) -> AssetPluginRegistrationHelper {
+    mut plugin_registry: AssetPluginRegistry
+) -> AssetPluginRegistry {
     use crate::assets::*;
 
-    registration_helper = registration_helper
-        .register_plugin::<GpuImageAssetPlugin>(schema_linker)
-        .register_plugin::<ShaderPackageAssetPlugin>(schema_linker)
-        .register_plugin::<MaterialAssetPlugin>(schema_linker)
-        .register_plugin::<ComputePipelineAssetPlugin>(schema_linker);
+    plugin_registry = plugin_registry
+        .register_plugin::<GpuImageAssetPlugin>()
+        .register_plugin::<ShaderPackageAssetPlugin>()
+        .register_plugin::<MaterialAssetPlugin>()
+        .register_plugin::<ComputePipelineAssetPlugin>();
 
-    registration_helper
+    plugin_registry
     //TODO: Material instance
     //TODO: Sampler
 

@@ -33,7 +33,7 @@ impl DungeonScene {
 
         let prefab = SpawnablePrefab::blocking_load_from_symbol_name(
             resources,
-            "db:/path_file_system/demo/synty_simple_dungeon/scene/imported_scene.blender_prefab",
+            "db:/assets/demo/synty_simple_dungeon/scene/imported_scene.blender_prefab",
         );
         prefab.spawn_prefab(world, resources);
 

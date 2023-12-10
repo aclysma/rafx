@@ -30,16 +30,14 @@ impl SpriteScene {
 
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_symbol_name::<ImageAsset>(
-                "db:/path_file_system/demo/textures/texture2.jpg",
-            )
+            asset_resource
+                .load_asset_symbol_name::<ImageAsset>("db:/assets/demo/textures/texture2.jpg")
         };
 
         let ldtk_handle = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_symbol_name::<LdtkProjectAsset>(
-                "db:/path_file_system/demo/ldtk/example.ldtk",
-            )
+            asset_resource
+                .load_asset_symbol_name::<LdtkProjectAsset>("db:/assets/demo/ldtk/example.ldtk")
         };
 
         let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();

@@ -106,9 +106,8 @@ impl AnimationScene {
         let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
         let renderer = resources.get::<Renderer>().unwrap();
-        let anim_asset = asset_resource.load_asset_symbol_name::<AnimAsset>(
-            "db:/path_file_system/demo/armature/Armature.blender_anim",
-        );
+        let anim_asset = asset_resource
+            .load_asset_symbol_name::<AnimAsset>("db:/assets/demo/armature/Armature.blender_anim");
 
         renderer
             .wait_for_asset_to_load(&mut asset_manager, &anim_asset, &mut asset_resource, "")

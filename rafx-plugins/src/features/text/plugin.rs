@@ -77,10 +77,10 @@ impl RenderFeaturePlugin for TextRendererPlugin {
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let text_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
-            "db:/path_file_system/rafx-plugins/materials/text.material",
+            "db:/assets/rafx-plugins/materials/text.material",
         );
         let default_font = asset_resource.load_asset_symbol_name::<FontAsset>(
-            "db:/path_file_system/rafx-plugins/fonts/mplus-1p-regular.ttf",
+            "db:/assets/rafx-plugins/fonts/mplus-1p-regular.ttf",
         );
 
         renderer_load_context.wait_for_asset_to_load(

@@ -1,42 +1,8 @@
 use hydrate::model::{AssetPathCache, EditorModelWithCache};
+use hydrate::pipeline::HydrateProjectConfiguration;
 use std::path::PathBuf;
 
 mod inspectors;
-
-//
-// fn schema_def_path() -> PathBuf {
-//     PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/data/schema"))
-// }
-
-fn schema_cache_file_path() -> PathBuf {
-    PathBuf::from(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/data/schema_cache_file.json"
-    ))
-}
-
-fn asset_id_based_data_source_path() -> PathBuf {
-    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/data/assets_id_based"))
-}
-
-fn asset_path_based_data_source_path() -> PathBuf {
-    PathBuf::from(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/data/assets_path_based"
-    ))
-}
-
-pub fn import_data_path() -> PathBuf {
-    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/data/import_data"))
-}
-
-pub fn build_data_path() -> PathBuf {
-    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/data/build_data"))
-}
-
-pub fn job_data_path() -> PathBuf {
-    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/data/job_data"))
-}
 
 fn main() {
     #[cfg(feature = "profile-with-tracy")]
@@ -51,86 +17,19 @@ fn main() {
         .filter_level(log::LevelFilter::Debug)
         .init();
 
-    let mut linker = hydrate::model::SchemaLinker::default();
+    let project_configuration = HydrateProjectConfiguration::locate_project_file(&PathBuf::from(
+        env!("CARGO_MANIFEST_DIR"),
+    ))
+    .unwrap();
 
-    let mut asset_plugin_registration_helper =
-        hydrate::pipeline::AssetPluginRegistrationHelper::new();
+    let mut asset_plugin_registry = hydrate::pipeline::AssetPluginRegistry::new();
+    asset_plugin_registry = rafx::assets::register_default_hydrate_plugins(asset_plugin_registry);
+    asset_plugin_registry = rafx_plugins::register_default_hydrate_plugins(asset_plugin_registry);
 
-    asset_plugin_registration_helper = rafx::assets::register_default_hydrate_plugins(
-        asset_plugin_registration_helper,
-        &mut linker,
-    );
+    let mut editor = hydrate::editor::Editor::new(project_configuration, asset_plugin_registry);
 
-    asset_plugin_registration_helper = rafx_plugins::register_default_hydrate_plugins(
-        asset_plugin_registration_helper,
-        &mut linker,
-    );
+    let schema_set = editor.schema_set().clone();
+    inspectors::register_inspectors(&schema_set, editor.inspector_registry_mut());
 
-    /*
-    .register_plugin::<rafx::assets::MaterialAssetPlugin>(&mut linker)
-    .register_plugin::<GpuImageAssetPlugin>(&mut linker)
-    .register_plugin::<BlenderMaterialAssetPlugin>(&mut linker)
-    .register_plugin::<BlenderMeshAssetPlugin>(&mut linker)
-    .register_plugin::<MeshAdvAssetPlugin>(&mut linker)
-    .register_plugin::<GlslAssetPlugin>(&mut linker)
-    .register_plugin::<GltfAssetPlugin>(&mut linker)
-    .register_plugin::<SimpleDataAssetPlugin>(&mut linker);
-    */
-
-    //TODO: Take a config file
-    //TODO: Support N sources using path nodes
-    let schema_set = hydrate::editor::DbState::load_schema(
-        linker,
-        &[
-            &rafx::assets::schema_def_path(),
-            &rafx_plugins::schema_def_path(),
-        ],
-        &schema_cache_file_path(),
-    );
-
-    let (importer_registry, builder_registry, job_processor_registry) =
-        asset_plugin_registration_helper.finish(&schema_set);
-
-    let mut imports_to_queue = Vec::default();
-    let mut db_state = hydrate::editor::DbState::load(
-        &schema_set,
-        &importer_registry,
-        &asset_id_based_data_source_path(),
-        &asset_path_based_data_source_path(),
-        &schema_cache_file_path(),
-        &mut imports_to_queue,
-    );
-
-    let asset_path_cache = AssetPathCache::build(&db_state.editor_model);
-    let mut editor_model_with_cache = EditorModelWithCache {
-        editor_model: &mut db_state.editor_model,
-        asset_path_cache: &asset_path_cache,
-    };
-
-    let mut asset_engine = hydrate::pipeline::AssetEngine::new(
-        &schema_set,
-        importer_registry,
-        builder_registry,
-        job_processor_registry,
-        &editor_model_with_cache,
-        import_data_path(),
-        job_data_path(),
-        build_data_path(),
-    );
-
-    for import_to_queue in imports_to_queue {
-        //println!("Queueing import operation {:?}", import_to_queue);
-        asset_engine.queue_import_operation(
-            import_to_queue.requested_importables,
-            import_to_queue.importer_id,
-            import_to_queue.source_file_path,
-            import_to_queue.import_type,
-        );
-    }
-
-    //Headless
-    //asset_engine.update(&mut editor_model_with_cache).unwrap();
-
-    let inspector_registry = crate::inspectors::create_registry(db_state.editor_model.schema_set());
-    hydrate::editor::run(db_state, asset_engine, inspector_registry);
+    editor.run().unwrap()
 }

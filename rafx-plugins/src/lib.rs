@@ -14,7 +14,7 @@ use crate::assets::mesh_adv::{
     BlenderMaterialAssetPlugin, BlenderMeshAssetPlugin, BlenderModelAssetPlugin,
     BlenderPrefabAssetPlugin, GltfAssetPlugin, MeshAdvAssetPlugin,
 };
-use hydrate_pipeline::{AssetPluginRegistrationHelper, SchemaLinker};
+use hydrate_pipeline::{AssetPluginRegistry, SchemaLinker};
 use std::path::PathBuf;
 
 pub fn schema_def_path() -> PathBuf {
@@ -22,19 +22,18 @@ pub fn schema_def_path() -> PathBuf {
 }
 
 pub fn register_default_hydrate_plugins(
-    mut registration_helper: AssetPluginRegistrationHelper,
-    schema_linker: &mut SchemaLinker,
-) -> AssetPluginRegistrationHelper {
-    registration_helper = registration_helper
-        .register_plugin::<LdtkAssetPlugin>(schema_linker)
-        .register_plugin::<FontAssetPlugin>(schema_linker)
-        .register_plugin::<BlenderMaterialAssetPlugin>(schema_linker)
-        .register_plugin::<BlenderMeshAssetPlugin>(schema_linker)
-        .register_plugin::<BlenderModelAssetPlugin>(schema_linker)
-        .register_plugin::<BlenderPrefabAssetPlugin>(schema_linker)
-        .register_plugin::<BlenderAnimAssetPlugin>(schema_linker)
-        .register_plugin::<GltfAssetPlugin>(schema_linker)
-        .register_plugin::<MeshAdvAssetPlugin>(schema_linker);
+    mut plugin_registry: AssetPluginRegistry
+) -> AssetPluginRegistry {
+    plugin_registry = plugin_registry
+        .register_plugin::<LdtkAssetPlugin>()
+        .register_plugin::<FontAssetPlugin>()
+        .register_plugin::<BlenderMaterialAssetPlugin>()
+        .register_plugin::<BlenderMeshAssetPlugin>()
+        .register_plugin::<BlenderModelAssetPlugin>()
+        .register_plugin::<BlenderPrefabAssetPlugin>()
+        .register_plugin::<BlenderAnimAssetPlugin>()
+        .register_plugin::<GltfAssetPlugin>()
+        .register_plugin::<MeshAdvAssetPlugin>();
 
-    registration_helper
+    plugin_registry
 }
