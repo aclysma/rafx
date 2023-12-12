@@ -31,7 +31,7 @@ impl Importer for ComputePipelineImporter {
             .map_err(|e| format!("RON error {:?}", e))?;
 
         let importable = context.add_default_importable::<ComputePipelineAssetRecord>()?;
-        importable.add_file_reference(parsed_source.shader_module)?;
+        importable.add_path_reference(parsed_source.shader_module)?;
         Ok(())
     }
 

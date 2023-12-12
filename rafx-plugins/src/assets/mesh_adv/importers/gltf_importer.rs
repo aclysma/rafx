@@ -446,7 +446,6 @@ impl Importer for GltfImporter {
     fn import_file(
         &self,
         context: ImportContext,
-        //import_info: &ImportInfo,
     ) -> PipelineResult<()> {
         //
         // Read the file

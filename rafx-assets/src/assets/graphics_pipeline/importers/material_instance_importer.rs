@@ -41,11 +41,11 @@ impl Importer for MaterialInstanceImporter {
 
         let importable = context.add_default_importable::<MaterialInstanceAssetRecord>()?;
 
-        importable.add_file_reference(&material_instance_ron.material)?;
+        importable.add_path_reference(&material_instance_ron.material)?;
 
         for pass in material_instance_ron.slot_assignments {
             if let Some(image) = &pass.image {
-                importable.add_file_reference(image)?;
+                importable.add_path_reference(image)?;
             }
         }
 

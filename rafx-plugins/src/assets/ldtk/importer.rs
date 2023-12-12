@@ -5,7 +5,7 @@ use crate::features::tile_layer::TileLayerVertex;
 use crate::schema::{LdtkAssetAccessor, LdtkAssetRecord, LdtkImportDataRecord};
 use fnv::FnvHashMap;
 use hydrate_base::{ArtifactId, AssetId, Handle};
-use hydrate_data::{Record, RecordAccessor};
+use hydrate_data::{PathReference, Record, RecordAccessor};
 use hydrate_pipeline::{
     AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
     ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
@@ -149,7 +149,7 @@ impl Importer for LdtkImporter {
         let importable = context.add_default_importable::<LdtkAssetRecord>()?;
 
         for tileset in &project.defs.tilesets {
-            importable.add_file_reference(&tileset.rel_path)?;
+            importable.add_path_reference(&tileset.rel_path)?;
         }
 
         Ok(())
@@ -217,10 +217,6 @@ impl JobProcessor for LdtkJobProcessor {
         let json_str = imported_data.json_data().get()?;
         let project: ldtk_rust::Project = serde_json::from_str(&json_str)?;
 
-        let file_references = context
-            .data_set
-            .resolve_all_file_references(context.input.asset_id)?;
-
         // CPU-form of tileset data
         let mut tilesets_temp = FnvHashMap::default();
 
@@ -231,8 +227,9 @@ impl JobProcessor for LdtkJobProcessor {
             //
             // Create a material instance
             //
-            let image_object_id = file_references
-                .get(&tileset.rel_path.as_str().into())
+            let image_object_id = context
+                .data_set
+                .resolve_path_reference(context.input.asset_id, &tileset.rel_path)?
                 .ok_or("Could not find asset ID assocaited with path")?;
 
             let material_instance_artifact_name = format!("mi_{}", tileset.uid);
@@ -246,7 +243,7 @@ impl JobProcessor for LdtkJobProcessor {
                         )?));
 
                     let image_handle =
-                        handle_factory.make_handle_to_default_artifact(*image_object_id);
+                        handle_factory.make_handle_to_default_artifact(image_object_id);
 
                     let mut slot_assignments = vec![];
                     slot_assignments.push(MaterialInstanceSlotAssignment {
@@ -270,7 +267,7 @@ impl JobProcessor for LdtkJobProcessor {
             tilesets_temp.insert(
                 tileset.uid,
                 HydrateLdtkTileSetTemp {
-                    image: *image_object_id,
+                    image: image_object_id,
                     material_instance: material_instance_artifact_id,
                     image_width,
                     image_height,

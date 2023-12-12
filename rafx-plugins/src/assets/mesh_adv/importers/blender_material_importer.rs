@@ -56,19 +56,19 @@ impl Importer for BlenderMaterialImporter {
         let importable = context.add_default_importable::<MeshAdvMaterialAssetRecord>()?;
 
         if let Some(path) = &json_data.color_texture {
-            importable.add_file_reference(path)?;
+            importable.add_path_reference(path)?;
         }
 
         if let Some(path) = &json_data.metallic_roughness_texture {
-            importable.add_file_reference(path)?;
+            importable.add_path_reference(path)?;
         }
 
         if let Some(path) = &json_data.normal_texture {
-            importable.add_file_reference(path)?;
+            importable.add_path_reference(path)?;
         }
 
         if let Some(path) = &json_data.emissive_texture {
-            importable.add_file_reference(path)?;
+            importable.add_path_reference(path)?;
         }
 
         Ok(())

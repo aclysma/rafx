@@ -36,7 +36,7 @@ impl Importer for MaterialImporter {
         let importable = context.add_default_importable::<MaterialAssetRecord>()?;
         for pass in material_ron.passes {
             for stage in pass.shaders {
-                importable.add_file_reference(&stage.shader_module)?;
+                importable.add_path_reference(&stage.shader_module)?;
             }
         }
 

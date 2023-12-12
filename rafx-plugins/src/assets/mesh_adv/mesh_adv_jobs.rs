@@ -1,5 +1,6 @@
 pub use super::*;
 use glam::Vec3;
+use hydrate_data::PathReference;
 use rafx::api::RafxResourceType;
 
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
@@ -538,21 +539,19 @@ impl JobProcessor for MeshAdvPrefabJobProcessor {
         let json_format: MeshAdvPrefabJsonFormat = serde_json::from_str(&json_str)
             .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
 
-        let file_references = context
-            .data_set
-            .resolve_all_file_references(context.input.asset_id)?;
-
         context.produce_default_artifact_with_handles(
             context.input.asset_id,
             |handle_factory| {
                 let mut objects = Vec::with_capacity(json_format.objects.len());
                 for json_object in json_format.objects {
                     let model = if let Some(json_model) = &json_object.model {
-                        let model_object_id = file_references
-                            .get(&json_model.model.as_path().into())
+                        let model_object_id = context
+                            .data_set
+                            .resolve_path_reference(context.input.asset_id, &json_model.model)?
                             .ok_or("Could not find asset ID associated with path")?;
+
                         let model_handle =
-                            handle_factory.make_handle_to_default_artifact(*model_object_id);
+                            handle_factory.make_handle_to_default_artifact(model_object_id);
 
                         Some(PrefabAdvAssetDataObjectModel {
                             model: model_handle,

@@ -69,7 +69,7 @@ impl RenderFeaturePlugin for TileLayerRendererPlugin {
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let tile_layer_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
-            "db:/assets/rafx-plugins/materials/tile_layer.material",
+            "assets://rafx-plugins/materials/tile_layer.material",
         );
 
         renderer_load_context.wait_for_asset_to_load(

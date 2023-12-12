@@ -29,7 +29,7 @@ impl PbrTestScene {
 
         let prefab = SpawnablePrefab::blocking_load_from_symbol_name(
             resources,
-            "db:/assets/demo/pbr-test/Scene.001.blender_prefab",
+            "assets://demo/pbr-test/Scene.001.blender_prefab",
         );
         prefab.spawn_prefab(world, resources);
 

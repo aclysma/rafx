@@ -40,7 +40,7 @@ impl Importer for BlenderModelImporter {
 
         let importable = context.add_default_importable::<MeshAdvModelAssetRecord>()?;
         for lod in &json_format.lods {
-            importable.add_file_reference(&lod.mesh)?;
+            importable.add_path_reference(&lod.mesh)?;
         }
 
         Ok(())
