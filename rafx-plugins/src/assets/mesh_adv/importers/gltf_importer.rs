@@ -7,8 +7,8 @@ use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{ImportableName, Record, RecordBuilder};
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
-    JobProcessorRegistryBuilder, PipelineResult, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImportContext, Importer,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
 };
 use rafx::assets::schema::{GpuImageAssetRecord, GpuImageImportedDataRecord};
 use rafx::assets::PushBuffer;
@@ -118,20 +118,8 @@ fn hydrate_import_image(
         )
         .ok_or("Could not convert image format")?
         .convert(),
-        Format::B8G8R8 => image::ImageBuffer::<image::Bgr<u8>, Vec<u8>>::from_vec(
-            image_data.width,
-            image_data.height,
-            image_data.pixels.clone(),
-        )
-        .ok_or("Could not convert image format")?
-        .convert(),
-        Format::B8G8R8A8 => image::ImageBuffer::<image::Bgra<u8>, Vec<u8>>::from_vec(
-            image_data.width,
-            image_data.height,
-            image_data.pixels.clone(),
-        )
-        .ok_or("Could not convert image format")?
-        .convert(),
+        Format::B8G8R8 => unimplemented!(),
+        Format::B8G8R8A8 => unimplemented!(),
         Format::R16 => {
             unimplemented!();
         }
@@ -506,11 +494,7 @@ impl Importer for GltfImporter {
 pub struct GltfAssetPlugin;
 
 impl AssetPlugin for GltfAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        _builder_registry: &mut BuilderRegistryBuilder,
-        _job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        importer_registry.register_handler::<GltfImporter>();
+    fn setup(context: AssetPluginSetupContext) {
+        context.importer_registry.register_handler::<GltfImporter>();
     }
 }

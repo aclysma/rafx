@@ -3,9 +3,9 @@ use crate::schema::{ComputePipelineAssetAccessor, ComputePipelineAssetRecord};
 use hydrate_base::AssetId;
 use hydrate_data::{ImportableName, Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
+    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use type_uuid::*;
@@ -146,13 +146,15 @@ impl Builder for ComputePipelineBuilder {
 pub struct ComputePipelineAssetPlugin;
 
 impl AssetPlugin for ComputePipelineAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        importer_registry.register_handler::<ComputePipelineImporter>();
-        builder_registry.register_handler::<ComputePipelineBuilder>();
-        job_processor_registry.register_job_processor::<ComputePipelineJobProcessor>();
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<ComputePipelineImporter>();
+        context
+            .builder_registry
+            .register_handler::<ComputePipelineBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<ComputePipelineJobProcessor>();
     }
 }

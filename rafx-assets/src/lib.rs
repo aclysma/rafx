@@ -24,7 +24,7 @@ pub use hydrate_base::Handle;
 
 mod resource_loader;
 
-use hydrate_pipeline::AssetPluginRegistry;
+use hydrate_pipeline::{AssetPluginRegistries, AssetPluginRegistryBuilders};
 use std::path::PathBuf;
 
 pub fn schema_def_path() -> PathBuf {
@@ -32,8 +32,8 @@ pub fn schema_def_path() -> PathBuf {
 }
 
 pub fn register_default_hydrate_plugins(
-    mut plugin_registry: AssetPluginRegistry
-) -> AssetPluginRegistry {
+    mut plugin_registry: AssetPluginRegistryBuilders
+) -> AssetPluginRegistryBuilders {
     use crate::assets::*;
 
     plugin_registry = plugin_registry

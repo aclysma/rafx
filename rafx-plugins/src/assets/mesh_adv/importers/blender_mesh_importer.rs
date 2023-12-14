@@ -2,8 +2,8 @@ use crate::schema::{MeshAdvMeshAssetRecord, MeshAdvMeshImportedDataRecord};
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{ImportableName, Record};
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
-    JobProcessorRegistryBuilder, PipelineResult, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImportContext, Importer,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
 };
 use rafx::assets::PushBuffer;
 use rafx::base::b3f::B3FReader;
@@ -196,11 +196,9 @@ impl Importer for BlenderMeshImporter {
 pub struct BlenderMeshAssetPlugin;
 
 impl AssetPlugin for BlenderMeshAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        _builder_registry: &mut BuilderRegistryBuilder,
-        _job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        importer_registry.register_handler::<BlenderMeshImporter>();
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<BlenderMeshImporter>();
     }
 }

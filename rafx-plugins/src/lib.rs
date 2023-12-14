@@ -14,7 +14,7 @@ use crate::assets::mesh_adv::{
     BlenderMaterialAssetPlugin, BlenderMeshAssetPlugin, BlenderModelAssetPlugin,
     BlenderPrefabAssetPlugin, GltfAssetPlugin, MeshAdvAssetPlugin,
 };
-use hydrate_pipeline::AssetPluginRegistry;
+use hydrate_pipeline::AssetPluginRegistryBuilders;
 use std::path::PathBuf;
 
 pub fn schema_def_path() -> PathBuf {
@@ -22,8 +22,8 @@ pub fn schema_def_path() -> PathBuf {
 }
 
 pub fn register_default_hydrate_plugins(
-    mut plugin_registry: AssetPluginRegistry
-) -> AssetPluginRegistry {
+    mut plugin_registry: AssetPluginRegistryBuilders
+) -> AssetPluginRegistryBuilders {
     plugin_registry = plugin_registry
         .register_plugin::<LdtkAssetPlugin>()
         .register_plugin::<FontAssetPlugin>()

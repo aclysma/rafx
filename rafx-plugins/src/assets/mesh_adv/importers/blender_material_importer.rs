@@ -1,8 +1,8 @@
 use crate::schema::{MeshAdvBlendMethodEnum, MeshAdvMaterialAssetRecord, MeshAdvShadowMethodEnum};
 use hydrate_data::{DataSetError, Enum, ImportableName, Record};
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImportContext, Importer, ImporterRegistryBuilder,
-    JobProcessorRegistryBuilder, PipelineResult, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImportContext, Importer,
+    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -178,11 +178,9 @@ impl Importer for BlenderMaterialImporter {
 pub struct BlenderMaterialAssetPlugin;
 
 impl AssetPlugin for BlenderMaterialAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        _builder_registry: &mut BuilderRegistryBuilder,
-        _job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        importer_registry.register_handler::<BlenderMaterialImporter>();
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<BlenderMaterialImporter>();
     }
 }

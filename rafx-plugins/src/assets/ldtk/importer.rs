@@ -7,9 +7,9 @@ use fnv::FnvHashMap;
 use hydrate_base::{ArtifactId, AssetId, Handle};
 use hydrate_data::{PathReference, Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
+    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
 };
 use ldtk_rust::{LayerInstance, Level, TileInstance};
 use rafx::api::RafxResourceType;
@@ -486,13 +486,11 @@ impl Builder for LdtkBuilder {
 pub struct LdtkAssetPlugin;
 
 impl AssetPlugin for LdtkAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        importer_registry.register_handler::<LdtkImporter>();
-        builder_registry.register_handler::<LdtkBuilder>();
-        job_processor_registry.register_job_processor::<LdtkJobProcessor>();
+    fn setup(context: AssetPluginSetupContext) {
+        context.importer_registry.register_handler::<LdtkImporter>();
+        context.builder_registry.register_handler::<LdtkBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<LdtkJobProcessor>();
     }
 }

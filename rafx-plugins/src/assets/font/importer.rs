@@ -4,9 +4,9 @@ use fnv::FnvHasher;
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
+    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -151,13 +151,11 @@ impl Builder for FontBuilder {
 pub struct FontAssetPlugin;
 
 impl AssetPlugin for FontAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        importer_registry.register_handler::<FontImporter>();
-        builder_registry.register_handler::<FontBuilder>();
-        job_processor_registry.register_job_processor::<FontJobProcessor>();
+    fn setup(context: AssetPluginSetupContext) {
+        context.importer_registry.register_handler::<FontImporter>();
+        context.builder_registry.register_handler::<FontBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<FontJobProcessor>();
     }
 }

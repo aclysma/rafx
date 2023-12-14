@@ -2,7 +2,8 @@ pub mod assets;
 
 pub use assets::*;
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
+    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImporterRegistryBuilder,
+    JobProcessorRegistryBuilder,
 };
 use std::sync::Arc;
 
@@ -19,6 +20,9 @@ mod importer_basis;
 #[cfg(feature = "basis-universal")]
 pub use importer_basis::*;
 
+mod thumbnails;
+pub use thumbnails::*;
+
 #[cfg(feature = "ddsfile")]
 mod importer_dds;
 use crate::assets::image::builder_compressed_image::{
@@ -32,11 +36,7 @@ mod builder_compressed_image;
 pub struct GpuImageAssetPlugin;
 
 impl AssetPlugin for GpuImageAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
+    fn setup(context: AssetPluginSetupContext) {
         // This demonstrates using filenames to hint default settings for images on import for normal
         // maps and roughness/metalness maps by using filenames. Otherwise, the user has to remember to
         // edit the .meta file.
@@ -76,20 +76,41 @@ impl AssetPlugin for GpuImageAssetPlugin {
 
         let image_importer_config = Arc::new(image_importer_config);
 
-        importer_registry.register_handler_instance::<GpuImageImporterSimple>(
-            GpuImageImporterSimple {
+        context
+            .importer_registry
+            .register_handler_instance::<GpuImageImporterSimple>(GpuImageImporterSimple {
                 image_importer_config,
-            },
-        );
-        builder_registry.register_handler::<GpuImageBuilder>();
-        job_processor_registry.register_job_processor::<GpuImageJobProcessor>();
+            });
+        context
+            .builder_registry
+            .register_handler::<GpuImageBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<GpuImageJobProcessor>();
 
         #[cfg(feature = "ddsfile")]
-        importer_registry.register_handler::<GpuCompressedImageImporterDds>();
-        #[cfg(feature = "basis-universal")]
-        importer_registry.register_handler::<GpuCompressedImageImporterBasis>();
+        context
+            .importer_registry
+            .register_handler::<GpuCompressedImageImporterDds>();
 
-        builder_registry.register_handler::<GpuCompressedImageBuilder>();
-        job_processor_registry.register_job_processor::<GpuCompressedImageJobProcessor>();
+        context
+            .thumbnail_provider_registry
+            .register_thumbnail_provider::<GpuCompressedImageThumbnailProvider>();
+
+        #[cfg(feature = "basis-universal")]
+        context
+            .importer_registry
+            .register_handler::<GpuCompressedImageImporterBasis>();
+
+        context
+            .builder_registry
+            .register_handler::<GpuCompressedImageBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<GpuCompressedImageJobProcessor>();
+
+        context
+            .thumbnail_provider_registry
+            .register_thumbnail_provider::<GpuImageThumbnailProvider>();
     }
 }

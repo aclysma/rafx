@@ -9,9 +9,9 @@ use fnv::FnvHashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
+    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
 };
 use rafx::api::{RafxError, RafxResult};
 use serde::{Deserialize, Serialize};
@@ -367,13 +367,15 @@ impl Builder for BlenderAnimBuilder {
 pub struct BlenderAnimAssetPlugin;
 
 impl AssetPlugin for BlenderAnimAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        importer_registry.register_handler::<BlenderAnimImporter>();
-        builder_registry.register_handler::<BlenderAnimBuilder>();
-        job_processor_registry.register_job_processor::<BlenderAnimJobProcessor>();
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<BlenderAnimImporter>();
+        context
+            .builder_registry
+            .register_handler::<BlenderAnimBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<BlenderAnimJobProcessor>();
     }
 }

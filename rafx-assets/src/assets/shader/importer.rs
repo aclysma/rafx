@@ -5,9 +5,9 @@ use crate::schema::{
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
+    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
 };
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
@@ -215,14 +215,18 @@ impl Builder for ShaderPackageBuilder {
 pub struct ShaderPackageAssetPlugin;
 
 impl AssetPlugin for ShaderPackageAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        importer_registry.register_handler::<ShaderPackageImporterSpv>();
-        importer_registry.register_handler::<ShaderPackageImporterCooked>();
-        builder_registry.register_handler::<ShaderPackageBuilder>();
-        job_processor_registry.register_job_processor::<ShaderPackageJobProcessor>();
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<ShaderPackageImporterSpv>();
+        context
+            .importer_registry
+            .register_handler::<ShaderPackageImporterCooked>();
+        context
+            .builder_registry
+            .register_handler::<ShaderPackageBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<ShaderPackageJobProcessor>();
     }
 }

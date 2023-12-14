@@ -6,8 +6,9 @@ use rafx::api::RafxResourceType;
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::*;
 use hydrate_pipeline::{
-    AssetId, BuilderContext, BuilderRegistryBuilder, ImporterRegistryBuilder, JobInput, JobOutput,
-    JobProcessor, JobProcessorRegistryBuilder, PipelineResult, RecordAccessor, RunContext,
+    AssetId, AssetPluginSetupContext, BuilderContext, BuilderRegistryBuilder,
+    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    PipelineResult, RecordAccessor, RunContext,
 };
 use hydrate_pipeline::{AssetPlugin, Builder};
 use rafx::assets::PushBuffer;
@@ -635,21 +636,33 @@ impl Builder for MeshAdvPrefabBuilder {
 pub struct MeshAdvAssetPlugin;
 
 impl AssetPlugin for MeshAdvAssetPlugin {
-    fn setup(
-        _importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        builder_registry.register_handler::<MeshAdvMaterialBuilder>();
-        job_processor_registry.register_job_processor::<MeshAdvMaterialJobProcessor>();
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .builder_registry
+            .register_handler::<MeshAdvMaterialBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<MeshAdvMaterialJobProcessor>();
 
-        builder_registry.register_handler::<MeshAdvMeshBuilder>();
-        job_processor_registry.register_job_processor::<MeshAdvMeshJobProcessor>();
+        context
+            .builder_registry
+            .register_handler::<MeshAdvMeshBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<MeshAdvMeshJobProcessor>();
 
-        builder_registry.register_handler::<MeshAdvModelBuilder>();
-        job_processor_registry.register_job_processor::<MeshAdvModelJobProcessor>();
+        context
+            .builder_registry
+            .register_handler::<MeshAdvModelBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<MeshAdvModelJobProcessor>();
 
-        builder_registry.register_handler::<MeshAdvPrefabBuilder>();
-        job_processor_registry.register_job_processor::<MeshAdvPrefabJobProcessor>();
+        context
+            .builder_registry
+            .register_handler::<MeshAdvPrefabBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<MeshAdvPrefabJobProcessor>();
     }
 }

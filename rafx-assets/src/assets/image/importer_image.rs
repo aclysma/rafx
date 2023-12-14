@@ -11,11 +11,12 @@ use crate::{
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor, RecordBuilder};
 use hydrate_pipeline::{
-    AssetPlugin, Builder, BuilderContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
-    PipelineResult, RunContext, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
+    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
+    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext, ThumbnailImage,
+    ThumbnailProvider, ThumbnailProviderGatherContext, ThumbnailProviderRenderContext,
 };
-use image::GenericImageView;
+use image::{GenericImageView, Pixel};
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -425,59 +426,64 @@ impl Builder for GpuImageBuilder {
     }
 }
 
-pub struct GpuImageAssetPlugin;
+#[derive(Default)]
+pub struct GpuImageThumbnailProvider {}
 
-impl AssetPlugin for GpuImageAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        // This demonstrates using filenames to hint default settings for images on import for normal
-        // maps and roughness/metalness maps by using filenames. Otherwise, the user has to remember to
-        // edit the .meta file.
-        let pbr_map_suffix = vec!["_pbr."];
-        let normal_map_suffix = vec!["_n."];
+impl ThumbnailProvider for GpuImageThumbnailProvider {
+    type GatheredDataT = ();
 
-        // Default config
-        let mut image_importer_config = ImageImporterConfig::new(ImageImporterRuleOptions {
-            mip_generation: ImageAssetMipGeneration::Runtime,
-            color_space: ImageAssetColorSpaceConfig::Srgb,
-            data_format: ImageAssetDataFormatConfig::Uncompressed,
-        });
+    fn asset_type(&self) -> &'static str {
+        GpuImageAssetRecord::schema_name()
+    }
 
-        for suffix in normal_map_suffix {
-            // Override for normal maps
-            image_importer_config.add_filename_contains_override(
-                suffix,
-                ImageImporterRuleOptions {
-                    mip_generation: ImageAssetMipGeneration::Runtime,
-                    color_space: ImageAssetColorSpaceConfig::Linear,
-                    data_format: ImageAssetDataFormatConfig::Uncompressed,
-                },
-            );
+    fn version(&self) -> u32 {
+        1
+    }
+
+    fn gather(
+        &self,
+        context: ThumbnailProviderGatherContext,
+    ) -> Self::GatheredDataT {
+        //println!("Gather data to make thumbnail for {}", context.asset_id);
+        context.add_import_data_dependency(context.asset_id);
+    }
+
+    fn render<'a>(
+        &'a self,
+        context: &'a ThumbnailProviderRenderContext<'a>,
+        gathered_data: Self::GatheredDataT,
+    ) -> PipelineResult<ThumbnailImage> {
+        println!("Render thumbnail for {}", context.asset_id);
+
+        let import_data = context.imported_data::<GpuImageImportedDataRecord>(context.asset_id)?;
+        let width = import_data.width().get()?;
+        let height = import_data.height().get()?;
+        let image_bytes = import_data.image_bytes().get()?.clone();
+
+        let image = ::image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_vec(
+            width,
+            height,
+            (*image_bytes).clone(),
+        )
+        .unwrap();
+
+        let resized_image =
+            ::image::imageops::resize(&image, 256, 256, ::image::imageops::FilterType::Lanczos3);
+
+        // This is a very wasteful way to do this..
+        let mut pixel_data = Vec::default();
+        for (x, y, color) in resized_image.enumerate_pixels() {
+            let (r, g, b, a) = color.channels4();
+            pixel_data.push(r);
+            pixel_data.push(g);
+            pixel_data.push(b);
+            pixel_data.push(a);
         }
 
-        // Override for PBR masks (ao, roughness, metalness)
-        for suffix in pbr_map_suffix {
-            image_importer_config.add_filename_contains_override(
-                suffix,
-                ImageImporterRuleOptions {
-                    mip_generation: ImageAssetMipGeneration::Runtime,
-                    color_space: ImageAssetColorSpaceConfig::Linear,
-                    data_format: ImageAssetDataFormatConfig::Uncompressed,
-                },
-            );
-        }
-
-        let image_importer_config = Arc::new(image_importer_config);
-
-        importer_registry.register_handler_instance::<GpuImageImporterSimple>(
-            GpuImageImporterSimple {
-                image_importer_config,
-            },
-        );
-        builder_registry.register_handler::<GpuImageBuilder>();
-        job_processor_registry.register_job_processor::<GpuImageJobProcessor>();
+        Ok(ThumbnailImage {
+            width: 256,
+            height: 256,
+            pixel_data,
+        })
     }
 }

@@ -1,12 +1,20 @@
 use crate::assets::image::{ImageAssetDataLayer, ImageAssetDataMipLevel};
 use crate::schema::{
     GpuCompressedImageAssetRecord, GpuCompressedImageImportedDataRecord,
-    GpuImageAssetDataFormatEnum,
+    GpuImageAssetDataFormatEnum, GpuImageAssetRecord, GpuImageImportedDataRecord,
 };
 use crate::ImageAssetDataFormat;
+use basis_universal::sys::basisu_image;
+use basis_universal::{TranscodeParameters, TranscoderTextureFormat};
 use ddsfile::DxgiFormat;
-use hydrate_data::Record;
-use hydrate_pipeline::{ImportContext, Importer, PipelineResult, ScanContext};
+use hydrate_data::{EnumFieldRef, Record};
+use hydrate_pipeline::{
+    ImportContext, Importer, PipelineError, PipelineResult, ScanContext, ThumbnailImage,
+    ThumbnailProvider, ThumbnailProviderGatherContext, ThumbnailProviderRenderContext,
+};
+use image::{Pixel, RgbaImage};
+use rafx_framework::upload::GpuImageDataColorSpace;
+use std::fmt::format;
 use std::sync::Arc;
 use type_uuid::*;
 

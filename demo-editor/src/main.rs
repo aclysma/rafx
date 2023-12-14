@@ -21,11 +21,11 @@ fn main() {
     ))
     .unwrap();
 
-    let mut asset_plugin_registry = hydrate::pipeline::AssetPluginRegistry::new();
-    asset_plugin_registry = rafx::assets::register_default_hydrate_plugins(asset_plugin_registry);
-    asset_plugin_registry = rafx_plugins::register_default_hydrate_plugins(asset_plugin_registry);
+    let mut registry_builders = hydrate::pipeline::AssetPluginRegistryBuilders::new();
+    registry_builders = rafx::assets::register_default_hydrate_plugins(registry_builders);
+    registry_builders = rafx_plugins::register_default_hydrate_plugins(registry_builders);
 
-    let mut editor = hydrate::editor::Editor::new(project_configuration, asset_plugin_registry);
+    let mut editor = hydrate::editor::Editor::new(project_configuration, registry_builders);
 
     let schema_set = editor.schema_set().clone();
     inspectors::register_inspectors(&schema_set, editor.inspector_registry_mut());

@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 hydrate = { path = "../../hydrate/hydrate" }
-rafx = { path = "../rafx", features = ["renderer", "basis-universal", "ddsfile"] }
+rafx = { path = "../rafx", features = ["renderer", "basis-universal", "dds"] }
 rafx-plugins = { path = "../rafx-plugins", features = ["legion", "egui", "egui-winit", "modern-pipeline", "meshopt"] }
 
 log = "0.4"

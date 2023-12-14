@@ -1,5 +1,6 @@
 use hydrate_pipeline::{
-    AssetPlugin, BuilderRegistryBuilder, ImporterRegistryBuilder, JobProcessorRegistryBuilder,
+    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImporterRegistryBuilder,
+    JobProcessorRegistryBuilder,
 };
 
 pub mod material_importer;
@@ -13,17 +14,25 @@ pub mod material_instance_importer;
 pub struct MaterialAssetPlugin;
 
 impl AssetPlugin for MaterialAssetPlugin {
-    fn setup(
-        importer_registry: &mut ImporterRegistryBuilder,
-        builder_registry: &mut BuilderRegistryBuilder,
-        job_processor_registry: &mut JobProcessorRegistryBuilder,
-    ) {
-        importer_registry.register_handler::<MaterialImporter>();
-        builder_registry.register_handler::<MaterialBuilder>();
-        job_processor_registry.register_job_processor::<MaterialJobProcessor>();
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<MaterialImporter>();
+        context
+            .builder_registry
+            .register_handler::<MaterialBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<MaterialJobProcessor>();
 
-        importer_registry.register_handler::<MaterialInstanceImporter>();
-        builder_registry.register_handler::<MaterialInstanceBuilder>();
-        job_processor_registry.register_job_processor::<MaterialInstanceJobProcessor>();
+        context
+            .importer_registry
+            .register_handler::<MaterialInstanceImporter>();
+        context
+            .builder_registry
+            .register_handler::<MaterialInstanceBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<MaterialInstanceJobProcessor>();
     }
 }
