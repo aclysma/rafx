@@ -2,6 +2,7 @@
   {
     "type": "record",
     "name": "FontAsset",
+    "default_thumbnail": "default_thumbnails/font.png",
     "fields": [
 
     ]

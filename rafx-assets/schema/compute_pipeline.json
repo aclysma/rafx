@@ -2,6 +2,7 @@
   {
     "type": "record",
     "name": "ComputePipelineAsset",
+    "default_thumbnail": "default_thumbnails/compute.png",
     "fields": [
       {
         "name": "entry_name",

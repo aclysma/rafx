@@ -41,6 +41,7 @@
   {
     "type": "record",
     "name": "MeshAdvMaterialAsset",
+    "default_thumbnail": "default_thumbnails/material-params.png",
     "fields": [
       {
         "name": "base_color_factor",
@@ -157,6 +158,7 @@
   {
     "type": "record",
     "name": "MeshAdvMeshAsset",
+    "default_thumbnail": "default_thumbnails/mesh.png",
     "fields": [
       {
         "name": "material_slots",
@@ -177,6 +179,7 @@
   {
     "type": "record",
     "name": "MeshAdvModelAsset",
+    "default_thumbnail": "default_thumbnails/model.png",
     "fields": [
       {
         "name": "lods",
@@ -197,6 +200,7 @@
   {
     "type": "record",
     "name": "MeshAdvPrefabAsset",
+    "default_thumbnail": "default_thumbnails/prefab.png",
     "fields": [
 
     ]

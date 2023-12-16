@@ -42,6 +42,7 @@
   {
     "type": "record",
     "name": "MaterialAsset",
+    "default_thumbnail": "default_thumbnails/material.png",
     "fields": [
       {
         "name": "passes",

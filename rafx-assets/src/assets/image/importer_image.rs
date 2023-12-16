@@ -467,8 +467,12 @@ impl ThumbnailProvider for GpuImageThumbnailProvider {
         )
         .unwrap();
 
-        let resized_image =
-            ::image::imageops::resize(&image, 256, 256, ::image::imageops::FilterType::Lanczos3);
+        let resized_image = ::image::imageops::resize(
+            &image,
+            context.desired_thumbnail_width,
+            context.desired_thumbnail_height,
+            ::image::imageops::FilterType::Lanczos3,
+        );
 
         // This is a very wasteful way to do this..
         let mut pixel_data = Vec::default();
@@ -481,8 +485,8 @@ impl ThumbnailProvider for GpuImageThumbnailProvider {
         }
 
         Ok(ThumbnailImage {
-            width: 256,
-            height: 256,
+            width: context.desired_thumbnail_width,
+            height: context.desired_thumbnail_height,
             pixel_data,
         })
     }

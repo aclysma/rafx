@@ -2,6 +2,7 @@
   {
     "type": "record",
     "name": "ShaderPackageAsset",
+    "default_thumbnail": "default_thumbnails/shader-package.png",
     "fields": [
 
     ]
