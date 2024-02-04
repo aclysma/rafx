@@ -239,7 +239,7 @@ impl JobProcessor for LdtkJobProcessor {
                 |handle_factory| {
                     let material_handle: Handle<MaterialAsset> = handle_factory
                         .make_handle_to_default_artifact(AssetId::from_uuid(Uuid::parse_str(
-                            "843a3b00-00d2-424f-94d8-629ca6060471",
+                            "989f8987-c8d7-4d54-90ce-1af70fddc6ac", // tile_layer.material
                         )?));
 
                     let image_handle =

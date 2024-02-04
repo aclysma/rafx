@@ -3,7 +3,6 @@
     "rafx-assets/schema",
     "rafx-plugins/schema"
   ],
-  "schema_cache_file_path": "demo-editor/data/schema_cache.json",
   "import_data_path": "demo-editor/data/import_data",
   "build_data_path": "demo-editor/data/build_data",
   "job_data_path": "demo-editor/data/job_data",

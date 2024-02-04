@@ -2,16 +2,19 @@
   {
     "type": "record",
     "name": "LdtkImportData",
+    "uuid": "a32f5d78-8ee5-4cd6-a9f4-8d73af9ca9c5",
     "fields": [
       {
         "name": "json_data",
-        "type": "string"
+        "type": "string",
+        "uuid": "182ce864-d400-4db8-8ca5-912421ac7d0d"
       }
     ]
   },
   {
     "type": "record",
     "name": "LdtkAsset",
+    "uuid": "566346f8-6263-4d55-a8c9-9fb91df047ef",
     "default_thumbnail": "default_thumbnails/tileset.png",
     "fields": [
 

@@ -2,159 +2,201 @@
   {
     "type": "enum",
     "name": "GpuImageColorSpace",
+    "uuid": "d8089bec-6e54-4f79-9f2a-748cbf7c9124",
     "symbols": [
       {
-        "name": "Srgb"
+        "name": "Srgb",
+        "uuid": "d0160dcd-23b0-46e3-9089-f700d14a2e3d"
       },
       {
-        "name": "Linear"
+        "name": "Linear",
+        "uuid": "937310b1-a840-4e3a-ac5a-246b640747e3"
       }
     ]
   },
   {
     "type": "enum",
     "name": "GpuImageMipGeneration",
+    "uuid": "c316a127-4bec-4644-a6a0-d22dd4c43875",
     "symbols": [
       {
-        "name": "NoMips"
+        "name": "NoMips",
+        "uuid": "99efd613-9127-42f6-9a8a-0afde623bf59"
       },
       {
-        "name": "Precomputed"
+        "name": "Precomputed",
+        "uuid": "cc83d978-1c53-460c-931c-81c64624e6a5"
       },
       {
-        "name": "Runtime"
+        "name": "Runtime",
+        "uuid": "7e6e883a-6f9b-4063-9fe0-72897ee3ea3a"
       }
     ]
   },
   {
     "type": "enum",
     "name": "GpuImageBasisCompressionType",
+    "uuid": "4bde19ae-47c6-427f-8874-5f93dd5bfedc",
     "symbols": [
       {
-        "name": "Etc1S"
+        "name": "Etc1S",
+        "uuid": "66db68d4-8dbf-4bd2-aa03-0edefbd5e781"
       },
       {
-        "name": "Uastc"
+        "name": "Uastc",
+        "uuid": "177b936f-13d6-4bce-bf43-972ab9b5c594"
       }
     ]
   },
   {
     "type": "record",
     "name": "GpuImageBasisCompressionSettings",
+    "uuid": "46a46bae-a1af-4a8f-8f19-efe80a21b5ad",
     "fields": [
       {
         "name": "compression_type",
-        "type": "GpuImageBasisCompressionType"
+        "type": "GpuImageBasisCompressionType",
+        "uuid": "70e5a767-64ff-4a96-a25d-ad4685065878"
       },
       {
         "name": "quality",
-        "type": "u32"
+        "type": "u32",
+        "uuid": "edf6654c-a988-4494-a1db-a46afc833642"
       }
     ]
   },
   {
     "type": "enum",
     "name": "GpuImageAssetDataFormat",
+    "uuid": "b553e8df-79cf-4de4-bb1a-1ba88d3822f6",
     "symbols": [
       {
-        "name": "RGBA32_Linear"
+        "name": "RGBA32_Linear",
+        "uuid": "eca87da1-7a50-4874-b7fd-9db6c491a54c"
       },
       {
-        "name": "RGBA32_Srgb"
+        "name": "RGBA32_Srgb",
+        "uuid": "fa9eeb7e-6ce3-414d-8ec8-42ec9648a1f8"
       },
       {
-        "name": "Basis_Linear"
+        "name": "Basis_Linear",
+        "uuid": "4d41ea18-b4f5-492a-a487-8bc096c3b9fb"
       },
       {
-        "name": "Basis_Srgb"
+        "name": "Basis_Srgb",
+        "uuid": "819aeca3-5ec7-4fa6-aaae-7d04e7c1cc98"
       },
       {
-        "name": "BC1_UNorm_Linear"
+        "name": "BC1_UNorm_Linear",
+        "uuid": "43a5b1bf-78e9-40f6-a306-5daf7ecaa56a"
       },
       {
-        "name": "BC1_UNorm_Srgb"
+        "name": "BC1_UNorm_Srgb",
+        "uuid": "ebc4e79b-c107-4e79-b9d9-90236875b297"
       },
       {
-        "name": "BC2_UNorm_Linear"
+        "name": "BC2_UNorm_Linear",
+        "uuid": "973019dd-9326-4c83-b341-1fa76e186dcf"
       },
       {
-        "name": "BC2_UNorm_Srgb"
+        "name": "BC2_UNorm_Srgb",
+        "uuid": "d4c2aa7b-9904-4602-9e96-a2182065c99f"
       },
       {
-        "name": "BC3_UNorm_Linear"
+        "name": "BC3_UNorm_Linear",
+        "uuid": "7ad318e4-dd9b-463d-9e8f-74709e92da51"
       },
       {
-        "name": "BC3_UNorm_Srgb"
+        "name": "BC3_UNorm_Srgb",
+        "uuid": "89add967-82d8-489a-b4df-35fc1982a736"
       },
       {
-        "name": "BC4_UNorm"
+        "name": "BC4_UNorm",
+        "uuid": "7b8c0c7d-9cef-4264-82ab-336a88217242"
       },
       {
-        "name": "BC4_SNorm"
+        "name": "BC4_SNorm",
+        "uuid": "268d1ad1-beda-45e9-b495-e158371375b3"
       },
       {
-        "name": "BC5_UNorm"
+        "name": "BC5_UNorm",
+        "uuid": "710a4966-b195-433b-aab1-9ff8cd4aa618"
       },
       {
-        "name": "BC5_SNorm"
+        "name": "BC5_SNorm",
+        "uuid": "d5fb5682-a14a-4a41-b010-1d76f99f26c8"
       },
       {
-        "name": "BC6H_UFloat"
+        "name": "BC6H_UFloat",
+        "uuid": "68636bb1-b5a5-40e9-acea-1d73375582be"
       },
       {
-        "name": "BC6H_SFloat"
+        "name": "BC6H_SFloat",
+        "uuid": "86e9d3ef-a444-48c5-b5aa-7b6599fec506"
       },
       {
-        "name": "BC7_Unorm_Linear"
+        "name": "BC7_Unorm_Linear",
+        "uuid": "be174d3b-b837-4e36-8b00-a870b980c918"
       },
       {
-        "name": "BC7_Unorm_Srgb"
+        "name": "BC7_Unorm_Srgb",
+        "uuid": "5931560c-99c2-47ae-8220-d5010572b391"
       }
     ]
   },
   {
     "type": "record",
     "name": "GpuImageAsset",
+    "uuid": "03abd586-98bd-483e-ab2a-d31a7ffe6f15",
     "fields": [
       {
         "name": "basis_compression",
-        "type": "bool"
+        "type": "bool",
+        "uuid": "173d6944-60fe-4565-9d88-b77b7ef06afb"
       },
       {
         "name": "basis_compression_settings",
-        "type": "GpuImageBasisCompressionSettings"
+        "type": "GpuImageBasisCompressionSettings",
+        "uuid": "5406538f-21c1-4c88-a0a6-c16dd697d67e"
       },
       {
         "name": "color_space",
-        "type": "GpuImageColorSpace"
+        "type": "GpuImageColorSpace",
+        "uuid": "3a6f97cd-5e95-4786-bfd1-0e70ef57ec04"
       },
       {
         "name": "mip_generation",
-        "type": "GpuImageMipGeneration"
+        "type": "GpuImageMipGeneration",
+        "uuid": "7e90ceec-d254-423d-9d81-87b763f68e31"
       }
     ]
   },
   {
     "type": "record",
     "name": "GpuImageImportedData",
+    "uuid": "3b7db0d2-3227-4a5f-b10e-394f2576efbe",
     "fields": [
       {
         "name": "image_bytes",
-        "type": "bytes"
+        "type": "bytes",
+        "uuid": "f292a221-343b-4586-979f-f13118df79b2"
       },
       {
         "name": "width",
-        "type": "u32"
+        "type": "u32",
+        "uuid": "9c8d959b-fd1f-4826-b387-e445da3cc94e"
       },
       {
         "name": "height",
-        "type": "u32"
+        "type": "u32",
+        "uuid": "ce248b12-173b-4950-bf96-1496b6ccfbd2"
       }
     ]
   },
   {
     "type": "record",
     "name": "GpuCompressedImageAsset",
+    "uuid": "094f8705-b945-416b-ae9a-63d39568c648",
     "fields": [
 
     ]
@@ -162,58 +204,71 @@
   {
     "type": "record",
     "name": "GpuImageSubresourceMipLevel",
+    "uuid": "9e3d11b9-e136-4b9f-a644-aa5d844bc9d6",
     "fields": [
       {
         "name": "bytes",
-        "type": "bytes"
+        "type": "bytes",
+        "uuid": "399ac40d-566c-441c-83c0-7228cd5c9606"
       },
       {
         "name": "width",
-        "type": "u32"
+        "type": "u32",
+        "uuid": "816981c2-aeeb-4758-9952-90f6e545cb8a"
       },
       {
         "name": "height",
-        "type": "u32"
+        "type": "u32",
+        "uuid": "60e71796-ce46-44b5-9a73-9c4daa43414d"
       }
     ]
   },
   {
     "type": "record",
     "name": "GpuImageSubresourceLayer",
+    "uuid": "2f06013c-bd83-4cc6-9cbc-481fddd47ce8",
     "fields": [
       {
         "name": "mip_levels",
-        "type": { "name": "dynamic_array", "inner_type": "GpuImageSubresourceMipLevel" }
+        "type": { "name": "dynamic_array", "inner_type": "GpuImageSubresourceMipLevel" },
+        "uuid": "5f4a266a-f2e3-4ac6-93ff-fd19b12eb143"
       }
     ]
   },
   {
     "type": "record",
     "name": "GpuCompressedImageImportedData",
+    "uuid": "fa3247c9-6356-4092-b91e-c5cebfb71897",
     "fields": [
       {
         "name": "width",
-        "type": "u32"
+        "type": "u32",
+        "uuid": "12eb85b2-35be-4797-a21b-a21939b640a7"
       },
       {
         "name": "height",
-        "type": "u32"
+        "type": "u32",
+        "uuid": "aeaceecc-8a34-46ae-b010-9cb34f0aaf5d"
       },
       {
         "name": "format",
-        "type": "GpuImageAssetDataFormat"
+        "type": "GpuImageAssetDataFormat",
+        "uuid": "f3ed9351-74d7-4270-904d-eed5e2632477"
       },
       {
         "name": "data_single_buffer",
-        "type": "bytes"
+        "type": "bytes",
+        "uuid": "7ac45bdc-1ff7-43f8-83c2-e9255edd11ed"
       },
       {
         "name": "is_cube_texture",
-        "type": "bool"
+        "type": "bool",
+        "uuid": "295bb14b-66f3-42a4-9052-cf83664ecffb"
       },
       {
         "name": "data_layers",
-        "type": { "name": "dynamic_array", "inner_type": "GpuImageSubresourceLayer" }
+        "type": { "name": "dynamic_array", "inner_type": "GpuImageSubresourceLayer" },
+        "uuid": "9bbdf1fc-4974-41f8-843c-8a0937a06216"
       }
     ]
   }

@@ -2,6 +2,7 @@
   {
     "type": "record",
     "name": "FontAsset",
+    "uuid": "cdb3c2eb-3136-411a-9229-42c8f5281c78",
     "default_thumbnail": "default_thumbnails/font.png",
     "fields": [
 
@@ -10,10 +11,12 @@
   {
     "type": "record",
     "name": "FontImportedData",
+    "uuid": "5b2c902c-25b6-4cbc-a276-386a67e0f9cd",
     "fields": [
       {
         "name": "bytes",
-        "type": "bytes"
+        "type": "bytes",
+        "uuid": "8db11518-0b3e-4f48-bf7d-2d27ec0c5813"
       }
     ]
   }

@@ -2,15 +2,18 @@
   {
     "type": "record",
     "name": "ComputePipelineAsset",
+    "uuid": "f7f650b1-0029-4525-b422-c3297f7a4c10",
     "default_thumbnail": "default_thumbnails/compute.png",
     "fields": [
       {
         "name": "entry_name",
-        "type": "string"
+        "type": "string",
+        "uuid": "ad60dc6d-e9cb-419f-a6c9-77828a7a9f21"
       },
       {
         "name": "shader_module",
-        "type": { "name": "asset_ref", "inner_type": "ShaderPackageAsset" }
+        "type": { "name": "asset_ref", "inner_type": "ShaderPackageAsset" },
+        "uuid": "944cd955-7da2-47d1-8dbe-cc7ccea1e397"
       }
     ]
   }

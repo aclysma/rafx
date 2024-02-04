@@ -90,7 +90,8 @@ impl JobProcessor for MeshAdvMaterialJobProcessor {
             context.input.asset_id,
             |handle_factory| {
                 let material_asset = handle_factory.make_handle_to_default_artifact(
-                    AssetId::from_uuid(Uuid::parse_str("07ab9227-432d-49c8-8899-146acd803235")?),
+                    // mesh_adv.material
+                    AssetId::from_uuid(Uuid::parse_str("f7b445e2-b422-46ee-bfd4-02095b246639")?),
                 );
 
                 let color_texture_handle = if !color_texture.is_null() {

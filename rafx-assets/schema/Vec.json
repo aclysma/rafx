@@ -2,40 +2,49 @@
   {
     "type": "record",
     "name": "Vec3",
+    "uuid": "f5374a0c-383e-442d-900d-85549017b521",
     "fields": [
       {
         "name": "x",
-        "type": "f32"
+        "type": "f32",
+        "uuid": "02468d0b-1089-4d92-beda-3654105abbec"
       },
       {
         "name": "y",
-        "type": "f32"
+        "type": "f32",
+        "uuid": "dd2e433a-53c0-4257-9290-10aefc612b94"
       },
       {
         "name": "z",
-        "type": "f32"
+        "type": "f32",
+        "uuid": "f42ab9e9-1ff5-4690-88c0-9282ce614693"
       }
     ]
   },
   {
     "type": "record",
     "name": "Vec4",
+    "uuid": "8a9ac29f-e0d0-4b70-8f93-30657600ca0d",
     "fields": [
       {
         "name": "x",
-        "type": "f32"
+        "type": "f32",
+        "uuid": "0626f73c-ebbc-481a-a225-db1bb8232ce7"
       },
       {
         "name": "y",
-        "type": "f32"
+        "type": "f32",
+        "uuid": "9d97f658-41db-4293-ac0a-99d60ab42571"
       },
       {
         "name": "z",
-        "type": "f32"
+        "type": "f32",
+        "uuid": "8ae37676-1e7f-458c-868b-2ea87f007474"
       },
       {
         "name": "w",
-        "type": "f32"
+        "type": "f32",
+        "uuid": "39733d96-1a1e-44e2-9975-116cabe5f703"
       }
     ]
   }

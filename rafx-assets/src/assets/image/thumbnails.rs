@@ -210,7 +210,7 @@ impl ThumbnailProvider for GpuCompressedImageThumbnailProvider {
 fn resize_image_for_thumbnail(
     context: &ThumbnailProviderRenderContext,
     image: &RgbaImage,
-) -> Result<ThumbnailImage, PipelineError> {
+) -> PipelineResult<ThumbnailImage> {
     let resize_ratio_x = image.width() as f32 / context.desired_thumbnail_width as f32;
     let resize_ratio_y = image.height() as f32 / context.desired_thumbnail_height as f32;
 

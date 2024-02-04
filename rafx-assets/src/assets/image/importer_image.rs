@@ -19,6 +19,7 @@ use hydrate_pipeline::{
 use image::{GenericImageView, Pixel};
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
+use std::panic::RefUnwindSafe;
 use std::path::Path;
 use std::sync::Arc;
 use type_uuid::*;
@@ -107,7 +108,7 @@ pub struct ImageImporterRuleOptions {
     pub data_format: ImageAssetDataFormatConfig,
 }
 
-pub trait ImageImporterRule: Send + Sync {
+pub trait ImageImporterRule: Send + Sync + RefUnwindSafe {
     fn try_apply(
         &self,
         path: &Path,

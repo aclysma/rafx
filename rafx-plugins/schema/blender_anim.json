@@ -2,6 +2,7 @@
   {
     "type": "record",
     "name": "BlenderAnimAsset",
+    "uuid": "7d4f5230-3faa-47d7-9862-08b05584fad5",
     "fields": [
 
     ]
@@ -9,10 +10,12 @@
   {
     "type": "record",
     "name": "BlenderAnimImportedData",
+    "uuid": "2d882765-9602-4203-91ea-c99f853caa44",
     "fields": [
       {
         "name": "json_string",
-        "type": "string"
+        "type": "string",
+        "uuid": "fe52307e-0afd-42bf-8977-073993af9caa"
       }
     ]
   }
