@@ -34,7 +34,6 @@ where
         data: &[u8],
         load_handle: LoadHandle,
         load_op: AssetLoadOp,
-        _version: u32,
     ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error + Send>> {
         // To enable automatic serde of Handle, we need to set up a SerdeContext with a RefOp sender
         let asset = SerdeContext::with(loader_info, refop_sender.clone(), || {
@@ -50,7 +49,6 @@ where
     fn commit_asset_version(
         &mut self,
         handle: LoadHandle,
-        _version: u32,
     ) {
         self.0.commit_asset_version(handle);
     }

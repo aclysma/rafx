@@ -136,7 +136,7 @@ impl AssetManager {
             .asset_lookup()
             .downcast_ref::<AssetLookup<AssetT>>()
             .unwrap()
-            .get_committed(handle.load_handle())
+            .get_committed(handle.resolved_load_handle())
     }
 
     pub fn latest_asset<AssetT: 'static>(
@@ -148,7 +148,7 @@ impl AssetManager {
             .asset_lookup()
             .downcast_ref::<AssetLookup<AssetT>>()
             .unwrap()
-            .get_latest(handle.load_handle())
+            .get_latest(handle.resolved_load_handle())
     }
 
     // The callback passed to this function will be ticked repeatedly while waiting for the load to complete. This
@@ -196,22 +196,12 @@ impl AssetManager {
                     break Ok(());
                 }
                 state @ _ => {
-                    let direct_handle = if asset_handle.load_handle().is_indirect() {
-                        asset_resource
-                            .loader()
-                            .indirection_table()
-                            .resolve(asset_handle.load_handle())
-                            .unwrap()
-                    } else {
-                        asset_handle.load_handle()
-                    };
-
                     on_interval(PRINT_INTERVAL, &mut last_print_time, || {
                         let artifact_id = asset_handle.artifact_id(asset_resource.loader());
                         log::info!(
                             "blocked waiting for asset to resolve Name={} Handle={:?} ArtifactId={:?} State={:?}",
                             asset_name,
-                            direct_handle,
+                            asset_handle.resolved_load_handle().id,
                             artifact_id,
                             state,
                         );

@@ -19,13 +19,6 @@ use std::any::TypeId;
 use std::sync::Arc;
 use type_uuid::*;
 
-use super::MeshAdvAsset;
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct MeshMaterialAdvAssetDataLod {
-    pub mesh: Handle<MeshAdvAsset>,
-}
-
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
 #[uuid = "8a2f44ec-0911-478a-851a-f61bcf085459"]
 pub struct MeshMaterialAdvAssetData {
