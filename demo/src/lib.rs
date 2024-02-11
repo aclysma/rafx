@@ -409,6 +409,7 @@ impl DemoApp {
             add_to_extract_resources!(RafxSwapchainHelper);
             add_to_extract_resources!(ViewportsResource);
             add_to_extract_resources!(AssetManager);
+            add_to_extract_resources!(AssetResource);
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
             add_to_extract_resources!(PipelineRenderOptions);

@@ -411,6 +411,20 @@ impl Renderer {
         //
         asset_manager.on_frame_complete()?;
 
+        //
+        // Pump asset loading
+        //
+        {
+            let mut asset_resource = extract_resources.fetch_mut::<AssetResource>();
+            for plugin in &*renderer.asset_plugins {
+                plugin.process_asset_loading(
+                    asset_manager,
+                    &mut *asset_resource,
+                    &renderer.render_resources,
+                )?;
+            }
+        }
+
         let resource_context = asset_manager.resource_manager().resource_context();
 
         let mut guard = renderer.inner.lock().unwrap();
