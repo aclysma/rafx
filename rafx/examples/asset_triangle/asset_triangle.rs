@@ -181,7 +181,7 @@ fn run() -> RafxResult<()> {
         // is dropped and there are no more references to those resources.
         //
         let triangle_material_handle =
-            asset_resource.load_asset_symbol_name::<MaterialAsset, _>("triangle.material");
+            asset_resource.load_artifact_symbol_name::<MaterialAsset, _>("triangle.material");
 
         //
         // The vertex format does not need to be specified up-front to create the material pass.

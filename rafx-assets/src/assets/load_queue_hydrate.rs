@@ -2,7 +2,7 @@ use crate::resource_loader::RafxLoadEventHandler;
 use crate::resource_loader::RafxResourceLoadResult;
 use crossbeam_channel::{Receiver, Sender};
 use hydrate_base::LoadHandle;
-use hydrate_loader::storage::AssetLoadOp;
+use hydrate_loader::storage::ArtifactLoadOp;
 use std::marker::PhantomData;
 use type_uuid::TypeUuid;
 
@@ -11,7 +11,7 @@ use type_uuid::TypeUuid;
 //
 pub struct LoadRequest<AssetDataT, AssetT> {
     pub load_handle: LoadHandle,
-    pub load_op: AssetLoadOp,
+    pub load_op: ArtifactLoadOp,
     pub result_tx: Sender<AssetT>,
     pub asset: AssetDataT,
 }
@@ -122,7 +122,7 @@ where
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
-        load_op: AssetLoadOp,
+        load_op: ArtifactLoadOp,
         asset: AssetDataT,
     ) -> RafxResourceLoadResult<AssetT> {
         log::trace!(

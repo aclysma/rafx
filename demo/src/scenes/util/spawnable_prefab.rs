@@ -42,7 +42,7 @@ impl SpawnablePrefab {
         let renderer = resources.get::<Renderer>().unwrap();
 
         let prefab_asset_handle: Handle<PrefabAsset> =
-            asset_resource.load_asset_symbol_name(symbol_name);
+            asset_resource.load_artifact_symbol_name(symbol_name);
         renderer
             .wait_for_asset_to_load(
                 &mut asset_manager,

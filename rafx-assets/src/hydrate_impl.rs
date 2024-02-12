@@ -1,5 +1,5 @@
-pub use hydrate_loader::asset_storage::{DynAssetLoader, UpdateAssetResult};
-pub use hydrate_loader::AssetManager as AssetResource;
+pub use hydrate_loader::artifact_storage::{DynArtifactLoader, UpdateArtifactResult};
+pub use hydrate_loader::ArtifactManager as AssetResource;
 
 use crate::load_queue_hydrate::RafxGenericLoadEventHandler;
 use crate::resource_loader::RafxLoadEventHandler;
@@ -8,7 +8,7 @@ use hydrate_base::handle::LoaderInfoProvider;
 use hydrate_base::handle::RefOp;
 use hydrate_base::handle::SerdeContext;
 use hydrate_base::LoadHandle;
-use hydrate_loader::storage::AssetLoadOp;
+use hydrate_loader::storage::ArtifactLoadOp;
 use std::error::Error;
 use type_uuid::TypeUuid;
 
@@ -22,19 +22,19 @@ where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static + Send,
     AssetT: TypeUuid + 'static + Send;
 
-impl<AssetDataT, AssetT> DynAssetLoader<AssetT> for RafxResourceAssetLoader<AssetDataT, AssetT>
+impl<AssetDataT, AssetT> DynArtifactLoader<AssetT> for RafxResourceAssetLoader<AssetDataT, AssetT>
 where
     AssetDataT: for<'a> serde::Deserialize<'a> + 'static + Send,
     AssetT: TypeUuid + 'static + Send,
 {
-    fn update_asset(
+    fn load_artifact(
         &mut self,
         refop_sender: &Sender<RefOp>,
         loader_info: &dyn LoaderInfoProvider,
         data: &[u8],
         load_handle: LoadHandle,
-        load_op: AssetLoadOp,
-    ) -> Result<UpdateAssetResult<AssetT>, Box<dyn Error + Send>> {
+        load_op: ArtifactLoadOp,
+    ) -> Result<UpdateArtifactResult<AssetT>, Box<dyn Error + Send>> {
         // To enable automatic serde of Handle, we need to set up a SerdeContext with a RefOp sender
         let asset = SerdeContext::with(loader_info, refop_sender.clone(), || {
             bincode::deserialize::<AssetDataT>(data)
@@ -43,17 +43,17 @@ where
         })?;
 
         let result = self.0.update_asset(load_handle, load_op, asset);
-        Ok(UpdateAssetResult::AsyncResult(result.result_rx))
+        Ok(UpdateArtifactResult::AsyncResult(result.result_rx))
     }
 
-    fn commit_asset_version(
+    fn commit_artifact(
         &mut self,
         handle: LoadHandle,
     ) {
         self.0.commit_asset_version(handle);
     }
 
-    fn free(
+    fn free_artifact(
         &mut self,
         handle: LoadHandle,
     ) {

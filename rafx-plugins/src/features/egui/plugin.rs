@@ -84,7 +84,7 @@ impl RenderFeaturePlugin for EguiRendererPlugin {
         render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let egui_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
+        let egui_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
             "assets://rafx-plugins/materials/egui.material",
         );
 

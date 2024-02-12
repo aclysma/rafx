@@ -1,5 +1,5 @@
 use hydrate_base::LoadHandle;
-use hydrate_loader::storage::AssetLoadOp;
+use hydrate_loader::storage::ArtifactLoadOp;
 
 use crossbeam_channel::Receiver;
 
@@ -28,7 +28,7 @@ where
     fn update_asset(
         &mut self,
         load_handle: LoadHandle,
-        load_op: AssetLoadOp,
+        load_op: ArtifactLoadOp,
         asset: AssetDataT,
     ) -> RafxResourceLoadResult<AssetT>;
 

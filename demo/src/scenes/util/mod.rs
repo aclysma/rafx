@@ -272,7 +272,7 @@ pub fn setup_skybox(
     symbol_name: &'static str,
 ) {
     let asset_resource = resources.get::<AssetResource>().unwrap();
-    let skybox_texture = asset_resource.load_asset_symbol_name::<ImageAsset>(symbol_name);
+    let skybox_texture = asset_resource.load_artifact_symbol_name::<ImageAsset>(symbol_name);
 
     *resources
         .get_mut::<SkyboxResource>()

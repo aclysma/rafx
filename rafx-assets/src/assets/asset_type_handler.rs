@@ -2,7 +2,7 @@ use crate::hydrate_impl::{AssetResource, RafxResourceAssetLoader};
 use crate::{AssetLookup, AssetManager, DynAssetLookup, LoadQueues};
 use crossbeam_channel::Sender;
 use hydrate_base::LoadHandle;
-use hydrate_loader::storage::AssetLoadOp;
+use hydrate_loader::storage::ArtifactLoadOp;
 use rafx_api::RafxResult;
 use std::any::TypeId;
 use std::marker::PhantomData;
@@ -155,7 +155,7 @@ pub type StorageOnlyAssetTypeHandler<AssetT> =
 // Static functions
 //
 pub fn handle_load_result<AssetT: Clone>(
-    load_op: AssetLoadOp,
+    load_op: ArtifactLoadOp,
     loaded_asset: RafxResult<AssetT>,
     asset_lookup: &mut AssetLookup<AssetT>,
     result_tx: Sender<AssetT>,

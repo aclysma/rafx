@@ -75,7 +75,7 @@ impl RenderFeaturePlugin for ExampleRenderFeaturePlugin {
         // is dropped and there are no more references to those resources.
         //
         let triangle_material_handle =
-            asset_resource.load_asset_symbol_name::<MaterialAsset, _>("triangle.material");
+            asset_resource.load_artifact_symbol_name::<MaterialAsset, _>("triangle.material");
 
         render_resources.insert(ExampleStaticResources {
             triangle_material_handle,

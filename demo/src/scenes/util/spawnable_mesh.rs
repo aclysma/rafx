@@ -99,7 +99,7 @@ impl SpawnableMesh {
         artifact_id: ArtifactId,
     ) -> SpawnableMesh {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-        let handle = asset_resource.load_asset(artifact_id);
+        let handle = asset_resource.load_artifact(artifact_id);
         Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
     }
 
@@ -108,7 +108,7 @@ impl SpawnableMesh {
         symbol_name: &'static str,
     ) -> SpawnableMesh {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-        let handle = asset_resource.load_asset_symbol_name(symbol_name);
+        let handle = asset_resource.load_artifact_symbol_name(symbol_name);
         Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
     }
 }

@@ -31,13 +31,13 @@ impl SpriteScene {
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             asset_resource
-                .load_asset_symbol_name::<ImageAsset>("assets://demo/textures/texture2.jpg")
+                .load_artifact_symbol_name::<ImageAsset>("assets://demo/textures/texture2.jpg")
         };
 
         let ldtk_handle = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             asset_resource
-                .load_asset_symbol_name::<LdtkProjectAsset>("assets://demo/ldtk/example.ldtk")
+                .load_artifact_symbol_name::<LdtkProjectAsset>("assets://demo/ldtk/example.ldtk")
         };
 
         let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();

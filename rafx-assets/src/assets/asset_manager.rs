@@ -192,7 +192,7 @@ impl AssetManager {
             (tick_fn)(self, asset_resource)?;
 
             match asset_handle.load_state(asset_resource.loader()) {
-                LoadState::Committed => {
+                LoadState::Loaded => {
                     break Ok(());
                 }
                 state @ _ => {

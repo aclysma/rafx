@@ -1,6 +1,6 @@
 use crossbeam_channel::Sender;
 use hydrate_base::LoadHandle;
-use hydrate_loader::storage::AssetLoadOp;
+use hydrate_loader::storage::ArtifactLoadOp;
 use rafx_api::RafxError;
 use rafx_framework::upload::UploadOp;
 
@@ -9,12 +9,12 @@ use rafx_framework::upload::UploadOp;
 //
 pub enum UploadAssetOpResult<ResourceT, AssetT> {
     UploadError(LoadHandle),
-    UploadComplete(AssetLoadOp, Sender<AssetT>, ResourceT),
+    UploadComplete(ArtifactLoadOp, Sender<AssetT>, ResourceT),
     UploadDrop(LoadHandle),
 }
 
 pub struct UploadAssetOpInner<ResourceT, AssetT> {
-    load_op: AssetLoadOp,
+    load_op: ArtifactLoadOp,
     load_handle: LoadHandle,
     asset_sender: Sender<AssetT>, // This sends back to the asset storage, we just pass it along
     sender: Sender<UploadAssetOpResult<ResourceT, AssetT>>, // This sends back to the resource manager to finalize the load
@@ -35,7 +35,7 @@ impl<ResourceT, AssetT> Drop for UploadAssetOp<ResourceT, AssetT> {
 
 impl<ResourceT, AssetT> UploadAssetOp<ResourceT, AssetT> {
     pub fn new(
-        load_op: AssetLoadOp,
+        load_op: ArtifactLoadOp,
         load_handle: LoadHandle,
         asset_sender: Sender<AssetT>,
         sender: Sender<UploadAssetOpResult<ResourceT, AssetT>>,

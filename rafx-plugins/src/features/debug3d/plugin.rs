@@ -63,7 +63,7 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let debug3d_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
+        let debug3d_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
             "assets://rafx-plugins/materials/debug3d.material",
         );
 

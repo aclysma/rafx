@@ -63,7 +63,7 @@ impl RenderFeaturePlugin for SkyboxRendererPlugin {
         render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let skybox_material = asset_resource.load_asset_symbol_name::<MaterialAsset>(
+        let skybox_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
             "assets://rafx-plugins/materials/skybox.material",
         );
 
