@@ -1,22 +1,16 @@
-use crate::assets::image::{ImageAssetDataLayer, ImageAssetDataMipLevel};
 use crate::schema::{
     GpuCompressedImageAssetRecord, GpuCompressedImageImportedDataRecord,
     GpuImageAssetDataFormatEnum, GpuImageAssetRecord, GpuImageImportedDataRecord,
 };
-use crate::ImageAssetDataFormat;
-use basis_universal::sys::basisu_image;
-use basis_universal::{TranscodeParameters, TranscoderTextureFormat};
-use ddsfile::DxgiFormat;
-use hydrate_data::{EnumFieldRef, Record};
+use basis_universal::TranscodeParameters;
+
+use hydrate_data::Record;
 use hydrate_pipeline::{
-    ImportContext, Importer, PipelineError, PipelineResult, ScanContext, ThumbnailImage,
-    ThumbnailProvider, ThumbnailProviderGatherContext, ThumbnailProviderRenderContext,
+    PipelineError, PipelineResult, ThumbnailImage, ThumbnailProvider,
+    ThumbnailProviderGatherContext, ThumbnailProviderRenderContext,
 };
-use image::{Pixel, RgbaImage};
-use rafx_framework::upload::GpuImageDataColorSpace;
-use std::fmt::format;
+use image::RgbaImage;
 use std::sync::Arc;
-use type_uuid::*;
 
 #[derive(Default)]
 pub struct GpuImageThumbnailProvider {}
@@ -42,7 +36,7 @@ impl ThumbnailProvider for GpuImageThumbnailProvider {
     fn render<'a>(
         &'a self,
         context: &'a ThumbnailProviderRenderContext<'a>,
-        gathered_data: Self::GatheredDataT,
+        _gathered_data: Self::GatheredDataT,
     ) -> PipelineResult<ThumbnailImage> {
         let import_data = context.imported_data::<GpuImageImportedDataRecord>(context.asset_id)?;
         let width = import_data.width().get()?;
@@ -61,7 +55,7 @@ impl ThumbnailProvider for GpuImageThumbnailProvider {
 }
 
 fn decode_basis(
-    format: GpuImageAssetDataFormatEnum,
+    _format: GpuImageAssetDataFormatEnum,
     bytes: Arc<Vec<u8>>,
 ) -> PipelineResult<RgbaImage> {
     let mut transcoder = basis_universal::Transcoder::new();
@@ -120,9 +114,9 @@ fn decode_bcn(
 
     Ok(surface
         .decode_rgba8()
-        .map_err(|e| PipelineError::ThumbnailUnavailable)?
+        .map_err(|_| PipelineError::ThumbnailUnavailable)?
         .to_image(0)
-        .map_err(|e| PipelineError::ThumbnailUnavailable)?)
+        .map_err(|_| PipelineError::ThumbnailUnavailable)?)
 }
 
 #[derive(Default)]
@@ -149,7 +143,7 @@ impl ThumbnailProvider for GpuCompressedImageThumbnailProvider {
     fn render<'a>(
         &'a self,
         context: &'a ThumbnailProviderRenderContext<'a>,
-        gathered_data: Self::GatheredDataT,
+        _gathered_data: Self::GatheredDataT,
     ) -> PipelineResult<ThumbnailImage> {
         let import_data =
             context.imported_data::<GpuCompressedImageImportedDataRecord>(context.asset_id)?;

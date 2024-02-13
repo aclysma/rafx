@@ -5,11 +5,10 @@ use crate::features::tile_layer::TileLayerVertex;
 use crate::schema::{LdtkAssetAccessor, LdtkAssetRecord, LdtkImportDataRecord};
 use fnv::FnvHashMap;
 use hydrate_base::{ArtifactId, AssetId, Handle};
-use hydrate_data::{PathReference, Record, RecordAccessor};
+use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
-    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, ImportContext, Importer,
+    JobInput, JobOutput, JobProcessor, PipelineResult, RunContext, ScanContext,
 };
 use ldtk_rust::{LayerInstance, Level, TileInstance};
 use rafx::api::RafxResourceType;
@@ -163,7 +162,8 @@ impl Importer for LdtkImporter {
         // Read the file
         //
         let source = std::fs::read_to_string(context.path)?;
-        let project: ldtk_rust::Project = serde_json::from_str(&source)?;
+        // We don't use this immediately but at least make sure it's well formed
+        let _project: ldtk_rust::Project = serde_json::from_str(&source)?;
 
         //
         // Create the default asset

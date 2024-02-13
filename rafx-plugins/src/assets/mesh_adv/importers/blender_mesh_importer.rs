@@ -2,8 +2,7 @@ use crate::schema::{MeshAdvMeshAssetRecord, MeshAdvMeshImportedDataRecord};
 use hydrate_base::hashing::HashMap;
 use hydrate_data::{ImportableName, Record};
 use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, ImportContext, Importer, PipelineResult, ScanContext,
 };
 use rafx::assets::PushBuffer;
 use rafx::base::b3f::B3FReader;

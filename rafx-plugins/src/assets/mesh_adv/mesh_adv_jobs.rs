@@ -1,13 +1,11 @@
 pub use super::*;
 use glam::Vec3;
-use hydrate_data::PathReference;
 use rafx::api::RafxResourceType;
 
 use crate::features::mesh_adv::{MeshVertexFull, MeshVertexPosition};
 use crate::schema::*;
 use hydrate_pipeline::{
-    AssetId, AssetPluginSetupContext, BuilderContext, BuilderRegistryBuilder,
-    ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor, JobProcessorRegistryBuilder,
+    AssetId, AssetPluginSetupContext, BuilderContext, JobInput, JobOutput, JobProcessor,
     PipelineResult, RecordAccessor, RunContext,
 };
 use hydrate_pipeline::{AssetPlugin, Builder};

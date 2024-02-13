@@ -7,8 +7,7 @@ use hydrate_base::hashing::HashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{ImportableName, Record, RecordBuilder};
 use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, ImportContext, Importer, PipelineResult, ScanContext,
 };
 use rafx::assets::schema::{GpuImageAssetRecord, GpuImageImportedDataRecord};
 use rafx::assets::PushBuffer;

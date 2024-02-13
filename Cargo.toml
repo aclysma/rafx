@@ -21,13 +21,15 @@ exclude = [
 
 resolver = "2"
 
-# Example of overriding a single crate. Doesn't affect dependencies though so it's of limited value
-#[profile.dev.package.image]
-#opt-level = 2
-
-# Set the default for dependencies.
+# Optimize external crates by default, even in debug
 [profile.dev.package."*"]
 opt-level = 2
+
+# Don't optimize hydrate packages in dev
+[profile.dev.package.hydrate-loader]
+opt-level = 0
+[profile.dev.package.hydrate-base]
+opt-level = 0
 
 # Set the settings for build scripts and proc-macros.
 [profile.dev.build-override]
@@ -36,10 +38,6 @@ opt-level = 2
 # faster macOS builds
 [profile.dev]
 split-debuginfo = "unpacked"
-
-# Required for https://github.com/gltf-rs/gltf/pull/288
-#[patch.crates-io]
-#gltf = { path = "gltf" }
 
 [patch.crates-io]
 #raw-gl-context = { git = "https://github.com/aclysma/raw-gl-context.git", branch = "rafx" }

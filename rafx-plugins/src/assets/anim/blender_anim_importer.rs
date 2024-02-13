@@ -9,9 +9,8 @@ use fnv::FnvHashMap;
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
-    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, ImportContext, Importer,
+    JobInput, JobOutput, JobProcessor, PipelineResult, RunContext, ScanContext,
 };
 use rafx::api::{RafxError, RafxResult};
 use serde::{Deserialize, Serialize};
@@ -266,7 +265,8 @@ impl Importer for BlenderAnimImporter {
         // Read the file
         //
         let json_str = std::fs::read_to_string(context.path)?;
-        let anim_data: AnimJsonData = serde_json::from_str(&json_str)?;
+        // We don't use this immediately, but make sure it's at least well formed
+        let _anim_data: AnimJsonData = serde_json::from_str(&json_str)?;
 
         //
         // Create the default asset

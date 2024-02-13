@@ -30,7 +30,7 @@ impl ImageAssetTypeHandler {
         )?;
 
         Ok(Box::new(Self {
-            asset_lookup: AssetLookup::new(asset_resource.loader()),
+            asset_lookup: AssetLookup::default(),
             load_queues,
             image_upload_queue,
         }))

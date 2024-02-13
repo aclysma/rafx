@@ -11,12 +11,10 @@ use crate::{
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor, RecordBuilder};
 use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
-    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext, ThumbnailImage,
-    ThumbnailProvider, ThumbnailProviderGatherContext, ThumbnailProviderRenderContext,
+    Builder, BuilderContext, ImportContext, Importer, JobInput, JobOutput, JobProcessor,
+    PipelineResult, RunContext, ScanContext,
 };
-use image::{GenericImageView, Pixel};
+use image::GenericImageView;
 use rafx_api::RafxResourceType;
 use serde::{Deserialize, Serialize};
 use std::panic::RefUnwindSafe;

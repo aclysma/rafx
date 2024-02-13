@@ -1,8 +1,7 @@
 use crate::schema::MeshAdvModelAssetRecord;
 use hydrate_data::{ImportableName, Record};
 use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, ImportContext, Importer, PipelineResult, ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

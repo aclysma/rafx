@@ -11,8 +11,6 @@ use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
     RafxError, RafxFillMode, RafxFrontFace, RafxRasterizerState, RafxResult, RafxSamplerDef,
 };
-pub use rafx_framework::DescriptorSetLayoutResource;
-pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{
     DescriptorSetArc, FixedFunctionState, MaterialPass, MaterialPassResource, MaterialShaderStage,
     ResourceArc,

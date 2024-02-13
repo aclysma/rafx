@@ -1,7 +1,4 @@
-use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImporterRegistryBuilder,
-    JobProcessorRegistryBuilder,
-};
+use hydrate_pipeline::{AssetPlugin, AssetPluginSetupContext};
 
 pub mod material_importer;
 use crate::assets::graphics_pipeline::material_instance_importer::{

@@ -31,7 +31,7 @@ impl BufferAssetTypeHandler {
             BufferAssetUploadQueue::new(asset_manager.upload_queue_context())?;
 
         Ok(Box::new(Self {
-            asset_lookup: AssetLookup::new(asset_resource.loader()),
+            asset_lookup: AssetLookup::default(),
             load_queues,
             buffer_upload_queue,
         }))

@@ -94,7 +94,7 @@ impl MeshAdvMaterialAssetTypeHandler {
         let (material_upload_result_tx, material_upload_result_rx) = crossbeam_channel::unbounded();
 
         Ok(Box::new(Self {
-            asset_lookup: AssetLookup::new(asset_resource.loader()),
+            asset_lookup: AssetLookup::default(),
             load_queues,
             material_upload_context,
             material_upload_result_tx,

@@ -1,9 +1,8 @@
 use crate::assets::mesh_adv::PrefabAdvAssetDataObjectLightKind;
 use crate::schema::{MeshAdvPrefabAssetRecord, MeshAdvPrefabImportDataRecord};
-use hydrate_data::{ImportableName, Record};
+use hydrate_data::Record;
 use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImportContext, Importer,
-    ImporterRegistryBuilder, JobProcessorRegistryBuilder, PipelineResult, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, ImportContext, Importer, PipelineResult, ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -109,7 +108,7 @@ impl Importer for BlenderPrefabImporter {
         //
         let source = std::fs::read_to_string(context.path)?;
         // We don't actually need to parse this now but worth doing to make sure it's well-formed at import time
-        let mut json_format: MeshAdvPrefabJsonFormat = serde_json::from_str(&source)
+        let _json_format: MeshAdvPrefabJsonFormat = serde_json::from_str(&source)
             .map_err(|x| format!("Blender Prefab Import error: {:?}", x))?;
 
         //

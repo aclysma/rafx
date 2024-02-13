@@ -1,10 +1,7 @@
 pub mod assets;
 
 pub use assets::*;
-use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, BuilderRegistryBuilder, ImporterRegistryBuilder,
-    JobProcessorRegistryBuilder,
-};
+use hydrate_pipeline::{AssetPlugin, AssetPluginSetupContext};
 use std::sync::Arc;
 
 mod asset_upload_queue;

@@ -128,7 +128,7 @@ impl MeshAdvBufferAssetTypeHandler {
         render_resources.insert(heaps.clone());
 
         Ok(Box::new(Self {
-            asset_lookup: AssetLookup::new(asset_resource.loader()),
+            asset_lookup: AssetLookup::default(),
             load_queues,
             buffer_upload_queue,
             buffers: heaps,

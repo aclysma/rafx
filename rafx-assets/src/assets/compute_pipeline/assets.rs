@@ -5,8 +5,6 @@ use crate::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, 
 use hydrate_base::handle::Handle;
 use hydrate_base::LoadHandle;
 use rafx_api::RafxResult;
-pub use rafx_framework::DescriptorSetLayoutResource;
-pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{ComputePipelineResource, ReflectedShader, ResourceArc};
 use std::hash::Hash;
 use std::path::PathBuf;

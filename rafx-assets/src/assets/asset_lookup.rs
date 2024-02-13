@@ -2,7 +2,6 @@ use downcast_rs::Downcast;
 use fnv::FnvHashMap;
 use hydrate_base::handle::ResolvedLoadHandle;
 use hydrate_base::LoadHandle;
-use hydrate_loader::loader::Loader;
 use std::sync::Arc;
 
 //
@@ -31,15 +30,17 @@ pub struct AssetLookup<AssetT> {
     pub loaded_assets: FnvHashMap<LoadHandle, LoadedAssetState<AssetT>>,
 }
 
-impl<AssetT> DynAssetLookup for AssetLookup<AssetT> where AssetT: 'static {}
-
-impl<AssetT> AssetLookup<AssetT> {
-    pub fn new(loader: &Loader) -> Self {
+impl<AssetT> Default for AssetLookup<AssetT> {
+    fn default() -> Self {
         AssetLookup {
             loaded_assets: Default::default(),
         }
     }
+}
 
+impl<AssetT> DynAssetLookup for AssetLookup<AssetT> where AssetT: 'static {}
+
+impl<AssetT> AssetLookup<AssetT> {
     pub fn set_uncommitted(
         &mut self,
         load_handle: LoadHandle,

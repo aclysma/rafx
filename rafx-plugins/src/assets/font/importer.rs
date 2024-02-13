@@ -4,9 +4,8 @@ use fnv::FnvHasher;
 use hydrate_base::AssetId;
 use hydrate_data::{Record, RecordAccessor};
 use hydrate_pipeline::{
-    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, BuilderRegistryBuilder,
-    ImportContext, Importer, ImporterRegistryBuilder, JobInput, JobOutput, JobProcessor,
-    JobProcessorRegistryBuilder, PipelineResult, RunContext, ScanContext,
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, ImportContext, Importer,
+    JobInput, JobOutput, JobProcessor, PipelineResult, RunContext, ScanContext,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
