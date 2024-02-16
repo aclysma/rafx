@@ -1,7 +1,8 @@
-(
-    version: 2,
-    importer_options: (),
-    importer_state: (
-        anim_asset_uuid: Some("fdd2efbb-7cc0-4c69-b81b-0aa0b02c55a5"),
-    ),
-)
+{
+  "importables": {
+    "": {
+      "id": "17313a85-ce59-43c8-a53e-2a275966cf57",
+      "persisted": false
+    }
+  }
+}

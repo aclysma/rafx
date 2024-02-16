@@ -1,52 +1,52 @@
-(
-    version: 2,
-    importer_options: (),
-    importer_state: (
-        buffer_asset_uuids: [
-            (Index(0), "fd738c7b-7536-43ac-a6e7-35aa4e98aee6"),
-            (Index(1), "f9392acb-9700-4057-ad40-a2e0048a3675"),
-            (Index(2), "865e05dd-6f3e-4609-9be7-77ad7088b5e1"),
-            (Index(3), "0f4da1a5-b59a-46a5-afb1-fd117f5d1b33"),
-            (Index(4), "0351c736-c0b7-4ebf-ae22-061903c8e101"),
-            (Index(5), "983d6dda-4879-4397-8b8b-aa97aef1967e"),
-            (Index(6), "efaa9012-449c-49a4-a05e-e2da2a060b57"),
-            (Index(7), "498ea504-58a9-4bb8-bf36-28899438d7a1"),
-            (Index(8), "78eef0f9-2124-4a49-a6ea-4890bfc014b7"),
-            (Index(9), "7ee1802b-5df6-4c66-bf7d-e9f794759f1d"),
-            (Index(10), "e4883c3b-581d-49c6-9c07-c85d53452fc7"),
-            (Index(11), "7b1a6c46-8304-4d28-8729-4b5a950ef52c"),
-            (Index(12), "b3b6ed1e-c685-41f8-92bd-5a8daf77214b"),
-            (Index(13), "91448ee9-e5df-46c9-8284-0617a4ea1bba"),
-            (Index(14), "4c1165fe-5772-4cbd-887e-ca5061ffdde0"),
-            (Index(15), "c5b21c0f-5d3b-4a87-bffb-540fbd847fb3"),
-            (Index(16), "6bdef73f-3ec6-4232-86bb-3a34a5b1be0e"),
-            (Index(17), "b9247e92-cb71-47a5-91a0-d9b9b6184999"),
-        ],
-        image_asset_uuids: [],
-        material_asset_uuids: [],
-        material_instance_asset_uuids: [
-            (Name("Blue"), "a69b294e-8686-47be-b0e3-db3ab5b1f57c"),
-            (Name("Green"), "ea6d16bd-a8fe-4497-9e97-e52228c10a56"),
-            (Name("Orange"), "5f9eb2eb-7004-4213-8ed0-e8f11f35c05c"),
-            (Name("Purple"), "20b721f0-a42c-4f8f-8284-708b8a9ec4e4"),
-            (Name("Red"), "b0793b77-fe5b-4f0e-9400-ad840e9a2dd9"),
-            (Name("Yellow"), "975c501c-8a2f-457b-a804-13cd38fee803"),
-        ],
-        mesh_material_asset_uuids: [
-            (Name("Blue"), "90db6241-754d-44bc-a06f-500bff50f491"),
-            (Name("Green"), "60384b41-d28a-4337-8c40-4435910519b7"),
-            (Name("Orange"), "b93294ab-88eb-478d-8198-b2e6299f9556"),
-            (Name("Purple"), "105dba1c-921e-41cc-9a41-9b513448ce74"),
-            (Name("Red"), "391a8cff-ffa1-4d66-b1c3-f0767b0e6ce7"),
-            (Name("Yellow"), "579e8fad-eec0-4495-b4a5-28711e0b904b"),
-        ],
-        mesh_asset_uuids: [
-            (Name("Icosphere_Blue"), "1af1ca58-49a6-4ef7-ac8f-20be3b75b48b"),
-            (Name("Icosphere_Green"), "d8a3c8cd-f5e8-4a90-884a-65f1418cb735"),
-            (Name("Icosphere_Orange"), "99de6c79-380d-4d97-8361-9b9978604ae0"),
-            (Name("Icosphere_Purple"), "37a01cb7-11e7-4115-8246-088ba3a19ce4"),
-            (Name("Icosphere_Red"), "8e18cb73-73dc-46ce-b705-1d5e02dec69a"),
-            (Name("Icosphere_Yellow"), "1894f460-eb38-4fc4-bbe3-39e93d04c790"),
-        ],
-    ),
-)
+{
+  "importables": {
+    "material_Blue": {
+      "id": "9a4d594d-fe66-48ad-bd0d-2d0cf21b3250",
+      "persisted": false
+    },
+    "material_Green": {
+      "id": "8c4bff54-09d1-45a8-9526-a3dceb0adc55",
+      "persisted": false
+    },
+    "material_Orange": {
+      "id": "1717f1cc-8bc5-4dda-814e-b45a8aab98ce",
+      "persisted": false
+    },
+    "material_Purple": {
+      "id": "392abb4d-5f52-4078-93be-99904e80a0cd",
+      "persisted": false
+    },
+    "material_Red": {
+      "id": "6747885f-2901-43e4-8967-9fab85fbff3a",
+      "persisted": false
+    },
+    "material_Yellow": {
+      "id": "d6c4f678-4f09-40fb-8223-6d7c2c49dc97",
+      "persisted": false
+    },
+    "mesh_Icosphere_Blue": {
+      "id": "740c3b3f-0383-4774-ac4f-338b96400638",
+      "persisted": false
+    },
+    "mesh_Icosphere_Green": {
+      "id": "1138af82-81c9-4fb6-a3c1-b5b73499a0ed",
+      "persisted": false
+    },
+    "mesh_Icosphere_Orange": {
+      "id": "87e08894-eac1-4472-a87d-e5295650e029",
+      "persisted": false
+    },
+    "mesh_Icosphere_Purple": {
+      "id": "f50fed65-4190-4eda-8907-af96b3b1e1bb",
+      "persisted": false
+    },
+    "mesh_Icosphere_Red": {
+      "id": "a495898f-fdc2-449b-afa6-c73f3bc23c11",
+      "persisted": false
+    },
+    "mesh_Icosphere_Yellow": {
+      "id": "337bb590-1d95-4f78-b110-2e21270f573d",
+      "persisted": false
+    }
+  }
+}

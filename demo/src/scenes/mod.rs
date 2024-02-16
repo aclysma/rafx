@@ -5,11 +5,11 @@ use rand::Rng;
 // miscellaneous shared code between scenes
 pub mod util;
 
-mod dungeon_scene;
-use dungeon_scene::DungeonScene;
+//mod dungeon_scene;
+//use dungeon_scene::DungeonScene;
 
-mod scifi_base_scene;
-use scifi_base_scene::ScifiBaseScene;
+//mod scifi_base_scene;
+//use scifi_base_scene::ScifiBaseScene;
 
 mod bistro_scene;
 use bistro_scene::BistroScene;
@@ -43,8 +43,8 @@ use taa_test_scene::TaaTestScene;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Scene {
-    Dungeon,
-    ScifiBase,
+    //ScifiBase,
+    //Dungeon,
     Bistro,
     Shadows,
     PbrTest,
@@ -57,11 +57,11 @@ pub enum Scene {
     TaaTestScene,
 }
 
-pub const ALL_SCENES: [Scene; 12] = [
-    Scene::ScifiBase,
-    Scene::Bistro, // Uncomment to enable the bistro scene
+pub const ALL_SCENES: [Scene; 9] = [
+    //Scene::ScifiBase,
+    //Scene::Dungeon,
+    //Scene::Bistro,
     Scene::Shadows,
-    Scene::Dungeon,
     Scene::PbrTest,
     Scene::Sprite,
     Scene::Animation,
@@ -86,8 +86,8 @@ fn create_scene(
     resources: &Resources,
 ) -> Box<dyn TestScene> {
     match scene {
-        Scene::Dungeon => Box::new(DungeonScene::new(world, resources)),
-        Scene::ScifiBase => Box::new(ScifiBaseScene::new(world, resources)),
+        //Scene::Dungeon => Box::new(DungeonScene::new(world, resources)),
+        //Scene::ScifiBase => Box::new(ScifiBaseScene::new(world, resources)),
         Scene::Bistro => Box::new(BistroScene::new(world, resources)),
         Scene::Shadows => Box::new(ShadowsScene::new(world, resources)),
         Scene::PbrTest => Box::new(PbrTestScene::new(world, resources)),

@@ -64,7 +64,7 @@ impl RenderFeaturePlugin for DebugPipRendererPlugin {
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let debug_pip_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
-            "assets://rafx-plugins/materials/debug_pip.material",
+            "rafx-plugins://materials/debug_pip.material",
         );
 
         renderer_load_context.wait_for_asset_to_load(

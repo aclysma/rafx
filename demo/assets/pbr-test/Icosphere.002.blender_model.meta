@@ -1,5 +1,8 @@
-(
-    version: 2,
-    importer_options: (),
-    importer_state: (Some("659684d1-336c-48d4-901f-ba69c3502d68")),
-)
+{
+  "importables": {
+    "": {
+      "id": "7326518a-591c-41d5-acda-c0fb684f15fe",
+      "persisted": false
+    }
+  }
+}

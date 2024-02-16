@@ -1,26 +1,24 @@
-(
-    version: 2,
-    importer_options: (),
-    importer_state: (
-        buffer_asset_uuids: [
-            (Index(0), "3882ef5e-9999-4a9a-a000-1c65971b286a"),
-            (Index(1), "90d8992d-6647-49ab-a6f6-7bc8101ed3ee"),
-            (Index(2), "31fdf618-e8b0-4e7b-8d92-2f28dafbac26"),
-        ],
-        image_asset_uuids: [
-            (Name("storage-container2-albedo"), "2d87392a-7ed8-43b6-a558-fcac49bd2570"),
-            (Name("storage-container2-metallic-storage-container2-roughness"), "ab448401-6223-43a9-8be1-86ef09c6a03d"),
-            (Name("storage-container2-normal-ogl"), "b0d30d2f-0d23-4a19-bcf3-2c97164c5171"),
-        ],
-        material_asset_uuids: [],
-        material_instance_asset_uuids: [
-            (Name("Material"), "c81d680d-9dc9-4e30-b5df-41d7071f4696"),
-        ],
-        mesh_material_asset_uuids: [
-            (Name("Material"), "756f6707-39de-441b-a0bc-dbb6b992f630"),
-        ],
-        mesh_asset_uuids: [
-            (Name("Cube"), "1bdb3eb9-ef04-4fc7-8fe8-33d1d2605c92"),
-        ],
-    ),
-)
+{
+  "importables": {
+    "image_storage-container2-albedo": {
+      "id": "b644432c-28b3-412a-82b2-f492fb7a2af8",
+      "persisted": false
+    },
+    "image_storage-container2-metallic-storage-container2-roughness": {
+      "id": "42d97d79-274f-4ce8-a07c-6ea8ba696b22",
+      "persisted": false
+    },
+    "image_storage-container2-normal-ogl": {
+      "id": "b14167bc-eb4c-4f2f-944d-73e5bfa1043d",
+      "persisted": false
+    },
+    "material_Material": {
+      "id": "97fe1b41-a9b2-41ea-a7b2-c352619672d1",
+      "persisted": false
+    },
+    "mesh_Cube": {
+      "id": "dd5cb278-6676-472d-9933-c76424ee554b",
+      "persisted": false
+    }
+  }
+}

@@ -22,24 +22,24 @@ impl AutoexposureScene {
     ) -> Self {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
-        super::util::setup_skybox(resources, "assets://demo/textures/skybox.basis");
+        super::util::setup_skybox(resources, "demo-assets://textures/skybox.basis");
         super::util::set_ambient_light(resources, glam::Vec3::new(0.005, 0.005, 0.005));
 
         let floor_mesh = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "assets://demo/blender/cement_floor.glb.mesh_Cube",
+            "demo-assets://blender/cement_floor.glb.mesh_Cube",
         );
         let container_1 = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "assets://demo/blender/storage_container1.glb.mesh_Cube",
+            "demo-assets://blender/storage_container1.glb.mesh_Cube",
         );
         let container_2 = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "assets://demo/blender/storage_container2.glb.mesh_Cube",
+            "demo-assets://blender/storage_container2.glb.mesh_Cube",
         );
         let blue_icosphere = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "assets://demo/blender/icosphere.glb.mesh_Icosphere_Blue",
+            "demo-assets://blender/icosphere.glb.mesh_Icosphere_Blue",
         );
 
         //

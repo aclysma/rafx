@@ -107,7 +107,7 @@ impl AnimationScene {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
         let renderer = resources.get::<Renderer>().unwrap();
         let anim_asset = asset_resource
-            .load_artifact_symbol_name::<AnimAsset>("assets://demo/armature/Armature.blender_anim");
+            .load_artifact_symbol_name::<AnimAsset>("demo-assets://armature/Armature.blender_anim");
 
         renderer
             .wait_for_asset_to_load(&mut asset_manager, &anim_asset, &mut asset_resource, "")

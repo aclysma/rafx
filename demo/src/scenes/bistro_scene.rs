@@ -32,7 +32,7 @@ impl BistroScene {
 
         let prefab = SpawnablePrefab::blocking_load_from_symbol_name(
             resources,
-            "assets://demo/bistro_merged/Scene.blender_prefab",
+            "demo-assets://bistro_merged/Scene.blender_prefab",
         );
         prefab.spawn_prefab(world, resources);
 

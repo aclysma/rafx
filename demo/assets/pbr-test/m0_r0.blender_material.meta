@@ -1,8 +1,8 @@
-(
-    version: 2,
-    importer_options: (),
-    importer_state: (
-        mesh_material_id: Some("13cb230c-ff08-4086-bdb9-49b966266b16"),
-        material_instance_id: Some("6ddfb76d-0b27-480c-8c1b-8a8df7c71952"),
-    ),
-)
+{
+  "importables": {
+    "": {
+      "id": "4c1added-fbb4-4780-967a-cd24b150bb96",
+      "persisted": false
+    }
+  }
+}

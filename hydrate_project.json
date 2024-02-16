@@ -14,8 +14,12 @@
   ],
   "path_based_asset_sources": [
     {
-      "name": "assets",
-      "path": "demo-editor/data/assets_path_based"
+      "name": "demo-assets",
+      "path": "demo/assets"
+    },
+    {
+      "name": "rafx-plugins",
+      "path": "rafx-plugins/assets"
     }
   ],
   "source_file_locations": [

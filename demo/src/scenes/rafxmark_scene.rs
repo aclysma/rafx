@@ -69,15 +69,14 @@ impl RafxmarkScene {
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
             asset_resource.load_artifact_symbol_name::<ImageAsset>(
-                "assets://demo/textures/texture-tiny-rust.jpeg",
+                "demo-assets://textures/texture-tiny-rust.jpeg",
             )
         };
 
         let font = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_artifact_symbol_name::<FontAsset>(
-                "assets://rafx-plugins/fonts/mplus-1p-regular.ttf",
-            )
+            asset_resource
+                .load_artifact_symbol_name::<FontAsset>("rafx-plugins://fonts/mplus-1p-regular.ttf")
         };
 
         let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
