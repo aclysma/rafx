@@ -12,7 +12,7 @@ publish = false
 rafx = { path = "../rafx", features = ["renderer", "basis-universal", "dds"] }
 rafx-plugins = { path = "../rafx-plugins", features = ["legion", "egui"] }
 
-hydrate-base = { path = "../../hydrate/hydrate-base" }
+hydrate-base = "0.0.1"
 
 uuid = "0.8"
 type-uuid = "0.1"

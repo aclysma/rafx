@@ -32,10 +32,10 @@ rafx-api = { version = "0.0.15", path = "../rafx-api" }
 rafx-base = { version = "0.0.15", path = "../rafx-base" }
 rafx-framework = { version = "0.0.15", path = "../rafx-framework" }
 
-hydrate-pipeline = { path = "../../hydrate/hydrate-pipeline" }
-hydrate-data = { path = "../../hydrate/hydrate-data" }
-hydrate-loader = { path = "../../hydrate/hydrate-loader" }
-hydrate-base = { path = "../../hydrate/hydrate-base" }
+hydrate-pipeline = "0.0.1"
+hydrate-data = "0.0.1"
+hydrate-loader = "0.0.1"
+hydrate-base = "0.0.1"
 
 basis-universal = { version = "0.1.1", optional = true }
 type-uuid = "0.1"
