@@ -17,7 +17,6 @@ use rafx::renderer::{
     AssetSource, RenderViewMeta, Renderer, RendererBuilder, RendererConfigResource,
     SwapchainHandler, ViewportsResource,
 };
-use rafx_renderer::daemon::AssetDaemonOpt;
 use std::sync::Arc;
 use std::time;
 use std::time::Duration;
@@ -93,25 +92,6 @@ fn run() -> RafxResult<()> {
     // Wrap all of this so that it gets dropped before we drop the API object. This ensures a nice
     // clean shutdown.
     {
-        //
-        // For this example, we'll run the `distill` daemon in-process. This is the most convenient
-        // method during development. (You could also build a packfile ahead of time and run from that)
-        //
-        let db_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/renderer_triangle/.assets_db");
-        let asset_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("examples/renderer_triangle/assets");
-        let connect_string = "127.0.0.1:9999";
-
-        let asset_source = AssetSource::Daemon {
-            external_daemon: false,
-            daemon_args: AssetDaemonOpt {
-                db_dir,
-                address: connect_string.parse().unwrap(),
-                asset_dirs: [asset_dir].to_vec(),
-            },
-        };
-
         let sdl2_window = &sdl2_systems.window;
 
         resources.insert(VisibilityResource::new());
@@ -128,10 +108,12 @@ fn run() -> RafxResult<()> {
 
             let pipeline_plugin = Arc::new(ExampleRendererPipelinePlugin);
 
+            let assets_build_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../demo-editor/data/build_data");
             renderer_builder.build(
                 extract_resources,
                 &api,
-                asset_source,
+                AssetSource::BuildDir(assets_build_dir),
                 pipeline_plugin,
                 || None,
             )
@@ -279,6 +261,7 @@ fn run() -> RafxResult<()> {
                 add_to_extract_resources!(RafxSwapchainHelper);
                 add_to_extract_resources!(ViewportsResource);
                 add_to_extract_resources!(AssetManager);
+                add_to_extract_resources!(AssetResource);
                 add_to_extract_resources!(TimeState);
                 add_to_extract_resources!(RendererConfigResource);
 
@@ -340,13 +323,17 @@ pub fn sdl2_init() -> Sdl2Systems {
         .expect("Failed to create sdl video subsystem");
 
     // Create the window
-    let window = video_subsystem
-        .window("Rafx Example", WINDOW_WIDTH, WINDOW_HEIGHT)
+    let mut window_binding = video_subsystem.window("Rafx Example", WINDOW_WIDTH, WINDOW_HEIGHT);
+
+    let window_builder = window_binding
         .position_centered()
         .allow_highdpi()
-        .resizable()
-        .build()
-        .expect("Failed to create window");
+        .resizable();
+
+    #[cfg(target_os = "macos")]
+    let window_builder = window_builder.metal_view();
+
+    let window = window_builder.build().expect("Failed to create window");
 
     Sdl2Systems {
         context,

@@ -45,4 +45,5 @@ split-debuginfo = "unpacked"
 #basis-universal-sys = { path = "../basis-universal-rs/basis-universal-sys" }
 
 #spirv_cross = { path = "../spirv_cross/spirv_cross" }
-spirv_cross = { git = "https://github.com/aclysma/spirv_cross.git", branch = "rafx-support" }
+#spirv_cross = { git = "https://github.com/aclysma/spirv_cross.git", branch = "rafx-support" }
+#spirv_cross = { path = "../aclysma_spirv_cross/spirv_cross", package = "aclysma_spirv_cross" }

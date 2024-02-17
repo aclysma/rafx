@@ -20,6 +20,14 @@
     {
       "name": "rafx-plugins",
       "path": "rafx-plugins/assets"
+    },
+    {
+      "name": "assets-triangle-example",
+      "path": "rafx/examples/asset_triangle/assets"
+    },
+    {
+      "name": "renderer-triangle-example",
+      "path": "rafx/examples/renderer_triangle/assets"
     }
   ],
   "source_file_locations": [

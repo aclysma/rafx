@@ -2,6 +2,7 @@ use crate::schema::{
     GpuCompressedImageAssetRecord, GpuCompressedImageImportedDataRecord,
     GpuImageAssetDataFormatEnum, GpuImageAssetRecord, GpuImageImportedDataRecord,
 };
+#[cfg(feature = "basis-universal")]
 use basis_universal::TranscodeParameters;
 
 use hydrate_data::Record;
@@ -54,6 +55,15 @@ impl ThumbnailProvider for GpuImageThumbnailProvider {
     }
 }
 
+#[cfg(not(feature = "basis-universal"))]
+fn decode_basis(
+    _format: GpuImageAssetDataFormatEnum,
+    _bytes: Arc<Vec<u8>>,
+) -> PipelineResult<RgbaImage> {
+    Err("Cannot decode basis-universal image, the basis-universal feature was not enabled when compiling".into())
+}
+
+#[cfg(feature = "basis-universal")]
 fn decode_basis(
     _format: GpuImageAssetDataFormatEnum,
     bytes: Arc<Vec<u8>>,
@@ -78,6 +88,17 @@ fn decode_basis(
     Ok(image::RgbaImage::from_raw(level_info.m_width, level_info.m_height, level_data).unwrap())
 }
 
+#[cfg(not(feature = "ddsfile"))]
+fn decode_bcn(
+    _width: u32,
+    _height: u32,
+    _format: GpuImageAssetDataFormatEnum,
+    _bytes: Arc<Vec<u8>>,
+) -> PipelineResult<RgbaImage> {
+    Err("Cannot decode BCn image, the ddsfile feature was not enabled when compiling".into())
+}
+
+#[cfg(feature = "ddsfile")]
 fn decode_bcn(
     width: u32,
     height: u32,
