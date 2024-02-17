@@ -10,7 +10,7 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hydrate = { version = "0.0.1", features = ["editor"] }
+hydrate = { version = "0.0.2", features = ["editor"] }
 rafx = { path = "../rafx", features = ["renderer", "basis-universal", "dds"] }
 rafx-plugins = { path = "../rafx-plugins", features = ["legion", "egui", "egui-winit", "modern-pipeline", "meshopt"] }
 

@@ -14,10 +14,10 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 [dependencies]
 rafx = { path = "../rafx", version = "0.0.15", features = ["assets", "renderer"] }
 
-hydrate-pipeline = "0.0.1"
-hydrate-data = "0.0.1"
-hydrate-loader = "0.0.1"
-hydrate-base = "0.0.1"
+hydrate-pipeline = "0.0.2"
+hydrate-data = "0.0.2"
+hydrate-loader = "0.0.2"
+hydrate-base = "0.0.2"
 
 legion = { version = "0.4.0", default-features = false, features = ["serialize"], optional = true }
 

@@ -47,3 +47,15 @@ split-debuginfo = "unpacked"
 #spirv_cross = { path = "../spirv_cross/spirv_cross" }
 #spirv_cross = { git = "https://github.com/aclysma/spirv_cross.git", branch = "rafx-support" }
 #spirv_cross = { path = "../aclysma_spirv_cross/spirv_cross", package = "aclysma_spirv_cross" }
+
+#hydrate-base = { path = "../hydrate/hydrate-base" }
+#hydrate-schema = { path = "../hydrate/hydrate-schema" }
+#hydrate-data = { path = "../hydrate/hydrate-data" }
+#hydrate-model = { path = "../hydrate/hydrate-model" }
+#hydrate-pipeline = { path = "../hydrate/hydrate-pipeline" }
+#hydrate-editor = { path = "../hydrate/hydrate-editor" }
+#hydrate-loader = { path = "../hydrate/hydrate-loader" }
+#hydrate-codegen = { path = "../hydrate/hydrate-codegen" }
+#hydrate = { path = "../hydrate/hydrate" }
+
+
