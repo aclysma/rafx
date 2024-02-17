@@ -1,7 +1,11 @@
 [package]
 name = "demo-editor"
-version = "0.1.0"
+version = "0.0.15"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2021"
+license = "MIT OR Apache-2.0"
+# This is a demo crate, we shouldn't publish it
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
