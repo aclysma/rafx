@@ -5,7 +5,6 @@ on: [push, pull_request]
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
 jobs:
   build:
@@ -38,25 +37,36 @@ jobs:
 
       - name: Build
         run: cargo check --features "rafx-vulkan" --manifest-path demo/Cargo.toml
+        env:
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Build
         run: cargo check --no-default-features --features "rafx-vulkan,basic-pipeline,use-egui" --manifest-path demo/Cargo.toml
+        env:
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Run tests (vulkan)
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
         run: cargo test --workspace --features "rafx-vulkan" --manifest-path demo/Cargo.toml
+        env:
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Run tests (metal)
         if: ${{ runner.os == 'macOS' && matrix.toolchain == 'stable' }}
         run: cargo test --workspace --features "rafx-metal" --manifest-path demo/Cargo.toml
+        # SDL2 does not build warning-free on macos so we can't use -D warnings
 
       - name: Run tests (gles2)
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
         run: cargo test --workspace --features "rafx-gles2,basic-pipeline" --manifest-path demo/Cargo.toml
+        env:
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Run tests (gles3)
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
         run: cargo test --workspace --features "rafx-gles3,basic-pipeline" --manifest-path demo/Cargo.toml
+        env:
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
 
   deny-check:
