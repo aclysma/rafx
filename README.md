@@ -12,13 +12,15 @@ This crate contains several layers:
  * `rafx-renderer`: A pipelined renderer with a plugin system for customizing it
  * `rafx-plugins`: Implementations of many basic and advanced rendering techniques and features
 
-Rafx also provides tools for building shaders and packing assets.
+Rafx also provides tools for building shaders and assets.
 
 ### [**Documentation**](docs/index.md)
 
 [![Build Status](https://github.com/aclysma/rafx/workflows/CI/badge.svg)](https://github.com/aclysma/rafx/actions)
 
 [![Sci-fi Base Screenshot](docs/screenshots/scifi_base_screenshot_thumb.jpg)](docs/screenshots/scifi_base_screenshot.png)
+
+![Editor](docs/screenshots/editor.png)
 
 [![Amazon Lumberyard Bistro Screenshot](docs/screenshots/bistro_screenshot_thumb.jpg)](docs/screenshots/bistro_screenshot.png)
 
@@ -38,20 +40,20 @@ Amazon Lumberyard Bistro scene (Original assets: https://developer.nvidia.com/or
 
 Rafx supports most mainstream platforms. Proprietary platforms can be supported by adding an additional backend.
 
-| Platform  | Vulkan   | Metal | GL ES 2.0 (4,6) | GL ES 3.0 (4,5,6) |
-| --------- | -------- | ----- | --------------- | ----------------- |
-| Windows   |   ✅     |       |      ✅         |        ✅         |
-| macOS     |   ✅     |  ✅   |      ✅         |        ✅         |
-| Linux     |   ✅ (1) |       |      ✅ (1)     |        ✅ (1)     |
-| iOS       |   ✅     |  ✅   |      🟥 (3)     |        🟥 (3)     |
-| Android   |   🟨 (2) |       |      🟥 (3)     |        🟥 (3)     |
-| WebGL (6) |          |       |      ✅         |        ✅         |
+| Platform  | Vulkan   | Metal | DX12 | GL ES 3.0 (4,5,6) |
+| --------- | -------- | ----- |-----| ----------------- |
+| Windows   |   ✅     |       | ✅   |        ✅         |
+| macOS     |   ✅     |  ✅   |     |        ✅         |
+| Linux     |   ✅ (1) |       |     |        ✅ (1)     |
+| iOS       |   ✅     |  ✅   |     |        🟥 (3)     |
+| Android   |   🟨 (2) |       |     |        🟥 (3)     |
+| WebGL (6) |          |       |     |        ✅         |
 
 **Caveats**: 
  1. Some backend/driver/window manager combinations might not work. Most recently tested with Ubuntu 20.04 LTS.
  2. Android might work with vulkan but has not been tested. (It likely can be made to work) 
  3. Mobile OpenGL devices might work but may need improvements to create the initial OpenGL graphics context.
- 4. Limitations in the OpenGL ES 2.0/3.0 API prevent full implementation. The main demo does not work in GL ES 2.0/3.0.
+ 4. Limitations in the OpenGL ES 3.0 API prevent full implementation. The main demo does not fully work in GL ES 2.0/3.0.
  5. OpenGL ES 3.0 backend still uses 2.0 paths for some functionality. There is room for improvement!
  6. OpenGL/WebGL will not receive much improvement/support going forward.
 
