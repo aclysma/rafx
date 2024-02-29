@@ -9,13 +9,6 @@ use rafx::renderer::Renderer;
 use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
 use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
 
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::assets::mesh_basic::MeshBasicAsset as MeshAsset;
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::features::mesh_basic::{
-    MeshBasicRenderObject as MeshRenderObject, MeshBasicRenderObjectSet as MeshRenderObjectSet,
-};
-
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::assets::mesh_adv::MeshAdvAsset as MeshAsset;
 #[cfg(not(feature = "basic-pipeline"))]

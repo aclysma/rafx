@@ -33,10 +33,6 @@ use rafx::api::dx12::RafxApiDefDx12;
 use rafx::api::vulkan::RafxApiDefVulkan;
 
 #[cfg(feature = "basic-pipeline")]
-use rafx_plugins::assets::mesh_basic::MeshBasicAssetTypeRendererPlugin;
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::features::mesh_basic::MeshBasicRendererPlugin;
-#[cfg(feature = "basic-pipeline")]
 use rafx_plugins::pipelines::basic::BasicPipelineRendererPlugin;
 
 #[cfg(not(feature = "basic-pipeline"))]
@@ -57,8 +53,6 @@ pub fn rendering_init(
     resources.insert(VisibilityResource::new());
     resources.insert(ViewportsResource::default());
 
-    #[cfg(feature = "basic-pipeline")]
-    let mesh_renderer_plugin = Arc::new(MeshBasicRendererPlugin::new(Some(32)));
     #[cfg(not(feature = "basic-pipeline"))]
     let mesh_renderer_plugin = Arc::new(MeshAdvRendererPlugin::new(Some(32)));
     let sprite_renderer_plugin = Arc::new(SpriteRendererPlugin::default());
@@ -71,6 +65,7 @@ pub fn rendering_init(
     #[cfg(feature = "egui")]
     let egui_renderer_plugin =
         Arc::new(rafx_plugins::features::egui::EguiRendererPlugin::default());
+    #[cfg(not(feature = "basic-pipeline"))]
     mesh_renderer_plugin.legion_init(resources);
     sprite_renderer_plugin.legion_init(resources);
     skybox_renderer_plugin.legion_init(resources);
@@ -149,7 +144,6 @@ pub fn rendering_init(
         .add_asset_plugin(Arc::new(FontAssetTypeRendererPlugin))
         .add_asset_plugin(Arc::new(LdtkAssetTypeRendererPlugin))
         .add_asset_plugin(Arc::new(AnimAssetTypeRendererPlugin))
-        .add_render_feature_plugin(mesh_renderer_plugin)
         .add_render_feature_plugin(sprite_renderer_plugin)
         .add_render_feature_plugin(skybox_renderer_plugin)
         .add_render_feature_plugin(tile_layer_renderer_plugin)
@@ -158,16 +152,11 @@ pub fn rendering_init(
         .add_render_feature_plugin(text_renderer_plugin)
         .allow_use_render_thread(allow_use_render_thread);
 
-    #[cfg(feature = "basic-pipeline")]
-    {
-        renderer_builder =
-            renderer_builder.add_asset_plugin(Arc::new(MeshBasicAssetTypeRendererPlugin));
-    }
-
     #[cfg(not(feature = "basic-pipeline"))]
     {
-        renderer_builder =
-            renderer_builder.add_asset_plugin(Arc::new(MeshAdvAssetTypeRendererPlugin));
+        renderer_builder = renderer_builder
+            .add_render_feature_plugin(mesh_renderer_plugin)
+            .add_asset_plugin(Arc::new(MeshAdvAssetTypeRendererPlugin));
     }
 
     #[cfg(feature = "egui")]
@@ -240,8 +229,6 @@ pub fn rendering_destroy(resources: &mut Resources) -> RafxResult<()> {
 
         resources.remove::<Renderer>();
 
-        #[cfg(feature = "basic-pipeline")]
-        MeshBasicRendererPlugin::legion_destroy(resources);
         #[cfg(not(feature = "basic-pipeline"))]
         MeshAdvRendererPlugin::legion_destroy(resources);
         SpriteRendererPlugin::legion_destroy(resources);

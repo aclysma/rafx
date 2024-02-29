@@ -50,14 +50,14 @@ jobs:
         if: ${{ runner.os == 'macOS' && matrix.toolchain == 'stable' }}
         run: cargo test --workspace --features "rafx-metal" --manifest-path demo/Cargo.toml
 
-#      - name: Run tests (gles2)
-#        if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
-#        run: cargo test --workspace --features "rafx-gles2,basic-pipeline,cli/basic-pipeline" --manifest-path demo/Cargo.toml
-#
-#      - name: Run tests (gles3)
-#        if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
-#        run: cargo test --workspace --features "rafx-gles3,basic-pipeline,cli/basic-pipeline" --manifest-path demo/Cargo.toml
-#
+      - name: Run tests (gles2)
+        if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
+        run: cargo test --workspace --features "rafx-gles2,basic-pipeline" --manifest-path demo/Cargo.toml
+
+      - name: Run tests (gles3)
+        if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
+        run: cargo test --workspace --features "rafx-gles3,basic-pipeline" --manifest-path demo/Cargo.toml
+
 
   deny-check:
     name: cargo-deny

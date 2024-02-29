@@ -40,10 +40,6 @@ use rafx_plugins::features::tile_layer::TileLayerResource;
 use winit::event_loop::ControlFlow;
 
 #[cfg(feature = "basic-pipeline")]
-use rafx_plugins::features::mesh_basic::{
-    MeshBasicRenderObjectSet as MeshRenderObjectSet, MeshBasicRenderOptions as MeshRenderOptions,
-};
-#[cfg(feature = "basic-pipeline")]
 use rafx_plugins::pipelines::basic::BasicPipelineRenderOptions as PipelineRenderOptions;
 
 #[cfg(not(feature = "basic-pipeline"))]
@@ -150,6 +146,7 @@ impl DemoApp {
         resources.insert(TimeState::new());
         resources.insert(InputResource::new());
         resources.insert(RenderOptions::default_2d());
+        #[cfg(not(feature = "basic-pipeline"))]
         resources.insert(MeshRenderOptions::default());
         resources.insert(PipelineRenderOptions::default());
         #[cfg(not(feature = "basic-pipeline"))]
@@ -255,7 +252,10 @@ impl DemoApp {
                     renderer.wait_for_render_thread_idle();
                 }
 
-                *self.resources.get_mut::<MeshRenderOptions>().unwrap() = Default::default();
+                #[cfg(not(feature = "basic-pipeline"))]
+                {
+                    *self.resources.get_mut::<MeshRenderOptions>().unwrap() = Default::default();
+                }
                 *self.resources.get_mut::<RenderOptions>().unwrap() = RenderOptions::default_3d();
 
                 self.scene_manager
@@ -352,12 +352,13 @@ impl DemoApp {
                 .visibility_config
                 .enable_visibility_update = render_options.enable_visibility_update;
 
-            let mut mesh_render_options = self.resources.get_mut::<MeshRenderOptions>().unwrap();
-            mesh_render_options.show_surfaces = render_options.show_surfaces;
-            mesh_render_options.show_shadows = render_options.show_shadows;
-            mesh_render_options.enable_lighting = render_options.enable_lighting;
             #[cfg(not(feature = "basic-pipeline"))]
             {
+                let mut mesh_render_options =
+                    self.resources.get_mut::<MeshRenderOptions>().unwrap();
+                mesh_render_options.show_surfaces = render_options.show_surfaces;
+                mesh_render_options.show_shadows = render_options.show_shadows;
+                mesh_render_options.enable_lighting = render_options.enable_lighting;
                 mesh_render_options.ndf_filter_amount = render_options.ndf_filter_amount;
                 mesh_render_options.use_clustered_lighting = render_options.use_clustered_lighting;
             }
@@ -413,6 +414,7 @@ impl DemoApp {
             add_to_extract_resources!(TimeState);
             add_to_extract_resources!(RenderOptions);
             add_to_extract_resources!(PipelineRenderOptions);
+            #[cfg(not(feature = "basic-pipeline"))]
             add_to_extract_resources!(MeshRenderOptions);
             add_to_extract_resources!(RendererConfigResource);
             add_to_extract_resources!(TileLayerResource);
@@ -421,6 +423,7 @@ impl DemoApp {
                 rafx_plugins::features::sprite::SpriteRenderObjectSet,
                 sprite_render_object_set
             );
+            #[cfg(not(feature = "basic-pipeline"))]
             add_to_extract_resources!(MeshRenderObjectSet, mesh_render_object_set);
             add_to_extract_resources!(
                 rafx_plugins::features::tile_layer::TileLayerRenderObjectSet,

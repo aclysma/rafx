@@ -3,7 +3,6 @@ use rafx::graph::*;
 
 use super::depth_prepass::DepthPrepass;
 use super::BasicPipelineContext;
-use super::ShadowMapImageResources;
 use rafx::api::{RafxColorClearValue, RafxDepthStencilClearValue};
 use rafx::render_features::RenderJobCommandBufferContext;
 
@@ -11,14 +10,11 @@ pub(super) struct OpaquePass {
     #[allow(dead_code)]
     pub(super) node: RenderGraphNodeId,
     pub(super) color: RenderGraphImageUsageId,
-    #[allow(dead_code)]
-    pub(super) shadow_maps: Vec<RenderGraphImageUsageId>,
 }
 
 pub(super) fn opaque_pass(
     context: &mut BasicPipelineContext,
     depth_prepass: Option<DepthPrepass>,
-    shadow_map_passes: &[ShadowMapImageResources],
 ) -> OpaquePass {
     let node = context
         .graph
@@ -36,8 +32,6 @@ pub(super) fn opaque_pass(
         Default::default(),
     );
     context.graph.set_image_name(color, "color");
-
-    let mut shadow_maps = Vec::with_capacity(shadow_map_passes.len());
 
     if context.graph_config.show_surfaces && depth_prepass.is_some() {
         context.graph.read_depth_attachment(
@@ -65,23 +59,6 @@ pub(super) fn opaque_pass(
             Default::default(),
         );
         context.graph.set_image_name(depth, "depth");
-    }
-
-    for shadow_map_pass in shadow_map_passes {
-        let sampled_image = match shadow_map_pass {
-            ShadowMapImageResources::Single(image) => {
-                context
-                    .graph
-                    .sample_image(node, *image, Default::default(), Default::default())
-            }
-            ShadowMapImageResources::Cube(cube_map_image) => context.graph.sample_image(
-                node,
-                *cube_map_image,
-                Default::default(),
-                Default::default(),
-            ),
-        };
-        shadow_maps.push(sampled_image);
     }
 
     context
@@ -121,9 +98,5 @@ pub(super) fn opaque_pass(
         Ok(())
     });
 
-    OpaquePass {
-        node,
-        color,
-        shadow_maps,
-    }
+    OpaquePass { node, color }
 }

@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types)]
+
 use hydrate_data::*;
 use hydrate_pipeline::{DataContainer, DataContainerRef, DataContainerRefMut, DataSetResult};
 use std::cell::RefCell;

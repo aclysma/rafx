@@ -52,21 +52,21 @@ impl RendererPipelinePlugin for BasicPipelineRendererPlugin {
         //
         // let bloom_extract_material = asset_resource
         //     .load_artifact_symbol_name::<MaterialAsset, _>("pipelines/bloom_extract.material");
-        let bloom_extract_material = asset_resource.load_artifact_symbol_name::<MaterialAsset, _>(
+        let bloom_extract_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
             "rafx-plugins://materials/bloom_extract.material",
         );
 
         //
         // Bloom blur resources
         //
-        let bloom_blur_material = asset_resource.load_artifact_symbol_name::<MaterialAsset, _>(
+        let bloom_blur_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
             "rafx-plugins://materials/bloom_blur.material",
         );
 
         //
         // Bloom combine resources
         //
-        let bloom_combine_material = asset_resource.load_artifact_symbol_name::<MaterialAsset, _>(
+        let bloom_combine_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
             "rafx-plugins://materials/basic_pipeline/bloom_combine_basic.material",
         );
 

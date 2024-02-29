@@ -11,23 +11,8 @@ pub mod util;
 //mod scifi_base_scene;
 //use scifi_base_scene::ScifiBaseScene;
 
-mod bistro_scene;
-use bistro_scene::BistroScene;
-
-mod shadows_scene;
-use shadows_scene::ShadowsScene;
-
-mod autoexposure_scene;
-use autoexposure_scene::AutoexposureScene;
-
-mod pbr_test;
-use pbr_test::PbrTestScene;
-
 mod sprite_scene;
 use sprite_scene::SpriteScene;
-
-mod animation_scene;
-use animation_scene::AnimationScene;
 
 mod rafxmark_scene;
 use rafxmark_scene::RafxmarkScene;
@@ -35,12 +20,42 @@ use rafxmark_scene::RafxmarkScene;
 mod many_sprites_scene;
 use many_sprites_scene::ManySpritesScene;
 
+#[cfg(not(feature = "basic-pipeline"))]
+mod bistro_scene;
+#[cfg(not(feature = "basic-pipeline"))]
+use bistro_scene::BistroScene;
+
+#[cfg(not(feature = "basic-pipeline"))]
+mod shadows_scene;
+#[cfg(not(feature = "basic-pipeline"))]
+use shadows_scene::ShadowsScene;
+
+#[cfg(not(feature = "basic-pipeline"))]
+mod autoexposure_scene;
+#[cfg(not(feature = "basic-pipeline"))]
+use autoexposure_scene::AutoexposureScene;
+
+#[cfg(not(feature = "basic-pipeline"))]
+mod pbr_test;
+#[cfg(not(feature = "basic-pipeline"))]
+use pbr_test::PbrTestScene;
+
+#[cfg(not(feature = "basic-pipeline"))]
+mod animation_scene;
+#[cfg(not(feature = "basic-pipeline"))]
+use animation_scene::AnimationScene;
+
+#[cfg(not(feature = "basic-pipeline"))]
 mod many_cubes_scene;
+#[cfg(not(feature = "basic-pipeline"))]
 use many_cubes_scene::ManyCubesScene;
 
+#[cfg(not(feature = "basic-pipeline"))]
 mod taa_test_scene;
+#[cfg(not(feature = "basic-pipeline"))]
 use taa_test_scene::TaaTestScene;
 
+#[cfg(not(feature = "basic-pipeline"))]
 #[derive(Copy, Clone, Debug)]
 pub enum Scene {
     //ScifiBase,
@@ -57,6 +72,7 @@ pub enum Scene {
     TaaTestScene,
 }
 
+#[cfg(not(feature = "basic-pipeline"))]
 pub const ALL_SCENES: [Scene; 9] = [
     //Scene::ScifiBase,
     //Scene::Dungeon,
@@ -72,6 +88,17 @@ pub const ALL_SCENES: [Scene; 9] = [
     Scene::TaaTestScene,
 ];
 
+#[cfg(feature = "basic-pipeline")]
+#[derive(Copy, Clone, Debug)]
+pub enum Scene {
+    Sprite,
+    Rafxmark,
+    ManySprites,
+}
+
+#[cfg(feature = "basic-pipeline")]
+pub const ALL_SCENES: [Scene; 3] = [Scene::Sprite, Scene::Rafxmark, Scene::ManySprites];
+
 fn random_color(rng: &mut impl Rng) -> Vec3 {
     let r = rng.gen_range(0.2..1.0);
     let g = rng.gen_range(0.2..1.0);
@@ -80,6 +107,7 @@ fn random_color(rng: &mut impl Rng) -> Vec3 {
     v.normalize()
 }
 
+#[cfg(not(feature = "basic-pipeline"))]
 fn create_scene(
     scene: Scene,
     world: &mut World,
@@ -98,6 +126,19 @@ fn create_scene(
         Scene::ManyCubes => Box::new(ManyCubesScene::new(world, resources)),
         Scene::Autoexposure => Box::new(AutoexposureScene::new(world, resources)),
         Scene::TaaTestScene => Box::new(TaaTestScene::new(world, resources)),
+    }
+}
+
+#[cfg(feature = "basic-pipeline")]
+fn create_scene(
+    scene: Scene,
+    world: &mut World,
+    resources: &Resources,
+) -> Box<dyn TestScene> {
+    match scene {
+        Scene::Sprite => Box::new(SpriteScene::new(world, resources)),
+        Scene::Rafxmark => Box::new(RafxmarkScene::new(world, resources)),
+        Scene::ManySprites => Box::new(ManySpritesScene::new(world, resources)),
     }
 }
 

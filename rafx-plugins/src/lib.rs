@@ -7,13 +7,17 @@ pub mod pipelines;
 mod schema;
 mod shaders;
 
+#[cfg(all(not(feature = "basic-pipeline"), feature = "legion"))]
 use crate::assets::anim::BlenderAnimAssetPlugin;
 use crate::assets::font::FontAssetPlugin;
 use crate::assets::ldtk::LdtkAssetPlugin;
+
+#[cfg(all(not(feature = "basic-pipeline"), feature = "legion"))]
 use crate::assets::mesh_adv::{
     BlenderMaterialAssetPlugin, BlenderMeshAssetPlugin, BlenderModelAssetPlugin,
     BlenderPrefabAssetPlugin, GltfAssetPlugin, MeshAdvAssetPlugin,
 };
+
 use hydrate_pipeline::AssetPluginRegistryBuilders;
 use std::path::PathBuf;
 
@@ -26,14 +30,19 @@ pub fn register_default_hydrate_plugins(
 ) -> AssetPluginRegistryBuilders {
     plugin_registry = plugin_registry
         .register_plugin::<LdtkAssetPlugin>()
-        .register_plugin::<FontAssetPlugin>()
-        .register_plugin::<BlenderMaterialAssetPlugin>()
-        .register_plugin::<BlenderMeshAssetPlugin>()
-        .register_plugin::<BlenderModelAssetPlugin>()
-        .register_plugin::<BlenderPrefabAssetPlugin>()
-        .register_plugin::<BlenderAnimAssetPlugin>()
-        .register_plugin::<GltfAssetPlugin>()
-        .register_plugin::<MeshAdvAssetPlugin>();
+        .register_plugin::<FontAssetPlugin>();
+
+    #[cfg(all(not(feature = "basic-pipeline"), feature = "legion"))]
+    {
+        plugin_registry = plugin_registry
+            .register_plugin::<MeshAdvAssetPlugin>()
+            .register_plugin::<GltfAssetPlugin>()
+            .register_plugin::<BlenderMaterialAssetPlugin>()
+            .register_plugin::<BlenderMeshAssetPlugin>()
+            .register_plugin::<BlenderModelAssetPlugin>()
+            .register_plugin::<BlenderPrefabAssetPlugin>()
+            .register_plugin::<BlenderAnimAssetPlugin>();
+    }
 
     plugin_registry
 }

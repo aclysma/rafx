@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+#[cfg(all(not(feature = "basic-pipeline"), feature = "legion"))]
 use crate::assets::mesh_adv::{MeshAdvBlendMethod, MeshAdvShadowMethod};
 use hydrate_data::*;
 use rafx::assets::schema::*;
@@ -8,6 +9,7 @@ use std::rc::Rc;
 
 include!("schema_codegen.rs");
 
+#[cfg(all(not(feature = "basic-pipeline"), feature = "legion"))]
 impl Into<MeshAdvBlendMethod> for MeshAdvBlendMethodEnum {
     fn into(self) -> MeshAdvBlendMethod {
         match self {
@@ -18,6 +20,7 @@ impl Into<MeshAdvBlendMethod> for MeshAdvBlendMethodEnum {
     }
 }
 
+#[cfg(all(not(feature = "basic-pipeline"), feature = "legion"))]
 impl Into<MeshAdvShadowMethod> for MeshAdvShadowMethodEnum {
     fn into(self) -> MeshAdvShadowMethod {
         match self {
