@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types)]
+#![allow(dead_code)]
 
 use hydrate_data::*;
 use hydrate_pipeline::{DataContainer, DataContainerRef, DataContainerRefMut, DataSetResult};
