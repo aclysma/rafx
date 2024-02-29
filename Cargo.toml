@@ -10,7 +10,6 @@ members = [
     "rafx-assets",
     "rafx-plugins",
     "demo",
-    "demo-schema",
     "demo-editor",
     "demo-web"
 ]
