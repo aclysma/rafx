@@ -29,8 +29,7 @@ impl NSWindowWrapper {
             let is_actually_window: BOOL = msg_send![window, isKindOfClass: class];
             assert_eq!(is_actually_window, YES);
 
-            let ptr = StrongPtr::new(window);
-            StrongPtr::retain(window);
+            let ptr = StrongPtr::retain(window);
             NSWindowWrapper(ptr)
         }
     }
