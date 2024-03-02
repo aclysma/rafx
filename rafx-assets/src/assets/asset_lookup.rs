@@ -1,8 +1,8 @@
-use distill::loader::storage::IndirectionTable;
-use distill::loader::LoadHandle;
-use distill::loader::Loader;
 use downcast_rs::Downcast;
 use fnv::FnvHashMap;
+use hydrate_base::handle::ResolvedLoadHandle;
+use hydrate_base::LoadHandle;
+use std::sync::Arc;
 
 //
 // Represents a single asset which may simultaneously have committed and uncommitted loaded state
@@ -21,17 +21,6 @@ impl<AssetT> Default for LoadedAssetState<AssetT> {
     }
 }
 
-fn resolve_load_handle(
-    load_handle: LoadHandle,
-    indirection_table: &IndirectionTable,
-) -> Option<LoadHandle> {
-    if load_handle.is_indirect() {
-        indirection_table.resolve(load_handle)
-    } else {
-        Some(load_handle)
-    }
-}
-
 pub trait DynAssetLookup: Downcast {}
 
 downcast_rs::impl_downcast!(DynAssetLookup);
@@ -39,19 +28,19 @@ downcast_rs::impl_downcast!(DynAssetLookup);
 pub struct AssetLookup<AssetT> {
     //TODO: Slab these for faster lookup?
     pub loaded_assets: FnvHashMap<LoadHandle, LoadedAssetState<AssetT>>,
-    pub indirection_table: IndirectionTable,
+}
+
+impl<AssetT> Default for AssetLookup<AssetT> {
+    fn default() -> Self {
+        AssetLookup {
+            loaded_assets: Default::default(),
+        }
+    }
 }
 
 impl<AssetT> DynAssetLookup for AssetLookup<AssetT> where AssetT: 'static {}
 
 impl<AssetT> AssetLookup<AssetT> {
-    pub fn new(loader: &Loader) -> Self {
-        AssetLookup {
-            loaded_assets: Default::default(),
-            indirection_table: loader.indirection_table(),
-        }
-    }
-
     pub fn set_uncommitted(
         &mut self,
         load_handle: LoadHandle,
@@ -87,11 +76,12 @@ impl<AssetT> AssetLookup<AssetT> {
 
     pub fn get_latest(
         &self,
-        load_handle: LoadHandle,
+        resolved_load_handle: &Arc<ResolvedLoadHandle>,
     ) -> Option<&AssetT> {
-        let load_handle = resolve_load_handle(load_handle, &self.indirection_table)?;
-
-        if let Some(loaded_assets) = self.loaded_assets.get(&load_handle) {
+        if let Some(loaded_assets) = self
+            .loaded_assets
+            .get(&resolved_load_handle.direct_load_handle())
+        {
             if let Some(uncommitted) = &loaded_assets.uncommitted {
                 Some(uncommitted)
             } else if let Some(committed) = &loaded_assets.committed {
@@ -108,11 +98,12 @@ impl<AssetT> AssetLookup<AssetT> {
 
     pub fn get_committed(
         &self,
-        load_handle: LoadHandle,
+        resolved_load_handle: &Arc<ResolvedLoadHandle>,
     ) -> Option<&AssetT> {
-        let load_handle = resolve_load_handle(load_handle, &self.indirection_table)?;
-
-        if let Some(loaded_assets) = self.loaded_assets.get(&load_handle) {
+        if let Some(loaded_assets) = self
+            .loaded_assets
+            .get(&resolved_load_handle.direct_load_handle())
+        {
             if let Some(committed) = &loaded_assets.committed {
                 Some(committed)
             } else {

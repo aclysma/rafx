@@ -1,0 +1,52 @@
+{
+  "schema_def_paths": [
+    "rafx-assets/schema",
+    "rafx-plugins/schema"
+  ],
+  "import_data_path": "demo-editor/data/import_data",
+  "build_data_path": "demo-editor/data/build_data",
+  "job_data_path": "demo-editor/data/job_data",
+  "id_based_asset_sources": [
+    {
+      "name": "vault",
+      "path": "demo-editor/data/assets_id_based"
+    }
+  ],
+  "path_based_asset_sources": [
+    {
+      "name": "demo-assets",
+      "path": "demo/assets"
+    },
+    {
+      "name": "rafx-plugins",
+      "path": "rafx-plugins/assets"
+    },
+    {
+      "name": "assets-triangle-example",
+      "path": "rafx/examples/asset_triangle/assets"
+    },
+    {
+      "name": "renderer-triangle-example",
+      "path": "rafx/examples/renderer_triangle/assets"
+    }
+  ],
+  "source_file_locations": [
+
+  ],
+  "schema_codegen_jobs": [
+    {
+      "name": "rafx-assets",
+      "schema_path": "rafx-assets/schema",
+      "included_schema_paths": [],
+      "outfile": "rafx-assets/src/schema_codegen.rs"
+    },
+    {
+      "name": "rafx-plugins",
+      "schema_path": "rafx-plugins/schema",
+      "included_schema_paths": [
+        "rafx-assets/schema"
+      ],
+      "outfile": "rafx-plugins/src/schema_codegen.rs"
+    }
+  ]
+}

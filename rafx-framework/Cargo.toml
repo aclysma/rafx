@@ -2,7 +2,7 @@
 name = "rafx-framework"
 version = "0.0.15"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "Rendering framework built on an extensible asset pipeline"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"

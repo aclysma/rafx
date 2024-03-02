@@ -272,7 +272,6 @@ impl RafxShaderPackage {
                     feature = "rafx-gles3"
                 ))
             ))]
-            #[doc(hidden)]
             empty: self.empty_module_def(),
         }
     }

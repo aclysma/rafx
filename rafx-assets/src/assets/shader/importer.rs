@@ -1,70 +1,43 @@
 use crate::assets::shader::ShaderAssetData;
-use distill::core::AssetUuid;
-use distill::importer::{ImportOp, ImportedAsset, Importer, ImporterValue};
+use crate::schema::{
+    ShaderPackageAssetAccessor, ShaderPackageAssetRecord, ShaderPackageImportedDataRecord,
+};
+use hydrate_base::AssetId;
+use hydrate_data::{Record, RecordAccessor};
+use hydrate_pipeline::{
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, ImportContext, Importer,
+    JobInput, JobOutput, JobProcessor, PipelineResult, RunContext, ScanContext,
+};
 use rafx_api::{RafxHashedShaderPackage, RafxShaderPackage, RafxShaderPackageVulkan};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
+use std::sync::Arc;
 use type_uuid::*;
 
-// There may be a better way to do this type coercing
-// fn coerce_result_str<T>(result: Result<T, &str>) -> distill::importer::Result<T> {
-//     let ok = result.map_err(|x| -> Box<dyn std::error::Error + Send> { Box::<dyn std::error::Error + Send + Sync>::from(x) })?;
-//     Ok(ok)
-// }
+#[derive(TypeUuid, Default)]
+#[uuid = "f0070e09-088b-4387-ba65-075657023733"]
+pub struct ShaderPackageImporterSpv;
 
-fn coerce_result_string<T>(result: Result<T, String>) -> distill::importer::Result<T> {
-    let ok = result.map_err(|x| -> Box<dyn std::error::Error + Send> {
-        Box::<dyn std::error::Error + Send + Sync>::from(x)
-    })?;
-    Ok(ok)
-}
-
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "867bc278-67b5-469c-aeea-1c05da722918"]
-pub struct ShaderImporterSpvState(Option<AssetUuid>);
-
-#[derive(TypeUuid)]
-#[uuid = "90fdad4b-cec1-4f59-b679-97895711b6e1"]
-pub struct ShaderImporterSpv;
-impl Importer for ShaderImporterSpv {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        5
+impl Importer for ShaderPackageImporterSpv {
+    fn supported_file_extensions(&self) -> &[&'static str] {
+        &["spv"]
     }
 
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ();
-
-    type State = ShaderImporterSpvState;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
+    fn scan_file(
         &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let asset_id = state
-            .0
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = ShaderImporterSpvState(Some(asset_id));
+        context: ScanContext,
+    ) -> PipelineResult<()> {
+        context.add_default_importable::<ShaderPackageAssetRecord>()?;
+        Ok(())
+    }
 
-        // Raw compiled shader
-        let mut spv_bytes = Vec::new();
-        source.read_to_end(&mut spv_bytes)?;
-
-        log::trace!(
-            "Import shader asset {:?} with {} bytes of code",
-            asset_id,
-            spv_bytes.len()
-        );
+    fn import_file(
+        &self,
+        context: ImportContext,
+    ) -> PipelineResult<()> {
+        //
+        // Read the file
+        //
+        let spv_bytes = std::fs::read(context.path)?;
 
         // The hash is used in some places identify the shader
         let shader_package = RafxShaderPackage {
@@ -83,88 +56,176 @@ impl Importer for ShaderImporterSpv {
 
         let hashed_shader_package = RafxHashedShaderPackage::new(shader_package);
 
-        let shader_asset = ShaderAssetData {
-            shader_package: hashed_shader_package,
-        };
+        let package_bytes = Arc::new(bincode::serialize(&hashed_shader_package)?);
 
-        Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id: asset_id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(shader_asset),
-            }],
-        })
+        //
+        // Create import data
+        //
+        let import_data = ShaderPackageImportedDataRecord::new_builder(context.schema_set);
+        import_data.bytes().set(package_bytes)?;
+
+        //
+        // Create the default asset
+        //
+        let default_asset = ShaderPackageAssetRecord::new_builder(context.schema_set);
+
+        //
+        // Return the created objects
+        //
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
+        Ok(())
     }
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "d4fb07ce-76e6-497e-ac31-bcaeb43528aa"]
-pub struct ShaderImporterCookedState(Option<AssetUuid>);
+#[derive(TypeUuid, Default)]
+#[uuid = "ac37987a-6c92-41b1-ba46-a5cf575dee9f"]
+pub struct ShaderPackageImporterCooked;
 
-#[derive(TypeUuid)]
-#[uuid = "cab0cf4c-16ff-4dbd-aae7-8705246d85d6"]
-pub struct ShaderImporterCooked;
-impl Importer for ShaderImporterCooked {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        5
+impl Importer for ShaderPackageImporterCooked {
+    fn supported_file_extensions(&self) -> &[&'static str] {
+        &["cookedshaderpackage"]
     }
 
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ();
-
-    type State = ShaderImporterCookedState;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
+    fn scan_file(
         &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let asset_id = state
-            .0
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = ShaderImporterCookedState(Some(asset_id));
+        context: ScanContext,
+    ) -> PipelineResult<()> {
+        context.add_default_importable::<ShaderPackageAssetRecord>()?;
+        Ok(())
+    }
 
-        // Raw compiled shader
-        let mut bytes = Vec::new();
-        source.read_to_end(&mut bytes)?;
+    fn import_file(
+        &self,
+        context: ImportContext,
+    ) -> PipelineResult<()> {
+        //
+        // Read the file
+        //
+        let cooked_shader_bytes = std::fs::read(context.path)?;
 
-        let hashed_shader_package: RafxHashedShaderPackage = coerce_result_string(
-            bincode::deserialize::<RafxHashedShaderPackage>(&bytes)
-                .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x)),
-        )?;
+        let hashed_shader_package: RafxHashedShaderPackage =
+            bincode::deserialize::<RafxHashedShaderPackage>(&cooked_shader_bytes)
+                .map_err(|x| format!("Failed to deserialize cooked shader: {:?}", x))?;
 
         log::trace!(
             "Import shader asset {:?} with hash {:?}",
-            asset_id,
+            context.path,
             hashed_shader_package.shader_package_hash(),
         );
 
-        let shader_asset = ShaderAssetData {
-            shader_package: hashed_shader_package,
-        };
+        let package_bytes = Arc::new(bincode::serialize(&hashed_shader_package)?);
 
-        Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id: asset_id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(shader_asset),
-            }],
-        })
+        //
+        // Create import data
+        //
+        let import_data = ShaderPackageImportedDataRecord::new_builder(context.schema_set);
+        import_data.bytes().set(package_bytes)?;
+
+        //
+        // Create the default asset
+        //
+        let default_asset = ShaderPackageAssetRecord::new_builder(context.schema_set);
+
+        //
+        // Return the created objects
+        //
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
+        Ok(())
+    }
+}
+
+#[derive(Hash, Serialize, Deserialize)]
+pub struct ShaderPackageJobInput {
+    pub asset_id: AssetId,
+}
+impl JobInput for ShaderPackageJobInput {}
+
+#[derive(Serialize, Deserialize)]
+pub struct ShaderPackageJobOutput {}
+impl JobOutput for ShaderPackageJobOutput {}
+
+#[derive(Default, TypeUuid)]
+#[uuid = "88998a4b-9216-4d01-a16d-ca1bff1c7c30"]
+pub struct ShaderPackageJobProcessor;
+
+impl JobProcessor for ShaderPackageJobProcessor {
+    type InputT = ShaderPackageJobInput;
+    type OutputT = ShaderPackageJobOutput;
+
+    fn version(&self) -> u32 {
+        1
+    }
+
+    fn run<'a>(
+        &self,
+        context: &'a RunContext<'a, Self::InputT>,
+    ) -> PipelineResult<ShaderPackageJobOutput> {
+        //
+        // Read imported data
+        //
+        let imported_data =
+            context.imported_data::<ShaderPackageImportedDataRecord>(context.input.asset_id)?;
+        let shader_package = bincode::deserialize(&imported_data.bytes().get()?)?;
+
+        //TODO: We can generate assets for different platforms
+
+        //
+        // Create the processed data
+        //
+        let processed_data = ShaderAssetData { shader_package };
+
+        //
+        // Serialize and return
+        //
+        context.produce_default_artifact(context.input.asset_id, processed_data)?;
+
+        Ok(ShaderPackageJobOutput {})
+    }
+}
+
+#[derive(TypeUuid, Default)]
+#[uuid = "da6760e7-5b24-43b4-830d-6ee4515096b8"]
+pub struct ShaderPackageBuilder {}
+
+impl Builder for ShaderPackageBuilder {
+    fn asset_type(&self) -> &'static str {
+        ShaderPackageAssetAccessor::schema_name()
+    }
+
+    fn start_jobs(
+        &self,
+        context: BuilderContext,
+    ) -> PipelineResult<()> {
+        //Future: Might produce jobs per-platform
+        context.enqueue_job::<ShaderPackageJobProcessor>(
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            ShaderPackageJobInput {
+                asset_id: context.asset_id,
+            },
+        )?;
+        Ok(())
+    }
+}
+
+pub struct ShaderPackageAssetPlugin;
+
+impl AssetPlugin for ShaderPackageAssetPlugin {
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<ShaderPackageImporterSpv>();
+        context
+            .importer_registry
+            .register_handler::<ShaderPackageImporterCooked>();
+        context
+            .builder_registry
+            .register_handler::<ShaderPackageBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<ShaderPackageJobProcessor>();
     }
 }

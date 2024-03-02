@@ -1,0 +1,113 @@
+[
+  {
+    "type": "record",
+    "name": "GraphicsPipelineShaderStage",
+    "uuid": "09f31fac-cf17-4587-8ab5-30a2573dbb8e",
+    "fields": [
+      {
+        "name": "entry_name",
+        "type": "string",
+        "uuid": "09524700-7387-40e6-a65f-768c3c773bc1"
+      },
+      {
+        "name": "shader_module",
+        "type": { "name": "asset_ref", "inner_type": "ShaderPackageAsset" },
+        "uuid": "5a200b3c-9eff-42f2-b4b6-b0a0ff83d4c5"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MaterialPass",
+    "uuid": "5805692b-d4ec-46ef-86a8-a539431082de",
+    "fields": [
+      {
+        "name": "name",
+        "type": "string",
+        "uuid": "947d3431-ae37-4a24-a02a-04a683f4ad5b"
+      },
+      {
+        "name": "phase",
+        "type": "string",
+        "uuid": "90146c90-0c52-41fc-9b94-59237053d41c"
+      },
+      {
+        "name": "fixed_function_state",
+        "type": "string",
+        "uuid": "47863348-56b6-4774-a003-bc096c46f1fe"
+      },
+      {
+        "name": "vertex_stage",
+        "type": "GraphicsPipelineShaderStage",
+        "uuid": "5485c398-47d5-4399-b437-d484cb360859"
+      },
+      {
+        "name": "fragment_stage",
+        "type": "GraphicsPipelineShaderStage",
+        "uuid": "e57bb014-439b-415b-94d6-f60615ec6df7"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MaterialAsset",
+    "uuid": "be16709c-37ea-4d2c-84fa-bdc06dfea95f",
+    "default_thumbnail": "default_thumbnails/material.png",
+    "fields": [
+      {
+        "name": "passes",
+        "type": { "name": "dynamic_array", "inner_type": "MaterialPass" },
+        "uuid": "cebc38aa-36a4-48e8-8b28-46a50804a5ec"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MaterialInstanceSlotAssignment",
+    "uuid": "1f587b20-9fd6-4363-88f5-dd8463f7b50e",
+    "fields": [
+      {
+        "name": "slot_name",
+        "type": "string",
+        "uuid": "5553b39b-2010-4eda-ba0b-87d3daddcadf"
+      },
+      {
+        "name": "array_index",
+        "type": "u32",
+        "uuid": "c86fab85-6bd7-4a75-90b6-9fc5579c49ef"
+      },
+      {
+        "name": "image",
+        "type": { "name": "asset_ref", "inner_type": "GpuImageAsset" },
+        "uuid": "cf5c40a6-a659-420e-be55-151658fb864a"
+      },
+      {
+        "name": "sampler",
+        "type": "string",
+        "uuid": "d173dff7-7b1f-4bd4-b99f-fded9da9f382"
+      },
+      {
+        "name": "buffer_data",
+        "type": { "name": "nullable", "inner_type": "bytes" },
+        "uuid": "0bbd48e2-dfb9-4d41-80b3-e153eabdd2c9"
+      }
+    ]
+  },
+  {
+    "type": "record",
+    "name": "MaterialInstanceAsset",
+    "uuid": "79acd065-4e26-4bae-9ee6-474e789c57a0",
+    "fields": [
+      {
+        "name": "slot_assignments",
+        "type": { "name": "dynamic_array", "inner_type": "MaterialInstanceSlotAssignment" },
+        "uuid": "9200ff18-1e6e-4e19-9f7d-a80e2fdb7d69"
+      },
+      {
+        "name": "material",
+        "type": { "name": "asset_ref", "inner_type": "MaterialAsset" },
+        "uuid": "3baddf94-47e9-469b-be58-1ec7674fba4d"
+      }
+    ]
+  }
+]

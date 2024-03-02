@@ -23,18 +23,24 @@ impl ShadowsScene {
     ) -> Self {
         let mut render_options = resources.get_mut::<RenderOptions>().unwrap();
         *render_options = RenderOptions::default_3d();
-        super::util::setup_skybox(resources, "textures/skybox.basis");
+        super::util::setup_skybox(resources, "demo-assets://textures/skybox.basis");
         super::util::set_ambient_light(resources, glam::Vec3::new(0.05, 0.05, 0.05));
 
-        let floor_mesh =
-            SpawnableMesh::blocking_load_from_path(resources, "blender/cement_floor.glb");
-        let container_1 =
-            SpawnableMesh::blocking_load_from_path(resources, "blender/storage_container1.glb");
-        let container_2 =
-            SpawnableMesh::blocking_load_from_path(resources, "blender/storage_container2.glb");
-        let blue_icosphere = SpawnableMesh::blocking_load_from_uuid(
+        let floor_mesh = SpawnableMesh::blocking_load_from_symbol_name(
             resources,
-            "1af1ca58-49a6-4ef7-ac8f-20be3b75b48b".into(),
+            "demo-assets://blender/cement_floor.glb.mesh_Cube",
+        );
+        let container_1 = SpawnableMesh::blocking_load_from_symbol_name(
+            resources,
+            "demo-assets://blender/storage_container1.glb.mesh_Cube",
+        );
+        let container_2 = SpawnableMesh::blocking_load_from_symbol_name(
+            resources,
+            "demo-assets://blender/storage_container2.glb.mesh_Cube",
+        );
+        let blue_icosphere = SpawnableMesh::blocking_load_from_symbol_name(
+            resources,
+            "demo-assets://blender/icosphere.glb.mesh_Icosphere_Blue",
         );
 
         //

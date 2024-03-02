@@ -1,8 +1,7 @@
 use crate::assets::mesh_adv::{MeshAdvBufferAsset, MeshMaterialAdvAsset};
 use crate::features::mesh_adv::MeshAdvUntexturedRenderFeatureFlag;
 use crate::phases::{OpaqueRenderPhase, TransparentRenderPhase, WireframeRenderPhase};
-use distill::loader::handle::{AssetHandle, Handle};
-use distill::loader::LoadHandle;
+use hydrate_base::{Handle, LoadHandle};
 use rafx::api::{RafxIndexType, RafxResult};
 use rafx::assets::{
     AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, MaterialAsset,
@@ -32,8 +31,9 @@ pub enum MeshAdvBlendMethod {
 
 // This is non-texture data associated with the material. Must convert to
 // MeshMaterialDataShaderParam to bind to a shader uniform
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, TypeUuid)]
 #[repr(C)]
+#[uuid = "e7c4f03b-8c1a-4fbc-9f98-83e521687777"]
 pub struct MeshAdvMaterialData {
     // Using f32 arrays for serde support
     pub base_color_factor: [f32; 4], // default: 1,1,1,1
@@ -75,7 +75,7 @@ impl Default for MeshAdvMaterialData {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MeshAdvPartAssetData {
     pub vertex_full_buffer_offset_in_bytes: u32,
     pub vertex_full_buffer_size_in_bytes: u32,
@@ -97,7 +97,18 @@ pub struct MeshAdvAssetData {
     pub visible_bounds: VisibleBounds,
 }
 
-#[derive(Clone)]
+impl std::fmt::Debug for MeshAdvAssetData {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("MeshAdvAssetData")
+            .field("mesh_parts", &self.mesh_parts)
+            .finish()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct MeshAdvShaderPassIndices {
     //pub depth_prepass: u8,
     ////pub depth_prepass_backface: u8,
@@ -223,6 +234,7 @@ impl MeshAdvShaderPassIndices {
     }
 }
 
+#[derive(Debug)]
 pub struct MeshAdvAssetPart {
     pub mesh_material: MeshMaterialAdvAsset,
     pub pass_indices: MeshAdvShaderPassIndices,
@@ -260,6 +272,7 @@ impl MeshAdvAssetPart {
     }
 }
 
+#[derive(Debug)]
 pub struct MeshAdvAssetInner {
     pub mesh_parts: Vec<MeshAdvAssetPart>,
     pub asset_data: MeshAdvAssetData,
@@ -297,11 +310,6 @@ impl DefaultAssetTypeLoadHandler<MeshAdvAssetData, MeshAdvAsset> for MeshAdvLoad
             .mesh_parts
             .iter()
             .map(|mesh_part| {
-                println!(
-                    "load asset {:?} {:?}",
-                    mesh_part.mesh_material,
-                    mesh_part.mesh_material.load_handle()
-                );
                 let mesh_material = asset_manager
                     .latest_asset(&mesh_part.mesh_material)
                     .unwrap();

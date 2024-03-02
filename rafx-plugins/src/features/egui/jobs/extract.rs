@@ -1,8 +1,8 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
+use hydrate_base::handle::Handle;
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
-use rafx::distill::loader::handle::Handle;
 use rafx::graph::SwapchainSurfaceInfo;
 use rafx::renderer::SwapchainRenderResource;
 use std::marker::PhantomData;

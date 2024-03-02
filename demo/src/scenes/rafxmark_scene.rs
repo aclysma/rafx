@@ -3,12 +3,12 @@
 use crate::time::TimeState;
 use crate::RenderOptions;
 use glam::Vec3;
+use hydrate_base::handle::Handle;
 use legion;
 use legion::systems::CommandBuffer;
 use legion::{IntoQuery, Read, Resources, Schedule, SystemBuilder, World, Write};
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::ImageAsset;
-use rafx::distill::loader::handle::Handle;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
@@ -68,12 +68,15 @@ impl RafxmarkScene {
 
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_path::<ImageAsset, _>("textures/texture-tiny-rust.jpeg")
+            asset_resource.load_artifact_symbol_name::<ImageAsset>(
+                "demo-assets://textures/texture-tiny-rust.jpeg",
+            )
         };
 
         let font = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_path::<FontAsset, _>("fonts/mplus-1p-regular.ttf")
+            asset_resource
+                .load_artifact_symbol_name::<FontAsset>("rafx-plugins://fonts/mplus-1p-regular.ttf")
         };
 
         let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();

@@ -1,20 +1,13 @@
-use distill::core::AssetUuid;
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
+use hydrate_base::ArtifactId;
 use legion::{Resources, World};
-use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
+use rafx::assets::AssetResource;
 use rafx::rafx_visibility::VisibleBounds;
 use rafx::render_features::RenderObjectHandle;
 use rafx::renderer::Renderer;
 use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
 use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
-
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::assets::mesh_basic::MeshBasicAsset as MeshAsset;
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::features::mesh_basic::{
-    MeshBasicRenderObject as MeshRenderObject, MeshBasicRenderObjectSet as MeshRenderObjectSet,
-};
 
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::assets::mesh_adv::MeshAdvAsset as MeshAsset;
@@ -94,21 +87,21 @@ impl SpawnableMesh {
         }
     }
 
-    pub fn blocking_load_from_uuid(
+    pub fn blocking_load_from_artifact_id(
         resources: &Resources,
-        uuid: AssetUuid,
+        artifact_id: ArtifactId,
     ) -> SpawnableMesh {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-        let handle = asset_resource.load_asset(uuid);
+        let handle = asset_resource.load_artifact(artifact_id);
         Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
     }
 
-    pub fn blocking_load_from_path<T: Into<String>>(
+    pub fn blocking_load_from_symbol_name(
         resources: &Resources,
-        path: T,
+        symbol_name: &'static str,
     ) -> SpawnableMesh {
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
-        let handle = asset_resource.load_asset_path(path);
+        let handle = asset_resource.load_artifact_symbol_name(symbol_name);
         Self::do_load_spawnable_mesh(resources, &mut *asset_resource, handle)
     }
 }

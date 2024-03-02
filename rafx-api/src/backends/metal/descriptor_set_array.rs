@@ -176,10 +176,8 @@ impl RafxDescriptorSetArrayMetal {
         let argument_buffer_data = if !argument_descriptors.is_empty()
         /*|| !immutable_samplers.is_empty()*/
         {
-            let argument_descriptors: Vec<_> = argument_descriptors
-                .iter()
-                .map(|x| x.clone().into())
-                .collect();
+            let argument_descriptors: Vec<_> =
+                argument_descriptors.iter().map(|x| x.into()).collect();
 
             let array = metal_rs::Array::from_owned_slice(&argument_descriptors);
             let encoder = device_context.device().new_argument_encoder(array);

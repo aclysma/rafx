@@ -3,11 +3,11 @@ use crate::assets::mesh_adv::material_db::{
 };
 use crate::assets::mesh_adv::MeshAdvMaterialData;
 use crossbeam_channel::{Receiver, Sender};
-use distill::loader::handle::Handle;
-use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
+use hydrate_base::handle::Handle;
+use hydrate_base::LoadHandle;
 use rafx::api::RafxResult;
-use rafx::assets::distill_impl::ResourceAssetLoader;
+use rafx::assets::RafxResourceAssetLoader;
 use rafx::assets::{
     asset_type_handler, AssetLookup, AssetManager, AssetTypeHandler, DynAssetLookup, ImageAsset,
     LoadQueues, MaterialAsset, UploadAssetOp, UploadAssetOpResult,
@@ -19,15 +19,8 @@ use std::any::TypeId;
 use std::sync::Arc;
 use type_uuid::*;
 
-use super::MeshAdvAsset;
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct MeshMaterialAdvAssetDataLod {
-    pub mesh: Handle<MeshAdvAsset>,
-}
-
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
-#[uuid = "41ea076f-19d7-4deb-8af1-983148af5383"]
+#[uuid = "8a2f44ec-0911-478a-851a-f61bcf085459"]
 pub struct MeshMaterialAdvAssetData {
     pub material_asset: Handle<MaterialAsset>,
     pub material_data: MeshAdvMaterialData,
@@ -46,6 +39,17 @@ pub struct MeshMaterialAdvAssetInner {
 #[uuid = "ff52550c-a599-4a27-820b-f6ee4caebd8a"]
 pub struct MeshMaterialAdvAsset {
     pub inner: Arc<MeshMaterialAdvAssetInner>,
+}
+
+impl std::fmt::Debug for MeshMaterialAdvAsset {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        f.debug_struct("MeshMaterialAdvAsset")
+            .field("material_data", &self.inner.material.data())
+            .finish()
+    }
 }
 
 impl MeshMaterialAdvAsset {
@@ -79,7 +83,7 @@ impl MeshAdvMaterialAssetTypeHandler {
 
         asset_resource
             .add_storage_with_loader::<MeshMaterialAdvAssetData, MeshMaterialAdvAsset, _>(
-                Box::new(ResourceAssetLoader(load_queues.create_loader())),
+                Box::new(RafxResourceAssetLoader(load_queues.create_loader())),
             );
 
         let material_upload_queue = MaterialDBUploadQueue::new();
@@ -90,7 +94,7 @@ impl MeshAdvMaterialAssetTypeHandler {
         let (material_upload_result_tx, material_upload_result_rx) = crossbeam_channel::unbounded();
 
         Ok(Box::new(Self {
-            asset_lookup: AssetLookup::new(asset_resource.loader()),
+            asset_lookup: AssetLookup::default(),
             load_queues,
             material_upload_context,
             material_upload_result_tx,

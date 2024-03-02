@@ -1,8 +1,8 @@
 use super::{TileLayerRenderObject, TileLayerRenderObjectSet};
 use crate::assets::ldtk::LdtkProjectAsset;
 use glam::{Quat, Vec3};
+use hydrate_base::handle::Handle;
 use rafx::assets::AssetManager;
-use rafx::distill::loader::handle::Handle;
 use rafx::render_features::RenderObjectHandle;
 use rafx::visibility::{CullModel, ObjectId, VisibilityObjectArc, VisibilityResource};
 

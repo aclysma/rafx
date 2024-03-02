@@ -1,8 +1,8 @@
-use crate::distill_impl::{AssetResource, ResourceAssetLoader};
+use crate::hydrate_impl::{AssetResource, RafxResourceAssetLoader};
 use crate::{AssetLookup, AssetManager, DynAssetLookup, LoadQueues};
 use crossbeam_channel::Sender;
-use distill::loader::storage::AssetLoadOp;
-use distill::loader::LoadHandle;
+use hydrate_base::LoadHandle;
+use hydrate_loader::storage::ArtifactLoadOp;
 use rafx_api::RafxResult;
 use std::any::TypeId;
 use std::marker::PhantomData;
@@ -68,11 +68,11 @@ where
         let load_queues = LoadQueues::<AssetDataT, AssetT>::default();
 
         asset_resource.add_storage_with_loader::<AssetDataT, AssetT, _>(Box::new(
-            ResourceAssetLoader(load_queues.create_loader()),
+            RafxResourceAssetLoader(load_queues.create_loader()),
         ));
 
         Ok(Box::new(Self {
-            asset_lookup: AssetLookup::new(asset_resource.loader()),
+            asset_lookup: AssetLookup::default(),
             load_queues,
             phantom_data: Default::default(),
         }))
@@ -91,7 +91,7 @@ where
         asset_manager: &mut AssetManager,
     ) -> RafxResult<()> {
         for request in self.load_queues.take_load_requests() {
-            log::info!(
+            log::debug!(
                 "Create asset type {} {:?}",
                 std::any::type_name::<AssetT>(),
                 request.load_handle,
@@ -155,7 +155,7 @@ pub type StorageOnlyAssetTypeHandler<AssetT> =
 // Static functions
 //
 pub fn handle_load_result<AssetT: Clone>(
-    load_op: AssetLoadOp,
+    load_op: ArtifactLoadOp,
     loaded_asset: RafxResult<AssetT>,
     asset_lookup: &mut AssetLookup<AssetT>,
     result_tx: Sender<AssetT>,

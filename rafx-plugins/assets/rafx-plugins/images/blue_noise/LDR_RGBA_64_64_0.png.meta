@@ -1,9 +1,0 @@
-(
-    version: 2,
-    importer_options: (
-        mip_generation: Runtime,
-        color_space: Srgb,
-        data_format: Uncompressed,
-    ),
-    importer_state: (Some("5b2ba357-a721-41b9-9265-8557c006db9e")),
-)

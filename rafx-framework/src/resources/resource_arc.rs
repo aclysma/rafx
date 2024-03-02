@@ -1,5 +1,4 @@
 use crossbeam_channel::Sender;
-use std::borrow::Borrow;
 use std::fmt::Formatter;
 use std::hash::Hash;
 use std::sync::{Arc, Weak};
@@ -160,7 +159,7 @@ where
     }
 
     pub fn get_raw(&self) -> ResourceT {
-        self.inner.resource.borrow().resource.clone()
+        self.inner.resource.resource.clone()
     }
 
     //NOTE: This is highly likely to be unique, especially when comparing against like resources,

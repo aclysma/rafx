@@ -1,9 +1,8 @@
 use crate::RendererLoadContext;
 use rafx_api::extra::upload::RafxTransferUpload;
 use rafx_api::RafxResult;
-use rafx_assets::distill::daemon::AssetDaemon;
-use rafx_assets::distill_impl::AssetResource;
 use rafx_assets::AssetManager;
+use rafx_assets::AssetResource;
 use rafx_framework::render_features::{ExtractResources, RenderRegistryBuilder};
 use rafx_framework::RenderResources;
 use std::path::PathBuf;
@@ -17,14 +16,6 @@ pub trait RendererAssetPlugin: Send + Sync {
         &self,
         _asset_paths: &mut Vec<PathBuf>,
     ) {
-    }
-
-    // If the daemon is not running in-process, this will not be called
-    fn configure_asset_daemon(
-        &self,
-        asset_daemon: AssetDaemon,
-    ) -> AssetDaemon {
-        asset_daemon
     }
 
     fn register_asset_types(

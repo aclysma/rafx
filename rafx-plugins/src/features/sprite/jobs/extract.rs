@@ -2,10 +2,10 @@ use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
 use crate::components::TransformComponent;
+use hydrate_base::handle::Handle;
 use legion::{EntityStore, World};
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrow;
-use rafx::distill::loader::handle::Handle;
 
 pub struct SpriteExtractJob<'extract> {
     world: ResourceRefBorrow<'extract, World>,

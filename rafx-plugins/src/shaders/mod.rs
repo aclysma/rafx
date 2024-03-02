@@ -10,7 +10,6 @@ pub mod depth_velocity;
 pub mod egui;
 pub mod imgui;
 pub mod mesh_adv;
-pub mod mesh_basic;
 pub mod post_adv;
 pub mod post_basic;
 pub mod post_shared;

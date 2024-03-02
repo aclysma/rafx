@@ -1,22 +1,12 @@
-use distill::loader::handle::{AssetHandle, Handle};
+use hydrate_base::handle::ArtifactHandle;
+use hydrate_base::Handle;
 use legion::{Resources, World};
-use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
+use rafx::assets::AssetResource;
 use rafx::rafx_visibility::VisibleBounds;
 use rafx::renderer::Renderer;
 use rafx::visibility::{CullModel, ObjectId, VisibilityResource};
 use rafx_plugins::components::{MeshComponent, TransformComponent, VisibilityComponent};
-
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::assets::mesh_basic::prefab_asset::PrefabBasicAssetDataObjectLightKind as PrefabAssetDataObjectLightKind;
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::assets::mesh_basic::{
-    MeshBasicAsset as MeshAsset, PrefabBasicAsset as PrefabAsset,
-};
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::features::mesh_basic::{
-    MeshBasicRenderObject as MeshRenderObject, MeshBasicRenderObjectSet as MeshRenderObjectSet,
-};
 
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::assets::mesh_adv::prefab_asset::PrefabAdvAssetDataObjectLightKind as PrefabAssetDataObjectLightKind;
@@ -32,15 +22,16 @@ pub struct SpawnablePrefab {
 }
 
 impl SpawnablePrefab {
-    pub fn blocking_load_from_path<T: Into<String>>(
+    pub fn blocking_load_from_symbol_name(
         resources: &Resources,
-        path: T,
+        symbol_name: &'static str,
     ) -> Self {
         let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
         let renderer = resources.get::<Renderer>().unwrap();
 
-        let prefab_asset_handle: Handle<PrefabAsset> = asset_resource.load_asset_path(path);
+        let prefab_asset_handle: Handle<PrefabAsset> =
+            asset_resource.load_artifact_symbol_name(symbol_name);
         renderer
             .wait_for_asset_to_load(
                 &mut asset_manager,
@@ -65,8 +56,9 @@ impl SpawnablePrefab {
         let mut mesh_render_objects = resources.get_mut::<MeshRenderObjectSet>().unwrap();
         let renderer = resources.get::<Renderer>().unwrap();
 
-        let prefab_asset = asset_resource
-            .asset(&self.prefab_asset_handle)
+        let prefab_asset = self
+            .prefab_asset_handle
+            .artifact(asset_resource.storage())
             .unwrap()
             .clone();
 
@@ -89,7 +81,7 @@ impl SpawnablePrefab {
         for object in &prefab_asset.inner.objects {
             //log::debug!("create object {:?}", object);
             if let Some(model) = &object.model {
-                let model_asset_handle = asset_resource.asset(&model.model);
+                let model_asset_handle = model.model.artifact(asset_resource.storage());
                 if model_asset_handle.is_none() {
                     continue;
                 }

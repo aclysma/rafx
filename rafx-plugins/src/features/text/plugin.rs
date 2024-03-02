@@ -3,7 +3,7 @@ use rafx::render_feature_renderer_prelude::*;
 use super::*;
 use crate::assets::font::FontAsset;
 use crate::phases::UiRenderPhase;
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::renderer::RendererLoadContext;
 use std::path::PathBuf;
@@ -77,9 +77,9 @@ impl RenderFeaturePlugin for TextRendererPlugin {
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let text_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/text.material");
+            .load_artifact_symbol_name::<MaterialAsset>("rafx-plugins://materials/text.material");
         let default_font = asset_resource
-            .load_asset_path::<FontAsset, _>("rafx-plugins/fonts/mplus-1p-regular.ttf");
+            .load_artifact_symbol_name::<FontAsset>("rafx-plugins://fonts/mplus-1p-regular.ttf");
 
         renderer_load_context.wait_for_asset_to_load(
             render_resources,

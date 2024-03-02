@@ -1,13 +1,13 @@
 use crate::shaders::tile_layer::tile_layer_frag;
-use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
 use glam::Vec3;
+use hydrate_base::handle::Handle;
+use hydrate_base::LoadHandle;
 use rafx::api::RafxResult;
 use rafx::assets::{
     AssetManager, BufferAsset, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset,
     MaterialInstanceAsset,
 };
-use rafx::distill::loader::handle::Handle;
 use rafx::framework::{BufferResource, DescriptorSetArc, ResourceArc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -52,7 +52,7 @@ pub struct LdtkTileSet {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone, Debug)]
-#[uuid = "98c635e3-b277-422f-bd6a-bf0b83814211"]
+#[uuid = "1eb04266-4a32-473a-a54a-70b4d1172877"]
 pub struct LdtkAssetData {
     pub tilesets: FnvHashMap<TileSetUid, LdtkTileSet>,
     pub levels: FnvHashMap<LevelUid, LdtkLevelData>,

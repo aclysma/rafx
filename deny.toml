@@ -77,7 +77,10 @@ allow = [
     "BSD-3-Clause",
     "BSD-2-Clause",
     "Zlib",
-    "Unicode-DFS-2016"
+    "Unicode-DFS-2016",
+    "BSL-1.0",
+    "OFL-1.1", # egui fonts
+    "LicenseRef-UFL-1.0" # egui fonts (ubuntu font license)
     #"Apache-2.0 WITH LLVM-exception",
 ]
 # List of explictly disallowed licenses
@@ -195,8 +198,6 @@ unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 # List of URLs for allowed Git repositories
 allow-git = [
-    "https://github.com/amethyst/distill.git",
-    "https://github.com/aclysma/distill.git",
-    "https://github.com/aclysma/rust-sdl2.git",
-    "https://github.com/aclysma/spirv_cross.git",
+    #"https://github.com/aclysma/rust-sdl2.git",
+    #"https://github.com/aclysma/spirv_cross.git",
 ]

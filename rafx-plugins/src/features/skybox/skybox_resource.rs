@@ -1,4 +1,4 @@
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::assets::ImageAsset;
 
 #[derive(Default)]

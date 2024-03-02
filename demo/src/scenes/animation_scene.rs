@@ -3,8 +3,8 @@ use crate::RenderOptions;
 use glam::f32::Vec3;
 use glam::Quat;
 use legion::{Resources, World};
-use rafx::assets::distill_impl::AssetResource;
 use rafx::assets::AssetManager;
+use rafx::assets::AssetResource;
 use rafx::rafx_visibility::{DepthRange, PerspectiveParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, Renderer, ViewportsResource};
@@ -106,8 +106,8 @@ impl AnimationScene {
         let mut asset_manager = resources.get_mut::<AssetManager>().unwrap();
         let mut asset_resource = resources.get_mut::<AssetResource>().unwrap();
         let renderer = resources.get::<Renderer>().unwrap();
-        let anim_asset =
-            asset_resource.load_asset_path::<AnimAsset, _>("armature/Armature.blender_anim");
+        let anim_asset = asset_resource
+            .load_artifact_symbol_name::<AnimAsset>("demo-assets://armature/Armature.blender_anim");
 
         renderer
             .wait_for_asset_to_load(&mut asset_manager, &anim_asset, &mut asset_resource, "")

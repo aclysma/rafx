@@ -1,9 +1,9 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
+use hydrate_base::handle::Handle;
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrow;
-use rafx::distill::loader::handle::Handle;
 use std::marker::PhantomData;
 use std::sync::Arc;
 

@@ -42,5 +42,3 @@ pub use renderer::*;
 
 mod renderer_thread_pool;
 pub use renderer_thread_pool::*;
-
-pub mod daemon;

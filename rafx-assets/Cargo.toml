@@ -2,7 +2,7 @@
 name = "rafx-assets"
 version = "0.0.15"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "Rendering framework built on an extensible asset pipeline"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
@@ -24,18 +24,25 @@ rafx-vulkan = ["rafx-framework/rafx-vulkan"]
 rafx-metal = ["rafx-framework/rafx-metal"]
 rafx-gles2 = ["rafx-framework/rafx-gles2"]
 rafx-gles3 = ["rafx-framework/rafx-gles3"]
+dds = ["ddsfile", "image_dds"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 rafx-api = { version = "0.0.15", path = "../rafx-api" }
 rafx-base = { version = "0.0.15", path = "../rafx-base" }
 rafx-framework = { version = "0.0.15", path = "../rafx-framework" }
-distill = { version = "=0.0.3", features = ["serde_importers", "distill-daemon"] }
+
+hydrate-pipeline = "0.0.2"
+hydrate-data = "0.0.2"
+hydrate-loader = "0.0.2"
+hydrate-base = "0.0.2"
+
 basis-universal = { version = "0.1.1", optional = true }
 type-uuid = "0.1"
 uuid = "0.8"
-image = "0.23.12"
+image = { version = "0.24.5", default-features = false, features = ["gif", "jpeg", "ico", "png", "pnm", "tga", "tiff", "bmp"] }
 ddsfile = { version = "0.4.0", optional = true }
+image_dds = { version = "0.3.0", optional = true, default-features = false, features = ["ddsfile", "image", "decode", "bcndecode-sys"]}
 arrayvec = "0.5"
 crossbeam-channel = "0.5"
 fnv = "1.0"

@@ -2,11 +2,11 @@ use crate::phases::{
     DebugPipRenderPhase, DepthPrepassRenderPhase, OpaqueRenderPhase, PostProcessRenderPhase,
     ShadowMapRenderPhase, TransparentRenderPhase, UiRenderPhase, WireframeRenderPhase,
 };
+use hydrate_base::handle::Handle;
 use rafx::api::extra::upload::RafxTransferUpload;
 use rafx::api::RafxResult;
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::{AssetManager, MaterialAsset};
-use rafx::distill::loader::handle::Handle;
 use rafx::framework::{ImageViewResource, RenderResources, ResourceArc};
 use rafx::graph::PreparedRenderGraph;
 use rafx::render_features::{ExtractResources, RenderRegistryBuilder, RenderView};
@@ -51,21 +51,23 @@ impl RendererPipelinePlugin for BasicPipelineRendererPlugin {
         // Bloom extract resources
         //
         // let bloom_extract_material = asset_resource
-        //     .load_asset_path::<MaterialAsset, _>("pipelines/bloom_extract.material");
-        let bloom_extract_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/bloom_extract.material");
+        //     .load_artifact_symbol_name::<MaterialAsset, _>("pipelines/bloom_extract.material");
+        let bloom_extract_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
+            "rafx-plugins://materials/bloom_extract.material",
+        );
 
         //
         // Bloom blur resources
         //
-        let bloom_blur_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/bloom_blur.material");
+        let bloom_blur_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
+            "rafx-plugins://materials/bloom_blur.material",
+        );
 
         //
         // Bloom combine resources
         //
-        let bloom_combine_material = asset_resource.load_asset_path::<MaterialAsset, _>(
-            "rafx-plugins/materials/basic_pipeline/bloom_combine_basic.material",
+        let bloom_combine_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
+            "rafx-plugins://materials/basic_pipeline/bloom_combine_basic.material",
         );
 
         renderer_load_context.wait_for_asset_to_load(

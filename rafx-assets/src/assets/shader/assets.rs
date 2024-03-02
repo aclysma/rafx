@@ -1,6 +1,6 @@
 use crate::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler};
-use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
+use hydrate_base::LoadHandle;
 use rafx_api::{
     RafxApiType, RafxHashedShaderPackage, RafxReflectedEntryPoint, RafxResult, RafxShaderPackage,
     RAFX_VALID_API_TYPES,

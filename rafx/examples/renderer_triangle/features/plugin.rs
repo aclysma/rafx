@@ -4,8 +4,8 @@ use super::{ExampleExtractJob, ExampleRenderFeature};
 use crate::features::internal::{ExampleFramePacket, ExampleSubmitPacket};
 use crate::features::jobs::{ExamplePrepareJob, ExampleWriteJob};
 use crate::phases::OpaqueRenderPhase;
+use hydrate::base::handle::Handle;
 use rafx::assets::MaterialAsset;
-use rafx::distill::loader::handle::Handle;
 use rafx_renderer::RendererLoadContext;
 
 pub struct ExampleStaticResources {
@@ -74,8 +74,9 @@ impl RenderFeaturePlugin for ExampleRenderFeaturePlugin {
         // has a reference to those resources. The resources will remain loaded until the handle
         // is dropped and there are no more references to those resources.
         //
-        let triangle_material_handle =
-            asset_resource.load_asset_path::<MaterialAsset, _>("triangle.material");
+        let triangle_material_handle = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
+            "renderer-triangle-example://triangle.material",
+        );
 
         render_resources.insert(ExampleStaticResources {
             triangle_material_handle,

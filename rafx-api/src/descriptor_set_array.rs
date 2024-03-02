@@ -323,7 +323,7 @@ impl RafxDescriptorSetArray {
     pub fn root_signature(&self) -> &RafxRootSignature {
         match self {
             #[cfg(feature = "rafx-dx12")]
-            RafxDescriptorSetArray::Dx12(inner) => unimplemented!(), //inner.root_signature(),
+            RafxDescriptorSetArray::Dx12(inner) => inner.root_signature(),
             #[cfg(feature = "rafx-vulkan")]
             RafxDescriptorSetArray::Vk(inner) => inner.root_signature(),
             #[cfg(feature = "rafx-metal")]

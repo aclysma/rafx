@@ -1,10 +1,8 @@
-(
-    version: 2,
-    importer_options: (),
-    importer_state: (
-        mesh_id: Some("6a8a6d9b-b8cf-4dd7-8281-2e0b4ee0ddfc"),
-        vertex_full_buffer_id: Some("47eaad3c-b487-432c-9c35-31de44211267"),
-        vertex_position_buffer_id: Some("e6eae21b-f46c-4b9b-8629-7454404c5d00"),
-        index_buffer_id: Some("122224a9-c4b3-4f99-97fa-689c55a383a9"),
-    ),
-)
+{
+  "importables": {
+    "": {
+      "id": "49f1181f-461e-43c3-9607-9e1a03874776",
+      "persisted": false
+    }
+  }
+}

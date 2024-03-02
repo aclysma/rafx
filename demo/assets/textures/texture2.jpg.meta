@@ -1,9 +1,8 @@
-(
-    version: 2,
-    importer_options: (
-        mip_generation: Runtime,
-        color_space: Srgb,
-        data_format: Uncompressed,
-    ),
-    importer_state: (Some("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38")),
-)
+{
+  "importables": {
+    "": {
+      "id": "a1413bb9-cfca-4717-be52-daa6782d4c2e",
+      "persisted": false
+    }
+  }
+}

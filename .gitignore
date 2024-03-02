@@ -10,3 +10,4 @@ Cargo.lock
 /demo/art/bistro/**
 /demo/assets/bistro/*/*
 /rafx-plugins/processed_shaders/**
+/demo-editor/data/

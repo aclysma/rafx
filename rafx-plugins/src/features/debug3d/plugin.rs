@@ -2,7 +2,7 @@ use rafx::render_feature_renderer_prelude::*;
 
 use super::*;
 use crate::phases::WireframeRenderPhase;
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::renderer::RendererLoadContext;
 
@@ -63,8 +63,9 @@ impl RenderFeaturePlugin for Debug3DRendererPlugin {
         render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let debug3d_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/debug3d.material");
+        let debug3d_material = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
+            "rafx-plugins://materials/debug3d.material",
+        );
 
         renderer_load_context
             .wait_for_asset_to_load(

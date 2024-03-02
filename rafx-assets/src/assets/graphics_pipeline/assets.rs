@@ -4,15 +4,13 @@ use type_uuid::*;
 use crate::{
     AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler, ImageAsset, ShaderAsset,
 };
-use distill::loader::handle::Handle;
-use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
+use hydrate_base::handle::Handle;
+use hydrate_base::LoadHandle;
 use rafx_api::{
     RafxBlendState, RafxBlendStateRenderTarget, RafxCompareOp, RafxCullMode, RafxDepthState,
     RafxError, RafxFillMode, RafxFrontFace, RafxRasterizerState, RafxResult, RafxSamplerDef,
 };
-pub use rafx_framework::DescriptorSetLayoutResource;
-pub use rafx_framework::GraphicsPipelineResource;
 use rafx_framework::{
     DescriptorSetArc, FixedFunctionState, MaterialPass, MaterialPassResource, MaterialShaderStage,
     ResourceArc,
@@ -20,6 +18,7 @@ use rafx_framework::{
 use rafx_framework::{DescriptorSetWriteSet, SamplerResource};
 use std::hash::Hash;
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, Hash, PartialEq)]
@@ -168,6 +167,32 @@ impl FixedFunctionStateData {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct GraphicsPipelineShaderStageRon {
+    pub stage: MaterialShaderStage,
+    pub shader_module: PathBuf,
+    pub entry_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MaterialPassRon {
+    pub name: Option<String>,
+    pub phase: Option<String>,
+    pub fixed_function_state: FixedFunctionStateData,
+    pub shaders: Vec<GraphicsPipelineShaderStageRon>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MaterialRon {
+    pub passes: Vec<MaterialPassRon>,
+}
+
+#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[uuid = "ea4a2be8-af66-4a57-8607-79eca02ab054"]
+pub struct MaterialAssetData {
+    pub passes: Vec<MaterialPassData>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct GraphicsPipelineShaderStage {
     pub stage: MaterialShaderStage,
     pub shader_module: Handle<ShaderAsset>,
@@ -288,12 +313,6 @@ impl MaterialPassData {
     }
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[uuid = "ad94bca2-1f02-4e5f-9117-1a7b03456a11"]
-pub struct MaterialAssetData {
-    pub passes: Vec<MaterialPassData>,
-}
-
 pub struct MaterialAssetInner {
     //TODO: Consider making this named
     //TODO: Get cached graphics pipelines working
@@ -367,6 +386,25 @@ impl Deref for MaterialAsset {
     fn deref(&self) -> &Self::Target {
         &*self.inner
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MaterialInstanceSlotAssignmentRon {
+    pub slot_name: String,
+    pub array_index: usize,
+
+    pub image: Option<PathBuf>, //Option<Handle<ImageAsset>>,
+    pub sampler: Option<RafxSamplerDef>,
+
+    // Would be nice to use this, but I don't think it works with Option
+    //#[serde(with = "serde_bytes")]
+    pub buffer_data: Option<Vec<u8>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MaterialInstanceRon {
+    pub material: PathBuf, //Handle<MaterialAsset>,
+    pub slot_assignments: Vec<MaterialInstanceSlotAssignmentRon>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

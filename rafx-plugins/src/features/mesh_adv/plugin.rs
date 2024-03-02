@@ -8,7 +8,7 @@ use crate::phases::{
     DepthPrepassRenderPhase, OpaqueRenderPhase, ShadowMapRenderPhase, TransparentRenderPhase,
     WireframeRenderPhase,
 };
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::api::{RafxIndexedIndirectCommandSignature, RafxShaderStageFlags};
 use rafx::assets::{ComputePipelineAsset, MaterialAsset};
 use rafx::renderer::RendererLoadContext;
@@ -99,32 +99,33 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
         render_resources: &mut RenderResources,
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
-        let default_pbr_material_handle = asset_resource.load_asset_path::<MaterialAsset, _>(
-            "rafx-plugins/materials/modern_pipeline/mesh_adv.material",
-        );
+        let default_pbr_material_handle = asset_resource
+            .load_artifact_symbol_name::<MaterialAsset>(
+                "rafx-plugins://materials/modern_pipeline/mesh_adv.material",
+            );
 
-        let depth_material_handle = asset_resource.load_asset_path::<MaterialAsset, _>(
-            "rafx-plugins/materials/modern_pipeline/depth_velocity.material",
+        let depth_material_handle = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
+            "rafx-plugins://materials/modern_pipeline/depth_velocity.material",
         );
 
         let shadow_map_atlas_depth_material_handle = asset_resource
-            .load_asset_path::<MaterialAsset, _>(
-                "rafx-plugins/materials/modern_pipeline/shadow_atlas_depth.material",
+            .load_artifact_symbol_name::<MaterialAsset>(
+                "rafx-plugins://materials/modern_pipeline/shadow_atlas_depth.material",
             );
 
         let shadow_map_atlas_clear_tiles_material_handle = asset_resource
-            .load_asset_path::<MaterialAsset, _>(
-                "rafx-plugins/materials/modern_pipeline/shadow_atlas_clear_tiles.material",
+            .load_artifact_symbol_name::<MaterialAsset>(
+                "rafx-plugins://materials/modern_pipeline/shadow_atlas_clear_tiles.material",
             );
 
         let lights_bin_compute_pipeline = asset_resource
-            .load_asset_path::<ComputePipelineAsset, _>(
-                "rafx-plugins/compute_pipelines/lights_bin.compute",
+            .load_artifact_symbol_name::<ComputePipelineAsset>(
+                "rafx-plugins://compute_pipelines/lights_bin.compute",
             );
 
         let lights_build_lists_compute_pipeline = asset_resource
-            .load_asset_path::<ComputePipelineAsset, _>(
-                "rafx-plugins/compute_pipelines/lights_build_lists.compute",
+            .load_artifact_symbol_name::<ComputePipelineAsset>(
+                "rafx-plugins://compute_pipelines/lights_build_lists.compute",
             );
 
         renderer_load_context.wait_for_asset_to_load(
@@ -170,7 +171,9 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             "lights_build_lists.compute",
         )?;
 
-        let pbr_material = asset_resource.asset(&default_pbr_material_handle).unwrap();
+        let pbr_material = default_pbr_material_handle
+            .artifact(asset_resource.storage())
+            .unwrap();
         let pbr_pass_indices = MeshAdvShaderPassIndices::new(pbr_material);
         let pbr_root_signature = pbr_material
             .get_material_pass_by_index(pbr_pass_indices.opaque as usize)
@@ -189,7 +192,9 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             .root_signature
             .clone();
 
-        let depth_material = asset_resource.asset(&depth_material_handle).unwrap();
+        let depth_material = depth_material_handle
+            .artifact(asset_resource.storage())
+            .unwrap();
         let depth_root_signature = depth_material
             .get_single_material_pass()
             .unwrap()
@@ -199,8 +204,8 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             .root_signature
             .clone();
 
-        let shadow_material = asset_resource
-            .asset(&shadow_map_atlas_depth_material_handle)
+        let shadow_material = shadow_map_atlas_depth_material_handle
+            .artifact(asset_resource.storage())
             .unwrap();
         let shadow_root_signature = shadow_material
             .get_single_material_pass()
@@ -249,7 +254,6 @@ impl RenderFeaturePlugin for MeshAdvRendererPlugin {
             &asset_manager.resources(),
         )?);
         render_resources.insert(ShadowMapAtlas::new(asset_manager.resources())?);
-
         Ok(())
     }
 

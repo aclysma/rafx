@@ -2,5 +2,5 @@
 #[cfg(all(feature = "basic-pipeline", feature = "legion"))]
 pub mod basic;
 
-#[cfg(all(feature = "modern-pipeline", feature = "legion"))]
+#[cfg(all(not(feature = "basic-pipeline"), feature = "legion"))]
 pub mod modern;

@@ -1,26 +1,24 @@
-(
-    version: 2,
-    importer_options: (),
-    importer_state: (
-        buffer_asset_uuids: [
-            (Index(0), "6dc7975f-3643-4dce-8ce4-e0f8e195c2de"),
-            (Index(1), "ff5c0f7a-c3fe-4900-a6e3-9d30bb097670"),
-            (Index(2), "446e2517-f772-4c09-bccc-ecb95581cffc"),
-        ],
-        image_asset_uuids: [
-            (Name("patchy_cement1_Base_Color"), "9d749197-f40c-4a71-a9a0-6dcba148b5ae"),
-            (Name("patchy_cement1_Metallic-patchy_cement1_Roughness"), "b31d1e02-6f6e-4a67-b23a-d6c10cd1cfdb"),
-            (Name("patchy_cement1_Normal"), "71517023-99e7-4582-bd83-739f8d2ea9e9"),
-        ],
-        material_asset_uuids: [],
-        material_instance_asset_uuids: [
-            (Name("Cement"), "000d9406-542f-46b0-81c6-27a69bda0f9e"),
-        ],
-        mesh_material_asset_uuids: [
-            (Name("Cement"), "2b85723e-743b-4712-87a5-5abfd00c0f3f"),
-        ],
-        mesh_asset_uuids: [
-            (Name("Cube"), "486309f2-713d-4835-a714-d6481c0caec8"),
-        ],
-    ),
-)
+{
+  "importables": {
+    "image_patchy_cement1_Base_Color": {
+      "id": "4eeb96c9-cd1a-4091-a53e-e7bf998054f2",
+      "persisted": false
+    },
+    "image_patchy_cement1_Metallic-patchy_cement1_Roughness": {
+      "id": "5a2f1a6b-d38c-490d-bfb0-5f8d50ace4d9",
+      "persisted": false
+    },
+    "image_patchy_cement1_Normal": {
+      "id": "821e83fa-7264-4529-8bdb-b3f108e0d02d",
+      "persisted": false
+    },
+    "material_Cement": {
+      "id": "865f4729-f735-4a25-b261-860c453c8bf7",
+      "persisted": false
+    },
+    "mesh_Cube": {
+      "id": "3050fe0d-e7b3-4b03-9821-7a9cfb7fd72d",
+      "persisted": false
+    }
+  }
+}

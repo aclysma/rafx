@@ -1,7 +1,7 @@
 use crate::assets::font::FontAsset;
-use distill::loader::handle::Handle;
-use distill::loader::LoadHandle;
 use fnv::FnvHashMap;
+use hydrate_base::handle::Handle;
+use hydrate_base::LoadHandle;
 
 pub struct TextDrawData {
     pub fonts: FnvHashMap<LoadHandle, Handle<FontAsset>>,

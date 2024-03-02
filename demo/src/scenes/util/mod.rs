@@ -1,7 +1,7 @@
 use crate::RenderOptions;
 use legion::IntoQuery;
 use legion::{Read, Resources, World};
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::ImageAsset;
 use rafx::render_features::{
     RenderFeatureFlagMaskBuilder, RenderFeatureMaskBuilder, RenderPhaseMaskBuilder,
@@ -19,15 +19,6 @@ use rafx_plugins::phases::{
     UiRenderPhase, WireframeRenderPhase,
 };
 
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::features::mesh_basic::{
-    MeshBasicNoShadowsRenderFeatureFlag as MeshNoShadowsRenderFeatureFlag,
-    MeshBasicRenderFeature as MeshRenderFeature, MeshBasicRenderOptions as MeshRenderOptions,
-    MeshBasicUnlitRenderFeatureFlag as MeshUnlitRenderFeatureFlag,
-    MeshBasicUntexturedRenderFeatureFlag as MeshUntexturedRenderFeatureFlag,
-    MeshBasicWireframeRenderFeatureFlag as MeshWireframeRenderFeatureFlag,
-};
-
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::features::mesh_adv::{
     MeshAdvNoShadowsRenderFeatureFlag as MeshNoShadowsRenderFeatureFlag,
@@ -37,29 +28,42 @@ use rafx_plugins::features::mesh_adv::{
     MeshAdvWireframeRenderFeatureFlag as MeshWireframeRenderFeatureFlag,
 };
 
+#[cfg(not(feature = "basic-pipeline"))]
 mod fly_camera;
+#[cfg(not(feature = "basic-pipeline"))]
 pub use fly_camera::*;
 
+#[cfg(not(feature = "basic-pipeline"))]
 mod path_camera;
+#[cfg(not(feature = "basic-pipeline"))]
 pub use path_camera::*;
 
+#[cfg(not(feature = "basic-pipeline"))]
 mod demo_camera;
+#[cfg(not(feature = "basic-pipeline"))]
 pub use demo_camera::*;
 
 use rafx::visibility::VisibilityResource;
 
+#[cfg(not(feature = "basic-pipeline"))]
 mod spawnable_mesh;
+#[cfg(not(feature = "basic-pipeline"))]
 pub use spawnable_mesh::*;
 
+#[cfg(not(feature = "basic-pipeline"))]
 mod spawnable_prefab;
+#[cfg(not(feature = "basic-pipeline"))]
 pub use spawnable_prefab::*;
 
 pub(super) fn set_ambient_light(
-    resources: &Resources,
-    ambient_light: glam::Vec3,
+    _resources: &Resources,
+    _ambient_light: glam::Vec3,
 ) {
-    let mut mesh_render_options = resources.get_mut::<MeshRenderOptions>().unwrap();
-    mesh_render_options.ambient_light = ambient_light;
+    #[cfg(not(feature = "basic-pipeline"))]
+    {
+        let mut mesh_render_options = _resources.get_mut::<MeshRenderOptions>().unwrap();
+        mesh_render_options.ambient_light = _ambient_light;
+    }
 }
 
 pub fn add_light_debug_draw(
@@ -214,10 +218,14 @@ pub fn default_main_view_masks(
 
     //use rafx_plugins::features::debug_pip::DebugPipRenderFeature;
     let mut feature_mask_builder = RenderFeatureMaskBuilder::default()
-        .add_render_feature::<MeshRenderFeature>()
         .add_render_feature::<SpriteRenderFeature>()
         //.add_render_feature::<DebugPipRenderFeature>()
         .add_render_feature::<TileLayerRenderFeature>();
+
+    #[cfg(not(feature = "basic-pipeline"))]
+    {
+        feature_mask_builder = feature_mask_builder.add_render_feature::<MeshRenderFeature>();
+    }
 
     #[cfg(feature = "egui")]
     {
@@ -237,26 +245,30 @@ pub fn default_main_view_masks(
         feature_mask_builder = feature_mask_builder.add_render_feature::<SkyboxRenderFeature>();
     }
 
+    #[allow(unused_mut)]
     let mut feature_flag_mask_builder = RenderFeatureFlagMaskBuilder::default();
 
-    if render_options.show_wireframes {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshWireframeRenderFeatureFlag>();
-    }
+    #[cfg(not(feature = "basic-pipeline"))]
+    {
+        if render_options.show_wireframes {
+            feature_flag_mask_builder = feature_flag_mask_builder
+                .add_render_feature_flag::<MeshWireframeRenderFeatureFlag>();
+        }
 
-    if !render_options.enable_lighting {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUnlitRenderFeatureFlag>();
-    }
+        if !render_options.enable_lighting {
+            feature_flag_mask_builder =
+                feature_flag_mask_builder.add_render_feature_flag::<MeshUnlitRenderFeatureFlag>();
+        }
 
-    if !render_options.enable_textures {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshUntexturedRenderFeatureFlag>();
-    }
+        if !render_options.enable_textures {
+            feature_flag_mask_builder = feature_flag_mask_builder
+                .add_render_feature_flag::<MeshUntexturedRenderFeatureFlag>();
+        }
 
-    if !render_options.show_shadows {
-        feature_flag_mask_builder =
-            feature_flag_mask_builder.add_render_feature_flag::<MeshNoShadowsRenderFeatureFlag>();
+        if !render_options.show_shadows {
+            feature_flag_mask_builder = feature_flag_mask_builder
+                .add_render_feature_flag::<MeshNoShadowsRenderFeatureFlag>();
+        }
     }
 
     (
@@ -267,12 +279,12 @@ pub fn default_main_view_masks(
 }
 
 //"textures/skybox.basis"
-pub fn setup_skybox<T: Into<String>>(
+pub fn setup_skybox(
     resources: &Resources,
-    path: T,
+    symbol_name: &'static str,
 ) {
     let asset_resource = resources.get::<AssetResource>().unwrap();
-    let skybox_texture = asset_resource.load_asset_path::<ImageAsset, _>(path);
+    let skybox_texture = asset_resource.load_artifact_symbol_name::<ImageAsset>(symbol_name);
 
     *resources
         .get_mut::<SkyboxResource>()

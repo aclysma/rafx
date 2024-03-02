@@ -2,7 +2,7 @@ mod gltf_importer;
 
 pub use gltf_importer::*;
 
-mod util;
+pub mod mesh_util;
 
 mod blender_material_importer;
 pub use blender_material_importer::*;
@@ -15,5 +15,3 @@ pub use blender_mesh_importer::*;
 
 mod blender_prefab_importer;
 pub use blender_prefab_importer::*;
-
-use super::assets::*;

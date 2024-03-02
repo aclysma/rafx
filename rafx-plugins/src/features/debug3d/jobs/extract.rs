@@ -1,9 +1,9 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
+use hydrate_base::handle::Handle;
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrowMut;
-use rafx::distill::loader::handle::Handle;
 
 pub struct Debug3DExtractJob<'extract> {
     debug3d_resource: TrustCell<ResourceRefBorrowMut<'extract, Debug3DResource>>,

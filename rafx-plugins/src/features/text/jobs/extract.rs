@@ -2,9 +2,9 @@ use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
 use fnv::FnvHashMap;
+use hydrate_base::handle::Handle;
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_ref_map::ResourceRefBorrowMut;
-use rafx::distill::loader::handle::Handle;
 
 pub struct TextExtractJob<'extract> {
     text_resource: TrustCell<ResourceRefBorrowMut<'extract, TextResource>>,

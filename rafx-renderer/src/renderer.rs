@@ -1,6 +1,7 @@
-use rafx_assets::distill_impl::AssetResource;
+use rafx_assets::AssetManager;
 use rafx_assets::AssetManagerRenderResource;
-use rafx_assets::{distill, AssetManager};
+use rafx_assets::AssetResource;
+use rafx_assets::Handle;
 use rafx_framework::render_features::render_features_prelude::*;
 use rafx_framework::visibility::{VisibilityConfig, VisibilityResource};
 use rafx_framework::{ImageViewResource, ResourceArc};
@@ -33,7 +34,7 @@ impl RendererLoadContext {
         &self,
         render_resources: &RenderResources,
         asset_manager: &mut AssetManager,
-        asset_handle: &distill::loader::handle::Handle<T>,
+        asset_handle: &Handle<T>,
         asset_resource: &mut AssetResource,
         asset_name: &str,
     ) -> RafxResult<()> {
@@ -263,7 +264,7 @@ impl Renderer {
     pub fn wait_for_asset_to_load<T>(
         &self,
         asset_manager: &mut AssetManager,
-        asset_handle: &distill::loader::handle::Handle<T>,
+        asset_handle: &Handle<T>,
         asset_resource: &mut AssetResource,
         asset_name: &str,
     ) -> RafxResult<()> {
@@ -409,6 +410,20 @@ impl Renderer {
         // Mark the previous frame as completed
         //
         asset_manager.on_frame_complete()?;
+
+        //
+        // Pump asset loading
+        //
+        {
+            let mut asset_resource = extract_resources.fetch_mut::<AssetResource>();
+            for plugin in &*renderer.asset_plugins {
+                plugin.process_asset_loading(
+                    asset_manager,
+                    &mut *asset_resource,
+                    &renderer.render_resources,
+                )?;
+            }
+        }
 
         let resource_context = asset_manager.resource_manager().resource_context();
 

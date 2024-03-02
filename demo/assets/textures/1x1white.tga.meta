@@ -1,9 +1,8 @@
-(
-    version: 2,
-    importer_options: (
-        mip_generation: NoMips,
-        color_space: Srgb,
-        data_format: Uncompressed,
-    ),
-    importer_state: (Some("fc937369-cad2-4a00-bf42-5968f1210784")),
-)
+{
+  "importables": {
+    "": {
+      "id": "9c60d35c-1ad7-4361-a1fb-04088cbdee90",
+      "persisted": false
+    }
+  }
+}

@@ -1,12 +1,10 @@
-use super::MeshAdvMaterialData;
-use crate::assets::mesh_adv::{MeshAdvBlendMethod, MeshAdvShadowMethod, MeshMaterialAdvAssetData};
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::make_handle_from_str;
-use distill::{core::AssetUuid, importer::ImportOp};
-use rafx::assets::ImageAsset;
-use rafx::distill::loader::handle::Handle;
+use crate::schema::{MeshAdvBlendMethodEnum, MeshAdvMaterialAssetRecord, MeshAdvShadowMethodEnum};
+use hydrate_data::{DataSetError, Enum, ImportableName, Record};
+use hydrate_pipeline::{
+    AssetPlugin, AssetPluginSetupContext, ImportContext, Importer, PipelineResult, ScanContext,
+};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
+use std::path::PathBuf;
 use type_uuid::*;
 
 #[derive(Serialize, Deserialize)]
@@ -18,13 +16,13 @@ struct MaterialJsonFileFormat {
     pub normal_texture_scale: f32,   // default: 1
 
     #[serde(default)]
-    pub color_texture: Option<Handle<ImageAsset>>,
+    pub color_texture: Option<PathBuf>,
     #[serde(default)]
-    pub metallic_roughness_texture: Option<Handle<ImageAsset>>,
+    pub metallic_roughness_texture: Option<PathBuf>,
     #[serde(default)]
-    pub normal_texture: Option<Handle<ImageAsset>>,
+    pub normal_texture: Option<PathBuf>,
     #[serde(default)]
-    pub emissive_texture: Option<Handle<ImageAsset>>,
+    pub emissive_texture: Option<PathBuf>,
 
     #[serde(default)]
     pub shadow_method: Option<String>,
@@ -38,109 +36,150 @@ struct MaterialJsonFileFormat {
     pub color_texture_has_alpha_channel: bool,
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "8ecd5157-2703-4cdc-b8ec-7ba6fac29593"]
-pub struct MeshAdvBlenderMaterialImporterState {
-    pub mesh_material_id: Option<AssetUuid>,
-    pub material_instance_id: Option<AssetUuid>,
+#[derive(TypeUuid, Default)]
+#[uuid = "e76bab79-654a-476f-93b1-88cd5fee7d1f"]
+pub struct BlenderMaterialImporter;
+
+impl Importer for BlenderMaterialImporter {
+    fn supported_file_extensions(&self) -> &[&'static str] {
+        &["blender_material"]
+    }
+
+    fn scan_file(
+        &self,
+        context: ScanContext,
+    ) -> PipelineResult<()> {
+        let json_str = std::fs::read_to_string(context.path)?;
+        let json_data: MaterialJsonFileFormat = serde_json::from_str(&json_str)?;
+
+        let importable = context.add_default_importable::<MeshAdvMaterialAssetRecord>()?;
+
+        if let Some(path) = &json_data.color_texture {
+            importable.add_path_reference(path)?;
+        }
+
+        if let Some(path) = &json_data.metallic_roughness_texture {
+            importable.add_path_reference(path)?;
+        }
+
+        if let Some(path) = &json_data.normal_texture {
+            importable.add_path_reference(path)?;
+        }
+
+        if let Some(path) = &json_data.emissive_texture {
+            importable.add_path_reference(path)?;
+        }
+
+        Ok(())
+    }
+
+    fn import_file(
+        &self,
+        context: ImportContext,
+    ) -> PipelineResult<()> {
+        //
+        // Read the file
+        //
+        let json_str = std::fs::read_to_string(context.path)?;
+        let json_data: MaterialJsonFileFormat = serde_json::from_str(&json_str)?;
+
+        //
+        // Parse strings to enums or provide default value if they weren't specified
+        //
+        let shadow_method = if let Some(shadow_method_string) = &json_data.shadow_method {
+            //TODO: This relies on input json and code matching perfectly, ideally we would search schema type for aliases
+            //println!("find MeshAdvShadowMethodEnum {:?}", shadow_method_string);
+            MeshAdvShadowMethodEnum::from_symbol_name(shadow_method_string.as_str())
+                .ok_or(DataSetError::UnexpectedEnumSymbol)?
+        } else {
+            MeshAdvShadowMethodEnum::None
+        };
+
+        let blend_method = if let Some(blend_method_string) = &json_data.blend_method {
+            //TODO: This relies on input json and code matching perfectly, ideally we would search schema type for alias
+            //println!("find MeshAdvBlendMethodEnum {:?}", blend_method_string);
+            MeshAdvBlendMethodEnum::from_symbol_name(blend_method_string.as_str())
+                .ok_or(DataSetError::UnexpectedEnumSymbol)?
+        } else {
+            MeshAdvBlendMethodEnum::Opaque
+        };
+
+        //
+        // Create the default asset
+        //
+        let default_asset = MeshAdvMaterialAssetRecord::new_builder(context.schema_set);
+
+        default_asset
+            .base_color_factor()
+            .set_vec4(json_data.base_color_factor)?;
+        default_asset
+            .emissive_factor()
+            .set_vec3(json_data.emissive_factor)?;
+        default_asset
+            .metallic_factor()
+            .set(json_data.metallic_factor)?;
+        default_asset
+            .roughness_factor()
+            .set(json_data.roughness_factor)?;
+        default_asset
+            .normal_texture_scale()
+            .set(json_data.normal_texture_scale)?;
+
+        if let Some(path) = &json_data.color_texture {
+            default_asset.color_texture().set(
+                context
+                    .asset_id_for_referenced_file_path(ImportableName::default(), &path.into())?,
+            )?;
+        }
+
+        if let Some(path) = &json_data.metallic_roughness_texture {
+            default_asset.metallic_roughness_texture().set(
+                context
+                    .asset_id_for_referenced_file_path(ImportableName::default(), &path.into())?,
+            )?;
+        }
+
+        if let Some(path) = &json_data.normal_texture {
+            default_asset.normal_texture().set(
+                context
+                    .asset_id_for_referenced_file_path(ImportableName::default(), &path.into())?,
+            )?;
+        }
+
+        if let Some(path) = &json_data.emissive_texture {
+            default_asset.emissive_texture().set(
+                context
+                    .asset_id_for_referenced_file_path(ImportableName::default(), &path.into())?,
+            )?;
+        }
+
+        default_asset.shadow_method().set(shadow_method)?;
+        default_asset.blend_method().set(blend_method)?;
+        default_asset
+            .alpha_threshold()
+            .set(json_data.alpha_threshold.unwrap_or(0.5))?;
+        default_asset
+            .backface_culling()
+            .set(json_data.backface_culling.unwrap_or(true))?;
+        //TODO: Does this incorrectly write older enum string names when code is older than schema file?
+        default_asset
+            .color_texture_has_alpha_channel()
+            .set(json_data.color_texture_has_alpha_channel)?;
+
+        //
+        // Return the created objects
+        //
+        context.add_default_importable(default_asset.into_inner()?, None);
+        Ok(())
+    }
 }
 
-#[derive(TypeUuid)]
-#[uuid = "f358cd88-b79c-4439-83bb-501807d89cd3"]
-pub struct MeshAdvBlenderMaterialImporter;
-impl Importer for MeshAdvBlenderMaterialImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        3
-    }
+pub struct BlenderMaterialAssetPlugin;
 
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ();
-
-    type State = MeshAdvBlenderMaterialImporterState;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
-        &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let material_instance_id = state
-            .material_instance_id
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        let mesh_material_id = state
-            .mesh_material_id
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-
-        *state = MeshAdvBlenderMaterialImporterState {
-            material_instance_id: Some(material_instance_id),
-            mesh_material_id: Some(mesh_material_id),
-        };
-
-        let json_format: MaterialJsonFileFormat = serde_json::from_reader(source)
-            .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
-
-        let material_handle = make_handle_from_str("680c6edd-8bed-407b-aea0-d0f6056093d6")?;
-
-        let shadow_method = match json_format.shadow_method.as_deref() {
-            None => MeshAdvShadowMethod::Opaque,
-            Some("NONE") => MeshAdvShadowMethod::None,
-            Some("OPAQUE") => MeshAdvShadowMethod::Opaque,
-            _ => unimplemented!(), //"CLIP" => MeshAdvShadowMethod::AlphaClip,
-                                   //"HASHED" => MeshAdvShadowMethod::AlphaStochastic
-        };
-
-        let blend_method = match json_format.blend_method.as_deref() {
-            None => MeshAdvBlendMethod::Opaque,
-            Some("OPAQUE") => MeshAdvBlendMethod::Opaque,
-            Some("CLIP") => MeshAdvBlendMethod::AlphaClip,
-            Some("BLEND") => MeshAdvBlendMethod::AlphaBlend,
-            _ => unimplemented!(), //Some("HASHED") => MeshAdvBlendMethod::AlphaStochastic,
-        };
-
-        let material_data = MeshAdvMaterialData {
-            base_color_factor: json_format.base_color_factor,
-            emissive_factor: json_format.emissive_factor,
-            metallic_factor: json_format.metallic_factor,
-            roughness_factor: json_format.roughness_factor,
-            normal_texture_scale: json_format.normal_texture_scale,
-            has_base_color_texture: json_format.color_texture.is_some(),
-            base_color_texture_has_alpha_channel: json_format.color_texture_has_alpha_channel,
-            has_metallic_roughness_texture: json_format.metallic_roughness_texture.is_some(),
-            has_normal_texture: json_format.normal_texture.is_some(),
-            has_emissive_texture: json_format.emissive_texture.is_some(),
-            shadow_method,
-            blend_method,
-            alpha_threshold: json_format.alpha_threshold.unwrap_or(0.5),
-            backface_culling: json_format.backface_culling.unwrap_or(true),
-        };
-
-        let mesh_material_data = MeshMaterialAdvAssetData {
-            material_data,
-            material_asset: material_handle.clone(),
-            color_texture: json_format.color_texture,
-            metallic_roughness_texture: json_format.metallic_roughness_texture,
-            normal_texture: json_format.normal_texture,
-            emissive_texture: json_format.emissive_texture,
-        };
-
-        Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id: mesh_material_id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(mesh_material_data),
-            }],
-        })
+impl AssetPlugin for BlenderMaterialAssetPlugin {
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<BlenderMaterialImporter>();
     }
 }

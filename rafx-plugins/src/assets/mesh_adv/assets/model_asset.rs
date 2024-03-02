@@ -1,5 +1,5 @@
-use distill::loader::handle::Handle;
-use distill::loader::LoadHandle;
+use hydrate_base::handle::Handle;
+use hydrate_base::LoadHandle;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler};
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ pub struct ModelAdvAssetDataLod {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone)]
-#[uuid = "5fe1ac74-0f10-4855-aa4a-b95a3473020d"]
+#[uuid = "5c6d78ae-ad2b-4cdc-a7a7-8ade67882c6e"]
 pub struct ModelAdvAssetData {
     pub lods: Vec<ModelAdvAssetDataLod>,
 }

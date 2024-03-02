@@ -7,9 +7,6 @@ use rafx::framework::{RenderResources, ResourceContext};
 use rafx::graph::*;
 use rafx::render_features::{ExtractResources, RenderView};
 
-mod shadow_map_pass;
-use shadow_map_pass::ShadowMapImageResources;
-
 mod opaque_pass;
 use opaque_pass::OpaquePass;
 
@@ -19,7 +16,6 @@ mod bloom_extract_pass;
 use super::BasicPipelineRenderOptions;
 use super::BasicPipelineStaticResources;
 use crate::features::debug_pip::DebugPipRenderResource;
-use crate::features::mesh_basic::MeshBasicShadowMapResource;
 use crate::pipelines::basic::AntiAliasMethodBasic;
 use bloom_extract_pass::BloomExtractPass;
 use rafx::assets::AssetManager;
@@ -131,9 +127,7 @@ pub(super) fn generate_render_graph(
 
     let depth_prepass = depth_prepass::depth_prepass(&mut graph_context);
 
-    let shadow_maps = shadow_map_pass::shadow_map_passes(&mut graph_context);
-
-    let opaque_pass = opaque_pass::opaque_pass(&mut graph_context, depth_prepass, &shadow_maps);
+    let opaque_pass = opaque_pass::opaque_pass(&mut graph_context, depth_prepass);
 
     let mut previous_pass_color = if graph_config.enable_hdr {
         let bloom_extract_material_pass = asset_manager
@@ -197,10 +191,6 @@ pub(super) fn generate_render_graph(
         graph,
         &swapchain_info.swapchain_surface_info,
     )?;
-
-    render_resources
-        .fetch_mut::<MeshBasicShadowMapResource>()
-        .set_shadow_map_image_views(&prepared_render_graph);
 
     Ok(prepared_render_graph)
 }

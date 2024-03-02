@@ -1,0 +1,23 @@
+[
+  {
+    "type": "record",
+    "name": "ShaderPackageAsset",
+    "uuid": "bf807463-f445-41a7-9394-c9d7b6399813",
+    "default_thumbnail": "default_thumbnails/shader-package.png",
+    "fields": [
+
+    ]
+  },
+  {
+    "type": "record",
+    "name": "ShaderPackageImportedData",
+    "uuid": "630deeb2-b9fb-4594-b976-2fbb21b25cc0",
+    "fields": [
+      {
+        "name": "bytes",
+        "type": "bytes",
+        "uuid": "84f018b4-ecd3-44bb-8bec-c1c4f7abf758"
+      }
+    ]
+  }
+]

@@ -2,7 +2,7 @@
 name = "rafx-shader-processor"
 version = "0.0.15"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "Rendering framework built on an extensible asset pipeline"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
@@ -17,7 +17,7 @@ rafx-api = { version = "0.0.15", path = "../rafx-api", features = ["serde-suppor
 fnv = "1.0"
 structopt = "0.3"
 shaderc = "0.8"
-spirv_cross = { version = "0.23.1", features = ["glsl", "hlsl", "msl"] }
+spirv_cross = { version = "0.0.1", features = ["glsl", "hlsl", "msl"], package = "aclysma_spirv_cross" }
 globwalk = "0.8.1"
 
 ron = "0.6"

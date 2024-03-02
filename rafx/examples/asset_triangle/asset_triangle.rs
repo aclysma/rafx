@@ -1,10 +1,8 @@
 use log::LevelFilter;
 
 use rafx::api::*;
-use rafx::assets::distill::loader::rpc_io::RpcConnectionType;
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::MaterialAsset;
-use rafx::distill::loader::{storage::DefaultIndirectionResolver, Loader, RpcIO};
 use rafx::framework::render_features::{RenderJobWriteContext, SubmitNodeBlocks};
 use rafx::framework::{DescriptorSetBindings, RenderResources, VertexDataLayout};
 use rafx::graph::{
@@ -34,25 +32,6 @@ struct PositionColorVertex {
 }
 
 fn run() -> RafxResult<()> {
-    //
-    // For this example, we'll run the `distill` daemon in-process. This is the most convenient
-    // method during development. (You could also build a packfile ahead of time and run from that)
-    //
-    let db_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("examples/asset_triangle/.assets_db");
-    let asset_dir =
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/asset_triangle/assets");
-    let connect_string = "127.0.0.1:9999";
-
-    // Daemon will runs in a background thread for the life of the process
-    std::thread::spawn(move || {
-        rafx::assets::distill_impl::default_daemon()
-            .with_db_path(db_dir)
-            .with_address(connect_string.parse().unwrap())
-            .with_asset_dirs(vec![asset_dir])
-            .run();
-    });
-
     //
     // Init SDL2 (winit and anything that uses raw-window-handle works too!)
     //
@@ -135,13 +114,9 @@ fn run() -> RafxResult<()> {
         // struct that encapsulates most of the distill-related parts of the asset pipeline
         // system and is something you can insert into an ECS.
         //
-        let mut asset_resource = {
-            let rpc_loader =
-                RpcIO::new(RpcConnectionType::TCP(connect_string.to_string())).unwrap();
-            let loader = Loader::new(Box::new(rpc_loader));
-            let resolver = Box::new(DefaultIndirectionResolver);
-            AssetResource::new(loader, resolver)
-        };
+        let assets_build_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../demo-editor/data/build_data");
+        let mut asset_resource = AssetResource::new(assets_build_dir).unwrap();
 
         //
         // Create the asset manager which encapsulates most of the rafx-related parts of the asset
@@ -181,8 +156,9 @@ fn run() -> RafxResult<()> {
         // has a reference to those resources. The resources will remain loaded until the handle
         // is dropped and there are no more references to those resources.
         //
-        let triangle_material_handle =
-            asset_resource.load_asset_path::<MaterialAsset, _>("triangle.material");
+        let triangle_material_handle = asset_resource.load_artifact_symbol_name::<MaterialAsset>(
+            "assets-triangle-example://triangle.material",
+        );
 
         //
         // The vertex format does not need to be specified up-front to create the material pass.
@@ -516,13 +492,17 @@ pub fn sdl2_init() -> Sdl2Systems {
         .expect("Failed to create sdl video subsystem");
 
     // Create the window
-    let window = video_subsystem
-        .window("Rafx Example", WINDOW_WIDTH, WINDOW_HEIGHT)
+    let mut window_binding = video_subsystem.window("Rafx Example", WINDOW_WIDTH, WINDOW_HEIGHT);
+
+    let window_builder = window_binding
         .position_centered()
         .allow_highdpi()
-        .resizable()
-        .build()
-        .expect("Failed to create window");
+        .resizable();
+
+    #[cfg(target_os = "macos")]
+    let window_builder = window_builder.metal_view();
+
+    let window = window_builder.build().expect("Failed to create window");
 
     Sdl2Systems {
         context,

@@ -1,10 +1,10 @@
 use crate::time::TimeState;
 use crate::RenderOptions;
 use glam::f32::Vec3;
+use hydrate_base::handle::Handle;
 use legion::{Resources, World};
-use rafx::assets::distill_impl::AssetResource;
+use rafx::assets::AssetResource;
 use rafx::assets::{AssetManager, ImageAsset};
-use rafx::distill::loader::handle::Handle;
 use rafx::rafx_visibility::{DepthRange, OrthographicParameters, Projection};
 use rafx::render_features::RenderViewDepthRange;
 use rafx::renderer::{RenderViewMeta, ViewportsResource};
@@ -30,17 +30,18 @@ impl SpriteScene {
 
         let sprite_image = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_path::<ImageAsset, _>("textures/texture2.jpg")
-            //asset_resource.load_asset::<ImageAsset>("cad0eeb3-68e1-48a5-81b6-ba4a7e848f38".into())
+            asset_resource
+                .load_artifact_symbol_name::<ImageAsset>("demo-assets://textures/texture2.jpg")
         };
 
         let ldtk_handle = {
             let asset_resource = resources.get::<AssetResource>().unwrap();
-            asset_resource.load_asset_path::<LdtkProjectAsset, _>("ldtk/example.ldtk")
-            //asset_resource.load_asset::<LdtkProjectAsset>("e01f536b-0a05-4d14-81cd-f010d4a45e81".into())
+            asset_resource
+                .load_artifact_symbol_name::<LdtkProjectAsset>("demo-assets://ldtk/example.ldtk")
         };
 
         let mut visibility_resource = resources.get_mut::<VisibilityResource>().unwrap();
+
         for i in 0..100 {
             let position = Vec3::new(
                 ((i / 5) * 100) as f32 + 900.0,

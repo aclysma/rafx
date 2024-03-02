@@ -154,10 +154,12 @@ fn parse_array_sizes(
         let array_index = crate::parse_source::try_consume_array_index(code, position).unwrap_or(0);
         array_sizes.push(array_index);
         crate::parse_source::skip_whitespace(code, position);
-        crate::parse_source::try_consume_literal(code, position, "]").ok_or(format!(
-            "Missing ] on array count while parsing struct field:\n{}",
-            crate::parse_source::characters_to_string(&code)
-        ))?;
+        crate::parse_source::try_consume_literal(code, position, "]").ok_or_else(|| {
+            format!(
+                "Missing ] on array count while parsing struct field:\n{}",
+                crate::parse_source::characters_to_string(&code)
+            )
+        })?;
         crate::parse_source::skip_whitespace(code, position);
     }
 
@@ -170,17 +172,22 @@ fn parse_field(
 ) -> Result<ParseFieldResult, String> {
     // Consume the field's type
     let field_type_name =
-        crate::parse_source::try_consume_identifier(code, position).ok_or(format!(
-            "Failed to read field's type:\n{}",
-            crate::parse_source::characters_to_string(&code)
-        ))?;
+        crate::parse_source::try_consume_identifier(code, position).ok_or_else(|| {
+            format!(
+                "Failed to read field's type:\n{}",
+                crate::parse_source::characters_to_string(&code)
+            )
+        })?;
     crate::parse_source::skip_whitespace(code, position);
 
     // Consume the field's name
-    let field_name = crate::parse_source::try_consume_identifier(code, position).ok_or(format!(
-        "Failed to read field's name:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    let field_name =
+        crate::parse_source::try_consume_identifier(code, position).ok_or_else(|| {
+            format!(
+                "Failed to read field's name:\n{}",
+                crate::parse_source::characters_to_string(&code)
+            )
+        })?;
     crate::parse_source::skip_whitespace(code, position);
 
     if *position >= code.len() {
@@ -192,10 +199,12 @@ fn parse_field(
 
     let array_sizes = parse_array_sizes(code, position)?;
 
-    crate::parse_source::try_consume_literal(code, position, ";").ok_or(format!(
-        "Missing ; while parsing struct field:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    crate::parse_source::try_consume_literal(code, position, ";").ok_or_else(|| {
+        format!(
+            "Missing ; while parsing struct field:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        )
+    })?;
 
     Ok(ParseFieldResult {
         type_name: field_type_name,
@@ -256,26 +265,32 @@ fn try_parse_struct(code: &[char]) -> Result<Option<ParseStructResult>, String> 
     // Consume the name of the struct and all whitespace to the opening {
     crate::parse_source::skip_whitespace(code, &mut position);
     let type_name =
-        crate::parse_source::try_consume_identifier(code, &mut position).ok_or(format!(
-            "Expected name of struct while parsing struct:\n{}",
-            crate::parse_source::characters_to_string(&code)
-        ))?;
+        crate::parse_source::try_consume_identifier(code, &mut position).ok_or_else(|| {
+            format!(
+                "Expected name of struct while parsing struct:\n{}",
+                crate::parse_source::characters_to_string(&code)
+            )
+        })?;
 
     crate::parse_source::skip_whitespace(code, &mut position);
-    let fields = try_parse_fields(code, &mut position)?.ok_or(format!(
-        "Expected {{ while parsing struct:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    let fields = try_parse_fields(code, &mut position)?.ok_or_else(|| {
+        format!(
+            "Expected {{ while parsing struct:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        )
+    })?;
 
     // an optional instance name
     crate::parse_source::skip_whitespace(code, &mut position);
     let instance_name = crate::parse_source::try_consume_identifier(code, &mut position);
 
     crate::parse_source::skip_whitespace(code, &mut position);
-    crate::parse_source::try_consume_literal(code, &mut position, ";").ok_or(format!(
-        "Expected ; at end of struct:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    crate::parse_source::try_consume_literal(code, &mut position, ";").ok_or_else(|| {
+        format!(
+            "Expected ; at end of struct:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        )
+    })?;
 
     Ok(Some(ParseStructResult {
         type_name,
@@ -396,17 +411,22 @@ fn parse_layout_part(
     position: &mut usize,
 ) -> Result<LayoutPart, String> {
     crate::parse_source::skip_whitespace(code, position);
-    let key = crate::parse_source::try_consume_identifier(code, position).ok_or(format!(
-        "Expected key while parsing layout clause:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    let key = crate::parse_source::try_consume_identifier(code, position).ok_or_else(|| {
+        format!(
+            "Expected key while parsing layout clause:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        )
+    })?;
     crate::parse_source::skip_whitespace(code, position);
     if crate::parse_source::try_consume_literal(code, position, "=").is_some() {
         crate::parse_source::skip_whitespace(code, position);
-        let value = crate::parse_source::try_consume_identifier(code, position).ok_or(format!(
-            "Expected value after = while parsing layout clause:\n{}",
-            crate::parse_source::characters_to_string(&code)
-        ))?;
+        let value =
+            crate::parse_source::try_consume_identifier(code, position).ok_or_else(|| {
+                format!(
+                    "Expected value after = while parsing layout clause:\n{}",
+                    crate::parse_source::characters_to_string(&code)
+                )
+            })?;
 
         Ok(LayoutPart {
             key,
@@ -444,10 +464,12 @@ fn parse_layout_parts(
         }
 
         // Otherwise, consume a comma
-        crate::parse_source::try_consume_literal(code, position, ",").ok_or(format!(
-            "Expected , between key/value pairs while parsing binding:\n{}",
-            crate::parse_source::characters_to_string(&code)
-        ))?;
+        crate::parse_source::try_consume_literal(code, position, ",").ok_or_else(|| {
+            format!(
+                "Expected , between key/value pairs while parsing binding:\n{}",
+                crate::parse_source::characters_to_string(&code)
+            )
+        })?;
         crate::parse_source::skip_whitespace(code, position);
     }
 
@@ -471,10 +493,12 @@ fn try_parse_binding_or_group_size(
     // Parse the (...) in the layout (...) prefix for this binding
     //
     crate::parse_source::skip_whitespace(code, &mut position);
-    crate::parse_source::try_consume_literal(code, &mut position, "(").ok_or(format!(
-        "Expected opening ( while parsing binding:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    crate::parse_source::try_consume_literal(code, &mut position, "(").ok_or_else(|| {
+        format!(
+            "Expected opening ( while parsing binding:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        )
+    })?;
     crate::parse_source::skip_whitespace(code, &mut position);
 
     let layout_parts = parse_layout_parts(code, &mut position)?;
@@ -495,10 +519,12 @@ fn try_parse_binding_or_group_size(
         // If struct fields exist, we need one more identifier
         crate::parse_source::skip_whitespace(code, &mut position);
         let instance_name = crate::parse_source::try_consume_identifier(code, &mut position)
-            .ok_or(format!(
+            .ok_or_else(|| {
+                format!(
             "Expected instance name while parsing binding (required for exported bindings):\n{}",
             crate::parse_source::characters_to_string(&code)
-        ))?;
+        )
+            })?;
         identifiers.push(instance_name);
     }
 
@@ -588,10 +614,12 @@ fn try_parse_binding_or_group_size(
     let array_sizes = parse_array_sizes(code, &mut position)?;
 
     crate::parse_source::skip_whitespace(code, &mut position);
-    crate::parse_source::try_consume_literal(code, &mut position, ";").ok_or(format!(
-        "Expected ; while parsing binding:\n{}",
-        crate::parse_source::characters_to_string(&code)
-    ))?;
+    crate::parse_source::try_consume_literal(code, &mut position, ";").ok_or_else(|| {
+        format!(
+            "Expected ; while parsing binding:\n{}",
+            crate::parse_source::characters_to_string(&code)
+        )
+    })?;
 
     // uniforms are std140 UNLESS they are push constants
     // buffers are std430, and push constants uniforms are std430

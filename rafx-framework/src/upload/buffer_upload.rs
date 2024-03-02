@@ -131,7 +131,7 @@ pub fn enqueue_load_buffer(
         )?;
     }
 
-    log::debug!("upload buffer bytes: {}", data.len());
+    log::trace!("upload buffer bytes: {}", data.len());
 
     Ok(new_buffer)
 }

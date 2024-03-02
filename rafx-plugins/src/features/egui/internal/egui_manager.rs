@@ -34,21 +34,21 @@ impl EguiManager {
             "mplus-1p".to_string(),
             std::borrow::Cow::Borrowed(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/assets/rafx-plugins/fonts/mplus-1p-regular.ttf"
+                "/assets/fonts/mplus-1p-regular.ttf"
             ))),
         );
         font_definitions.font_data.insert(
             "feather".to_string(),
             std::borrow::Cow::Borrowed(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/assets/rafx-plugins/fonts/feather.ttf"
+                "/assets/fonts/feather.ttf"
             ))),
         );
         font_definitions.font_data.insert(
             "materialdesignicons".to_string(),
             std::borrow::Cow::Borrowed(include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/assets/rafx-plugins/fonts/materialdesignicons-webfont.ttf"
+                "/assets/fonts/materialdesignicons-webfont.ttf"
             ))),
         );
 

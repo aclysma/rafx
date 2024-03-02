@@ -1,0 +1,42 @@
+[package]
+name = "demo-editor"
+version = "0.0.15"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+# This is a demo crate, we shouldn't publish it
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hydrate = { version = "0.0.2", features = ["editor"] }
+rafx = { path = "../rafx", features = ["renderer", "basis-universal", "dds"] }
+rafx-plugins = { path = "../rafx-plugins", features = ["legion", "egui", "egui-winit", "modern-pipeline", "meshopt"] }
+
+log = "0.4"
+env_logger = "0.6"
+
+profiling = "1.0.1"
+
+[features]
+default = [
+    # Profiling options
+    #"profile-with-puffin",
+    #"profile-with-optick",
+    #"profile-with-tracy",
+    #"profile-with-tracy-memory", # Cannot be enabled with "stats_alloc".
+    #"profile-with-superluminal"
+]
+
+profile-with-optick = [
+    "profiling/profile-with-optick",
+]
+profile-with-superluminal = [
+    "profiling/profile-with-superluminal",
+]
+profile-with-tracy = ["profiling/profile-with-tracy"]
+profile-with-tracy-memory = [
+    "profiling/profile-with-tracy",
+    "profile-with-tracy"
+]

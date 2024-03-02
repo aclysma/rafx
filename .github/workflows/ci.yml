@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
 
 jobs:
   build:
@@ -11,92 +12,79 @@ jobs:
       fail-fast: false
       matrix:
         toolchain: [stable, beta]
-        os: [windows-2019, ubuntu-20.04, macos-11]
+        os: [windows-2022, ubuntu-22.04, macos-12]
         exclude:
-          - os: macos-11
+          - os: macos-12
             toolchain: beta
-          - os: windows-2019
+          - os: windows-2022
             toolchain: beta
+
     runs-on: ${{ matrix.os }}
     needs: clean
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: seanmiddleditch/gha-setup-ninja@master
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-          override: true
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            target
-          key: ${{ runner.os }}-cargo-check-test-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install XCB and GL dependencies
+        if: contains(matrix.os, 'ubuntu')
         run: |
           sudo apt update
           sudo apt install libx11-xcb-dev libgl1-mesa-dev
-        if: contains(matrix.os, 'ubuntu')
 
       - name: Build
         run: cargo check --features "rafx-vulkan" --manifest-path demo/Cargo.toml
         env:
-          CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Build
         run: cargo check --no-default-features --features "rafx-vulkan,basic-pipeline,use-egui" --manifest-path demo/Cargo.toml
         env:
-          CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Run tests (vulkan)
-        run: cargo test --workspace --features "rafx-vulkan" --manifest-path demo/Cargo.toml
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
+        run: cargo test --workspace --features "rafx-vulkan" --manifest-path demo/Cargo.toml
         env:
-          CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Run tests (metal)
-        run: cargo test --workspace --features "rafx-metal" --manifest-path demo/Cargo.toml
         if: ${{ runner.os == 'macOS' && matrix.toolchain == 'stable' }}
-        env:
-          CARGO_INCREMENTAL: 0
-          RUSTFLAGS: "-C debuginfo=0 -D warnings"
+        run: cargo test --workspace --features "rafx-metal" --manifest-path demo/Cargo.toml
+        # SDL2 does not build warning-free on macos so we can't use -D warnings
 
       - name: Run tests (gles2)
-        run: cargo test --workspace --features "rafx-gles2,basic-pipeline,cli/basic-pipeline" --manifest-path demo/Cargo.toml
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
+        run: cargo test --workspace --features "rafx-gles2,basic-pipeline" --manifest-path demo/Cargo.toml
         env:
-          CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: Run tests (gles3)
-        run: cargo test --workspace --features "rafx-gles3,basic-pipeline,cli/basic-pipeline" --manifest-path demo/Cargo.toml
         if: ${{ runner.os == 'Linux' && matrix.toolchain == 'stable' }}
+        run: cargo test --workspace --features "rafx-gles3,basic-pipeline" --manifest-path demo/Cargo.toml
         env:
-          CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
+
 
   deny-check:
     name: cargo-deny
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           command: check ${{ matrix.checks }}
 
   clean:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           components: rustfmt, clippy
-          override: true
 
       - name: Check the format
         run: cargo fmt --all -- --check

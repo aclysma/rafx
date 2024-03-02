@@ -1,7 +1,7 @@
 [package]
 name = "rafx-plugins"
 version = "0.0.15"
-edition = "2018"
+edition = "2021"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 description = "Rendering framework built on an extensible asset pipeline"
 license = "MIT OR Apache-2.0"
@@ -13,7 +13,11 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 
 [dependencies]
 rafx = { path = "../rafx", version = "0.0.15", features = ["assets", "renderer"] }
-distill = { version = "=0.0.3", features = ["serde_importers"] }
+
+hydrate-pipeline = "0.0.2"
+hydrate-data = "0.0.2"
+hydrate-loader = "0.0.2"
+hydrate-base = "0.0.2"
 
 legion = { version = "0.4.0", default-features = false, features = ["serialize"], optional = true }
 
@@ -36,7 +40,7 @@ itertools = "0.8"
 
 # GLTF asset type
 gltf = "0.16"
-image = "0.23.12"
+image = { version = "0.24.5", default-features = false, features = ["gif", "jpeg", "ico", "png", "pnm", "tga", "tiff", "bmp"] }
 
 meshopt = { version = "0.1.9", optional = true }
 
@@ -56,7 +60,7 @@ rand = "0.8"
 [dev-dependencies]
 
 [features]
-# legion: if enabled, include some helper setup code
+
 
 # if enabled, use egui with winit
 egui-winit = ["egui", "winit"]

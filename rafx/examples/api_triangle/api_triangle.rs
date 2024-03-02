@@ -435,13 +435,17 @@ pub fn sdl2_init() -> Sdl2Systems {
         .expect("Failed to create sdl video subsystem");
 
     // Create the window
-    let window = video_subsystem
-        .window("Rafx Example", WINDOW_WIDTH, WINDOW_HEIGHT)
+    let mut window_binding = video_subsystem.window("Rafx Example", WINDOW_WIDTH, WINDOW_HEIGHT);
+
+    let window_builder = window_binding
         .position_centered()
         .allow_highdpi()
-        .resizable()
-        .build()
-        .expect("Failed to create window");
+        .resizable();
+
+    #[cfg(target_os = "macos")]
+    let window_builder = window_builder.metal_view();
+
+    let window = window_builder.build().expect("Failed to create window");
 
     Sdl2Systems {
         context,

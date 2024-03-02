@@ -1,8 +1,10 @@
 mod image;
 #[cfg(feature = "basis-universal")]
-pub use self::image::BasisImageImporter;
+pub use self::image::GpuCompressedImageImporterBasis;
 #[cfg(feature = "ddsfile")]
-pub use self::image::DdsImageImporter;
+pub use self::image::GpuCompressedImageImporterDds;
+pub use self::image::GpuImageAssetPlugin;
+pub use self::image::GpuImageImporterSimple;
 pub use self::image::ImageAsset;
 pub use self::image::ImageAssetBasisCompressionSettings;
 pub use self::image::ImageAssetBasisCompressionType;
@@ -15,7 +17,7 @@ pub use self::image::ImageAssetDataPayloadSingleBuffer;
 pub use self::image::ImageAssetDataPayloadSubresources;
 pub use self::image::ImageAssetMipGeneration;
 pub use self::image::ImageFileFormat;
-pub use self::image::ImageImporter;
+//pub use self::image::ImageImporter;
 pub use self::image::ImageImporterConfig;
 pub use self::image::ImageImporterOptions;
 pub use self::image::ImageImporterRule;
@@ -25,27 +27,29 @@ pub use self::image::ImageImporterRuleOptions;
 mod shader;
 pub use shader::ShaderAsset;
 pub use shader::ShaderAssetData;
-pub use shader::ShaderImporterCooked;
-pub use shader::ShaderImporterSpv;
+// pub use shader::ShaderImporterCooked;
+// pub use shader::ShaderImporterSpv;
+pub use shader::ShaderPackageAssetPlugin;
 
 mod graphics_pipeline;
 pub use graphics_pipeline::FixedFunctionStateData;
 pub use graphics_pipeline::MaterialAsset;
 pub use graphics_pipeline::MaterialAssetData;
-pub use graphics_pipeline::MaterialImporter;
+pub use graphics_pipeline::MaterialAssetPlugin;
+//pub use graphics_pipeline::MaterialImporter;
 pub use graphics_pipeline::MaterialInstanceAsset;
 pub use graphics_pipeline::MaterialInstanceAssetData;
-pub use graphics_pipeline::MaterialInstanceImporter;
+//pub use graphics_pipeline::MaterialInstanceImporter;
 pub use graphics_pipeline::MaterialInstanceSlotAssignment;
 pub use graphics_pipeline::MaterialPassData;
 pub use graphics_pipeline::SamplerAsset;
 pub use graphics_pipeline::SamplerAssetData;
-pub use graphics_pipeline::SamplerImporter;
 
 mod compute_pipeline;
 pub use compute_pipeline::ComputePipelineAsset;
 pub use compute_pipeline::ComputePipelineAssetData;
-pub use compute_pipeline::ComputePipelineImporter;
+pub use compute_pipeline::ComputePipelineAssetPlugin;
+//pub use compute_pipeline::ComputePipelineImporter;
 
 mod buffer;
 pub use buffer::BufferAsset;
@@ -74,10 +78,10 @@ pub use asset_type_handler::DefaultAssetTypeHandler;
 pub use asset_type_handler::DefaultAssetTypeLoadHandler;
 pub use asset_type_handler::StorageOnlyAssetTypeHandler;
 
-mod load_queue;
-pub use load_queue::GenericLoader;
-pub use load_queue::LoadQueues;
-pub use load_queue::LoadRequest;
+pub mod load_queue_hydrate;
+pub use load_queue_hydrate::LoadQueues;
+pub use load_queue_hydrate::LoadRequest;
+pub use load_queue_hydrate::RafxGenericLoadEventHandler;
 
 mod material_descriptor_sets;
 pub use material_descriptor_sets::DynMaterialInstance;

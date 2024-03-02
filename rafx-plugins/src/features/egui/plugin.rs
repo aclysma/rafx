@@ -2,7 +2,7 @@ use rafx::render_feature_renderer_prelude::*;
 
 use super::*;
 use crate::phases::UiRenderPhase;
-use distill::loader::handle::Handle;
+use hydrate_base::handle::Handle;
 use rafx::assets::MaterialAsset;
 use rafx::renderer::RendererLoadContext;
 
@@ -85,7 +85,7 @@ impl RenderFeaturePlugin for EguiRendererPlugin {
         _upload: &mut RafxTransferUpload,
     ) -> RafxResult<()> {
         let egui_material = asset_resource
-            .load_asset_path::<MaterialAsset, _>("rafx-plugins/materials/egui.material");
+            .load_artifact_symbol_name::<MaterialAsset>("rafx-plugins://materials/egui.material");
 
         renderer_load_context.wait_for_asset_to_load(
             render_resources,

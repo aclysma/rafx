@@ -1,5 +1,5 @@
-use distill::loader::handle::Handle;
-use distill::loader::LoadHandle;
+use hydrate_base::handle::Handle;
+use hydrate_base::LoadHandle;
 use rafx::api::RafxResult;
 use rafx::assets::{AssetManager, DefaultAssetTypeHandler, DefaultAssetTypeLoadHandler};
 use serde::{Deserialize, Serialize};
@@ -50,7 +50,7 @@ pub struct PrefabAdvAssetDataObject {
 }
 
 #[derive(TypeUuid, Serialize, Deserialize, Clone, Debug)]
-#[uuid = "2aa26beb-2359-4f57-a035-8e33b3ce8bf1"]
+#[uuid = "fcbd5421-7ea0-4270-9d67-f06cbd0c08e1"]
 pub struct PrefabAdvAssetData {
     pub objects: Vec<PrefabAdvAssetDataObject>,
 }

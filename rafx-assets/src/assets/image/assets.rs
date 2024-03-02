@@ -48,8 +48,8 @@ impl Into<basis_universal::BasisTextureFormat> for ImageAssetBasisCompressionTyp
 //NOTE: This is serialized in image asset options, so may require asset schema change if modifying it
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct ImageAssetBasisCompressionSettings {
-    compression_type: ImageAssetBasisCompressionType,
-    quality: u32,
+    pub compression_type: ImageAssetBasisCompressionType,
+    pub quality: u32,
 }
 
 #[cfg(feature = "basis-universal")]
@@ -249,10 +249,18 @@ impl ImageAssetData {
 
                 match settings.compression_type {
                     ImageAssetBasisCompressionType::Etc1S => {
-                        compressor_params.set_etc1s_quality_level(settings.quality)
+                        let quality_level = settings.quality.clamp(
+                            basis_universal::ETC1S_QUALITY_MIN,
+                            basis_universal::ETC1S_QUALITY_MAX,
+                        );
+                        compressor_params.set_etc1s_quality_level(quality_level)
                     }
                     ImageAssetBasisCompressionType::Uastc => {
-                        compressor_params.set_uastc_quality_level(settings.quality)
+                        let quality_level = settings.quality.clamp(
+                            basis_universal::ETC1S_QUALITY_MIN,
+                            basis_universal::ETC1S_QUALITY_MAX,
+                        );
+                        compressor_params.set_uastc_quality_level(quality_level)
                     }
                 }
 

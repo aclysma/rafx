@@ -1,15 +1,15 @@
-use super::ModelAdvAssetData;
-use crate::assets::mesh_adv::{MeshAdvAsset, ModelAdvAssetDataLod};
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
-use rafx::distill::loader::handle::Handle;
+use crate::schema::MeshAdvModelAssetRecord;
+use hydrate_data::{ImportableName, Record};
+use hydrate_pipeline::{
+    AssetPlugin, AssetPluginSetupContext, ImportContext, Importer, PipelineResult, ScanContext,
+};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
+use std::path::PathBuf;
 use type_uuid::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ModelLodJsonFormat {
-    pub mesh: Handle<MeshAdvAsset>,
+    pub mesh: PathBuf,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -17,64 +17,75 @@ struct ModelJsonFormat {
     pub lods: Vec<ModelLodJsonFormat>,
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "1c6506cb-3bcf-49f3-9883-c36868da37c3"]
-pub struct MeshAdvBlenderModelImporterState(Option<AssetUuid>);
+#[derive(TypeUuid, Default)]
+#[uuid = "a97c46e9-1deb-4ca2-9f70-b4ce97a74cf2"]
+pub struct BlenderModelImporter;
 
-#[derive(TypeUuid)]
-#[uuid = "ace983d5-5340-4872-a9e9-77f39f527f27"]
-pub struct MeshAdvBlenderModelImporter;
-impl Importer for MeshAdvBlenderModelImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        3
+impl Importer for BlenderModelImporter {
+    fn supported_file_extensions(&self) -> &[&'static str] {
+        &["blender_model"]
     }
 
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ();
-
-    type State = MeshAdvBlenderModelImporterState;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
+    fn scan_file(
         &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let id = state
-            .0
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = MeshAdvBlenderModelImporterState(Some(id));
+        context: ScanContext,
+    ) -> PipelineResult<()> {
+        //
+        // Read the file
+        //
+        let source = std::fs::read_to_string(context.path)?;
+        let json_format: ModelJsonFormat = serde_json::from_str(&source)
+            .map_err(|x| format!("Blender Model Import error: {:?}", x))?;
 
-        let json_format: ModelJsonFormat = serde_json::from_reader(source)
-            .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
-
-        let mut lods = Vec::with_capacity(json_format.lods.len());
-        for lod in json_format.lods {
-            lods.push(ModelAdvAssetDataLod {
-                mesh: lod.mesh.clone(),
-            });
+        let importable = context.add_default_importable::<MeshAdvModelAssetRecord>()?;
+        for lod in &json_format.lods {
+            importable.add_path_reference(&lod.mesh)?;
         }
 
-        let asset_data = ModelAdvAssetData { lods };
+        Ok(())
+    }
 
-        Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(asset_data),
-            }],
-        })
+    fn import_file(
+        &self,
+        context: ImportContext,
+    ) -> PipelineResult<()> {
+        //
+        // Read the file
+        //
+        let source = std::fs::read_to_string(context.path)?;
+        let json_format: ModelJsonFormat = serde_json::from_str(&source)
+            .map_err(|x| format!("Blender Model Import error: {:?}", x))?;
+
+        //
+        // Create the default asset
+        //
+        let default_asset = MeshAdvModelAssetRecord::new_builder(context.schema_set);
+
+        let entry = default_asset.lods().add_entry()?;
+        let lod_entry = default_asset.lods().entry(entry);
+
+        for lod in &json_format.lods {
+            let mesh_object_id = context.asset_id_for_referenced_file_path(
+                ImportableName::default(),
+                &lod.mesh.as_path().into(),
+            )?;
+            lod_entry.mesh().set(mesh_object_id)?;
+        }
+
+        //
+        // Return the created objects
+        //
+        context.add_default_importable(default_asset.into_inner()?, None);
+        Ok(())
+    }
+}
+
+pub struct BlenderModelAssetPlugin;
+
+impl AssetPlugin for BlenderModelAssetPlugin {
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<BlenderModelImporter>();
     }
 }

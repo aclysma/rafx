@@ -2,14 +2,19 @@ use crate::assets::anim::{
     AnimAssetData, AnimClip, AnimInterpolationMode, Bone, BoneChannelGroup, BoneChannelQuat,
     BoneChannelVec3, Skeleton,
 };
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
+use crate::schema::{
+    BlenderAnimAssetAccessor, BlenderAnimAssetRecord, BlenderAnimImportedDataRecord,
+};
 use fnv::FnvHashMap;
+use hydrate_base::AssetId;
+use hydrate_data::{Record, RecordAccessor};
+use hydrate_pipeline::{
+    AssetPlugin, AssetPluginSetupContext, Builder, BuilderContext, ImportContext, Importer,
+    JobInput, JobOutput, JobProcessor, PipelineResult, RunContext, ScanContext,
+};
 use rafx::api::{RafxError, RafxResult};
-use rafx::distill::importer::Error;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use std::io::Read;
 use type_uuid::*;
 
 #[allow(dead_code)]
@@ -109,113 +114,6 @@ pub struct ActionJsonData {
 pub struct AnimJsonData {
     skeleton: SkeletonJsonData,
     actions: Vec<ActionJsonData>,
-}
-
-#[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
-#[uuid = "da73abc3-aaa9-447e-8726-e5e932383288"]
-pub struct AnimImporterOptions {}
-
-// The asset state is stored in this format using Vecs
-#[derive(TypeUuid, Serialize, Deserialize, Default, Clone, Debug)]
-#[uuid = "c995f022-8214-4bfe-a8ee-b4bff873901d"]
-pub struct AnimImporterStateStable {
-    anim_asset_uuid: Option<AssetUuid>,
-}
-
-impl From<AnimImporterStateUnstable> for AnimImporterStateStable {
-    fn from(other: AnimImporterStateUnstable) -> Self {
-        let mut stable = AnimImporterStateStable::default();
-        stable.anim_asset_uuid = other.anim_asset_uuid.clone();
-        stable
-    }
-}
-
-#[derive(Default)]
-pub struct AnimImporterStateUnstable {
-    anim_asset_uuid: Option<AssetUuid>,
-}
-
-impl From<AnimImporterStateStable> for AnimImporterStateUnstable {
-    fn from(other: AnimImporterStateStable) -> Self {
-        let mut unstable = AnimImporterStateUnstable::default();
-        unstable.anim_asset_uuid = other.anim_asset_uuid.clone();
-        unstable
-    }
-}
-
-#[derive(TypeUuid)]
-#[uuid = "fe509d69-62ed-40a1-badd-b45d2fbfce07"]
-pub struct BlenderAnimImporter;
-impl Importer for BlenderAnimImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        2
-    }
-
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = AnimImporterOptions;
-
-    type State = AnimImporterStateStable;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
-        &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        stable_state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let mut unstable_state: AnimImporterStateUnstable = stable_state.clone().into();
-
-        //
-        // Assign an ID to this anim file if not already assigned
-        //
-        unstable_state.anim_asset_uuid = Some(
-            unstable_state
-                .anim_asset_uuid
-                .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes())),
-        );
-
-        // Read in the anim file
-        let anim_data: serde_json::Result<AnimJsonData> = serde_json::from_reader(source);
-        if let Err(err) = anim_data {
-            log::error!("anim Import error: {:?}", err);
-            return Err(Error::Boxed(Box::new(err)));
-        }
-
-        let anim_data = anim_data.unwrap();
-
-        let skeleton = parse_skeleton(&anim_data.skeleton).map_err(|e| e.to_string())?;
-
-        let mut clips = Vec::with_capacity(anim_data.actions.len());
-        for action in &anim_data.actions {
-            clips.push(parse_action(&skeleton, action).map_err(|e| e.to_string())?);
-        }
-
-        let asset_data = AnimAssetData { skeleton, clips };
-
-        let mut imported_assets = Vec::<ImportedAsset>::default();
-        imported_assets.push(ImportedAsset {
-            id: unstable_state.anim_asset_uuid.unwrap(),
-            search_tags: vec![],
-            build_deps: vec![],
-            load_deps: vec![],
-            build_pipeline: None,
-            asset_data: Box::new(asset_data),
-        });
-
-        *stable_state = unstable_state.into();
-
-        Ok(ImporterValue {
-            assets: imported_assets,
-        })
-    }
 }
 
 fn try_add_bone(
@@ -340,4 +238,144 @@ fn parse_action(
         name: action.name.clone(),
         bone_channel_groups,
     })
+}
+
+#[derive(TypeUuid, Default)]
+#[uuid = "238792bf-7078-4675-9f4d-cf53305806c6"]
+pub struct BlenderAnimImporter;
+
+impl Importer for BlenderAnimImporter {
+    fn supported_file_extensions(&self) -> &[&'static str] {
+        &["blender_anim"]
+    }
+
+    fn scan_file(
+        &self,
+        context: ScanContext,
+    ) -> PipelineResult<()> {
+        context.add_default_importable::<BlenderAnimAssetRecord>()?;
+        Ok(())
+    }
+
+    fn import_file(
+        &self,
+        context: ImportContext,
+    ) -> PipelineResult<()> {
+        //
+        // Read the file
+        //
+        let json_str = std::fs::read_to_string(context.path)?;
+        // We don't use this immediately, but make sure it's at least well formed
+        let _anim_data: AnimJsonData = serde_json::from_str(&json_str)?;
+
+        //
+        // Create the default asset
+        //
+        let default_asset = BlenderAnimAssetRecord::new_builder(context.schema_set);
+
+        //
+        // Create import data
+        //
+        let import_data = BlenderAnimImportedDataRecord::new_builder(context.schema_set);
+        import_data.json_string().set(json_str)?;
+
+        //
+        // Return the created objects
+        //
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
+        Ok(())
+    }
+}
+
+#[derive(Hash, Serialize, Deserialize)]
+pub struct BlenderAnimJobInput {
+    pub asset_id: AssetId,
+}
+impl JobInput for BlenderAnimJobInput {}
+
+#[derive(Serialize, Deserialize)]
+pub struct BlenderAnimJobOutput {}
+impl JobOutput for BlenderAnimJobOutput {}
+
+#[derive(Default, TypeUuid)]
+#[uuid = "e7ab8a6c-6d53-4c05-b3e3-eb286ff2042a"]
+pub struct BlenderAnimJobProcessor;
+
+impl JobProcessor for BlenderAnimJobProcessor {
+    type InputT = BlenderAnimJobInput;
+    type OutputT = BlenderAnimJobOutput;
+
+    fn version(&self) -> u32 {
+        1
+    }
+
+    fn run<'a>(
+        &self,
+        context: &'a RunContext<'a, Self::InputT>,
+    ) -> PipelineResult<BlenderAnimJobOutput> {
+        //
+        // Read imported data
+        //
+        let imported_data =
+            context.imported_data::<BlenderAnimImportedDataRecord>(context.input.asset_id)?;
+
+        let json_str = imported_data.json_string().get()?;
+
+        let anim_data: AnimJsonData = serde_json::from_str(&json_str)?;
+
+        let skeleton = parse_skeleton(&anim_data.skeleton).map_err(|e| e.to_string())?;
+
+        let mut clips = Vec::with_capacity(anim_data.actions.len());
+        for action in &anim_data.actions {
+            clips.push(parse_action(&skeleton, action).map_err(|e| e.to_string())?);
+        }
+
+        context
+            .produce_default_artifact(context.input.asset_id, AnimAssetData { skeleton, clips })?;
+
+        Ok(BlenderAnimJobOutput {})
+    }
+}
+
+#[derive(TypeUuid, Default)]
+#[uuid = "77a09407-3ec8-440d-bd01-408b84b4516c"]
+pub struct BlenderAnimBuilder {}
+
+impl Builder for BlenderAnimBuilder {
+    fn asset_type(&self) -> &'static str {
+        BlenderAnimAssetAccessor::schema_name()
+    }
+
+    fn start_jobs(
+        &self,
+        context: BuilderContext,
+    ) -> PipelineResult<()> {
+        //Future: Might produce jobs per-platform
+        context.enqueue_job::<BlenderAnimJobProcessor>(
+            context.data_set,
+            context.schema_set,
+            context.job_api,
+            BlenderAnimJobInput {
+                asset_id: context.asset_id,
+            },
+        )?;
+        Ok(())
+    }
+}
+
+pub struct BlenderAnimAssetPlugin;
+
+impl AssetPlugin for BlenderAnimAssetPlugin {
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<BlenderAnimImporter>();
+        context
+            .builder_registry
+            .register_handler::<BlenderAnimBuilder>();
+        context
+            .job_processor_registry
+            .register_job_processor::<BlenderAnimJobProcessor>();
+    }
 }

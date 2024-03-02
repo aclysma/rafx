@@ -1,25 +1,18 @@
-use crate::assets::mesh_adv::{
-    ModelAdvAsset, PrefabAdvAssetData, PrefabAdvAssetDataObject, PrefabAdvAssetDataObjectLight,
-    PrefabAdvAssetDataObjectLightKind, PrefabAdvAssetDataObjectLightSpot,
-    PrefabAdvAssetDataObjectModel, PrefabAdvAssetDataObjectTransform,
+use crate::assets::mesh_adv::PrefabAdvAssetDataObjectLightKind;
+use crate::schema::{MeshAdvPrefabAssetRecord, MeshAdvPrefabImportDataRecord};
+use hydrate_data::Record;
+use hydrate_pipeline::{
+    AssetPlugin, AssetPluginSetupContext, ImportContext, Importer, PipelineResult, ScanContext,
 };
-use distill::importer::{ImportedAsset, Importer, ImporterValue};
-use distill::{core::AssetUuid, importer::ImportOp};
-use rafx::distill::loader::handle::Handle;
 use serde::{Deserialize, Serialize};
-use std::io::Read;
+use std::path::PathBuf;
 use type_uuid::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MeshAdvPrefabJsonFormatObjectTransform {
-    position: glam::Vec3,
-    rotation: glam::Quat,
-    scale: glam::Vec3,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct MeshAdvPrefabJsonFormatObjectModel {
-    model: Handle<ModelAdvAsset>,
+    pub position: glam::Vec3,
+    pub rotation: glam::Quat,
+    pub scale: glam::Vec3,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
@@ -45,131 +38,102 @@ impl Into<PrefabAdvAssetDataObjectLightKind> for MeshAdvPrefabJsonFormatObjectLi
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MeshAdvPrefabJsonFormatObjectLightSpot {
-    inner_angle: f32,
-    outer_angle: f32,
+    pub inner_angle: f32,
+    pub outer_angle: f32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MeshAdvPrefabJsonFormatObjectLight {
-    color: [f32; 3],
-    kind: MeshAdvPrefabJsonFormatObjectLightKind,
-    intensity: f32,
-    cutoff_distance: Option<f32>,
-    spot: Option<MeshAdvPrefabJsonFormatObjectLightSpot>,
+    pub color: [f32; 3],
+    pub kind: MeshAdvPrefabJsonFormatObjectLightKind,
+    pub intensity: f32,
+    pub cutoff_distance: Option<f32>,
+    pub spot: Option<MeshAdvPrefabJsonFormatObjectLightSpot>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct MeshAdvPrefabJsonFormatObjectModel {
+    pub model: PathBuf, //Handle<ModelAdvAsset>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MeshAdvPrefabJsonFormatObject {
-    transform: MeshAdvPrefabJsonFormatObjectTransform,
-    model: Option<MeshAdvPrefabJsonFormatObjectModel>,
-    light: Option<MeshAdvPrefabJsonFormatObjectLight>,
+    pub transform: MeshAdvPrefabJsonFormatObjectTransform,
+    pub model: Option<MeshAdvPrefabJsonFormatObjectModel>,
+    pub light: Option<MeshAdvPrefabJsonFormatObjectLight>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct MeshAdvPrefabJsonFormat {
+pub struct MeshAdvPrefabJsonFormat {
     pub objects: Vec<MeshAdvPrefabJsonFormatObject>,
 }
 
-#[derive(TypeUuid, Serialize, Deserialize, Default)]
-#[uuid = "5f9022bc-fd83-4f99-9fb7-a395fd997361"]
-pub struct MeshAdvBlenderPrefabImporterState(Option<AssetUuid>);
+#[derive(TypeUuid, Default)]
+#[uuid = "a40a442f-285e-4bb8-81f4-43d761b9f140"]
+pub struct BlenderPrefabImporter;
 
-#[derive(TypeUuid)]
-#[uuid = "1441f5a2-5c3b-404b-b03f-2234146e2c2f"]
-pub struct MeshAdvBlenderPrefabImporter;
-impl Importer for MeshAdvBlenderPrefabImporter {
-    fn version_static() -> u32
-    where
-        Self: Sized,
-    {
-        4
+impl Importer for BlenderPrefabImporter {
+    fn supported_file_extensions(&self) -> &[&'static str] {
+        &["blender_prefab"]
     }
 
-    fn version(&self) -> u32 {
-        Self::version_static()
-    }
-
-    type Options = ();
-
-    type State = MeshAdvBlenderPrefabImporterState;
-
-    /// Reads the given bytes and produces assets.
-    #[profiling::function]
-    fn import(
+    fn scan_file(
         &self,
-        _op: &mut ImportOp,
-        source: &mut dyn Read,
-        _options: &Self::Options,
-        state: &mut Self::State,
-    ) -> distill::importer::Result<ImporterValue> {
-        let id = state
-            .0
-            .unwrap_or_else(|| AssetUuid(*uuid::Uuid::new_v4().as_bytes()));
-        *state = MeshAdvBlenderPrefabImporterState(Some(id));
+        context: ScanContext,
+    ) -> PipelineResult<()> {
+        //
+        // Read the file
+        //
+        let source = std::fs::read_to_string(context.path)?;
+        let json_format: MeshAdvPrefabJsonFormat = serde_json::from_str(&source)
+            .map_err(|x| format!("Blender Prefab Import error: {:?}", x))?;
 
-        let json_format: MeshAdvPrefabJsonFormat = serde_json::from_reader(source)
-            .map_err(|x| format!("Blender Material Import error: {:?}", x))?;
+        let importable = context.add_default_importable::<MeshAdvPrefabAssetRecord>()?;
 
-        let mut objects = Vec::with_capacity(json_format.objects.len());
-        for json_object in json_format.objects {
-            let model = if let Some(json_model) = &json_object.model {
-                let model = json_model.model.clone();
-
-                Some(PrefabAdvAssetDataObjectModel { model })
-            } else {
-                None
-            };
-
-            let light = if let Some(json_light) = &json_object.light {
-                let light = json_light.clone();
-                let spot = light
-                    .spot
-                    .as_ref()
-                    .map(|x| PrefabAdvAssetDataObjectLightSpot {
-                        inner_angle: x.inner_angle,
-                        outer_angle: x.outer_angle,
-                    });
-
-                let range = if light.cutoff_distance.unwrap_or(-1.0) < 0.0 {
-                    None
-                } else {
-                    light.cutoff_distance
-                };
-                Some(PrefabAdvAssetDataObjectLight {
-                    color: light.color.into(),
-                    kind: light.kind.into(),
-                    intensity: light.intensity,
-                    range,
-                    spot,
-                })
-            } else {
-                None
-            };
-
-            let transform = PrefabAdvAssetDataObjectTransform {
-                position: json_object.transform.position.into(),
-                rotation: json_object.transform.rotation.into(),
-                scale: json_object.transform.scale.into(),
-            };
-
-            objects.push(PrefabAdvAssetDataObject {
-                transform,
-                model,
-                light,
-            });
+        for object in &json_format.objects {
+            if let Some(model) = &object.model {
+                importable.add_path_reference(&model.model)?;
+            }
         }
 
-        let asset_data = PrefabAdvAssetData { objects };
+        Ok(())
+    }
 
-        Ok(ImporterValue {
-            assets: vec![ImportedAsset {
-                id,
-                search_tags: vec![],
-                build_deps: vec![],
-                load_deps: vec![],
-                build_pipeline: None,
-                asset_data: Box::new(asset_data),
-            }],
-        })
+    fn import_file(
+        &self,
+        context: ImportContext,
+    ) -> PipelineResult<()> {
+        //
+        // Read the file
+        //
+        let source = std::fs::read_to_string(context.path)?;
+        // We don't actually need to parse this now but worth doing to make sure it's well-formed at import time
+        let _json_format: MeshAdvPrefabJsonFormat = serde_json::from_str(&source)
+            .map_err(|x| format!("Blender Prefab Import error: {:?}", x))?;
+
+        //
+        // Create the default asset
+        //
+        let default_asset = MeshAdvPrefabAssetRecord::new_builder(context.schema_set);
+
+        let import_data = MeshAdvPrefabImportDataRecord::new_builder(context.schema_set);
+        import_data.json_data().set(source)?;
+
+        //
+        // Return the created objects
+        //
+        context
+            .add_default_importable(default_asset.into_inner()?, Some(import_data.into_inner()?));
+        Ok(())
+    }
+}
+
+pub struct BlenderPrefabAssetPlugin;
+
+impl AssetPlugin for BlenderPrefabAssetPlugin {
+    fn setup(context: AssetPluginSetupContext) {
+        context
+            .importer_registry
+            .register_handler::<BlenderPrefabImporter>();
     }
 }

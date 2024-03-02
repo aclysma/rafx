@@ -8,9 +8,6 @@ use rafx_plugins::features::sprite::SpriteRenderFeature;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[cfg(feature = "basic-pipeline")]
-use rafx_plugins::features::mesh_basic::MeshBasicRenderFeature as MeshRenderFeature;
-
 #[cfg(not(feature = "basic-pipeline"))]
 use rafx_plugins::features::mesh_adv::MeshAdvRenderFeature as MeshRenderFeature;
 
@@ -27,6 +24,8 @@ impl DemoRendererThreadPool {
         // a `cost` to each element of a given feature and only create a new task
         // when the `cost` exceeds some threshold.
         let mut feature_parallelism = HashMap::new();
+
+        #[cfg(not(feature = "basic-pipeline"))]
         feature_parallelism.insert(
             MeshRenderFeature::feature_index(),
             ParallelChunkSizes::default()

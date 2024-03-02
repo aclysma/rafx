@@ -1,9 +1,8 @@
 use super::{TextDrawCommand, TextDrawData};
 use crate::assets::font::FontAsset;
 use fnv::FnvHashMap;
-use rafx::distill::loader::handle::AssetHandle;
-use rafx::distill::loader::handle::Handle;
-use rafx::distill::loader::LoadHandle;
+use hydrate_base::handle::{ArtifactHandle, Handle};
+use hydrate_base::LoadHandle;
 
 pub struct AppendText<'a>(&'a mut TextResource, glam::Vec3);
 

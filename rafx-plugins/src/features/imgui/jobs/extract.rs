@@ -1,10 +1,10 @@
 use rafx::render_feature_extract_job_predule::*;
 
 use super::*;
+use hydrate_base::handle::Handle;
 use rafx::assets::{AssetManagerExtractRef, AssetManagerRenderResource, MaterialAsset};
 use rafx::base::resource_map::ReadBorrow;
 use rafx::base::resource_ref_map::ResourceRefBorrowMut;
-use rafx::distill::loader::handle::Handle;
 use rafx::graph::SwapchainSurfaceInfo;
 use rafx::renderer::SwapchainRenderResource;
 
