@@ -1,6 +1,6 @@
 [package]
 name = "rafx-plugins"
-version = "0.0.15"
+version = "0.0.16"
 edition = "2021"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 description = "Rendering framework built on an extensible asset pipeline"
@@ -12,7 +12,7 @@ keywords = ["game", "rendering", "graphics"]
 categories = ["game-development", "game-engines", "graphics", "multimedia", "rendering::engine"]
 
 [dependencies]
-rafx = { path = "../rafx", version = "0.0.15", features = ["assets", "renderer"] }
+rafx = { path = "../rafx", version = "0.0.16", features = ["assets", "renderer"] }
 
 hydrate-pipeline = "0.0.2"
 hydrate-data = "0.0.2"

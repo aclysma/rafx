@@ -1,6 +1,6 @@
 [package]
 name = "rafx-base"
-version = "0.0.15"
+version = "0.0.16"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2021"
 description = "Rendering framework built on an extensible asset pipeline"

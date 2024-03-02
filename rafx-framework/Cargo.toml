@@ -1,6 +1,6 @@
 [package]
 name = "rafx-framework"
-version = "0.0.15"
+version = "0.0.16"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2021"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -14,9 +14,9 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rafx-api = { version = "0.0.15", path = "../rafx-api", features = ["serde-support"] }
-rafx-base = { version = "0.0.15", path = "../rafx-base" }
-rafx-visibility = { version = "0.0.15", path = "../rafx-visibility" }
+rafx-api = { version = "0.0.16", path = "../rafx-api", features = ["serde-support"] }
+rafx-base = { version = "0.0.16", path = "../rafx-base" }
+rafx-visibility = { version = "0.0.16", path = "../rafx-visibility" }
 
 #rafx-nodes = { version = "=0.0.7", path = "../rafx-nodes" }
 

@@ -1,6 +1,6 @@
 [package]
 name = "rafx-renderer"
-version = "0.0.15"
+version = "0.0.16"
 authors = ["Philip Degarmo <aclysma@gmail.com>"]
 edition = "2021"
 description = "Rendering framework built on an extensible asset pipeline"
@@ -20,11 +20,11 @@ rafx-gles2 = ["rafx-assets/rafx-gles2"]
 rafx-gles3 = ["rafx-assets/rafx-gles3"]
 
 [dependencies]
-rafx-api = { version = "0.0.15", path = "../rafx-api" }
-rafx-base = { version = "0.0.15", path = "../rafx-base" }
-rafx-framework = { version = "0.0.15", path = "../rafx-framework" }
-rafx-assets = { version = "0.0.15", path = "../rafx-assets" }
-rafx-visibility = { version = "0.0.15", path = "../rafx-visibility" }
+rafx-api = { version = "0.0.16", path = "../rafx-api" }
+rafx-base = { version = "0.0.16", path = "../rafx-base" }
+rafx-framework = { version = "0.0.16", path = "../rafx-framework" }
+rafx-assets = { version = "0.0.16", path = "../rafx-assets" }
+rafx-visibility = { version = "0.0.16", path = "../rafx-visibility" }
 
 glam = { version = "0.13.1", features = [ "serde" ] }
 crossbeam-channel = "0.5"
