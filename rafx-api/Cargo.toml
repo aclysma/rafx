@@ -16,6 +16,7 @@ categories = ["game-development", "game-engines", "graphics", "multimedia", "ren
 [dependencies]
 rafx-base = { version = "0.0.16", path = "../rafx-base" }
 
+arrayvec = "0.7.4"
 log = "0.4"
 crossbeam-channel = "0.5"
 fnv = "1.0"
