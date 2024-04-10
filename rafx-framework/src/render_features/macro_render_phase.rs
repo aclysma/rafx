@@ -36,7 +36,6 @@ macro_rules! declare_render_phase {
                     $struct_name::render_phase_debug_name(),
                 );
 
-                use std::convert::TryInto;
                 $atomic_constant_name.store(
                     index.try_into().unwrap(),
                     std::sync::atomic::Ordering::Release,

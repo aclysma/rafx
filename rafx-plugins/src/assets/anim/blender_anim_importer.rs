@@ -14,7 +14,6 @@ use hydrate_pipeline::{
 };
 use rafx::api::{RafxError, RafxResult};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use type_uuid::*;
 
 #[allow(dead_code)]

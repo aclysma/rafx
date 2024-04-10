@@ -25,8 +25,6 @@
 // Alignment of blocks to 16 bytes promotes reinterpreting bytes i.e. u8 to u64 or __m128 without
 // tripping over undefined behavior
 
-use std::convert::TryInto;
-
 const HEADER_SIZE_IN_BYTES: usize = 16;
 const BLOCK_LENGTH_SIZE_IN_BYTES: usize = 8;
 const BLOCK_ALIGNMENT_IN_BYTES: usize = 16;
