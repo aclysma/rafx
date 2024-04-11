@@ -314,6 +314,10 @@ impl RafxSwapchainHelper {
         self.color_space
     }
 
+    pub fn rotating_frame_count(&self) -> usize {
+        crate::MAX_FRAMES_IN_FLIGHT + 1
+    }
+
     pub fn swapchain_def(&self) -> &RafxSwapchainDef {
         &self.swapchain_def
     }

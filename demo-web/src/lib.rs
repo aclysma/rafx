@@ -92,12 +92,12 @@ pub fn update_loop(
         // the uniform instead of the vertex buffer. Buffers also need to be immutable while
         // processed, so we need one per swapchain image
         //
-        let mut command_pools = Vec::with_capacity(swapchain_helper.image_count());
-        let mut command_buffers = Vec::with_capacity(swapchain_helper.image_count());
-        let mut vertex_buffers = Vec::with_capacity(swapchain_helper.image_count());
-        let mut uniform_buffers = Vec::with_capacity(swapchain_helper.image_count());
+        let mut command_pools = Vec::with_capacity(swapchain_helper.rotating_frame_count());
+        let mut command_buffers = Vec::with_capacity(swapchain_helper.rotating_frame_count());
+        let mut vertex_buffers = Vec::with_capacity(swapchain_helper.rotating_frame_count());
+        let mut uniform_buffers = Vec::with_capacity(swapchain_helper.rotating_frame_count());
 
-        for _ in 0..swapchain_helper.image_count() {
+        for _ in 0..swapchain_helper.rotating_frame_count() {
             log::trace!("Creating command pool");
             let mut command_pool =
                 graphics_queue.create_command_pool(&RafxCommandPoolDef { transient: true })?;
@@ -302,7 +302,7 @@ pub fn update_loop(
 
         // Initialize them all at once here.. this can be done per-frame as well.
         log::trace!("Set up descriptor sets");
-        for i in 0..swapchain_helper.image_count() {
+        for i in 0..swapchain_helper.rotating_frame_count() {
             descriptor_set_array.update_descriptor_set(&[
                 RafxDescriptorUpdate {
                     array_index: i as u32,
