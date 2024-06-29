@@ -313,6 +313,9 @@ pub const MAX_DESCRIPTOR_SET_LAYOUTS: usize = 4;
 pub const MAX_RENDER_TARGET_ATTACHMENTS: usize = 8;
 // Vulkan guarantees up to 16
 pub const MAX_VERTEX_INPUT_BINDINGS: usize = 16;
+// The vast, vast majority of usecases will have the GPU processing either one or two frames
+// simultaneously
+pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
 
 //
 // Exported public API

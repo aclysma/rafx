@@ -14,8 +14,6 @@ use crate::*;
 use ash::vk::Extent2D;
 use std::mem::ManuallyDrop;
 
-pub const MAX_FRAMES_IN_FLIGHT: usize = 2;
-
 /// Used to select which PresentMode is preferred. Some of this is hardware/platform dependent and
 /// it's a good idea to read the Vulkan spec.
 ///

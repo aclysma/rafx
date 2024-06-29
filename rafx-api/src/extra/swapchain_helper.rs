@@ -47,12 +47,12 @@ impl RafxSwapchainHelperSharedState {
         device_context: &RafxDeviceContext,
         swapchain: Arc<Mutex<RafxSwapchain>>,
     ) -> RafxResult<Self> {
-        let image_count = swapchain.lock().unwrap().image_count();
-        let mut image_available_semaphores = Vec::with_capacity(image_count);
-        let mut render_finished_semaphores = Vec::with_capacity(image_count);
-        let mut in_flight_fences = Vec::with_capacity(image_count);
+        let sync_primitive_count = crate::MAX_FRAMES_IN_FLIGHT + 1;
+        let mut image_available_semaphores = Vec::with_capacity(sync_primitive_count);
+        let mut render_finished_semaphores = Vec::with_capacity(sync_primitive_count);
+        let mut in_flight_fences = Vec::with_capacity(sync_primitive_count);
 
-        for _ in 0..image_count {
+        for _ in 0..sync_primitive_count {
             image_available_semaphores.push(device_context.create_semaphore()?);
             render_finished_semaphores.push(device_context.create_semaphore()?);
             in_flight_fences.push(device_context.create_fence()?);
@@ -89,9 +89,9 @@ pub struct RafxPresentableFrame {
 
 impl RafxPresentableFrame {
     /// An index that starts at 0 on the first present and increments every frame, wrapping back to
-    /// 0 after each swapchain image has been presented once. (See image_count on
-    /// RafxSwapchainHelper). WARNING: This is not always the returned swapchain image. Swapchain
-    /// images may be acquired in any order.
+    /// 0 after reporting MAX_FRAMES_IN_FLIGHT + 1. This is a convenience feature for cases where
+    /// a resource needs to be allocated and preserved for each frame in flight. For example,
+    /// delaying deallocation of memory until it is no longer in use by the GPU.
     pub fn rotating_frame_index(&self) -> usize {
         // The sync_frame_index can be used as-is for this purpose
         self.sync_frame_index
@@ -224,7 +224,6 @@ pub struct RafxSwapchainHelper {
     format: RafxFormat,
     color_space: RafxSwapchainColorSpace,
     swapchain_def: RafxSwapchainDef,
-    image_count: usize,
 
     // False initially, set to true when we produce the first presentable frame to indicate that
     // future frames need to wait for its result to be sent via the result_tx/result_rx channel
@@ -239,7 +238,6 @@ impl RafxSwapchainHelper {
     ) -> RafxResult<Self> {
         let format = swapchain.format();
         let color_space = swapchain.color_space();
-        let image_count = swapchain.image_count();
         let swapchain_def = swapchain.swapchain_def().clone();
 
         let shared_state = Arc::new(RafxSwapchainHelperSharedState::new(
@@ -257,7 +255,6 @@ impl RafxSwapchainHelper {
             shared_state: Some(shared_state),
             format,
             color_space,
-            image_count,
             swapchain_def,
             expect_result_from_previous_frame: false,
         })
@@ -317,8 +314,8 @@ impl RafxSwapchainHelper {
         self.color_space
     }
 
-    pub fn image_count(&self) -> usize {
-        self.image_count
+    pub fn rotating_frame_count(&self) -> usize {
+        crate::MAX_FRAMES_IN_FLIGHT + 1
     }
 
     pub fn swapchain_def(&self) -> &RafxSwapchainDef {
@@ -530,7 +527,6 @@ impl RafxSwapchainHelper {
             }
 
             self.format = swapchain.format();
-            self.image_count = swapchain.image_count();
             self.swapchain_def = swapchain_def;
         }
 
