@@ -947,9 +947,9 @@ impl RafxCommandBufferMetal {
         let inner = self.inner.borrow();
 
         let group_count = MTLSize {
-            width: group_count_x as _,
-            height: group_count_y as _,
-            depth: group_count_z as _,
+            width: (group_count_x as metal_rs::NSUInteger) * inner.threads_per_mesh_threadgroup.width,
+            height: (group_count_y as metal_rs::NSUInteger) * inner.threads_per_mesh_threadgroup.height,
+            depth: (group_count_z as metal_rs::NSUInteger) * inner.threads_per_mesh_threadgroup.depth,
         };
 
         inner
@@ -968,7 +968,7 @@ impl RafxCommandBufferMetal {
     ) -> RafxResult<()> {
         let inner = self.inner.borrow();
         self.wait_for_barriers(&*inner)?;
-        
+
         let group_count = MTLSize {
             width: group_count_x as _,
             height: group_count_y as _,
