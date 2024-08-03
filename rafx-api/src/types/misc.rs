@@ -380,7 +380,13 @@ bitflags::bitflags! {
         const GEOMETRY = 8;
         const FRAGMENT = 16;
         const COMPUTE = 32;
-        const ALL_GRAPHICS = 0x1F;
+
+        // Mesh shaders
+        const MESH = 64;
+        // This is an object shader in metal
+        const AMPLIFICATION = 128;
+
+        const ALL_GRAPHICS = 0xDF;
         const ALL = 0x7FFF_FFFF;
     }
 }

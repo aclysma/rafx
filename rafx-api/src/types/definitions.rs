@@ -451,7 +451,7 @@ pub struct RafxVertexLayoutBuffer {
 }
 
 /// Describes how vertex attributes are laid out within one or more buffers
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct RafxVertexLayout {
     pub attributes: Vec<RafxVertexLayoutAttribute>,
     pub buffers: Vec<RafxVertexLayoutBuffer>,

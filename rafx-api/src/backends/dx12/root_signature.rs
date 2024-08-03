@@ -562,6 +562,9 @@ impl RafxRootSignatureDx12 {
         if !all_used_shader_stage.intersects(RafxShaderStageFlags::FRAGMENT) {
             root_signature_flags |= d3d12::D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
         }
+        // if !all_used_shader_stage.intersects(RafxShaderStageFlags::MESH) {
+        //     root_signature_flags |= d3d12::D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+        // }
         // There are other deny flags we could use?
 
         //

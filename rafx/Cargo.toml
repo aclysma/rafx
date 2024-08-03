@@ -88,5 +88,10 @@ name = "asset_triangle"
 path = "examples/asset_triangle/asset_triangle.rs"
 required-features = ["assets"]
 
+[[example]]
+name = "meshshader_triangle"
+path = "examples/meshshader_triangle/meshshader_triangle.rs"
+required-features = []
+
 [package.metadata.docs.rs]
 features = ["rafx-vulkan", "framework", "assets", "renderer"]

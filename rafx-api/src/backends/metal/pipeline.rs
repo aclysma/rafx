@@ -4,6 +4,15 @@ use crate::{
     RafxRootSignature, RafxShaderStageFlags,
 };
 
+fn threads_per_group_to_mtl_size(compute_threads_per_group: Option<[u32; 3]>) -> RafxResult<metal_rs::MTLSize> {
+    let compute_threads_per_group = compute_threads_per_group.ok_or("Metal shaders must have threadgroup size specified in reflection data")?;
+    Ok(metal_rs::MTLSize::new(
+        compute_threads_per_group[0] as _,
+        compute_threads_per_group[1] as _,
+        compute_threads_per_group[2] as _,
+    ))
+}
+
 fn metal_entry_point_name(name: &str) -> &str {
     // "main" is not an allowed entry point name. spirv_cross adds a 0 to the end of any
     // unallowed entry point names so do that here too
@@ -26,7 +35,7 @@ unsafe impl Sync for MetalPipelineState {}
 
 #[derive(Debug)]
 pub(crate) struct PipelineComputeEncoderInfo {
-    pub compute_threads_per_group: [u32; 3],
+    pub(crate) threads_per_threadgroup: metal_rs::MTLSize,
 }
 
 #[derive(Debug)]
@@ -40,6 +49,10 @@ pub(crate) struct PipelineRenderEncoderInfo {
     pub(crate) mtl_depth_clip_mode: metal_rs::MTLDepthClipMode,
     pub(crate) mtl_depth_stencil_state: Option<metal_rs::DepthStencilState>,
     pub(crate) mtl_primitive_type: metal_rs::MTLPrimitiveType,
+
+    // Used when pipeline is mesh-shader based
+    pub(crate) threads_per_object_threadgroup: metal_rs::MTLSize,
+    pub(crate) threads_per_mesh_threadgroup: metal_rs::MTLSize,
 }
 
 // for metal_rs::DepthStencilState
@@ -84,16 +97,13 @@ impl RafxPipelineMetal {
         device_context: &RafxDeviceContextMetal,
         pipeline_def: &RafxGraphicsPipelineDef,
     ) -> RafxResult<Self> {
-        let pipeline = metal_rs::RenderPipelineDescriptor::new();
-
-        if device_context.device_info().debug_names_enabled {
-            if let Some(debug_name) = pipeline_def.debug_name {
-                pipeline.set_label(debug_name);
-            }
-        }
-
         let mut vertex_function = None;
         let mut fragment_function = None;
+        let mut mesh_function = None;
+        let mut object_function = None;
+        
+        let mut threads_per_object_threadgroup = metal_rs::MTLSize::default();
+        let mut threads_per_mesh_threadgroup = metal_rs::MTLSize::default();
 
         for stage in pipeline_def.shader.metal_shader().unwrap().stages() {
             if stage
@@ -129,66 +139,160 @@ impl RafxPipelineMetal {
                         .get_function(entry_point, None)?,
                 );
             }
-        }
 
-        let vertex_function = vertex_function.ok_or("Could not find vertex function")?;
-
-        pipeline.set_vertex_function(Some(vertex_function.as_ref()));
-        pipeline.set_fragment_function(fragment_function.as_deref());
-        pipeline.set_sample_count(pipeline_def.sample_count.into());
-
-        let vertex_descriptor = metal_rs::VertexDescriptor::new();
-        for attribute in &pipeline_def.vertex_layout.attributes {
-            let buffer_index =
-                super::util::vertex_buffer_adjusted_buffer_index(attribute.buffer_index);
-            let attribute_descriptor = vertex_descriptor
-                .attributes()
-                .object_at(attribute.location as _)
-                .unwrap();
-            attribute_descriptor.set_buffer_index(buffer_index);
-            attribute_descriptor.set_format(attribute.format.into());
-            attribute_descriptor.set_offset(attribute.byte_offset as _);
-        }
-
-        for (index, binding) in pipeline_def.vertex_layout.buffers.iter().enumerate() {
-            let buffer_index = super::util::vertex_buffer_adjusted_buffer_index(index as u32);
-            let layout_descriptor = vertex_descriptor.layouts().object_at(buffer_index).unwrap();
-            layout_descriptor.set_stride(binding.stride as _);
-            layout_descriptor.set_step_function(binding.rate.into());
-            layout_descriptor.set_step_rate(1);
-        }
-        pipeline.set_vertex_descriptor(Some(vertex_descriptor));
-
-        pipeline.set_input_primitive_topology(pipeline_def.primitive_topology.into());
-
-        //TODO: Pass in number of color attachments?
-        super::util::blend_def_to_attachment(
-            pipeline_def.blend_state,
-            &mut pipeline.color_attachments(),
-            pipeline_def.color_formats.len(),
-        );
-
-        for (index, &color_format) in pipeline_def.color_formats.iter().enumerate() {
-            pipeline
-                .color_attachments()
-                .object_at(index as _)
-                .unwrap()
-                .set_pixel_format(color_format.into());
-        }
-
-        if let Some(depth_format) = pipeline_def.depth_stencil_format {
-            if depth_format.has_depth() {
-                pipeline.set_depth_attachment_pixel_format(depth_format.into());
+            if stage
+                .reflection
+                .shader_stage
+                .intersects(RafxShaderStageFlags::MESH)
+            {
+                let entry_point = metal_entry_point_name(&stage.reflection.entry_point_name);
+                assert!(mesh_function.is_none());
+                mesh_function = Some(
+                    stage
+                        .shader_module
+                        .metal_shader_module()
+                        .unwrap()
+                        .library()
+                        .get_function(entry_point, None)?,
+                );
+                threads_per_mesh_threadgroup = threads_per_group_to_mtl_size(stage.reflection.compute_threads_per_group)?;
             }
 
-            if depth_format.has_stencil() {
-                pipeline.set_stencil_attachment_pixel_format(depth_format.into());
+            if stage
+                .reflection
+                .shader_stage
+                .intersects(RafxShaderStageFlags::AMPLIFICATION)
+            {
+                let entry_point = metal_entry_point_name(&stage.reflection.entry_point_name);
+                assert!(object_function.is_none());
+                object_function = Some(
+                    stage
+                        .shader_module
+                        .metal_shader_module()
+                        .unwrap()
+                        .library()
+                        .get_function(entry_point, None)?,
+                );
+                threads_per_object_threadgroup = threads_per_group_to_mtl_size(stage.reflection.compute_threads_per_group)?;
             }
         }
 
-        let pipeline = device_context
-            .device()
-            .new_render_pipeline_state(pipeline.as_ref())?;
+        let pipeline = if vertex_function.is_some() {
+            // Take the traditional vertex shader-based rasterization path
+            let pipeline = metal_rs::RenderPipelineDescriptor::new();
+
+            if device_context.device_info().debug_names_enabled {
+                if let Some(debug_name) = pipeline_def.debug_name {
+                    pipeline.set_label(debug_name);
+                }
+            }
+
+            pipeline.set_vertex_function(vertex_function.as_deref());
+            pipeline.set_fragment_function(fragment_function.as_deref());
+            pipeline.set_sample_count(pipeline_def.sample_count.into());
+
+            let vertex_descriptor = metal_rs::VertexDescriptor::new();
+            for attribute in &pipeline_def.vertex_layout.attributes {
+                let buffer_index =
+                    super::util::vertex_buffer_adjusted_buffer_index(attribute.buffer_index);
+                let attribute_descriptor = vertex_descriptor
+                    .attributes()
+                    .object_at(attribute.location as _)
+                    .unwrap();
+                attribute_descriptor.set_buffer_index(buffer_index);
+                attribute_descriptor.set_format(attribute.format.into());
+                attribute_descriptor.set_offset(attribute.byte_offset as _);
+            }
+
+            for (index, binding) in pipeline_def.vertex_layout.buffers.iter().enumerate() {
+                let buffer_index = super::util::vertex_buffer_adjusted_buffer_index(index as u32);
+                let layout_descriptor = vertex_descriptor.layouts().object_at(buffer_index).unwrap();
+                layout_descriptor.set_stride(binding.stride as _);
+                layout_descriptor.set_step_function(binding.rate.into());
+                layout_descriptor.set_step_rate(1);
+            }
+            pipeline.set_vertex_descriptor(Some(vertex_descriptor));
+
+            pipeline.set_input_primitive_topology(pipeline_def.primitive_topology.into());
+
+            //
+            // Shared code beyond this point for vertex/mesh path
+            //
+            //TODO: Pass in number of color attachments?
+            super::util::blend_def_to_attachment(
+                pipeline_def.blend_state,
+                &mut pipeline.color_attachments(),
+                pipeline_def.color_formats.len(),
+            );
+
+            for (index, &color_format) in pipeline_def.color_formats.iter().enumerate() {
+                pipeline
+                    .color_attachments()
+                    .object_at(index as _)
+                    .unwrap()
+                    .set_pixel_format(color_format.into());
+            }
+
+            if let Some(depth_format) = pipeline_def.depth_stencil_format {
+                if depth_format.has_depth() {
+                    pipeline.set_depth_attachment_pixel_format(depth_format.into());
+                }
+
+                if depth_format.has_stencil() {
+                    pipeline.set_stencil_attachment_pixel_format(depth_format.into());
+                }
+            }
+
+            device_context
+                .device()
+                .new_render_pipeline_state(pipeline.as_ref())?
+        } else if mesh_function.is_some() {
+            let pipeline = metal_rs::MeshRenderPipelineDescriptor::new();
+
+            if device_context.device_info().debug_names_enabled {
+                if let Some(debug_name) = pipeline_def.debug_name {
+                    pipeline.set_label(debug_name);
+                }
+            }
+
+            pipeline.set_object_function(object_function.as_deref());
+            pipeline.set_mesh_function(mesh_function.as_deref());
+            pipeline.set_fragment_function(fragment_function.as_deref());
+            pipeline.set_raster_sample_count(pipeline_def.sample_count.into());
+
+            //
+            // Shared code beyond this point for vertex/mesh path
+            //
+            super::util::blend_def_to_attachment(
+                pipeline_def.blend_state,
+                &mut pipeline.color_attachments(),
+                pipeline_def.color_formats.len(),
+            );
+
+            for (index, &color_format) in pipeline_def.color_formats.iter().enumerate() {
+                pipeline
+                    .color_attachments()
+                    .object_at(index as _)
+                    .unwrap()
+                    .set_pixel_format(color_format.into());
+            }
+
+            if let Some(depth_format) = pipeline_def.depth_stencil_format {
+                if depth_format.has_depth() {
+                    pipeline.set_depth_attachment_pixel_format(depth_format.into());
+                }
+
+                if depth_format.has_stencil() {
+                    pipeline.set_stencil_attachment_pixel_format(depth_format.into());
+                }
+            }
+
+            device_context
+                .device()
+                .new_mesh_render_pipeline_state(pipeline.as_ref())?
+        } else {
+            Err("Could not find vertex or mesh function in the provided shader when creating pipeline")?
+        };
 
         let mtl_cull_mode = pipeline_def.rasterizer_state.cull_mode.into();
         let mtl_triangle_fill_mode = pipeline_def.rasterizer_state.fill_mode.into();
@@ -223,6 +327,8 @@ impl RafxPipelineMetal {
             mtl_depth_clip_mode,
             mtl_depth_stencil_state,
             mtl_primitive_type,
+            threads_per_object_threadgroup,
+            threads_per_mesh_threadgroup,
         };
 
         Ok(RafxPipelineMetal {
@@ -280,7 +386,7 @@ impl RafxPipelineMetal {
             .new_compute_pipeline_state(pipeline.as_ref())?;
 
         let compute_encoder_info = PipelineComputeEncoderInfo {
-            compute_threads_per_group: compute_threads_per_group.unwrap(),
+            threads_per_threadgroup: threads_per_group_to_mtl_size(compute_threads_per_group)?,
         };
 
         Ok(RafxPipelineMetal {
