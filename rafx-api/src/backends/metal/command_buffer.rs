@@ -466,8 +466,10 @@ impl RafxCommandBufferMetal {
 
                     inner.primitive_type = render_encoder_info.mtl_primitive_type;
 
-                    inner.threads_per_object_threadgroup = render_encoder_info.threads_per_object_threadgroup;
-                    inner.threads_per_mesh_threadgroup = render_encoder_info.threads_per_mesh_threadgroup;
+                    inner.threads_per_object_threadgroup =
+                        render_encoder_info.threads_per_object_threadgroup;
+                    inner.threads_per_mesh_threadgroup =
+                        render_encoder_info.threads_per_mesh_threadgroup;
 
                     self.flush_render_targets_to_make_readable(&mut *inner);
                 }
@@ -495,7 +497,8 @@ impl RafxCommandBufferMetal {
                     }
 
                     let compute_encoder_info = pipeline.compute_encoder_info.as_ref().unwrap();
-                    inner.threads_per_compute_threadgroup = compute_encoder_info.threads_per_threadgroup;
+                    inner.threads_per_compute_threadgroup =
+                        compute_encoder_info.threads_per_threadgroup;
 
                     inner
                         .compute_encoder
@@ -947,16 +950,19 @@ impl RafxCommandBufferMetal {
         let inner = self.inner.borrow();
 
         let group_count = MTLSize {
-            width: (group_count_x as metal_rs::NSUInteger) * inner.threads_per_mesh_threadgroup.width,
-            height: (group_count_y as metal_rs::NSUInteger) * inner.threads_per_mesh_threadgroup.height,
-            depth: (group_count_z as metal_rs::NSUInteger) * inner.threads_per_mesh_threadgroup.depth,
+            width: (group_count_x as metal_rs::NSUInteger)
+                * inner.threads_per_mesh_threadgroup.width,
+            height: (group_count_y as metal_rs::NSUInteger)
+                * inner.threads_per_mesh_threadgroup.height,
+            depth: (group_count_z as metal_rs::NSUInteger)
+                * inner.threads_per_mesh_threadgroup.depth,
         };
 
-        inner
-            .render_encoder
-            .as_ref()
-            .unwrap()
-            .draw_mesh_threads(group_count, inner.threads_per_object_threadgroup, inner.threads_per_mesh_threadgroup);
+        inner.render_encoder.as_ref().unwrap().draw_mesh_threads(
+            group_count,
+            inner.threads_per_object_threadgroup,
+            inner.threads_per_mesh_threadgroup,
+        );
         Ok(())
     }
 
@@ -1001,8 +1007,8 @@ impl RafxCommandBufferMetal {
                     .src_state
                     .intersects(RafxResourceState::RENDER_TARGET)
                     && texture_barrier.dst_state.intersects(
-                    RafxResourceState::UNORDERED_ACCESS | RafxResourceState::SHADER_RESOURCE,
-                )
+                        RafxResourceState::UNORDERED_ACCESS | RafxResourceState::SHADER_RESOURCE,
+                    )
                 {
                     inner
                         .render_targets_to_make_readable

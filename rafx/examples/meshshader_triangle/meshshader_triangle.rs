@@ -147,8 +147,10 @@ fn run() -> RafxResult<()> {
             .join("examples/meshshader_triangle/shaders");
 
         let mut mesh_shader_package = RafxShaderPackage::default();
-        let hlsl_shader_string = std::fs::read_to_string(shaders_base_path.join("shaders.hlsl")).unwrap();
-        let msl_shader_string = std::fs::read_to_string(shaders_base_path.join("shaders.metal")).unwrap();
+        let hlsl_shader_string =
+            std::fs::read_to_string(shaders_base_path.join("shaders.hlsl")).unwrap();
+        let msl_shader_string =
+            std::fs::read_to_string(shaders_base_path.join("shaders.metal")).unwrap();
         mesh_shader_package.dx12 = Some(RafxShaderPackageDx12::Src(hlsl_shader_string));
         mesh_shader_package.metal = Some(RafxShaderPackageMetal::Src(msl_shader_string));
 

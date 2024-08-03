@@ -13,76 +13,173 @@ use windows::core::Vtable;
 macro_rules! pipeline_state_stream_subobject {
     ($struct_name:ident, $constant:expr, $inner_type:ty) => {
         #[repr(C, align(8))]
-        struct $struct_name
-        {
+        struct $struct_name {
             subobject_type: d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE,
-            inner: $inner_type
+            inner: $inner_type,
         }
 
-        impl Default for $struct_name
-        {
+        impl Default for $struct_name {
             fn default() -> Self {
                 Self {
                     subobject_type: $constant,
-                    inner: <$inner_type>::default()
+                    inner: <$inner_type>::default(),
                 }
             }
         }
-    }
+    };
 }
 
 macro_rules! pipeline_state_stream_subobject_with_default {
     ($struct_name:ident, $constant:expr, $inner_type:ty, $default_value:expr) => {
         #[repr(C, align(8))]
-        struct $struct_name
-        {
+        struct $struct_name {
             subobject_type: d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE,
-            inner: $inner_type
+            inner: $inner_type,
         }
 
-        impl Default for $struct_name
-        {
+        impl Default for $struct_name {
             fn default() -> Self {
                 Self {
                     subobject_type: $constant,
-                    inner: $default_value
+                    inner: $default_value,
                 }
             }
         }
-    }
+    };
 }
 
-pipeline_state_stream_subobject!(PipelineStateStreamFlags, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_FLAGS, d3d12::D3D12_PIPELINE_STATE_FLAGS);
-pipeline_state_stream_subobject!(PipelineStateStreamNodeMask, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_NODE_MASK, u32);
-pipeline_state_stream_subobject_with_default!(PipelineStateStreamRootSignature, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE, *const d3d12::ID3D12RootSignature, std::ptr::null_mut());
-pipeline_state_stream_subobject!(PipelineStateStreamInputLayout, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT, d3d12::D3D12_INPUT_LAYOUT_DESC);
-pipeline_state_stream_subobject!(PipelineStateStreamIbStripCutValue, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_IB_STRIP_CUT_VALUE, d3d12::D3D12_INDEX_BUFFER_STRIP_CUT_VALUE);
-pipeline_state_stream_subobject!(PipelineStateStreamPrimitiveTopologyType, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY, d3d12::D3D12_PRIMITIVE_TOPOLOGY_TYPE);
-pipeline_state_stream_subobject!(PipelineStateStreamVS, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS, d3d12::D3D12_SHADER_BYTECODE);
-pipeline_state_stream_subobject!(PipelineStateStreamGS, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_GS, d3d12::D3D12_SHADER_BYTECODE);
-pipeline_state_stream_subobject!(PipelineStateStreamStreamOutput, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_STREAM_OUTPUT, d3d12::D3D12_STREAM_OUTPUT_DESC);
-pipeline_state_stream_subobject!(PipelineStateStreamHS, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_HS, d3d12::D3D12_SHADER_BYTECODE);
-pipeline_state_stream_subobject!(PipelineStateStreamDS, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS, d3d12::D3D12_SHADER_BYTECODE);
-pipeline_state_stream_subobject!(PipelineStateStreamPS, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS, d3d12::D3D12_SHADER_BYTECODE);
-pipeline_state_stream_subobject!(PipelineStateStreamAS, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS, d3d12::D3D12_SHADER_BYTECODE);
-pipeline_state_stream_subobject!(PipelineStateStreamMS, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS, d3d12::D3D12_SHADER_BYTECODE);
-pipeline_state_stream_subobject!(PipelineStateStreamCS, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS, d3d12::D3D12_SHADER_BYTECODE);
-pipeline_state_stream_subobject!(PipelineStateStreamBlendDesc, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND, d3d12::D3D12_BLEND_DESC);
-pipeline_state_stream_subobject!(PipelineStateStreamDepthStencil, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL, d3d12::D3D12_DEPTH_STENCIL_DESC);
-pipeline_state_stream_subobject!(PipelineStateStreamDepthStencil1, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL1, d3d12::D3D12_DEPTH_STENCIL_DESC1);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamFlags,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_FLAGS,
+    d3d12::D3D12_PIPELINE_STATE_FLAGS
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamNodeMask,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_NODE_MASK,
+    u32
+);
+pipeline_state_stream_subobject_with_default!(
+    PipelineStateStreamRootSignature,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE,
+    *const d3d12::ID3D12RootSignature,
+    std::ptr::null_mut()
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamInputLayout,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT,
+    d3d12::D3D12_INPUT_LAYOUT_DESC
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamIbStripCutValue,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_IB_STRIP_CUT_VALUE,
+    d3d12::D3D12_INDEX_BUFFER_STRIP_CUT_VALUE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamPrimitiveTopologyType,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY,
+    d3d12::D3D12_PRIMITIVE_TOPOLOGY_TYPE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamVS,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS,
+    d3d12::D3D12_SHADER_BYTECODE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamGS,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_GS,
+    d3d12::D3D12_SHADER_BYTECODE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamStreamOutput,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_STREAM_OUTPUT,
+    d3d12::D3D12_STREAM_OUTPUT_DESC
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamHS,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_HS,
+    d3d12::D3D12_SHADER_BYTECODE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamDS,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS,
+    d3d12::D3D12_SHADER_BYTECODE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamPS,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS,
+    d3d12::D3D12_SHADER_BYTECODE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamAS,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS,
+    d3d12::D3D12_SHADER_BYTECODE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamMS,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS,
+    d3d12::D3D12_SHADER_BYTECODE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamCS,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS,
+    d3d12::D3D12_SHADER_BYTECODE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamBlendDesc,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND,
+    d3d12::D3D12_BLEND_DESC
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamDepthStencil,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL,
+    d3d12::D3D12_DEPTH_STENCIL_DESC
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamDepthStencil1,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL1,
+    d3d12::D3D12_DEPTH_STENCIL_DESC1
+);
 // if (D3D12_SDK_VERSION >= 606)
 //pipeline_state_stream_subobject!(PipelineStateStreamDepthStencil2, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL2, d3d12::D3D12_DEPTH_STENCIL_DESC2);
-pipeline_state_stream_subobject!(PipelineStateStreamDepthStencilFormat, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT, dxgi::Common::DXGI_FORMAT);
-pipeline_state_stream_subobject!(PipelineStateStreamRasterizer, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER, d3d12::D3D12_RASTERIZER_DESC);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamDepthStencilFormat,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT,
+    dxgi::Common::DXGI_FORMAT
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamRasterizer,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER,
+    d3d12::D3D12_RASTERIZER_DESC
+);
 // if (D3D12_SDK_VERSION >= 608)
 //pipeline_state_stream_subobject!(PipelineStateStreamRasterizer1, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER1, d3d12::D3D12_RASTERIZER_DESC1);
 // if (D3D12_SDK_VERSION >= 610)
 //pipeline_state_stream_subobject!(PipelineStateStreamRasterizer2, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER2, d3d12::D3D12_RASTERIZER_DESC2);
-pipeline_state_stream_subobject!(PipelineStateStreamRenderTargetFormats, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS, d3d12::D3D12_RT_FORMAT_ARRAY);
-pipeline_state_stream_subobject!(PipelineStateStreamSampleDesc, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC, dxgi::Common::DXGI_SAMPLE_DESC);
-pipeline_state_stream_subobject!(PipelineStateStreamSampleMask, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK, u32);
-pipeline_state_stream_subobject!(PipelineStateStreamCachedPso, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO, d3d12::D3D12_CACHED_PIPELINE_STATE);
-pipeline_state_stream_subobject!(PipelineStateStreamViewInstancing, d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING, d3d12::D3D12_VIEW_INSTANCING_DESC);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamRenderTargetFormats,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS,
+    d3d12::D3D12_RT_FORMAT_ARRAY
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamSampleDesc,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC,
+    dxgi::Common::DXGI_SAMPLE_DESC
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamSampleMask,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK,
+    u32
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamCachedPso,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO,
+    d3d12::D3D12_CACHED_PIPELINE_STATE
+);
+pipeline_state_stream_subobject!(
+    PipelineStateStreamViewInstancing,
+    d3d12::D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING,
+    d3d12::D3D12_VIEW_INSTANCING_DESC
+);
 
 #[derive(Default)]
 #[repr(C)]
@@ -116,7 +213,6 @@ struct PipelineStreamObjectMesh {
     cached_pso: PipelineStateStreamCachedPso,
     view_instancing: PipelineStateStreamViewInstancing,
 }
-
 
 #[derive(Debug)]
 pub struct RafxPipelineDx12 {
@@ -373,21 +469,33 @@ impl RafxPipelineDx12 {
         let pipeline_state = if ms_bytecode.is_some() {
             // Treat as a graphics pipeline using mesh shaders
             use windows::core::Interface;
-            let device2 = device_context.d3d12_device().cast::<d3d12::ID3D12Device2>().unwrap();
+            let device2 = device_context
+                .d3d12_device()
+                .cast::<d3d12::ID3D12Device2>()
+                .unwrap();
 
             //let dx12_root_sig = pipeline_def.root_signature.dx12_root_signature().unwrap().dx12_root_signature();
-            let root_sig_ptr = pipeline_def.root_signature.dx12_root_signature().unwrap().dx12_root_signature().as_raw();
+            let root_sig_ptr = pipeline_def
+                .root_signature
+                .dx12_root_signature()
+                .unwrap()
+                .dx12_root_signature()
+                .as_raw();
 
             let mut pipeline_stream_object = PipelineStreamObjectMesh::default();
 
-            pipeline_stream_object.root_signature.inner = root_sig_ptr as *const d3d12::ID3D12RootSignature;
-            pipeline_stream_object.ms.inner = ms_bytecode.map(|x| *x.bytecode()).unwrap_or_default();
-            pipeline_stream_object.ps.inner = ps_bytecode.map(|x| *x.bytecode()).unwrap_or_default();
+            pipeline_stream_object.root_signature.inner =
+                root_sig_ptr as *const d3d12::ID3D12RootSignature;
+            pipeline_stream_object.ms.inner =
+                ms_bytecode.map(|x| *x.bytecode()).unwrap_or_default();
+            pipeline_stream_object.ps.inner =
+                ps_bytecode.map(|x| *x.bytecode()).unwrap_or_default();
             pipeline_stream_object.blend.inner = blend_state;
             pipeline_stream_object.sample_mask.inner = u32::MAX;
             pipeline_stream_object.rasterizer.inner = rasterizer_state;
             pipeline_stream_object.depth_stencil.inner = depth_stencil_desc;
-            pipeline_stream_object.primitive_topology_type.inner = pipeline_def.primitive_topology.into();
+            pipeline_stream_object.primitive_topology_type.inner =
+                pipeline_def.primitive_topology.into();
             pipeline_stream_object.rtv_formats.inner.NumRenderTargets = render_target_count as u32;
             pipeline_stream_object.rtv_formats.inner.RTFormats = rtv_formats;
             pipeline_stream_object.dsv_format.inner = pipeline_def
@@ -399,18 +507,19 @@ impl RafxPipelineDx12 {
             pipeline_stream_object.flags.inner = d3d12::D3D12_PIPELINE_STATE_FLAG_NONE;
             pipeline_stream_object.node_mask.inner = 0;
 
-
-
-
             //pipeline_stream_object.vs.inner = vs_bytecode.map(|x| *x.bytecode()).as_ref().unwrap_or_default();
             let pipeline_state_desc = d3d12::D3D12_PIPELINE_STATE_STREAM_DESC {
                 SizeInBytes: std::mem::size_of::<PipelineStreamObjectMesh>(),
-                pPipelineStateSubobjectStream: ((&mut pipeline_stream_object) as *mut PipelineStreamObjectMesh) as *mut std::ffi::c_void
+                pPipelineStateSubobjectStream: ((&mut pipeline_stream_object)
+                    as *mut PipelineStreamObjectMesh)
+                    as *mut std::ffi::c_void,
             };
             let pipeline_state: d3d12::ID3D12PipelineState = unsafe {
-                device2.CreatePipelineState(
-                    &pipeline_state_desc as * const d3d12::D3D12_PIPELINE_STATE_STREAM_DESC
-                ).unwrap()
+                device2
+                    .CreatePipelineState(
+                        &pipeline_state_desc as *const d3d12::D3D12_PIPELINE_STATE_STREAM_DESC,
+                    )
+                    .unwrap()
             };
 
             pipeline_state
@@ -464,8 +573,6 @@ impl RafxPipelineDx12 {
 
             pipeline_state
         };
-
-
 
         let topology = pipeline_def.primitive_topology.into();
 

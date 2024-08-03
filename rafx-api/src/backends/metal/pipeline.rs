@@ -4,8 +4,11 @@ use crate::{
     RafxRootSignature, RafxShaderStageFlags,
 };
 
-fn threads_per_group_to_mtl_size(compute_threads_per_group: Option<[u32; 3]>) -> RafxResult<metal_rs::MTLSize> {
-    let compute_threads_per_group = compute_threads_per_group.ok_or("Metal shaders must have threadgroup size specified in reflection data")?;
+fn threads_per_group_to_mtl_size(
+    compute_threads_per_group: Option<[u32; 3]>
+) -> RafxResult<metal_rs::MTLSize> {
+    let compute_threads_per_group = compute_threads_per_group
+        .ok_or("Metal shaders must have threadgroup size specified in reflection data")?;
     Ok(metal_rs::MTLSize::new(
         compute_threads_per_group[0] as _,
         compute_threads_per_group[1] as _,
@@ -101,7 +104,7 @@ impl RafxPipelineMetal {
         let mut fragment_function = None;
         let mut mesh_function = None;
         let mut object_function = None;
-        
+
         let mut threads_per_object_threadgroup = metal_rs::MTLSize::default();
         let mut threads_per_mesh_threadgroup = metal_rs::MTLSize::default();
 
@@ -155,7 +158,8 @@ impl RafxPipelineMetal {
                         .library()
                         .get_function(entry_point, None)?,
                 );
-                threads_per_mesh_threadgroup = threads_per_group_to_mtl_size(stage.reflection.compute_threads_per_group)?;
+                threads_per_mesh_threadgroup =
+                    threads_per_group_to_mtl_size(stage.reflection.compute_threads_per_group)?;
             }
 
             if stage
@@ -173,7 +177,8 @@ impl RafxPipelineMetal {
                         .library()
                         .get_function(entry_point, None)?,
                 );
-                threads_per_object_threadgroup = threads_per_group_to_mtl_size(stage.reflection.compute_threads_per_group)?;
+                threads_per_object_threadgroup =
+                    threads_per_group_to_mtl_size(stage.reflection.compute_threads_per_group)?;
             }
         }
 
@@ -206,7 +211,8 @@ impl RafxPipelineMetal {
 
             for (index, binding) in pipeline_def.vertex_layout.buffers.iter().enumerate() {
                 let buffer_index = super::util::vertex_buffer_adjusted_buffer_index(index as u32);
-                let layout_descriptor = vertex_descriptor.layouts().object_at(buffer_index).unwrap();
+                let layout_descriptor =
+                    vertex_descriptor.layouts().object_at(buffer_index).unwrap();
                 layout_descriptor.set_stride(binding.stride as _);
                 layout_descriptor.set_step_function(binding.rate.into());
                 layout_descriptor.set_step_rate(1);
