@@ -303,15 +303,7 @@ fn run() -> RafxResult<()> {
 
             cmd_buffer.cmd_bind_pipeline(&pipeline)?;
 
-            // use windows::core::Interface;
-            // use windows::Win32::Graphics::Direct3D12 as d3d12;
-            // let command_list = &cmd_buffer.dx12_command_buffer().unwrap().dx12_graphics_command_list();
-            // let command_list6 = command_list.cast::<d3d12::ID3D12GraphicsCommandList6>().unwrap();
-            //unsafe
-            //{
-            //command_list6.DispatchMesh(1, 1, 1);
             cmd_buffer.cmd_draw_mesh(1, 1, 1)?;
-            //}
 
             cmd_buffer.cmd_end_render_pass()?;
 

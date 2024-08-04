@@ -23,7 +23,7 @@ use super::d3d12;
 pub struct RafxCommandBufferDx12Inner {
     //command_list_type: d3d12::D3D12_COMMAND_LIST_TYPE,
     command_list_base: d3d12::ID3D12CommandList,
-    command_list: d3d12::ID3D12GraphicsCommandList,
+    command_list: d3d12::ID3D12GraphicsCommandList6,
     command_allocator: d3d12::ID3D12CommandAllocator,
     bound_root_signature: Option<d3d12::ID3D12RootSignature>,
 
@@ -45,7 +45,7 @@ impl RafxCommandBufferDx12 {
         self.inner.borrow().command_list_base.clone()
     }
 
-    pub fn dx12_graphics_command_list(&self) -> d3d12::ID3D12GraphicsCommandList {
+    pub fn dx12_graphics_command_list(&self) -> d3d12::ID3D12GraphicsCommandList6 {
         self.inner.borrow().command_list.clone()
     }
 
@@ -87,7 +87,7 @@ impl RafxCommandBufferDx12 {
         //TODO: Special handling for copy?
         let command_list_type = command_pool.command_list_type();
         let command_list = unsafe {
-            let command_list: d3d12::ID3D12GraphicsCommandList = command_pool
+            let command_list: d3d12::ID3D12GraphicsCommandList6 = command_pool
                 .queue()
                 .device_context()
                 .d3d12_device()
@@ -713,6 +713,21 @@ impl RafxCommandBufferDx12 {
             );
         }
 
+        Ok(())
+    }
+
+    pub fn cmd_draw_mesh(
+        &self,
+        group_count_x: u32,
+        group_count_y: u32,
+        group_count_z: u32,
+    ) -> RafxResult<()> {
+        let inner = self.inner.borrow();
+        unsafe {
+            inner
+                .command_list
+                .DispatchMesh(group_count_x, group_count_y, group_count_z);
+        }
         Ok(())
     }
 
