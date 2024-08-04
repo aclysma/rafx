@@ -562,10 +562,17 @@ impl RafxRootSignatureDx12 {
         if !all_used_shader_stage.intersects(RafxShaderStageFlags::FRAGMENT) {
             root_signature_flags |= d3d12::D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
         }
+
+        //NOTE: PIX and renderdoc will fail to debug mesh shaders if this flag is enabled
+        // because they rely on instrumenting the shader and writing resources. This is likely
+        // fixed as of ~Aug 2024 in renderdoc. But realistically these deny flags only really help
+        // old hardware anyways.
         // if !all_used_shader_stage.intersects(RafxShaderStageFlags::MESH) {
         //     root_signature_flags |= d3d12::D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
         // }
-        // There are other deny flags we could use?
+        // if !all_used_shader_stage.intersects(RafxShaderStageFlags::AMPLIFICATION) {
+        //     root_signature_flags |= d3d12::D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
+        // }
 
         //
         // Make the root signature

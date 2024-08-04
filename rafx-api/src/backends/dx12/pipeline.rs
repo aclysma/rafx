@@ -280,6 +280,7 @@ impl RafxPipelineDx12 {
         let mut hs_bytecode = None;
         let mut gs_bytecode = None;
         let mut ms_bytecode = None;
+        let mut as_bytecode = None;
 
         for stage in pipeline_def.shader.dx12_shader().unwrap().stages() {
             let module = stage.shader_module.dx12_shader_module().unwrap();
@@ -341,6 +342,16 @@ impl RafxPipelineDx12 {
             {
                 ms_bytecode = Some(
                     module.get_or_compile_bytecode(&stage.reflection.entry_point_name, "ms_6_5")?,
+                );
+            }
+
+            if stage
+                .reflection
+                .shader_stage
+                .intersects(RafxShaderStageFlags::AMPLIFICATION)
+            {
+                as_bytecode = Some(
+                    module.get_or_compile_bytecode(&stage.reflection.entry_point_name, "as_6_5")?,
                 );
             }
         }
@@ -486,6 +497,8 @@ impl RafxPipelineDx12 {
 
             pipeline_stream_object.root_signature.inner =
                 root_sig_ptr as *const d3d12::ID3D12RootSignature;
+            pipeline_stream_object.r#as.inner =
+                as_bytecode.map(|x| *x.bytecode()).unwrap_or_default();
             pipeline_stream_object.ms.inner =
                 ms_bytecode.map(|x| *x.bytecode()).unwrap_or_default();
             pipeline_stream_object.ps.inner =
