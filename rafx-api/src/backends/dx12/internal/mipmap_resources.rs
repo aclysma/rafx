@@ -1,11 +1,6 @@
 use super::d3d12;
 use crate::dx12::RafxDeviceContextDx12;
-use crate::{
-    RafxComputePipelineDef, RafxImmutableSamplerKey, RafxImmutableSamplers, RafxPipeline,
-    RafxResourceType, RafxResult, RafxRootSignature, RafxRootSignatureDef, RafxSampler,
-    RafxSamplerDef, RafxShader, RafxShaderModule, RafxShaderModuleDefDx12, RafxShaderResource,
-    RafxShaderStageDef, RafxShaderStageFlags, RafxShaderStageReflection,
-};
+use crate::RafxResult;
 
 pub struct Dx12MipmapResources {
     //pub shader: RafxShader,

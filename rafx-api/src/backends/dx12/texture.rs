@@ -775,7 +775,7 @@ impl RafxTextureDx12 {
                 Flags: d3d12::D3D12_RESOURCE_FLAG_NONE,
             };
 
-            let mut resource_states = RafxResourceState::UNDEFINED;
+            let resource_states = RafxResourceState::UNDEFINED;
 
             if create_uav_chain {
                 desc.Flags |= d3d12::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
@@ -891,7 +891,7 @@ impl RafxTextureDx12 {
         if create_uav_chain {
             srv_uav_handle_count += texture_def.mip_count;
         }
-        let mut resource_desc = unsafe { image.image.GetDesc() };
+        let resource_desc = unsafe { image.image.GetDesc() };
 
         let is_cube_map = texture_def
             .resource_type
@@ -1047,8 +1047,8 @@ impl RafxTextureDx12 {
             next_dsv_handle = Some(next_dsv_handle.unwrap().add_offset(1));
         }
 
-        let mut first_rtv_slice = next_rtv_handle;
-        let mut first_dsv_slice = next_dsv_handle;
+        let first_rtv_slice = next_rtv_handle;
+        let first_dsv_slice = next_dsv_handle;
 
         for mip_level in 0..texture_def.mip_count {
             if texture_def

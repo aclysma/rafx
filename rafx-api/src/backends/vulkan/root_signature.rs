@@ -4,10 +4,6 @@ use ash::vk;
 use fnv::FnvHashMap;
 use std::sync::Arc;
 
-// Not currently exposed
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
-
 //TODO: Could compact this down quite a bit
 #[derive(Clone, Debug)]
 pub(crate) struct DescriptorInfo {

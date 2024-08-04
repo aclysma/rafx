@@ -54,7 +54,8 @@ impl RafxShaderModuleMetal {
         src: &str,
     ) -> RafxResult<Self> {
         let compile_options = metal_rs::CompileOptions::new();
-        compile_options.set_language_version(MTLLanguageVersion::V2_1);
+        // 3.0 required for mesh shaders
+        compile_options.set_language_version(MTLLanguageVersion::V3_0);
         let library = device_context
             .device()
             .new_library_with_source(src, &compile_options)?;

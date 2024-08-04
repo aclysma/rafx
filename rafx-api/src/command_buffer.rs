@@ -955,6 +955,58 @@ impl RafxCommandBuffer {
         }
     }
 
+    pub fn cmd_draw_mesh(
+        &self,
+        group_count_x: u32,
+        group_count_y: u32,
+        group_count_z: u32,
+    ) -> RafxResult<()> {
+        match self {
+            #[cfg(feature = "rafx-dx12")]
+            RafxCommandBuffer::Dx12(inner) => {
+                inner.cmd_draw_mesh(group_count_x, group_count_y, group_count_z)
+            }
+            #[cfg(feature = "rafx-vulkan")]
+            RafxCommandBuffer::Vk(_) => {
+                let _ = group_count_x;
+                let _ = group_count_y;
+                let _ = group_count_z;
+                unimplemented!()
+            }
+            #[cfg(feature = "rafx-metal")]
+            RafxCommandBuffer::Metal(inner) => {
+                inner.cmd_draw_mesh(group_count_x, group_count_y, group_count_z)
+            }
+            #[cfg(feature = "rafx-gles2")]
+            RafxCommandBuffer::Gles2(_) => {
+                let _ = group_count_x;
+                let _ = group_count_y;
+                let _ = group_count_z;
+                unimplemented!()
+            }
+            #[cfg(feature = "rafx-gles3")]
+            RafxCommandBuffer::Gles3(_) => {
+                let _ = group_count_x;
+                let _ = group_count_y;
+                let _ = group_count_z;
+                unimplemented!()
+            }
+            #[cfg(any(
+                feature = "rafx-empty",
+                not(any(
+                    feature = "rafx-dx12",
+                    feature = "rafx-metal",
+                    feature = "rafx-vulkan",
+                    feature = "rafx-gles2",
+                    feature = "rafx-gles3"
+                ))
+            ))]
+            RafxCommandBuffer::Empty(inner) => {
+                inner.cmd_draw_mesh(group_count_x, group_count_y, group_count_z)
+            }
+        }
+    }
+
     /// Dispatch the current pipeline. Only usable with compute pipelines.
     pub fn cmd_dispatch(
         &self,

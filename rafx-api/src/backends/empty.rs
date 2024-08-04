@@ -14,7 +14,7 @@ impl RafxApiEmpty {
 
     pub fn destroy(&mut self) -> RafxResult<()> { unimplemented!() }
 }
- 
+
 #[derive(Clone)]
 pub struct RafxDeviceContextEmpty;
 impl RafxDeviceContextEmpty {
@@ -160,8 +160,9 @@ impl RafxCommandBufferEmpty {
     pub fn cmd_draw_indexed_instanced(&self, index_count: u32, first_index: u32, instance_count: u32, first_instance: u32, vertex_offset: i32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_draw_indirect(&self, indirect_buffer: &RafxBufferEmpty, indirect_buffer_offset_in_bytes: u32, draw_count: u32) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_draw_indexed_indirect(&self, indirect_buffer: &RafxBufferEmpty, indirect_buffer_offset_in_bytes: u32, draw_count: u32) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_draw_mesh(&self, group_count_x: u32, group_count_y: u32, group_count_z: u32) -> RafxResult<()> { unimplemented!() }
 
-    pub fn cmd_dispatch(&self, group_count_x: u32,  group_count_y: u32, group_count_z: u32) -> RafxResult<()> { unimplemented!() }
+    pub fn cmd_dispatch(&self, group_count_x: u32, group_count_y: u32, group_count_z: u32) -> RafxResult<()> { unimplemented!() }
 
     pub fn cmd_resource_barrier(&self, buffer_barriers: &[RafxBufferBarrier], texture_barriers: &[RafxTextureBarrier]) -> RafxResult<()> { unimplemented!() }
     pub fn cmd_copy_buffer_to_buffer(&self, src_buffer: &RafxBufferEmpty, dst_buffer: &RafxBufferEmpty, params: &RafxCmdCopyBufferToBufferParams) -> RafxResult<()> { unimplemented!() }

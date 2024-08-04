@@ -262,7 +262,13 @@ pub struct RafxShaderStageReflection {
     //pub vertex_inputs: Vec<RafxVertexInput>,
     pub shader_stage: RafxShaderStageFlags,
     pub resources: Vec<RafxShaderResource>,
+
+    // Metal needs the thread count passed in when dispatching compute or mesh shaders. So it needs
+    // to be provided here when working with rafx-api directly. Normally this can be populated
+    // automatically by shader reflection. Despite the naming, this applies for mesh and amplification
+    // shaders as well. It may be worth renaming this in the future
     pub compute_threads_per_group: Option<[u32; 3]>,
+
     pub entry_point_name: String,
     // Right now we will infer mappings based on spirv_cross default behavior, but likely will want
     // to allow providing them explicitly. This isn't implemented yet

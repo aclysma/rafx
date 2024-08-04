@@ -35,9 +35,14 @@ pub struct RafxCommandBufferMetalInner {
     primitive_type: MTLPrimitiveType,
     current_render_targets_width: u32,
     current_render_targets_height: u32,
-    compute_threads_per_group_x: u32,
-    compute_threads_per_group_y: u32,
-    compute_threads_per_group_z: u32,
+
+    // Thread group size for compute
+    threads_per_compute_threadgroup: MTLSize,
+
+    // Tracks thread group size for mesh-shader based render pipelines
+    threads_per_object_threadgroup: MTLSize,
+    threads_per_mesh_threadgroup: MTLSize,
+
     group_debug_name_stack: Vec<String>,
     debug_names_enabled: bool,
 }
@@ -110,9 +115,9 @@ impl RafxCommandBufferMetal {
             primitive_type: MTLPrimitiveType::Triangle,
             current_render_targets_width: 0,
             current_render_targets_height: 0,
-            compute_threads_per_group_x: 0,
-            compute_threads_per_group_y: 0,
-            compute_threads_per_group_z: 0,
+            threads_per_compute_threadgroup: MTLSize::default(),
+            threads_per_object_threadgroup: MTLSize::default(),
+            threads_per_mesh_threadgroup: MTLSize::default(),
             current_index_buffer: None,
             current_index_buffer_byte_offset: 0,
             current_index_buffer_type: MTLIndexType::UInt16,
@@ -460,6 +465,12 @@ impl RafxCommandBufferMetal {
                     }
 
                     inner.primitive_type = render_encoder_info.mtl_primitive_type;
+
+                    inner.threads_per_object_threadgroup =
+                        render_encoder_info.threads_per_object_threadgroup;
+                    inner.threads_per_mesh_threadgroup =
+                        render_encoder_info.threads_per_mesh_threadgroup;
+
                     self.flush_render_targets_to_make_readable(&mut *inner);
                 }
                 RafxPipelineType::Compute => {
@@ -486,10 +497,8 @@ impl RafxCommandBufferMetal {
                     }
 
                     let compute_encoder_info = pipeline.compute_encoder_info.as_ref().unwrap();
-                    let compute_threads_per_group = compute_encoder_info.compute_threads_per_group;
-                    inner.compute_threads_per_group_x = compute_threads_per_group[0];
-                    inner.compute_threads_per_group_y = compute_threads_per_group[1];
-                    inner.compute_threads_per_group_z = compute_threads_per_group[2];
+                    inner.threads_per_compute_threadgroup =
+                        compute_encoder_info.threads_per_threadgroup;
 
                     inner
                         .compute_encoder
@@ -932,6 +941,31 @@ impl RafxCommandBufferMetal {
         Ok(())
     }
 
+    pub fn cmd_draw_mesh(
+        &self,
+        group_count_x: u32,
+        group_count_y: u32,
+        group_count_z: u32,
+    ) -> RafxResult<()> {
+        let inner = self.inner.borrow();
+
+        let group_count = MTLSize {
+            width: (group_count_x as metal_rs::NSUInteger)
+                * inner.threads_per_mesh_threadgroup.width,
+            height: (group_count_y as metal_rs::NSUInteger)
+                * inner.threads_per_mesh_threadgroup.height,
+            depth: (group_count_z as metal_rs::NSUInteger)
+                * inner.threads_per_mesh_threadgroup.depth,
+        };
+
+        inner.render_encoder.as_ref().unwrap().draw_mesh_threads(
+            group_count,
+            inner.threads_per_object_threadgroup,
+            inner.threads_per_mesh_threadgroup,
+        );
+        Ok(())
+    }
+
     pub fn cmd_dispatch(
         &self,
         group_count_x: u32,
@@ -940,11 +974,6 @@ impl RafxCommandBufferMetal {
     ) -> RafxResult<()> {
         let inner = self.inner.borrow();
         self.wait_for_barriers(&*inner)?;
-        let thread_per_group = MTLSize {
-            width: inner.compute_threads_per_group_x as _,
-            height: inner.compute_threads_per_group_y as _,
-            depth: inner.compute_threads_per_group_z as _,
-        };
 
         let group_count = MTLSize {
             width: group_count_x as _,
@@ -956,7 +985,7 @@ impl RafxCommandBufferMetal {
             .compute_encoder
             .as_ref()
             .unwrap()
-            .dispatch_thread_groups(group_count, thread_per_group);
+            .dispatch_thread_groups(group_count, inner.threads_per_compute_threadgroup);
         Ok(())
     }
 

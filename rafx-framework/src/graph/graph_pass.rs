@@ -43,14 +43,6 @@ impl RenderGraphPassBufferBarriers {
     }
 }
 
-/// All the barriers required for a single node (i.e. subpass). Nodes represent passes that may be
-/// merged to be subpasses within a single pass.
-#[derive(Debug)]
-pub struct RenderGraphNodeBufferBarriers {
-    #[allow(unused)]
-    pub(super) barriers: FnvHashMap<PhysicalBufferId, RenderGraphPassBufferBarriers>,
-}
-
 pub const MAX_COLOR_ATTACHMENTS: usize = 4;
 pub const MAX_RESOLVE_ATTACHMENTS: usize = 4;
 
@@ -119,14 +111,6 @@ pub struct RenderGraphPassAttachment {
 pub struct PrepassBarrier {
     pub image_barriers: Vec<PrepassImageBarrier>,
     pub buffer_barriers: Vec<PrepassBufferBarrier>,
-}
-
-#[derive(Debug)]
-pub struct PostpassBarrier {
-    // layout transition
-    pub image_barriers: Vec<PrepassImageBarrier>,
-    pub buffer_barriers: Vec<PrepassBufferBarrier>,
-    // resolve? probably do that in rafx api level
 }
 
 #[derive(Debug)]

@@ -211,7 +211,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         //
         let asset_data = context.asset::<MeshAdvMeshAssetRecord>(context.input.asset_id)?;
         let mut materials = Vec::default();
-        for entry in asset_data.material_slots().resolve_entries()?.into_iter() {
+        for entry in &asset_data.material_slots().resolve_entries()? {
             let entry = asset_data.material_slots().entry(*entry).get()?;
             materials.push(entry);
         }
@@ -230,7 +230,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
         let mut all_indices = PushBuffer::new(16384);
 
         let mut mesh_part_data = Vec::default();
-        for entry in imported_data.mesh_parts().resolve_entries()?.into_iter() {
+        for entry in &imported_data.mesh_parts().resolve_entries()? {
             let entry = imported_data.mesh_parts().entry(*entry);
 
             //
@@ -347,7 +347,7 @@ impl JobProcessor for MeshAdvMeshJobProcessor {
                 for (entry, part_data) in imported_data
                     .mesh_parts()
                     .resolve_entries()?
-                    .into_iter()
+                    .iter()
                     .zip(mesh_part_data)
                 {
                     let entry = imported_data.mesh_parts().entry(*entry);
@@ -461,7 +461,7 @@ impl JobProcessor for MeshAdvModelJobProcessor {
                     context.asset::<MeshAdvModelAssetRecord>(context.input.asset_id)?;
 
                 let mut lods = Vec::default();
-                for entry in asset_data.lods().resolve_entries()?.into_iter() {
+                for entry in &asset_data.lods().resolve_entries()? {
                     let lod = asset_data.lods().entry(*entry);
                     let mesh_handle =
                         handle_factory.make_handle_to_default_artifact(lod.mesh().get()?);
