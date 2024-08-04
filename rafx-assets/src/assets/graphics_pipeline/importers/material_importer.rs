@@ -128,7 +128,7 @@ impl JobProcessor for MaterialJobProcessor {
             |handle_factory| {
                 //let shader_module = job_system::make_handle_to_default_artifact(job_api, shader_module);
                 let mut passes = Vec::default();
-                for pass_entry in asset_data.passes().resolve_entries()?.into_iter() {
+                for pass_entry in &asset_data.passes().resolve_entries()? {
                     let pass_entry = asset_data.passes().entry(*pass_entry);
 
                     let fixed_function_state =

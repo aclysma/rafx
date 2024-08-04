@@ -222,7 +222,7 @@ pub fn blend_state_blend_state_desc(
                     || def.src_factor_alpha != RafxBlendFactor::One
                     || def.dst_factor_alpha != RafxBlendFactor::Zero;
 
-                let mut desc = &mut blend_desc.RenderTarget[attachment_index as usize];
+                let desc = &mut blend_desc.RenderTarget[attachment_index as usize];
                 desc.BlendEnable = blend_enable.into();
                 desc.RenderTargetWriteMask = def.masks.bits();
                 desc.BlendOp = def.blend_op.into();

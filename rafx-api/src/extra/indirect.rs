@@ -210,8 +210,7 @@ impl<'a> RafxIndexedIndirectCommandEncoder<'a> {
         unsafe {
             #[cfg(feature = "rafx-dx12")]
             if self.is_dx12 {
-                let mut ptr =
-                    self.mapped_memory as *mut RafxDrawIndexedIndirectCommandWithPushConstant;
+                let ptr = self.mapped_memory as *mut RafxDrawIndexedIndirectCommandWithPushConstant;
                 let push_constant = command.first_instance;
                 *ptr.add(index) = RafxDrawIndexedIndirectCommandWithPushConstant {
                     command,

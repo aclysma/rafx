@@ -12,7 +12,6 @@
 
 use std::prelude::v1::*;
 
-#[cfg(feature = "std")]
 use std::error::Error;
 
 use std::{
@@ -46,7 +45,6 @@ impl Display for InvalidBorrow {
     }
 }
 
-#[cfg(feature = "std")]
 impl Error for InvalidBorrow {
     fn description(&self) -> &str {
         "This error is returned when you try to borrow immutably when it's already \

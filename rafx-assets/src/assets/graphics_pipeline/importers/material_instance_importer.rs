@@ -149,9 +149,7 @@ impl JobProcessor for MaterialInstanceJobProcessor {
                     handle_factory.make_handle_to_default_artifact(asset_data.material().get()?);
 
                 let mut slot_assignments = Vec::default();
-                for slot_assignent_entry in
-                    asset_data.slot_assignments().resolve_entries()?.into_iter()
-                {
+                for slot_assignent_entry in &asset_data.slot_assignments().resolve_entries()? {
                     let slot_assignment =
                         asset_data.slot_assignments().entry(*slot_assignent_entry);
 

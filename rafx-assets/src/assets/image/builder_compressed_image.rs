@@ -88,11 +88,11 @@ impl JobProcessor for GpuCompressedImageJobProcessor {
             })
         } else {
             let mut layers = Vec::default();
-            for &layer_entry in layer_entries.into_iter() {
+            for &layer_entry in &layer_entries {
                 let layer = imported_data.data_layers().entry(layer_entry);
                 let mip_level_entries = layer.mip_levels().resolve_entries()?;
                 let mut mip_levels = Vec::default();
-                for &mip_level_entry in mip_level_entries.into_iter() {
+                for &mip_level_entry in &mip_level_entries {
                     let mip_level = layer.mip_levels().entry(mip_level_entry);
                     mip_levels.push(ImageAssetDataMipLevel {
                         width: mip_level.width().get()?,
