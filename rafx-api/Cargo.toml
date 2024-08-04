@@ -30,7 +30,7 @@ backtrace = { version = "0.3", optional = true }
 raw-window-handle = "0.5"
 
 # vulkan/dx12
-gpu-allocator = { version = "0.22.0", default_features = false, optional = true }
+gpu-allocator = { version = "0.22.0", default-features = false, optional = true }
 
 # vulkan
 ash = { version = "0.37", optional = true }

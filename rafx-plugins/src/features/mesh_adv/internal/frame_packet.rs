@@ -81,12 +81,6 @@ pub type MeshAdvFramePacket = FramePacket<MeshAdvRenderFeatureTypes>;
 // PREPARE
 //---------
 
-#[derive(Clone)]
-pub struct MeshAdvPartMaterialDescriptorSetPair {
-    pub textured_descriptor_set: Option<DescriptorSetArc>,
-    pub untextured_descriptor_set: Option<DescriptorSetArc>,
-}
-
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct MeshAdvBatchedPassKey {
     pub phase: RenderPhaseIndex,
